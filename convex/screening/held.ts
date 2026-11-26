@@ -221,7 +221,7 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
       // Its own PDF goes with the paper either way: the index's paper is screened on its abstract where it has one, or its first reading found one, and on the file where there is none.
       const own = { file: file.file, ...(file.pages === undefined ? {} : { pages: file.pages }) };
       const paper = file.known && file.doi ? known.get(file.doi) : undefined;
-      papers.push(paper ? { ...paper, ...(paper.abstract?.trim() || !file.abstract ? {} : { abstract: file.abstract }), ...own } : { paper: key, title: file.title ?? file.name.replace(/\.pdf$/i, ""), ...(file.authors?.length ? { authors: file.authors } : {}), ...(file.year === undefined ? {} : { publicationYear: file.year }), ...own });
+      papers.push({ ...(paper ? { ...paper, ...(paper.abstract?.trim() || !file.abstract ? {} : { abstract: file.abstract }) } : { paper: key, title: file.title ?? file.name.replace(/\.pdf$/i, ""), ...(file.authors?.length ? { authors: file.authors } : {}), ...(file.year === undefined ? {} : { publicationYear: file.year }) }), ...own, record: file.file });
     }
     return { papers, left };
   }
@@ -232,9 +232,11 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
     const elsewhere = await registered(dois.filter((doi) => !found.has(doi)));
     const papers = dois.flatMap((doi, at): SearchPaper[] => {
       const [known, record] = [found.get(doi), elsewhere.get(doi)];
-      return known ? [known] : record ? [fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }))] : [];
+      const paper = known ?? (record && fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` })));
+      return paper ? [{ ...paper, record: String(from + at) }] : [];
     });
-    return { papers, left: dois.filter((doi) => !found.has(doi) && !elsewhere.has(doi)).map((doi) => ({ name: doi, why: "record" as const })) };
+    // A DOI is in the list once (`keepDois`): it names what is left out of it, so a step given twice leaves it out once.
+    return { papers, left: dois.filter((doi) => !found.has(doi) && !elsewhere.has(doi)).map((doi) => ({ name: doi, why: "record" as const, key: doi })) };
   }
   const kept = source.resume ? await ctx.storage.get(source.resume as Id<"_storage">) : null;
   if (!kept) throw createError("NOT_FOUND", "This file's records are gone. Add it again.");
@@ -245,9 +247,9 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
   const papers = records.map((record, at): SearchPaper => {
     const known = found.get(normalDoi(record.doi) ?? "");
     // What the person brought is what is screened: the file's own title and abstract where it has them.
-    return known
+    return { ...(known
       ? { ...known, title: record.title || known.title, ...(record.abstract ?? known.abstract ? { abstract: record.abstract ?? known.abstract } : {}) }
-      : fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
+      : fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }))), record: String(from + at) };
   });
   return { papers, left: [] };
 }

@@ -27,6 +27,7 @@ import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
+import { nameHas } from "@/lib/screening/rules";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -84,7 +85,7 @@ export function ScreeningsIndex() {
   // "Needs you first" is the newest first with what waits for the person above them.
   const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE);
 
-  const fits = (row: Summary) => (!searched || row.name.toLowerCase().includes(searched.toLowerCase())) && (!runBy.by || row.createdBy.id === runBy.by);
+  const fits = (row: Summary) => nameHas(row.name, searched) && (!runBy.by || row.createdBy.id === runBy.by);
   const needing = (row: Summary) => row.forYou + row.conflicts + row.asked > 0;
   const needs = (mine?.page ?? []).filter((row) => needing(row) && fits(row));
   const shared = (mine?.page ?? []).filter((row) => !row.member && fits(row));

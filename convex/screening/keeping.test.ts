@@ -86,3 +86,24 @@ it("orders, narrows, finds and previews nothing by votes that are kept from the 
   for (const move of kept) expect(move).toMatchObject({ from: "waiting", to: "waiting", papers: [] });
   expect(preview.moves.filter((move) => move.from !== move.to).every((move) => move.hidden === 0)).toBe(true);
 });
+
+it("tells a reviewer the same thing whichever way the votes kept from them went", async () => {
+  const made = await team(["ann", "ben", "cat"]);
+  const { workspaceId } = made;
+  // Two screenings alike, of one paper Ben has yet to vote on: in the first Ann and Cat agree on it, in the second they split.
+  const seen = async (cats: "include" | "exclude") => {
+    const { jobId, papers } = await started(made, ["ann", "ben", "cat"], 1, { rule: { each: "all", settle: "all", blind: "after" } });
+    const vote = (name: string, decision: "include" | "exclude") => made.as[name]!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId: papers[0]!._id, decision, ...(decision === "exclude" ? { reason: "other" } : {}) });
+    await vote("ann", "include");
+    await vote("cat", cats);
+    await settleAll(made.t);
+    const ben = (await made.t.run((ctx) => ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", made.ids.ben!)).first()))!._id;
+    // Cat's papers by one way of voting: what comes back, and whether another page follows.
+    const listed = await Promise.all((["include", "exclude"] as const).map(async (voted) => { const read = await made.as.ben!.query(api.screening.paperViews.list, { workspaceId, jobId, reviewer: made.ids.cat, voted, paginationOpts: { cursor: null, numItems: 10 } }); return { papers: read.page.length, isDone: read.isDone }; }));
+    // What taking himself off would do: whether the paper is then settled on the others' votes says whether they agree.
+    const preview = await made.as.ben!.action(api.screening.effects.preview, { workspaceId, jobId, change: { remove: [{ reviewerId: ben }] } });
+    const { settled, waiting } = preview.leaving[ben]!;
+    return { listed, reopened: preview.reopened, settled, waiting, moves: preview.moves.map(({ from, to, count, hidden, papers: named }) => ({ from, to, count, hidden, named: named.length })) };
+  };
+  expect(await seen("include")).toEqual(await seen("exclude"));
+});

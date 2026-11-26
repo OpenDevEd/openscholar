@@ -78,30 +78,32 @@ export const step = internalQuery({
       const places = withJoined({ id: paper._id, result: was }, left, joiners, plan.rule.each === "all");
       // A settled paper keeps its result through the change, unless it is checked again or votes on it are thrown out.
       const held = isFinal(was) && !paper.resolved && !recheck && !thrown;
-      const after = project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, teamFor(team, paper, reads), plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
-      const now = after.result;
-      const open = !isFinal(now);
+      const onIt = teamFor(team, paper, reads);
+      // A paper whose votes the person asking can't see yet. Nothing that depends on how the others voted on it is worked out: where the change leaves it, whether it stays open, what is left of anyone's papers on it. Any of those, even as a count, would say whether the others agree. Who is on it shows, so the places are counted as the change gives them out before a vote is read, with every model that joins taken to read it: a cost is never under what is charged. Where the change can move a result, the paper is counted once, under no result, whether or not it would move.
+      const kept = !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
+      const after = kept ? null : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, onIt, plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
+      const now = after?.result ?? was;
+      const open = after ? !isFinal(now) : true;
+      const ends: Place[] = after?.places ?? [...places, ...newModels.filter((key) => onIt.models.includes(key)).map((key): Place => ({ reviewer: key, kind: "model", status: "waiting" }))];
 
-      if (now !== was) {
-        // A paper whose votes the person asking can't see yet is counted and nothing more: which result it leaves and which it goes to would say how the others voted on it. Those are counted together, under no result.
-        const kept = !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
+      if (kept ? plan.decides || discards.size > 0 : now !== was) {
         const [from, to] = kept ? (["waiting", "waiting"] as const) : [was, now];
         const move = moves.get(`${from}>${to}`) ?? { from, to, count: 0, papers: [], hidden: 0 };
         move.count++;
         if (kept) move.hidden++;
         else if (move.papers.length < PREVIEW_PAPERS) move.papers.push({ id: paper._id, title: paper.title, ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }) });
         moves.set(`${from}>${to}`, move);
-        if (open) reopened++;
+        if (!kept && open) reopened++;
       }
 
       // Each person's papers: a place counts for whoever holds it, unless their vote was thrown out.
       const holders = (list: Place[]) => list.filter((place) => place.kind === "person" && place.status !== "discarded");
-      const [had, has] = [holders(before), holders(after.places)];
+      const [had, has] = [holders(before), holders(ends)];
       if (open && had.length !== has.length) eachChanged++;
       for (const place of had) loads[place.reviewer] = (loads[place.reviewer] ?? 0) - 1;
       for (const place of has) loads[place.reviewer] = (loads[place.reviewer] ?? 0) + 1;
 
-      for (const place of after.places) {
+      for (const place of ends) {
         if (place.status !== "waiting") continue;
         const earlier = before.find((one) => one.reviewer === place.reviewer);
         // A person who joins gets the open papers they are on. A model that joins reads the ones it is put on.
@@ -185,6 +187,7 @@ export const preview = workspaceAction({
     const loads: Record<string, number> = {};
     // The papers still open are settled again under the change. The settled ones are looked at only where the change can move them: a check of them, or votes thrown out.
     // Each result is its own range of papers, so they are counted side by side, a page after a page within one.
+    // ponytail: one action reads every page while the dialog waits: 500 steps for a screening of 100,000 papers, inside an action's ten minutes. A count kept in a table and carried on by scheduled steps is the upgrade if a screening grows past that.
     const through = async (result: Result, recheck: boolean, each: (read: Step) => void) => {
       let cursor: string | null = null;
       do {

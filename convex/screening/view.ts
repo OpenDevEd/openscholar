@@ -17,7 +17,7 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
-import { isFinal, modelsProgress, twinsNamed } from "../../lib/screening/rules";
+import { isFinal, modelsProgress, nameHas, twinsNamed } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
@@ -228,9 +228,6 @@ const SORTS = v.union(v.literal("active"), v.literal("newest"), v.literal("oldes
 const PAGE_MAX = 50;
 const FILTER_ROWS = 500;
 
-/** Screenings read for one word of their names: the best matches, which the list's other filters are then applied to. */
-const NAMED = 200;
-
 export const listAction = defineUserQuery({
   path: "screening/view:list",
   description:
@@ -240,20 +237,11 @@ export const listAction = defineUserQuery({
   returns: paginationResultValidator(summaryValidator),
   run: async (ctx, actor, { show, sort, by, text, included, paginationOpts }) => {
     const { workspaceId } = actor;
-    const needle = text?.trim() ?? "";
-    const fits = (job: Doc<"screeningJobs">) => job.shape === 2 && job.status !== "draft" && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by);
+    // A name is found by its words among all of the workspace's screenings, in the order asked for.
+    const fits = (job: Doc<"screeningJobs">) => job.shape === 2 && job.status !== "draft" && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by) && nameHas(job.name ?? "", text ?? "");
     const keeps = async (job: Doc<"screeningJobs">) => fits(job) && (!included || ((await progressRow(ctx as QueryCtx, job._id))?.counts?.include ?? 0) > 0);
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const jobs = stream(ctx.db, schema).query("screeningJobs");
-    if (needle) {
-      // A name is found by its words, best match first. A search can't leave out the ones the other filters do, so the best matches are all read and paged here: a page is then never short, or empty with more after it.
-      // ponytail: the NAMED best matches. A workspace with more screenings than that under one word lists those.
-      const found = await ctx.db.query("screeningJobs").withSearchIndex("search_name", (q) => q.search("name", needle).eq("workspaceId", workspaceId)).take(NAMED);
-      const matching = (await Promise.all(found.map(async (job) => ((await keeps(job)) ? [job] : [])))).flat();
-      const from = Number(paginationOpts.cursor ?? 0) || 0;
-      const shown = matching.slice(from, from + options.numItems);
-      return { page: await Promise.all(shown.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!))), isDone: from + options.numItems >= matching.length, continueCursor: String(from + options.numItems) };
-    }
     const read = await (sort === "name" ? jobs.withIndex("by_workspace_and_name", (q) => q.eq("workspaceId", workspaceId)).order("asc") : sort === "active" ? jobs.withIndex("by_workspace_and_activeAt", (q) => q.eq("workspaceId", workspaceId)).order("desc") : jobs.withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(sort === "oldest" ? "asc" : "desc"))
           .filterWith(keeps)
           .paginate({ ...options, maximumRowsRead: FILTER_ROWS });
@@ -519,6 +507,11 @@ export const figuresAction = defineUserQuery({
 export const figures = userQuery(figuresAction);
 export const figuresForAssistant = assistantQuery(figuresAction);
 
+/** The last reading of a source that was whole: the one its figures count (`duplicates`, `left`), which a reading still going leaves standing until it is whole itself. */
+const wholePass = (source: Pick<Doc<"screeningSources">, "pass" | "next">) => source.next?.from ?? source.pass ?? 0;
+/** Whether that reading met a record of the source. One a reading still going has met again says so in `before`, and one it met for the first time waits for it to be whole: the lists hold what the figures count. */
+const inWhole = (source: Pick<Doc<"screeningSources">, "pass" | "next">, row: { pass?: number; before?: number }) => !source.next || (row.pass ?? 0) === source.next.from || row.before === source.next.from;
+
 /** What a source held that the screening doesn't take, a page at a time. */
 export const leftOutAction = defineUserQuery({
   path: "screening/view:leftOut",
@@ -529,8 +522,8 @@ export const leftOutAction = defineUserQuery({
     const standing = await standingOn(ctx, actor, jobId);
     const source = standing ? await ctx.db.get("screeningSources", sourceId) : null;
     if (source?.jobId !== jobId) return { page: [], isDone: true, continueCursor: "" };
-    // What its last whole reading left out: a paper an earlier one left out that has an abstract now, or is outside its range now, is not listed. While it is read again, that is the reading before this one, with what this one has left out so far.
-    const read = await ctx.db.query("screeningLeftOut").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", source.next?.from ?? source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
+    // What its last whole reading left out: a paper an earlier one left out that has an abstract now, or is outside its range now, is not listed.
+    const read = await stream(ctx.db, schema).query("screeningLeftOut").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", wholePass(source))).filterWith(async (row) => inWhole(source, row)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100), maximumRowsRead: FILTER_ROWS });
     return { ...read, page: read.page.map((one) => ({ id: one._id, name: one.name, why: one.why })) };
   },
 });
@@ -547,7 +540,7 @@ export const mergedAction = defineUserQuery({
     const source = standing ? await ctx.db.get("screeningSources", sourceId) : null;
     if (source?.jobId !== jobId) return { page: [], isDone: true, continueCursor: "" };
     // What its last whole reading merged, as its left-out records are listed (`leftOut`).
-    const read = await ctx.db.query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", source.next?.from ?? source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
+    const read = await stream(ctx.db, schema).query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", wholePass(source))).filterWith(async (row) => inWhole(source, row)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100), maximumRowsRead: FILTER_ROWS });
     const page = await Promise.all(read.page.map(async (one) => {
       const paper = await ctx.db.get("screeningResults", one.into);
       // The paper it was merged into may since have left with its source.

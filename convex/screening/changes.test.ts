@@ -156,7 +156,9 @@ describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"]
     if (!change) return;
 
     // What the change is said to do, before it is made.
-    const said = await made.as.ann!.action(api.screening.effects.preview, { workspaceId: made.workspaceId, jobId, change });
+    // Dan is a member of the workspace with no paper of his own to vote on: no vote is kept from him, and he is told all of it. Ann still has papers to vote on, and is told less (below).
+    const said = await made.as.dan!.action(api.screening.effects.preview, { workspaceId: made.workspaceId, jobId, change });
+    const hers = await made.as.ann!.action(api.screening.effects.preview, { workspaceId: made.workspaceId, jobId, change });
     await made.as.ann!.mutation(api.screening.settings.save, { workspaceId: made.workspaceId, jobId, change });
     await run(made.t);
     const after = await audit(made.t, jobId);
@@ -168,10 +170,11 @@ describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"]
       const now = after.stands[paperId]!;
       if (now !== was) moved.set(`${was} to ${now}`, (moved.get(`${was} to ${now}`) ?? 0) + 1);
     }
-    // Ann still has papers to vote on, and the others' votes on those are kept from her: such a paper's move is counted and not said (./keeping.test.ts). Each move she is told of is one that happened, and with the ones kept back they are all of them.
-    const told = said.moves.filter((move) => move.count > move.hidden);
+    expect(Object.fromEntries(said.moves.map((move) => [`${move.from} to ${move.to}`, move.count]))).toEqual(Object.fromEntries(moved));
+    // The others' votes on the papers Ann has yet to vote on are kept from her: what the change does to those is not worked out for her, under any figure (./keeping.test.ts). Each move she is told of is one that happened, on a paper whose votes she sees.
+    const told = hers.moves.filter((move) => move.count > move.hidden);
     for (const move of told) expect(moved.get(`${move.from} to ${move.to}`) ?? 0).toBeGreaterThanOrEqual(move.count);
-    expect(said.moves.reduce((sum, move) => sum + move.count, 0)).toBe([...moved.values()].reduce((sum, count) => sum + count, 0));
+    expect(hers.moves.every((move) => move.hidden === 0 || (move.from === "waiting" && move.to === "waiting" && move.hidden === move.count))).toBe(true);
 
     // Whoever it put on the screening got the open papers it said they would, and whoever it took off had the votes it said they had.
     const dealt = await made.t.run(async (ctx) => {

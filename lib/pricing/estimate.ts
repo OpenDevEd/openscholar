@@ -119,15 +119,16 @@ const bandsOf = (pdfs: Pdfs) => Object.entries(pdfs.spread ?? {}).map(([band, he
 
 /**
  * What screening those papers costs at most on a model: one call a paper with its whole file. A band is taken
- * at the long-prompt price when its longest paper would be (`screeningPdfCredits`), so the sum is never under
- * what the papers cost one by one.
+ * at the long-prompt price when its longest paper would be (`screeningPdfCredits`). Each call is charged in whole
+ * credits, rounded up, where this adds the tokens up first: a credit a paper past the first covers that. So the
+ * sum is never under what the papers cost one by one.
  */
 export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs): number {
   const { long } = pricing;
   const dear = long ? bandsOf(pdfs).filter(({ most }) => screeningPdfTokens(most) >= long.from) : [];
   const [longPapers, longPages] = [dear.reduce((sum, { held }) => sum + held.papers, 0), dear.reduce((sum, { held }) => sum + held.pages, 0)];
   const part = (price: { input: number; output: number }, papers: number, pages: number) =>
-    estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer });
+    papers ? estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer }) + (papers - 1) : 0;
   return part(pricing, Math.max(0, pdfs.papers - longPapers), Math.max(0, pdfs.pages - longPages)) + (long ? part(long, longPapers, longPages) : 0);
 }
 

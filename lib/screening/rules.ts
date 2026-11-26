@@ -167,6 +167,12 @@ export function modelsProgress(models: Array<{ dealt: number; cast?: number; fai
 export const SOMEONE = "Someone who left";
 /** A model as a reviewer before it has a row: the model at one effort. The server and the pages name it the same way. */
 export const modelKey = (model: string, effort?: string) => `model:${model}:${effort ?? ""}`;
+/** Whether a name holds every word of what was typed, in any order and whatever their case: how a screening is found by name, in the workspace's list and in a list the page already holds. */
+export const nameHas = (name: string, typed: string) => {
+  const lower = name.toLocaleLowerCase();
+  return typed.toLocaleLowerCase().split(/\s+/).filter(Boolean).every((word) => lower.includes(word));
+};
+
 /**
  * One model put on a screening at two efforts is two reviewers: each then says its effort, so a row, a filter or a
  * vote names the one it means. `same` is the model's own id, however the caller holds it. `named` says it in the

@@ -75,6 +75,8 @@ export const screeningPaperInputValidator = v.object({
   /** The paper's own PDF, handed over by whoever added it, and how many pages it has: what a paper with no abstract is screened on. */
   file: v.optional(v.id("_storage")),
   pages: v.optional(v.number()),
+  /** Which of its source's records it is, where the source is a file: a row or a DOI by its place in the file, a PDF by its file. Two of a file's records can be one paper, and each stays a record of its own. */
+  record: v.optional(v.string()),
   authors: screeningAuthorsValidator,
   publicationYear: v.optional(v.number()),
   doi: v.optional(v.string()),

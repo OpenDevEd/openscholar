@@ -95,7 +95,12 @@ async function* pagesOf<T>(read: PageOf<T>) {
     cursor = got.isDone ? null : got.continueCursor;
   } while (cursor);
 }
-/** All of it, for a file that is built in the browser from every row. */
+/**
+ * All of it, for a file that is built in the browser from every row. ponytail: the file is one Blob, so the browser
+ * holds every row of it whichever way they are read: a screening's papers are bounded by its plan, its discussion and
+ * its activity by nothing but its length. One with tens of thousands of messages would have the server write the
+ * record a part at a time, as convex/exports.ts does for a library.
+ */
 async function allOf<T>(read: PageOf<T>) {
   let all: T[] = [];
   for await (const page of pagesOf(read)) all = all.concat(page);

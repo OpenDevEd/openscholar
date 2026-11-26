@@ -305,13 +305,13 @@ export const listAction = defineUserQuery({
     if (row) {
       // One reviewer's papers, in the order of their votes: what they are on, or the ones they voted one way.
       const votes = stream(ctx.db, schema).query("screeningVotes");
-      // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too. The papers still waiting for the person's own vote are passed over as the votes are read, so neither a page nor how many pages there are says how many of them there are.
+      // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too. Their votes are then read whichever way they went, every one of them, and the way is looked at only on a paper whose votes show: what a page holds, where it ends and whether another follows depend on how many votes they cast, which shows anyway, and never on a vote that is kept.
       const told = kept && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
       const mine = looking.reviewer?._id;
-      const open = async (vote: Doc<"screeningVotes">) => !told || !mine || !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === mine && one.status === "waiting");
+      const open = async (vote: Doc<"screeningVotes">) => !told || (vote.decision === voted && (!mine || !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === mine && one.status === "waiting")));
       const read = await (voted === "none" || voted === "failed"
         ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
-        : voted && voted !== "settled"
+        : voted && voted !== "settled" && !told
           ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
       ).filterWith(open).paginate({ ...options, maximumRowsRead: FILTER_ROWS });

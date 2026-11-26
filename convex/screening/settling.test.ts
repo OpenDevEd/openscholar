@@ -292,10 +292,18 @@ describe("the queue every screening's papers are settled from", () => {
     const [broken, sound] = [await started(made, ["ann"], 1, { rule: { each: 1, settle: "all", blind: "after" } }), await started(made, ["ann"], 1, { rule: { each: 1, settle: "all", blind: "after" } })];
     // A screening whose row of counts is gone can't be settled: its papers fail every time they are tried.
     await made.t.run(async (ctx) => ctx.db.delete("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", broken.jobId)).unique())!._id));
+    // A model's reading of the broken one's paper has come back, and still holds one of the workspace's slots.
+    await made.t.run(async (ctx) => {
+      const reviewerId = await ctx.db.insert("screeningReviewers", { jobId: broken.jobId, kind: "model", addedAt: 1, addedBy: made.ids.ann!, dealt: 1 });
+      await ctx.db.insert("screeningVotes", { jobId: broken.jobId, resultId: broken.papers[0]!._id, reviewerId, place: 0, status: "cast", decision: "include", slot: true });
+      await ctx.db.insert("screeningSlots", { workspaceId: made.workspaceId, running: 1 });
+    });
     await voter(made, broken.jobId)("ann", broken.papers[0]!._id, "include");
     await voter(made, sound.jobId)("ann", sound.papers[0]!._id, "include");
     vi.spyOn(console, "error").mockImplementation(() => {});
     await runAll(made.t, vi.runAllTimers);
+    // The slot is back with the workspace: its other screenings' models are not kept waiting by this one.
+    expect(await made.t.run(async (ctx) => (await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", made.workspaceId)).unique())?.running)).toBe(0);
     // The other screening's paper is settled, and the broken one's is out of the queue as it stood.
     expect((await standingOf(made.t, sound.jobId)).papers[0]).toMatchObject({ result: "include" });
     expect(await made.t.run((ctx) => ctx.db.get("screeningResults", broken.papers[0]!._id))).toMatchObject({ result: "waiting" });

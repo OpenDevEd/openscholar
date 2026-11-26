@@ -80,33 +80,44 @@ describe("what a source leaves out", () => {
     await made.t.mutation(internal.screening.gathering.begin, { sourceId });
     await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
     expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
-    // A check reads it again, and has met the first paper only so far: the page still says two were left out, and lists both.
+    // A check reads it again, and has met the first paper and one that is new so far: the page still says two were left out, and lists the two it counted.
     await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }], read: 1, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }, { ...paper(3), abstract: undefined }], read: 2, ended: false });
     expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
     expect(await listed()).toEqual(["Paper 1", "Paper 2"]);
-    // The second paper is gone from the source: once the reading is whole, one is left out.
+    // The second paper is gone from the source: once the reading is whole, the count and the list are this reading's.
     await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [], read: 0, ended: true });
-    expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
+    expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
     expect((await sourceOf())!.next).toBeUndefined();
-    expect(await listed()).toEqual(["Paper 1"]);
+    expect(await listed()).toEqual(["Paper 1", "Paper 3"]);
   });
 
-  it("counts a paper a file lists twice as a duplicate merged, under two records or under one, so the file's records add up to what it held", async () => {
+  it("counts a paper a file lists twice as a duplicate merged, under two records or under one, so the file's records add up to what it held, however often it is read", async () => {
     const made = await team(["ann"]);
     const file = await made.t.run((ctx) => ctx.storage.store(new Blob(["title"])));
     const { jobId } = await started(made, ["ann"], 0, { sources: [{ set: { kind: "upload", file }, name: "export.csv" }] });
     const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
     const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
     await made.t.mutation(internal.screening.gathering.begin, { sourceId });
-    // Two records of one export with the same DOI, each under its own key, a third paper, and that third paper's record once more.
-    const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3), paper(3)];
+    // Two records of one export with the same DOI, each under its own key, a third paper, and that third paper's record once more. A file hands each over as the record it is.
+    const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3), paper(3)].map((one, at) => ({ ...one, record: String(at + 1) }));
     await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 4, ended: true });
     expect(await sourceOf()).toMatchObject({ read: 4, taken: 2, duplicates: 2, left: 0 });
     expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toHaveLength(0);
     // Each repeat is named with the paper that stands for it, which this same file brought.
-    const merged = (await made.as.ann!.query(api.screening.view.merged, { workspaceId: made.workspaceId, jobId, sourceId, paginationOpts: { cursor: null, numItems: 10 } })).page;
-    expect(merged.map((row) => [row.name, row.paper?.title, row.paper?.sourceId])).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId]]);
+    const merged = async () => (await made.as.ann!.query(api.screening.view.merged, { workspaceId: made.workspaceId, jobId, sourceId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => [row.name, row.paper?.title, row.paper?.sourceId]);
+    expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId]]);
+
+    // Its range is widened by two records, a new paper twice, so it is read again from its start, and a step that was cut short gives its records twice. Until the reading is whole, the count and the list are the first reading's.
+    await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
+    for (const read of [0, 4]) await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(4), record: "5" }, { ...paper(4), record: "6" }], read: 2, ended: false });
+    expect(await sourceOf()).toMatchObject({ taken: 3, duplicates: 2 });
+    expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId]]);
+    // Whole, it counts each repeat once: the two it met before, and the new one.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [], read: 0, ended: true });
+    expect(await sourceOf()).toMatchObject({ read: 6, taken: 3, duplicates: 3, left: 0 });
+    expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId], ["Paper 4", "Paper 4", sourceId]]);
   });
 
   it("names a record another source already brought, and counts one it meets twice in a reading once", async () => {

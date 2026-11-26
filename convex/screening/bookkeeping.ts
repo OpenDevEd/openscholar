@@ -21,6 +21,7 @@ import { upsertLibraryItem } from "../library/mutations";
 import { findItem } from "../library/find";
 
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
+import { votesOf } from "./dealing";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
 import { readStartFacts, startWaitingPapers, startWaitingVotes } from "./slots";
@@ -314,6 +315,25 @@ export const bookkeepJob = internalMutation({
   },
 });
 
+/** Lets go of the slots held by readings that have come back on these papers, where their screening couldn't be bookkept (`bookkeep`), and says how many. */
+export const releaseSlots = internalMutation({
+  args: { jobId: v.id("screeningJobs"), results: v.array(v.id("screeningResults")) },
+  returns: v.number(),
+  handler: async (ctx, { jobId, results }) => {
+    let freed = 0;
+    for (const resultId of results) {
+      for (const vote of await votesOf(ctx, resultId)) {
+        if (!vote.slot || vote.workId !== undefined) continue;
+        await ctx.db.patch("screeningVotes", vote._id, { slot: undefined });
+        freed++;
+      }
+    }
+    const progress = freed ? await progressRow(ctx, jobId) : null;
+    if (progress?.running) await ctx.db.patch("screeningJobProgress", progress._id, { running: Math.max(0, progress.running - freed) });
+    return freed;
+  },
+});
+
 /** One batch of finished papers: counts, answers, library saves, and finishing their jobs. */
 export const bookkeep = internalMutation({
   args: vMutationArgs,
@@ -340,6 +360,9 @@ export const bookkeep = internalMutation({
         // went wrong is logged with the screening it happened in.
         console.error("[screening] A screening's papers couldn't be bookkept", { jobId, papers: jobResults.length, error: String(error instanceof Error ? (error.stack ?? error.message) : error).slice(0, 1500) });
         for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
+        // The readings that came back on them held slots of the workspace, which its other screenings wait for: those are given back whatever is wrong with this one.
+        const released: number = await ctx.runMutation(internal.screening.bookkeeping.releaseSlots, { jobId, results: jobResults.map((result) => result._id) }).catch(() => 0);
+        if (workspaceId && released) freedVotes.set(workspaceId, (freedVotes.get(workspaceId) ?? 0) + released);
       }
     }
     for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);

@@ -141,6 +141,8 @@
     "noneYet": "No paper has come to you yet",
     "noneYours": "None of its papers is yours to vote on",
     "allVoted": "You have voted on all your papers",
+    "finished": "This screening is finished",
+    "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",
     "noneWaits": "No paper waits for your vote",
     "settledWithout": "{count, plural, one {# of your papers was settled without it} other {# of your papers were settled without it}}",
     "noneAgain": "None of your votes needs a new one",

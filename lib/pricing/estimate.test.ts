@@ -54,12 +54,17 @@ describe("screening a paper as its PDF", () => {
     for (const pages of papers) spread[pdfBand(pages)] = { papers: (spread[pdfBand(pages)]?.papers ?? 0) + 1, pages: (spread[pdfBand(pages)]?.pages ?? 0) + pages };
     const pdfs = { papers: papers.length, pages: papers.reduce((sum, pages) => sum + pages, 0), spread };
     const oneByOne = papers.reduce((sum, pages) => sum + screeningPdfCredits(haiku, pages), 0);
-    expect(screeningPdfsCredits(haiku, pdfs)).toBeGreaterThanOrEqual(oneByOne - papers.length);
-    // Rounding aside, the only excess is a band's shorter papers taken at the long price with its longest.
-    expect(screeningPdfsCredits(haiku, pdfs)).toBeLessThanOrEqual(oneByOne * 1.1);
-    // A model with one price is the plain sum of the tokens.
+    expect(screeningPdfsCredits(haiku, pdfs)).toBeGreaterThanOrEqual(oneByOne);
+    // The excess is a band's shorter papers taken at the long price with its longest, and a credit a paper for each call's own rounding.
+    expect(screeningPdfsCredits(haiku, pdfs)).toBeLessThanOrEqual(oneByOne * 1.1 + papers.length);
+    // A model with one price is the sum of the tokens, and that credit a paper: each call is charged in whole credits, rounded up.
     const flat = { input: haiku.input, output: haiku.output };
-    expect(screeningPdfsCredits(flat, pdfs)).toBeLessThanOrEqual(papers.reduce((sum, pages) => sum + screeningPdfCredits(flat, pages), 0));
+    const flatOneByOne = papers.reduce((sum, pages) => sum + screeningPdfCredits(flat, pages), 0);
+    expect(screeningPdfsCredits(flat, pdfs)).toBeGreaterThanOrEqual(flatOneByOne);
+    expect(screeningPdfsCredits(flat, pdfs)).toBeLessThanOrEqual(flatOneByOne + papers.length);
+    // Ten one-page papers at a dollar a million tokens: ten calls of 89 credits, and never the 884 their tokens come to together.
+    const ten = { papers: 10, pages: 10, spread: { [pdfBand(1)]: { papers: 10, pages: 10 } } };
+    expect(screeningPdfsCredits({ input: 1, output: 1 }, ten)).toBeGreaterThanOrEqual(10 * screeningPdfCredits({ input: 1, output: 1 }, 1));
   });
 
   it("takes the longest papers for the ones still to read, and leaves out what a model's window can't hold", () => {

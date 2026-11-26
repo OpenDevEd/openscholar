@@ -1070,6 +1070,8 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
         : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), null]
+        // A finished screening takes no vote: the papers it left without theirs are said, not passed off as voted on.
+        : open.screening.finishedAt && yours > voted + closed ? [CircleCheck, t("empty.finished"), t("empty.unvoted", { count: yours - voted - closed })]
         : !closed ? [CircleCheck, t("empty.allVoted"), null]
         : [CircleCheck, t("empty.noneWaits"), t("empty.settledWithout", { count: closed })]
       : queue === "again"

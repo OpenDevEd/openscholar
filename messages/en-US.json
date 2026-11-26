@@ -7855,7 +7855,7 @@
       "creditsChip": "{credits}{each, select, true { each} other {}}",
       "moved": "{count, plural, one {# paper} other {# papers}} moved from {from} to {to}",
       "noChange": "No paper's result changes",
-      "hidden": "{count, plural, one {# paper you have yet to vote on changes} other {# papers you have yet to vote on change}} result too. {done, select, true {Their votes stay hidden while they wait for yours.} other {Which way shows once the change is made.}}",
+      "hidden": "{done, select, true {{count, plural, one {The # paper you have yet to vote on may have changed result too. Its votes stay hidden while it waits for yours.} other {The # papers you have yet to vote on may have changed result too. Their votes stay hidden while they wait for yours.}}} other {{count, plural, one {What this does to the # paper you have yet to vote on shows once the change is made: its votes are hidden from you.} other {What this does to the # papers you have yet to vote on shows once the change is made: their votes are hidden from you.}}}}",
       "papersLabel": "papers",
       "more": "{count, number} more",
       "activity": {
@@ -9317,6 +9317,8 @@
         "noneYet": "No paper has come to you yet",
         "noneYours": "None of its papers is yours to vote on",
         "allVoted": "You have voted on all your papers",
+        "finished": "This screening is finished",
+        "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",
         "noneWaits": "No paper waits for your vote",
         "settledWithout": "{count, plural, one {# of your papers was settled without it} other {# of your papers were settled without it}}",
         "noneAgain": "None of your votes needs a new one",

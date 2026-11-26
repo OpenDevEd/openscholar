@@ -1373,7 +1373,6 @@ export default defineSchema({
     // A workspace's screenings by name, and by when something last happened in them.
     .index("by_workspace_and_name", ["workspaceId", "name"])
     .index("by_workspace_and_activeAt", ["workspaceId", "activeAt"])
-    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId"] })
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
@@ -1468,6 +1467,8 @@ export default defineSchema({
     sourceId: v.optional(v.id("screeningSources")),
     checkId: v.optional(v.id("screeningChecks")),
     place: v.optional(v.number()),
+    // Which record of its source's file it was made from (./screening/validators.ts `screeningPaperInputValidator`): read again, that record is this paper, and any other record of the file that is the same paper is a duplicate.
+    record: v.optional(v.string()),
     // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
     file: v.optional(v.id("_storage")),
     pages: v.optional(v.number()),
@@ -1759,10 +1760,11 @@ export default defineSchema({
     sourceId: v.id("screeningSources"),
     name: v.string(),
     into: v.id("screeningResults"),
-    // The record it was read as, where the source names its records: one met again in the same reading is counted once.
+    // The record it was read as: a file's record by which it is (`screeningResults.record`), any other source's by its paper. One met again in the same reading is counted once.
     paperKey: v.optional(v.string()),
-    // The reading of its source that last met it (`screeningSources.pass`).
+    // The reading of its source that last met it (`screeningSources.pass`), and the last one before it that was whole: while the source is read again, its list shows what that one met (./screening/view.ts `merged`).
     pass: v.number(),
+    before: v.optional(v.number()),
   })
     .index("by_source_and_pass", ["sourceId", "pass"])
     .index("by_source_and_paperKey", ["sourceId", "paperKey"])
@@ -1776,8 +1778,9 @@ export default defineSchema({
     why: leftOutWhyValidator,
     // The record it was read as: a source that holds it twice, or is read again, names it once.
     paperKey: v.optional(v.string()),
-    // The reading of its source that last left it out (`screeningSources.pass`): one that meets it again doesn't count it twice, and the list shows what the last reading left out.
+    // The reading of its source that last left it out (`screeningSources.pass`): one that meets it again doesn't count it twice, and the list shows what the last whole reading left out. `before` is that reading, on a record a reading still going has met again.
     pass: v.optional(v.number()),
+    before: v.optional(v.number()),
   })
     .index("by_source", ["sourceId"])
     .index("by_source_and_pass", ["sourceId", "pass"])

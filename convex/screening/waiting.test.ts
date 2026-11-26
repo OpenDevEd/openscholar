@@ -28,3 +28,16 @@ it("tells whoever settles conflicts of a conflict, whether or not they review th
   await settleAll(made.t);
   expect(await waitsFor("cat")).toEqual({ rail: 0, list: [] });
 });
+
+it("finds a workspace's screenings by the words of their names, in any order and whatever their case, in the order asked for", async () => {
+  const made = await team(["ann"]);
+  const { workspaceId } = made;
+  for (const name of ["Tutoring in Kenya", "Kenya school feeding", "Tutoring at scale"]) {
+    const { jobId } = await started(made, ["ann"], 0);
+    await made.t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { name }));
+  }
+  const found = async (text: string) => (await made.as.ann!.query(api.screening.view.list, { workspaceId, show: "all", sort: "name", text, paginationOpts: { cursor: null, numItems: 10 } })).page.map((one) => one.name);
+  expect(await found("kenya")).toEqual(["Kenya school feeding", "Tutoring in Kenya"]);
+  expect(await found(" KENYA tutor ")).toEqual(["Tutoring in Kenya"]);
+  expect(await found("malaria")).toEqual([]);
+});

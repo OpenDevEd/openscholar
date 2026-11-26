@@ -38,8 +38,6 @@ import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator }
 
 type SourceSet = Infer<typeof sourceSetValidator>;
 type Why = Infer<typeof leftOutWhyValidator>;
-/** The sources that are a file someone handed over: read once, where the others are read again at each check. */
-const FROM_A_FILE: string[] = ["upload", "pdf", "dois"];
 
 /** Papers one step takes: up to the end of one of OpenAlex's pages, so no page is asked for twice. */
 const READ_STEP = PAGE_SIZE;
@@ -350,6 +348,8 @@ export const fill = internalMutation({
     let capped = false;
     // This reading of the source: each time it is read from its start is a pass of its own (./dealing.ts `readAgain`).
     const pass = source.pass ?? 0;
+    // A record a reading still going meets again keeps the last whole reading that met it: the source's lists show that one until this one is whole (./view.ts `leftOut`, `merged`).
+    const metAgain = (was: { pass?: number; before?: number }) => ({ pass, before: (was.pass ?? 0) <= (source.next?.from ?? pass) ? was.pass ?? 0 : was.before });
     const leave = async (name: string, why: Why, paperKey?: string) => {
       const was = paperKey ? await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first() : null;
       // A source that holds a paper twice, as a Zotero library does one filed in two collections, leaves it out once in one reading.
@@ -357,26 +357,28 @@ export const fill = internalMutation({
       left++;
       if (why === "abstract") bare++;
       // A later reading finds what an earlier one left out: counted again, and named once, with why as it is now.
-      if (was) await ctx.db.patch("screeningLeftOut", was._id, { pass, why });
+      if (was) await ctx.db.patch("screeningLeftOut", was._id, { ...metAgain(was), why });
       else await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
     };
     /**
      * Keeps a record the screening already has, with the paper it was merged into, and says whether it counts. A
-     * source that names its records (`paperKey`) can meet one twice in a reading, as Zotero does an item filed in two
-     * collections: that is one record, counted once. A file's records are each their own: every repeat is kept.
+     * source can meet a record twice in a reading, as Zotero does an item filed in two collections, and a step that
+     * was cut short gives its records again: that is one record, counted once.
      */
-    const merge = async (name: string, into: Id<"screeningResults">, paperKey?: string) => {
-      const was = paperKey ? await ctx.db.query("screeningMerged").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first() : null;
+    const merge = async (name: string, into: Id<"screeningResults">, paperKey: string) => {
+      const was = await ctx.db.query("screeningMerged").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first();
       if (was?.pass === pass) return false;
-      if (was) await ctx.db.patch("screeningMerged", was._id, { pass, into, name: name.slice(0, 300) });
-      else await ctx.db.insert("screeningMerged", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), into, ...(paperKey ? { paperKey } : {}) });
+      if (was) await ctx.db.patch("screeningMerged", was._id, { ...metAgain(was), into, name: name.slice(0, 300) });
+      else await ctx.db.insert("screeningMerged", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), into, paperKey });
       return true;
     };
     for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     for (const sent of papers) {
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
       const title = paper.title.trim();
-      if (!title) { await leave(paper.doi ?? "A record with no title", "title", paper.paper); continue; }
+      // What names the record in its source: a file's record is its own whichever paper it is, any other source's is its paper.
+      const named = paper.record ?? paper.paper;
+      if (!title) { await leave(paper.doi ?? "A record with no title", "title", named); continue; }
       const abstract = paper.abstract?.trim() ? unglued(paper.abstract) : undefined;
       const identity = identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi });
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
@@ -384,19 +386,18 @@ export const fill = internalMutation({
       const twin = await twinOf(ctx, job._id, keys);
       if (twin?.withdrawn) {
         // Its source was taken out, and this one holds it too: it comes back as this source's paper, in the place it had, with the votes cast on it. The worker gives its open places out again.
-        await ctx.db.patch("screeningResults", twin._id, { withdrawn: undefined, sourceId, doneAt: ctx.db.vars.commitTs });
+        await ctx.db.patch("screeningResults", twin._id, { withdrawn: undefined, sourceId, record: paper.record, doneAt: ctx.db.vars.commitTs });
         back++;
         continue;
       }
       if (twin) {
-        // The first source added keeps the paper: one another source holds is a duplicate merged. So is one a file lists twice, under another record or, on the file's first reading, under any: nothing of its own was there before. A source read again finds its own papers, which are neither new nor merged.
-        // ponytail: a file read again after its range changed can't tell a repeat under the same record from a paper its first reading took, so those repeats go uncounted then. A count of the pass on each paper would tell them apart.
-        const listed = pass === 0 && FROM_A_FILE.includes(source.set.kind);
-        if ((twin.sourceId !== sourceId || twin.paperKey !== identity.paperKey || listed) && (await merge(title, twin._id, listed ? undefined : paper.paper))) duplicates++;
+        // The first source added keeps the paper: one another source holds is a duplicate merged, and so is one a file lists again under another of its records. A source read again finds its own papers, which are neither new nor merged: a file's by the record each was made from, any other's by its key.
+        const own = twin.sourceId === sourceId && (paper.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
+        if (!own && (await merge(title, twin._id, named))) duplicates++;
         continue;
       }
       // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.
-      if (!abstract && !paper.file) { await leave(title, "abstract", paper.paper); continue; }
+      if (!abstract && !paper.file) { await leave(title, "abstract", named); continue; }
       const place = check.from + check.added + taken;
       if (typeof most === "number" && place >= most) { capped = true; break; }
       const resultId = await ctx.db.insert("screeningResults", {
@@ -406,6 +407,7 @@ export const fill = internalMutation({
         title,
         ...(abstract ? { abstract } : {}),
         ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }) } : {}),
+        ...(paper.record ? { record: paper.record } : {}),
         authors: paper.authors?.slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,
         doi: paper.doi,
