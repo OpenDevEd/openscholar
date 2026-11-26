@@ -4,13 +4,14 @@
 // methods section, and the whole record.
 
 import { copyText } from "@/components/copy-text";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpFact } from "@/components/ui/help";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -337,7 +338,14 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}
-              {!button.format ? (done.includes(button.key) ? t("copied") : t("copy")) : done.includes(button.key) ? t.rich("downloaded", { format: button.format, sr: (chunks) => <span className="sr-only">{chunks}</span> }) : t.rich("download", { format: button.format, wide: (chunks) => <span className="max-sm:sr-only">{chunks}</span> })}
+              {/* The label before and after hold one width, the wider one's: the buttons beside it never move when it changes. */}
+              <span className="grid">
+                {[false, true].map((after) => {
+                  const wide = (chunks: ReactNode) => <span className="max-sm:sr-only">{chunks}</span>;
+                  const label = !button.format ? t(after ? "copied" : "copy") : t.rich(after ? "downloaded" : "download", { format: button.format, wide });
+                  return <span key={String(after)} aria-hidden={after !== done.includes(button.key)} className={cn("col-start-1 row-start-1", after !== done.includes(button.key) && "invisible")}>{label}</span>;
+                })}
+              </span>
             </Button>
           ))}
         </div>

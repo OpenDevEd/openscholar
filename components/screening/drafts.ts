@@ -26,6 +26,12 @@ type Store = Kept & {
   set: (patch: Partial<Kept>) => void;
 };
 
+/** What a new screening's draft key says (./screening-form.tsx `key`): the workspace it was begun in, whose it is, and what it was begun from. */
+export const draftOf = (key: string) => {
+  const [kind, workspace, who, from, search, handoff] = key.split(":");
+  return kind === "new" ? { workspace: workspace ?? "", who: who ?? "", started: { ...(from ? { from } : {}), ...(search ? { search } : {}), ...(handoff ? { handoff } : {}) } } : null;
+};
+
 export const useKept = create<Store>()(
   persist(
     (set) => ({

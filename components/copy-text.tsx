@@ -25,7 +25,8 @@ export async function copyText(text: string, words: { copied: string; failed: st
         description: (
           <>
             {words.select}
-            <span className="mt-1 block select-all font-mono text-xs [overflow-wrap:anywhere]">{text}</span>
+            {/* A box of its own: clicking in it selects its text, and select-all stays inside it. */}
+            <textarea readOnly value={text} rows={4} onFocus={(event) => event.currentTarget.select()} className="mt-1.5 block w-full resize-none rounded-md border border-border-subtle bg-background p-1.5 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
           </>
         ),
         duration: 20_000,

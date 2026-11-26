@@ -273,10 +273,15 @@ export type Screening = {
 export const personIn = (screening: Pick<Screening, "reviewers" | "people">, id: string): Person | undefined => screening.people[id] ?? screening.reviewers.find((one) => one.id === id && one.kind === "person");
 
 export const activeReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((reviewer) => !reviewer.left);
-/** The people who read a screening's papers, and how many of them each paper goes to. Someone invited by email is dealt no paper until they join, so they are not counted. */
+/**
+ * The people who read a screening's papers, and how many people each paper waits for. Someone invited by email is dealt
+ * no paper until they join, so they are not among `people`, but the rule waits for them (lib/screening/project.ts), so
+ * they count toward `each`.
+ */
 export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
-  return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length) };
+  const invited = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).length;
+  return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length + invited) };
 };
 /**
  * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever the server gives

@@ -127,7 +127,7 @@
     "methods": "Written from the screening as it stands now. Copy it when it describes the results you want to report."
   },
   "download": "<wide>Download </wide>{format}",
-  "downloaded": "{format}<sr> downloaded</sr>",
+  "downloaded": "<wide>Downloaded </wide>{format}",
   "copy": "Copy",
   "copied": "Copied",
   "copyToast": {

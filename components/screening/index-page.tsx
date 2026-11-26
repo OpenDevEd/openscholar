@@ -6,7 +6,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Plus, RefreshCw, MessagesSquare } from "@/components/icons";
+import { AiIcon, CircleCheck, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, PenLine, Plus, RefreshCw, MessagesSquare } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -36,6 +36,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
 import { inOrder, RESULTS } from "./data";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
+import { draftOf, useKept } from "./drafts";
 import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
 import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
 import { toReviewers, useOpenScreening, type Summary } from "./store";
@@ -78,6 +79,9 @@ export function ScreeningsIndex() {
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next);
   const [over, setOver] = useState<{ id: string; what: What } | null>(null);
   const here = useWorkspace();
+  // A new screening begun in this workspace and not started yet, kept with the tab: the list leads back to it.
+  const begun = useKept((store) => store.drafts);
+  const draft = Object.entries(begun).flatMap(([key, held]) => { const one = draftOf(key); return one && one.workspace === (here ?? "") ? [{ name: held.name.trim(), href: newHref(one.started) }] : []; })[0];
   const t = useTranslations("screening.list");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
@@ -126,13 +130,23 @@ export function ScreeningsIndex() {
             }
           >
             {/* What waits elsewhere, the first-use block or the list: each slides to its height as the counts and the rows come. */}
-            <AutoHeight><Elsewhere rows={elsewhere ?? []} /></AutoHeight>
+            <AutoHeight>
+              {draft && counts !== undefined ? (
+                <div className="fade-enter mb-4 flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
+                  <PenLine aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                  <p className="min-w-0 flex-1 truncate text-sm">{t("draft.says", { named: String(Boolean(draft.name)), name: draft.name })}</p>
+                  <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
+                </div>
+              ) : null}
+              <Elsewhere rows={elsewhere ?? []} />
+            </AutoHeight>
             <AutoHeight>
             {empty ? (
-              <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>
-                <h2 className="text-lg font-semibold tracking-tight">{t("firstUse.title")}</h2>
-                <p className="max-w-md text-sm text-muted-foreground">{t("firstUse.text")}</p>
+              // Where screenings elsewhere wait for the person, this workspace having none is said in a few lines, not as a first visit.
+              <div className={cn("flex flex-col items-center gap-3 px-6 text-center", elsewhere?.length ? "py-8" : "py-20")}>
+                {elsewhere?.length ? null : <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>}
+                <h2 className={elsewhere?.length ? "text-sm font-medium" : "text-lg font-semibold tracking-tight"}>{elsewhere?.length ? t("firstUse.noneHere") : t("firstUse.title")}</h2>
+                {elsewhere?.length ? null : <p className="max-w-md text-sm text-muted-foreground">{t("firstUse.text")}</p>}
                 <Button asChild className="mt-2"><NextLink href={newHref()}><Plus />{t("newScreening")}</NextLink></Button>
               </div>
             ) : (

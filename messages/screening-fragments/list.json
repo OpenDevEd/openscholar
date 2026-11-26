@@ -17,7 +17,12 @@
   },
   "showMenu": "Show",
   "whichScreenings": "Which screenings",
+  "draft": {
+    "says": "{named, select, true {{name} isn't started yet} other {A new screening isn't started yet}}",
+    "continue": "Continue"
+  },
   "firstUse": {
+    "noneHere": "No screenings in this workspace yet",
     "title": "Decide which papers belong in your review",
     "text": "Bring papers from searches, collections or your own files, set your criteria, and screen them yourself, with colleagues, with AI models, or with any mix of the three."
   },

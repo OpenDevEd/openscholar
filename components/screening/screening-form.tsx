@@ -58,7 +58,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
-import { useKept } from "./drafts";
+import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
@@ -383,9 +383,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const workspaces = useWorkspaces().list;
   const begun = useKept((store) => store.drafts);
   const elsewhere = id || kept ? undefined : Object.entries(begun).flatMap(([name, held]) => {
-    const [kind, place, who, copied, search, handoff] = name.split(":");
-    const row = kind === "new" && who === setup?.me.id && place !== (workspaceId ?? "") ? workspaces?.find((one) => one.workspaceId === place) : undefined;
-    return row ? [{ name: held.name.trim(), workspace: row.name, href: workspaceHref(row.kind === "organization" ? row.slug : undefined, newHref({ ...(copied ? { from: copied } : {}), ...(search ? { search } : {}), ...(handoff ? { handoff } : {}) })) }] : [];
+    const draft = draftOf(name);
+    const row = draft && draft.who === setup?.me.id && draft.workspace !== (workspaceId ?? "") ? workspaces?.find((one) => one.workspaceId === draft.workspace) : undefined;
+    return row ? [{ name: held.name.trim(), workspace: row.name, href: workspaceHref(row.kind === "organization" ? row.slug : undefined, newHref(draft!.started)) }] : [];
   })[0];
   const keep = useKept((store) => store.draft);
   // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
@@ -525,8 +525,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
   const shareSays = (() => {
     if (!joined.length) return undefined;
-    if (fresh && joined.length === 1) return t("share.readsAll", { you: String(joined[0]!.id === me), name: words.firstName(joined[0]!.name) });
-    if (fresh) return t("share.about", { more: "false", count: Math.ceil((papers * each) / joined.length) });
+    // Shared out among everyone the rule counts, people invited by email among them.
+    if (fresh && readers === 1) return t("share.readsAll", { you: String(joined[0]!.id === me), name: words.firstName(joined[0]!.name) });
+    if (fresh) return t("share.about", { more: "false", count: Math.ceil((papers * each) / readers) });
     const loads = preview.loads ?? (() => { const dealt = joined.map((person) => person.tally?.dealt ?? 0); return { least: Math.min(...dealt), most: Math.max(...dealt) }; })();
     const more = String(Boolean(promisedNew));
     return loads.most - loads.least <= 2 ? t("share.about", { more, count: loads.most }) : t("share.range", { more, least: words.num(loads.least), most: words.num(loads.most) });
