@@ -1,7 +1,7 @@
 // What the screening form offers to pick from, made up: places papers can come from, the
 // collections included papers can go to, and the questions a search already asks.
 
-import { NOW, day, includedIn, type Screening, type SourceKind } from "./data";
+import { day, includedIn, type Screening, type SourceKind } from "./data";
 
 export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[]; /** The kind it is added as, where that is not its tab's: the whole library sits above its collections. */ kind?: SourceKind };
 
@@ -192,6 +192,6 @@ export const ANOTHER_COLLECTION = "another";
 export function collectionName(screening: Pick<Screening, "destination" | "name">) {
   const to = screening.destination;
   if (to.kind === "none") return null;
-  if (to.kind === "new") return to.name || `${includedIn(screening.name)}${to.collection === ANOTHER_COLLECTION ? `, from ${day(NOW)}` : ""}`;
+  if (to.kind === "new") return to.name || `${includedIn(screening.name)}${to.collection === ANOTHER_COLLECTION ? `, from ${day(Date.now())}` : ""}`;
   return [...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? null;
 }

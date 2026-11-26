@@ -1,9 +1,9 @@
 "use client";
 
-// Adding a reviewer to a screening: a person from the workspace, someone outside it, an address to
-// invite, or any model in the catalogue at any effort. Used by the form and by the open screening.
+// Adding a reviewer to a screening: a member of the workspace, an address to invite from outside it,
+// or any model in the catalogue at any effort. Used by the form and by the open screening.
 
-import { useState, type ReactNode, Fragment } from "react";
+import { useState, type ReactNode } from "react";
 import { Mail, UserPlus } from "@/components/icons";
 import { ModelPicker } from "@/components/models/model-picker";
 import { usePresetModels, type MapModel } from "@/components/settings/model-map";
@@ -15,45 +15,51 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
-import { PEOPLE, PERSON_SAYS, type Person, HOME, standsTo, type Workspace } from "./data";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { PERSON_SAYS, type Person } from "./data";
 
-/** Picks a person: the workspace's members first, then people outside it, or an email address to invite. */
-export function AddPerson({ exclude, workspace = HOME, owner, onPick, children }: { exclude: string[]; /** The workspace the screening is in: the people are grouped by where they stand to it. */ workspace?: Workspace; /** Whose it is, where it is someone's own. */ owner?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
+/** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
+export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const left = PEOPLE.filter((person) => !exclude.includes(person.id));
-  const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim() : null;
+  const workspaceId = useWorkspace();
+  // Read once the picker is open: the workspace's members whose name or email holds what was typed.
+  const found = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
+  const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
+  // Someone typed as an address who is a member is added as that member, never invited.
+  const member = email ? left.find((person) => person.email.toLowerCase() === email) : undefined;
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
     setText("");
   };
-  const group = (heading: string, people: Person[]) =>
-    people.length ? (
-      <CommandGroup heading={heading}>
-        {people.map((person) => (
-          <CommandItem key={person.id} value={person.name} onSelect={() => pick({ person })} className="gap-3">
-            <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{person.name}</span>
-              <span className="block truncate text-xs text-muted-foreground">{person.seen}</span>
-            </span>
-          </CommandItem>
-        ))}
-      </CommandGroup>
-    ) : null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />Add a person</Button>}</PopoverTrigger>
       <PopoverContent align="start" aria-label="Add a person" className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
         <p className="px-3 pt-3 text-sm font-semibold">Add a person</p>
-        <Command>
+        {/* The server finds the people: the list isn't narrowed again here. */}
+        <Command shouldFilter={false}>
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
-            <CommandEmpty>{email ? null : "Nobody by that name. Type an email address to invite someone."}</CommandEmpty>
-            {/* Grouped by where each stands to the screening's workspace, in the words their row has once added. */}
-            {[...new Set(left.map((person) => standsTo(person, workspace, owner)))].sort((a, b) => Number(a !== PERSON_SAYS.member) - Number(b !== PERSON_SAYS.member)).map((place) => <Fragment key={place}>{group(place, left.filter((person) => standsTo(person, workspace, owner) === place))}</Fragment>)}
-            {email ? (
+            <CommandEmpty>{email || found === undefined ? null : "Nobody in this workspace by that name. Type an email address to invite someone."}</CommandEmpty>
+            {left.length ? (
+              <CommandGroup heading={PERSON_SAYS.member}>
+                {left.map((person) => (
+                  <CommandItem key={person.id} value={person.id} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
+                    <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{person.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{person.email}</span>
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+            {email && !member ? (
               <CommandGroup heading="Invite">
                 <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>

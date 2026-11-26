@@ -12,6 +12,7 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { itemKey, moreValidator } from "../activity/validators";
 import { availableCredits, planLimit } from "../billing/accounts";
 import { modelsLimit } from "./screenings";
+import { paperLimit } from "./slots";
 import { countOf, screeningsOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
@@ -138,7 +139,7 @@ async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspac
 }
 
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
-async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
+export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
   const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
   return [...new Set(open.map((message) => message.resultId))];
 }
@@ -201,10 +202,10 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
  */
 export const setup = workspaceQuery({
   args: {},
-  returns: v.object({ me: personValidator, credits: v.number(), limits: v.object({ papers: v.union(v.number(), v.null()), models: v.number() }), reading: v.optional(aheadValidator) }),
+  returns: v.object({ me: personValidator, credits: v.number(), limits: v.object({ papers: v.union(v.number(), v.null()), models: v.number(), atOnce: v.number() }), reading: v.optional(aheadValidator) }),
   handler: async (ctx, { userId, workspaceId }) => {
-    const [me, credits, papers, models, reading] = await Promise.all([ctx.db.get("users", userId), availableCredits(ctx, workspaceId), planLimit(ctx, workspaceId, "request_papers"), modelsLimit(ctx, workspaceId), readingFirst(ctx, workspaceId)]);
-    return { me: me ? personOf(me) : { id: userId, name: SOMEONE }, credits, limits: { papers: papers ?? null, models }, ...(reading ? { reading } : {}) };
+    const [me, credits, papers, models, atOnce, reading] = await Promise.all([ctx.db.get("users", userId), availableCredits(ctx, workspaceId), planLimit(ctx, workspaceId, "request_papers"), modelsLimit(ctx, workspaceId), paperLimit(ctx, workspaceId), readingFirst(ctx, workspaceId)]);
+    return { me: me ? personOf(me) : { id: userId, name: SOMEONE }, credits, limits: { papers: papers ?? null, models, atOnce }, ...(reading ? { reading } : {}) };
   },
 });
 

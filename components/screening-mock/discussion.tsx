@@ -4,6 +4,7 @@
 // the Papers drawer. A line can ask one reviewer, and then waits with them until they answer.
 
 import { useRef, useState } from "react";
+import { usePaginatedQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { Hourglass, MessagesSquare, Send } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
@@ -13,7 +14,12 @@ import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ago, firstName, personOf, waitingQuestions, type Paper, modelsOf } from "./data";
+import { showStyledToast } from "@/components/ui/sonner";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { activeReviewers, ago, firstName, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
 import { Help, Section, ShutChip, ShutNote, StateChip } from "./parts";
 import type { Open } from "./store";
 
@@ -41,27 +47,36 @@ export function DiscussionShut({ open }: { open: Open }) {
   );
 }
 
+/** Lines a paper's discussion reads at a time: nearly every one fits the first. */
+const LINES = 50;
+
 export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
-  const said = open.thread(paper);
+  const { screening } = open;
+  const workspaceId = useWorkspace();
+  const lines = usePaginatedQuery(api.screening.discussion.thread, inWorkspace(workspaceId, { jobId: screening.id, paperId: paper.id }), { initialNumItems: LINES });
+  const write = useWorkspaceMutation(api.screening.discussion.say);
+  // Read the latest first, shown oldest first.
+  const said = [...lines.results].reverse();
   const [text, setText] = useState("");
   const [asking, setAsking] = useState<string | null>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
   const last = said.at(-1);
   // Who can be asked: the people still on the screening who vote on this paper, and the person who settles its conflicts. Someone taken off keeps their vote here and can't be asked about it.
-  const people = [...new Set([...open.votes[paper.id]!.filter((one) => one.reviewer.kind === "person" && !one.reviewer.email && !one.reviewer.left).map((one) => one.reviewer.id), open.screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personOf(id) ?? []);
+  const on = new Set(activeReviewers(screening).filter((one) => one.kind === "person").map((one) => one.id));
+  const people = [...new Set([...paper.cast.map((one) => one.reviewer).filter((id) => on.has(id)), screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personIn(screening, id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
   // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
   const waiting = waitingQuestions(said);
-  const mine = waiting.findLast((question) => question.to === me);
-  const theirs = waiting.findLast((question) => question.to !== me && open.screening.reviewers.some((one) => one.id === question.to && !one.left));
-  const owed = mine ? personOf(mine.by) : undefined;
-  const waitingFor = theirs ? personOf(theirs.to!) : undefined;
+  const mine = waiting.findLast((question) => question.to?.id === me);
+  const theirs = waiting.findLast((question) => question.to && question.to.id !== me && on.has(question.to.id));
+  const owed = mine?.by;
+  const waitingFor = theirs?.to;
   const maySay = open.isReviewer || open.canResolve;
   const send = () => {
     const words = text.trim();
     if (!words) return;
-    open.say(paper, words, to?.id);
+    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(words); showStyledToast("error", getErrorMessage(error, "That wasn't sent. Try again.")); });
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };
@@ -77,24 +92,24 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
         <ul className="-my-1.5">
           <AnimatePresence initial={false}>
             {said.map((line) => {
-              const person = personOf(line.by);
-              const asked = line.to ? (line.to === me ? "you" : firstName(personOf(line.to)?.name ?? "a reviewer")) : null;
+              const person = line.by;
+              const asked = line.to ? (line.to.id === me ? "you" : firstName(line.to.name)) : null;
               return (
                 <motion.li
-                  key={`${line.by}:${line.at}`}
+                  key={line.id}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   transition={{ duration: 0.3, ease: EASE }}
                   className="overflow-hidden"
                   // The pane's scroll is the outside system: a line you just sent pushes the field down, and the field is brought back into view to write the next one.
-                  onAnimationComplete={() => { if (line === last && line.by === me) field.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }}
+                  onAnimationComplete={() => { if (line === last && line.by.id === me) field.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }}
                 >
                   <div className="flex gap-2.5 py-1.5">
-                    <IdentityAvatar name={person?.name ?? ""} imageUrl={person?.imageUrl} className="mt-0.5 size-6 shrink-0" />
+                    <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="mt-0.5 size-6 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-xs">
-                        <span className="truncate font-medium">{person?.name ?? "A reviewer"}</span>
-                        {line.by === me ? <YouTag /> : null}
+                        <span className="truncate font-medium">{person.name}</span>
+                        {line.by.id === me ? <YouTag /> : null}
                         {asked ? <span className="shrink-0 text-muted-foreground">asked {asked}</span> : null}
                         <span className="ms-auto shrink-0 text-muted-foreground">{ago(line.at)}</span>
                       </p>

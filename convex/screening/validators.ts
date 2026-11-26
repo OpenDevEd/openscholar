@@ -337,6 +337,8 @@ export const paperViewValidator = v.object({
   abstract: v.string(),
   source: v.optional(v.id("screeningSources")),
   batch: v.optional(v.id("screeningChecks")),
+  // When a later check brought it, for a paper that wasn't there from the start.
+  addedAt: v.optional(v.number()),
   place: v.number(),
   result: paperResultValidator,
   reason: v.optional(v.string()),
@@ -350,6 +352,8 @@ export const paperViewValidator = v.object({
   // Whether the paper is theirs to vote on.
   mine: v.boolean(),
   messages: v.number(),
+  // A reviewer's question on it waits for the person looking.
+  asked: v.optional(v.boolean()),
 });
 
 /** The papers one move of a change's preview names, and the moves there can be: from each of five results to the four others. */

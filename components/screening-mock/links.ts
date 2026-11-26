@@ -1,7 +1,9 @@
-// The mock's addresses, in one place. Every page of a screening has its own, so the browser's Back
-// returns to the page a person was on, and an address can be kept or sent to someone.
+// A screening's addresses, in one place. Every page of a screening has its own, so the browser's Back
+// returns to the page a person was on, and an address can be kept or sent to someone. They are paths
+// in the person's own workspace: a link takes the organization's prefix where the page is one of its
+// (components/workspaces/link.tsx).
 
-const BASE = "/screening/mock";
+const BASE = "/screening";
 
 type Query = Record<string, string | number | null | undefined>;
 const withQuery = (path: string, query?: Query, section?: string) => {
@@ -23,7 +25,7 @@ export const overviewHref = (id: string, section?: "reviewers" | "new-papers" | 
  * Its Screen page: a queue (To do when left out), the paper open in it, the order of what is still to
  * do, and in Done which of your votes to show.
  */
-export const screenHref = (id: string, query?: { queue?: "done" | "conflicts"; paper?: string; order?: "fresh" | "lean"; voted?: "include" | "maybe" | "exclude" }) => withQuery(`${BASE}/${id}/screen`, query);
+export const screenHref = (id: string, query?: { queue?: "again" | "done" | "conflicts"; paper?: string; order?: "fresh" | "lean"; voted?: "include" | "maybe" | "exclude" }) => withQuery(`${BASE}/${id}/screen`, query);
 /**
  * Its Papers page, narrowed to what a number or a name stood for, or with one paper open.
  * `result`: include, maybe, exclude, conflict or waiting. `source`: a source's id. `added`: "start" or

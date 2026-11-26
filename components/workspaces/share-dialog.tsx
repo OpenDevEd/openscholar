@@ -207,7 +207,7 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
  * (`room`), the meter says neither: a dialog opened before then showed "No limit" and the guests
  * read so far, and changed under the person. What arrives fades in, and its bar slides the foot open.
  */
-function GuestMeter({ room }: { room: { used: number; limit: number | null } | undefined }) {
+export function GuestMeter({ room }: { room: { used: number; limit: number | null } | undefined }) {
   const t = useTranslations("workspaces.share");
   const workspace = useCurrentWorkspace();
   return (

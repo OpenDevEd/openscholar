@@ -55,7 +55,7 @@ export async function started({ t, workspaceId, ids }: Team, people: string[], p
 type T = Team["t"];
 
 /** Gives a screening's source `at` these records in one step, and returns the papers it took, in their order. */
-export async function give(t: T, jobId: Id<"screeningJobs">, at: number, papers: Array<ReturnType<typeof paper>>) {
+export async function give(t: T, jobId: Id<"screeningJobs">, at: number, papers: FunctionArgs<typeof internal.screening.gathering.fill>["papers"]) {
   const { checkId, sourceId } = await t.run(async (ctx) => {
     const check = (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").first())!;
     const source = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect())[at]!;

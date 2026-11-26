@@ -372,17 +372,18 @@ export function VoteMark({ vote, hidden = false, failed = false, settled = false
       </TooltipHint>
     );
   }
+  // Kept from the person looking: nothing is said of it, not even whether there is a vote.
+  if (hidden) {
+    return (
+      <span role="img" aria-label={`${who}: ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+        <Lock aria-hidden className="size-3" />
+      </span>
+    );
+  }
   if (!vote) {
     return (
       <span role="img" aria-label={`${who}: ${(settled ? NO_VOTE.none : NO_VOTE.yet).toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
         {settled ? <Minus aria-hidden className="size-3" /> : <Hourglass aria-hidden className="size-3" />}
-      </span>
-    );
-  }
-  if (hidden) {
-    return (
-      <span role="img" aria-label={`${who}: voted, ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
-        <Lock aria-hidden className="size-3" />
       </span>
     );
   }
@@ -649,7 +650,7 @@ export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
  * share them, and are tinted while the table is narrowed to them.
  */
 export function PaperFacts({ paper, source, added }: {
-  paper: Pick<Paper, "title" | "cited">;
+  paper: Pick<Paper, "title" | "cited" | "doi">;
   source?: { name: string; kind: string; href: string; on?: boolean; current?: "true"; label?: string };
   added?: { at: number; href: string; on?: boolean; current?: "true" };
 }) {
@@ -658,9 +659,9 @@ export function PaperFacts({ paper, source, added }: {
       {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
       {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
       {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(added.at)}</LinkChip> : null}
-      <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>
-      {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the list is kept. */}
-      <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+      {paper.cited === undefined ? null : <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>}
+      {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. */}
+      <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
     </>
   );
 }

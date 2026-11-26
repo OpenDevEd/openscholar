@@ -15,6 +15,7 @@ import { decide, isFinal, seesVotes, type Answer } from "../../lib/screening/rul
 import { standingOn, type Standing } from "./access";
 import { reviewersOf, votesOf } from "./dealing";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
+import { askedOf } from "./view";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;
@@ -28,12 +29,12 @@ const paperValidator = paperViewValidator;
 export type PaperView = Infer<typeof paperViewValidator>;
 
 /** A screening as the paper reads need it: who is on it, and what the person looking is to it. */
-type Looking = Standing & { reviewers: Map<Id<"screeningReviewers">, Reviewer>; first: Id<"screeningChecks"> | undefined };
+type Looking = Standing & { reviewers: Map<Id<"screeningReviewers">, Reviewer>; first: Id<"screeningChecks"> | undefined; asked: Set<Id<"screeningResults">> };
 async function lookingAt(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">): Promise<Looking | null> {
   const standing = await standingOn(ctx, actor, jobId);
   if (!standing || standing.job.shape !== 2 || !standing.job.rule) return null;
-  const first = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first();
-  return { ...standing, reviewers: new Map((await reviewersOf(ctx, jobId)).map((one) => [one._id, one])), first: first?._id };
+  const [first, reviewers, asked] = await Promise.all([ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first(), reviewersOf(ctx, jobId), askedOf(ctx, jobId, actor.userId)]);
+  return { ...standing, reviewers: new Map(reviewers.map((one) => [one._id, one])), first: first?._id, asked: new Set(asked) };
 }
 
 /** A vote as a page shows it. A model's decision follows its answers under the criteria as they are now, as the rule reads it. */
@@ -49,7 +50,7 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
  * still waits for their own (lib/screening/rules.ts `seesVotes`): then each other reviewer is named as being on it,
  * and nothing of their vote is told. Their own vote always shows.
  */
-export function shown({ job, reviewer, reviewers, first }: Looking, paper: Paper, votes: Vote[]): PaperView {
+export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper: Paper, votes: Vote[]): PaperView {
   const mine = reviewer ? votes.find((vote) => vote.reviewerId === reviewer._id) : undefined;
   const result = paper.result ?? "waiting";
   const sees = seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined);
@@ -73,7 +74,7 @@ export function shown({ job, reviewer, reviewers, first }: Looking, paper: Paper
     ...(paper.doi ? { doi: paper.doi } : {}),
     abstract: paper.abstract ?? "",
     ...(paper.sourceId ? { source: paper.sourceId } : {}),
-    ...(paper.checkId && paper.checkId !== first ? { batch: paper.checkId } : {}),
+    ...(paper.checkId && paper.checkId !== first ? { batch: paper.checkId, addedAt: paper._creationTime } : {}),
     place: paper.place ?? 0,
     result,
     ...(sees && paper.reason ? { reason: paper.reason } : {}),
@@ -84,6 +85,7 @@ export function shown({ job, reviewer, reviewers, first }: Looking, paper: Paper
     cast,
     mine: mine !== undefined && mine.status !== "closed" && mine.status !== "discarded",
     messages: sees ? (paper.messages ?? 0) : 0,
+    ...(sees && asked.has(paper._id) ? { asked: true } : {}),
   };
 }
 

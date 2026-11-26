@@ -5,10 +5,9 @@
 
 import { createContext, use, useLayoutEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
-import NextLink from "next/link";
-import { useParams, useRouter, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
+import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
-import { ListEmpty } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -22,30 +21,34 @@ import { FadeRow } from "@/components/ui/fade-row";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { WorkspaceTag } from "@/components/workspaces/parts";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
+import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
 import type { ExportTab } from "./dialogs";
+import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
-import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
 import { StateChip, Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
-import { useMock, useModelsReading, useOpenScreening, type Open, modelsDone, toppedUp, perPaper } from "./store";
+import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
 import { AddModel, AddPerson } from "./team";
 
 type View = "overview" | "screen" | "papers" | "settings";
 
 /**
- * Where each step of the mock's history was scrolled, and whether the last step was the browser's Back or Forward
+ * Where each step of a screening's history was scrolled, and whether the last step was the browser's Back or Forward
  * rather than a link. Back returns to where the page was: the browser tries that itself, but while the page being left
  * is still drawn, so a shorter one cuts it short. The browser's history and the window's scroll are the outside
- * systems; the listener lives as long as the tab and acts only on the mock's pages.
+ * systems; the listener lives as long as the tab and acts only on the screening pages.
  */
 const scrolled = new Map<string, number>();
 let returning = false;
 if (typeof window !== "undefined" && "navigation" in window) {
   const { navigation } = window;
-  const mock = () => window.location.pathname.startsWith(SCREENINGS);
+  const mock = () => bareWorkspacePath(window.location.pathname).startsWith(SCREENINGS);
   const keep = () => { if (navigation.currentEntry && mock()) scrolled.set(navigation.currentEntry.key, window.scrollY); };
   // A link is pressed before the router scrolls the page it opens, so the press is when the page being left is kept.
   window.addEventListener("click", keep, true);
@@ -76,6 +79,9 @@ export function useWorkspace() {
   return workspace;
 }
 
+/** The frame, for a component that also stands outside one: a new screening's form has none. */
+export const useFrame = () => use(Workspace);
+
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
@@ -94,14 +100,16 @@ function ruleFacts(screening: Screening, voter: boolean) {
 
 export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const store = useMock();
+  const router = useWorkspaceRouter();
+  const here = usePageWorkspace();
   // Which of its pages is open: each has its own address, so Back returns to the one before.
   const segment = useSelectedLayoutSegment();
   const search = useSearchParams();
   const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
-  const open = useOpenScreening(id);
-  useModelsReading(id);
+  const read = useOpenScreening(id);
+  const open = read ?? null;
+  // Changes to its settings that were started and not saved.
+  const unsaved = useKept((kept) => Boolean(kept.drafts[id]));
   // A deleted screening's page is left for good: Back does not return to it.
   const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
   // A page opened by a link starts at its top; Back and Forward, and a link to a section, keep their place. The window's scroll is the outside system.
@@ -136,12 +144,21 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     };
   }, [found]);
 
+  // While it is read the frame holds its place: the bar with the list's name, and the room a screening's pages take.
+  if (read === undefined) {
+    return (
+      <PageWrapper>
+        <LibraryPageShell wide icon={ListChecks} title="Screening" trail={[SCREENINGS_CRUMB]}>
+          <ListLoading label="Loading the screening" />
+        </LibraryPageShell>
+      </PageWrapper>
+    );
+  }
   if (!open) {
     return (
       <PageWrapper>
         <LibraryPageShell wide icon={ListChecks} title="Not found" trail={[SCREENINGS_CRUMB]}>
           <ListEmpty icon={Unlink}>This screening was deleted, or isn&apos;t shared with you</ListEmpty>
-          <MockStates />
         </LibraryPageShell>
       </PageWrapper>
     );
@@ -150,17 +167,16 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const { screening } = open;
   const facts = ruleFacts(screening, open.isReviewer);
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const total = open.papers.length;
-  const workspace = workspaceOf(screening);
+  const total = open.total;
+  const workspace = screening.workspace;
   // On Screen a row that came and went would move the paper being read.
   const banner = bannerKind(open, view === "screen");
-  const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).length;
-  // Changes to its settings that were started and not saved.
-  const unsaved = Boolean(store.drafts[id]);
+  // Everyone on it: its workspace's people who review it, its models, and whoever it is shared with from outside, to vote or to look.
+  const on = open.guests + activeReviewers(screening).filter((one) => !one.guest).length;
   // A member who isn't one of its reviewers can join it.
   const canJoin = !open.isReviewer && open.canChange && !screening.finishedAt;
-  const resume = () => store.update(id, (s) => ({ ...s, paused: false }), { what: "Resumed the models" });
-  const reopen = () => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" });
+  const resume = () => void open.resume();
+  const reopen = () => void open.reopen();
 
   // The pages. Beside the rule they are a compact group; where the card is too narrow for both they take a line of their own, each as wide as its share.
   const pages = (fill: boolean) => (
@@ -172,7 +188,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
       options={[
         { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
-        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <TabCount value={open.toDo.length} tone="primary" /> : undefined },
+        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
         { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{num(total)}</span> },
         // Only someone who may change it has its settings.
         ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">Unsaved</StateChip> : undefined }] : []),
@@ -191,7 +207,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <DropdownMenuContent align="end" className="w-72 [&_[role=menuitem]]:whitespace-nowrap">
         <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("activity")}><History />Activity</DropdownMenuItem>
         <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("export")}><Download />Export</DropdownMenuItem>
-        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("share")}><Share2 />Share</DropdownMenuItem>
+        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("people")}><Users />People</DropdownMenuItem>
         <DropdownMenuSeparator className="xl:hidden" />
         {/* Someone it is shared with from outside can start their own from it, and nothing else here. */}
         {open.canChange ? (
@@ -205,10 +221,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
               screening.paused ? (
                 <DropdownMenuItem onSelect={resume}><Play />Resume models</DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models" })}><CirclePause />Pause models</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>
               )
             ) : null}
-            {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
+            {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={() => void open.check()}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
           </>
         ) : null}
         <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
@@ -216,7 +232,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           <>
             <DropdownMenuItem onSelect={() => overlays.show("move")}><Move />Move to another workspace</DropdownMenuItem>
             {/* In the widest windows the bar has this as a button. */}
-            {canJoin ? <DropdownMenuItem className="2xl:hidden" onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
+            {canJoin ? <DropdownMenuItem className="2xl:hidden" onSelect={() => void open.join()}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => overlays.show("delete")}><Trash2 />Delete</DropdownMenuItem>
           </>
@@ -241,23 +257,14 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     return `${papersHref(id)}${next.size ? `?${next}` : ""}`;
   };
 
-  // Who reviews it and the ways to add to them, in the bar beside Share. On a phone the bar keeps the name and the menu, so they sit under the rule.
+  // Who reviews it, in the bar beside People, which adds to them. On a phone the bar keeps the name and the menu, so they sit under the rule.
   const team = (
     <>
-      {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
+      {/* The workspace is named wherever it isn't the one the person looking works in. */}
+      {workspace.id !== here ? <WorkspaceTag size="sm" workspace={lookOf(workspace)} /> : null}
       <Faces reviewers={reviewers} me={open.me} more={overviewHref(id, "reviewers")} shown={narrowedTo} hrefOf={faceHref} />
       {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
-      {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
-      {open.canChange ? (
-        <>
-          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} workspace={workspaceOf(screening)} owner={screening.createdBy} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
-            <PickerButton hint="Add a person"><UserPlus /></PickerButton>
-          </AddPerson>
-          <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
-            <PickerButton hint="Add a model"><AiIcon /></PickerButton>
-          </AddModel>
-        </>
-      ) : null}
+      {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={() => void open.join()}><UserPlus />Join as a reviewer</Button> : null}
     </>
   );
 
@@ -339,10 +346,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 {/* Below a wide window these two are in the menu, so the name keeps its room. */}
                 <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("activity")}><History />Activity</Button>
                 <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("export")}><Download />Export</Button>
-                {/* Icon-only, it keeps its count, so it is as wide as both. */}
-                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`Share, ${plural(shared, "person", "people")}`} onClick={() => overlays.show("share")}>
-                  <Share2 /><span className={BAR_LABEL}>Share</span>
-                  {shared ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{shared}</span> : null}
+                {/* Everyone on it, and where anyone is added: a reviewer, a model, or someone it is shared with. Icon-only, it keeps its count, so it is as wide as both. */}
+                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`People, ${num(on)} on this screening`} onClick={() => overlays.show("people")}>
+                  <Users /><span className={BAR_LABEL}>People</span>
+                  {on ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{on}</span> : null}
                 </Button>
                 <span className="flex max-sm:hidden">{more}</span>
               </>
@@ -360,7 +367,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set(toppedUp(screening, store))} onReopen={reopen} onResume={resume} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onReopen={reopen} onResume={resume} />
                 </AutoHeight>
               </div>
             }
@@ -373,7 +380,6 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         </div>
 
         {overlays.overlays}
-        <MockStates />
       </PageWrapper>
     </MotionConfig>
   );
@@ -438,15 +444,18 @@ function bannerKind(open: Open, quiet: boolean): BannerKind | null {
   if (open.latest?.mine) return "arrived";
   if (modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
   // A check that found nothing says so, where nothing else has to be said.
-  if (screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
+  if (open.lastCheck?.added === 0 && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
   return null;
 }
+
+/** How long the row says a check found nothing: long enough for whoever asked for it to read it. */
+const NOTHING_SHOWN_MS = 60_000;
 
 /** Each kind of notice in the colour of what it is about: what waits for you is primary, a stop is warning, the rest are facts. */
 const BANNER_TONE: Record<BannerKind, Tone> = { gathering: "neutral", checking: "neutral", credits: "warning", finished: "neutral", paused: "warning", arrived: "primary", waiting: "neutral", reading: "neutral", nothing: "neutral" };
 
-function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { kind: BannerKind | null; open: Open; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
-  const { screening, reading, papers } = open;
+function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKind | null; open: Open; workspace: string; onReopen: () => void; onResume: () => void }) {
+  const { screening, reading, total } = open;
   const id = screening.id;
   if (!kind) return null;
   const tone = TONE[BANNER_TONE[kind]];
@@ -469,7 +478,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span><NextLink href={papersHref(id, { added: String(open.latest.at) })} className={INLINE_LINK}>{open.latest.papers} new {open.latest.papers === 1 ? "paper" : "papers"}</NextLink> came in {ago(open.latest.at)}</span>
+        <span><NextLink href={papersHref(id, { added: open.latest.id })} className={INLINE_LINK}>{open.latest.added} new {open.latest.added === 1 ? "paper" : "papers"}</NextLink> came in {ago(open.latest.at)}</span>
         <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />Screen your {open.latest.mine} new {open.latest.mine === 1 ? "paper" : "papers"} first</NextLink></Button>
       </div>
     );
@@ -489,7 +498,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <span className="font-medium">{MODELS_SAY.gathering.says}</span>
         <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {num(open.gathering.of)}</span>
-        {/* Offered once one of the papers that are in is theirs to vote on. */}{open.isReviewer && open.toDo.length ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
+        {/* Offered once one of the papers that are in is theirs to vote on. */}{open.isReviewer && open.toDo ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
       </div>
     );
   }
@@ -503,9 +512,10 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
             A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {open.canChange ? "you add credits" : `${workspace} adds credits`}.
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsDone(screening, reading))} of {num(papers.length)} papers</span>
-        {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
-        {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button> : null}
+        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsDone(reading))} of {num(total)} papers</span>
+        {/* With credits added, the models are let go on from where they stopped. */}
+        {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing"><Coins />Add credits</NextLink></Button> : null}
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
       </div>
     );
   }
@@ -518,13 +528,13 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
           Finished {ago(at) === day(at) ? `on ${day(at)}` : ago(at)}
           <Help title="Finished screening">Its models stop reading and it stops checking for new papers. {open.canChange ? "You can still read, export and change it, or reopen it." : `You can still read and export it. A member of ${workspace} can reopen it.`}</Help>
         </span>
-        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={open.check}><RefreshCw />Check for new papers</Button> : null}
+        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={() => void open.check()}><RefreshCw />Check for new papers</Button> : null}
         {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button> : null}
       </div>
     );
   }
   if (kind === "paused") {
-    const done = modelsDone(screening);
+    const done = modelsDone(modelsOf(screening));
     return (
       <div className={row}>
         <CirclePause className={icon} />
@@ -532,7 +542,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
           {MODELS_SAY.paused.says}
           <Help title="Paused models">Paused models read nothing and spend no credits. People can keep voting. {open.canChange ? "Resume the models to have them read on." : `A member of ${workspace} can resume them.`}</Help>
         </span>
-        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)} papers read</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(total)} papers read</span>
         {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
       </div>
     );
@@ -542,7 +552,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <Clock className={icon} />
         <span className="flex items-center gap-1">
-          <span className="font-medium">{MODELS_SAY.waiting.says} <NextLink href={overviewHref(open.waitingFor.screening.id)} className={INLINE_LINK}>{open.waitingFor.screening.name}</NextLink></span>
+          <span className="font-medium">{MODELS_SAY.waiting.says} <NextLink href={overviewHref(open.waitingFor.id)} className={INLINE_LINK}>{open.waitingFor.name}</NextLink></span>
           <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>40 papers at a time</HelpFact>}>
             {workspace}&apos;s models read 40 papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
           </Help>
@@ -553,13 +563,13 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     );
   }
   if (kind === "reading") {
-    const done = modelsDone(screening, reading);
+    const done = modelsDone(reading);
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />
         <span className="font-medium">{reading.length === 1 ? modelLink(reading[0]!) : `${reading.length} models`} reading</span>
-        <Meter value={done} max={papers.length} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)}</span>
+        <Meter value={done} max={total} className="w-40" />
+        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(total)}</span>
       </div>
     );
   }

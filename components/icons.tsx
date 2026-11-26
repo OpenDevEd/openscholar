@@ -187,6 +187,7 @@ export { MaximizeIcon as Expand } from "@solar-icons/react/bold-duotone/maximize
 export { LeafIcon as Leaf } from "@solar-icons/react/bold-duotone/leaf";
 export { LayoutListIcon as LayoutList } from "@solar-icons/react/bold-duotone/layout-list";
 export { TextItalicIcon as Italic } from "@solar-icons/react/bold-duotone/text-italic";
+export { TextSelectionIcon as Highlighter } from "@solar-icons/react/bold-duotone/text-selection";
 export { QuestionCircleIcon as HelpCircle, QuestionCircleIcon as CircleHelp } from "@solar-icons/react/bold-duotone/question-circle";
 export { HeartPulseIcon as HeartPulse } from "@solar-icons/react/bold-duotone/heart-pulse";
 export { HashtagIcon as Hash } from "@solar-icons/react/bold-duotone/hashtag";

@@ -45,7 +45,7 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   collection: (id) => `/library?col=${id}`,
   author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
-  screening: (id) => `/screening?job=${id}`,
+  screening: (id) => `/screening/${id}`,
   extraction: (id) => `/extraction/${id}`,
   community: (id) => `/evidence-communities/${id}/configuration`,
 };
