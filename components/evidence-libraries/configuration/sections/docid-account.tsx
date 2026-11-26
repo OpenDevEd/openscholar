@@ -1,9 +1,9 @@
 "use client";
 
 // The DOCiD account Openscholar Reports registers with (plans/identifier-services), beside Zenodo and Crossref in
-// the publishing settings. DOCiD has no test service: every DOCiD is a real, permanent Handle, so there is only the
-// real account. What DOCiD files each report as is mapped from the report, by name, against the lists DOCiD gives the
-// account when it is verified and saved.
+// the publishing settings. A deployment registers with the DOCiD that DOCID_ENDPOINT names: production, or its demo
+// on shared dev. What DOCiD files each report as is mapped from the report, by name, against the lists DOCiD gives
+// the account.
 
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";

@@ -374,7 +374,7 @@
     "accountConnectedAs": "Gekoppel: {name}",
     "docidHint": "Die Africa PID Alliance se identifiseerder, 'n Handle onder 20.500.14351.",
     "enableDocid": "Gebruik DOCiD",
-    "docidPermanent": "DOCiD het geen toetsdiens nie. Elke DOCiD is 'n regte Handle wat nie uitgevee kan word nie, net teruggetrek.",
+    "docidPermanent": "Elke DOCiD is 'n regte Handle wat nie uitgevee kan word nie, net teruggetrek.",
     "docidEmail": "Rekening se e-pos",
     "docidCredential": "Wagwoord",
     "docidNoResourceTypes": "DOCiD laat hierdie rekening nog nie toe om verslae as Manuscripts te liasseer nie, so dit kan dit nie deponeer nie. Vra die Africa PID Alliance om Manuscripts toe te laat, verifieer en stoor dan weer."
