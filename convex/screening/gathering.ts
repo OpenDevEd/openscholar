@@ -206,9 +206,10 @@ export const fill = internalMutation({
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const seen = new Set<string>();
     const now = Date.now();
-    let [taken, duplicates, left] = [0, 0, 0];
+    let [taken, duplicates, left, bare] = [0, 0, 0, 0];
     const leave = async (name: string, why: Why, paperKey?: string) => {
       left++;
+      if (why === "abstract") bare++;
       // A check that reads a source again finds what it left out before: counted again, and named once.
       if (paperKey && (await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first())) return;
       await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
@@ -254,7 +255,7 @@ export const fill = internalMutation({
       await dealNew(ctx, job, { _id: resultId, place }, reviewers, dealt);
       taken++;
     }
-    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken, duplicates: source.duplicates + duplicates, left: source.left + left, ...(ended ? { state: "done" as const, checkedAt: now } : {}) });
+    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended ? { state: "done" as const, checkedAt: now } : {}) });
     await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);

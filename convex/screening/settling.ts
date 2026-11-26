@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, settle, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
+import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { project, type Place, type Projected } from "../../lib/screening/project";
@@ -63,6 +63,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   const progress = await progressOf(ctx, job._id);
   const counts = { ...NO_RESULTS, ...progress.counts };
   const reasons = { ...progress.reasons };
+  const included: Record<string, number> = { ...progress.included };
   const perReviewer = new Map<Id<"screeningReviewers">, Counts>();
   const countsOf = (id: Id<"screeningReviewers">) => perReviewer.get(id) ?? perReviewer.set(id, { ...NO_COUNTS, ...progress.reviewers?.[id] }).get(id)!;
   const pairs = new Map<string, { a: Id<"screeningReviewers">; b: Id<"screeningReviewers">; cells: number[] }>();
@@ -137,6 +138,11 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       for (const [i, x] of before.entries()) for (const y of before.slice(i + 1)) pair(x.id, y.id, x.decision, y.decision, -1);
       for (const [i, x] of after.entries()) for (const y of after.slice(i + 1)) pair(x.id, y.id, x.decision, y.decision, 1);
     }
+    // The papers the screening included that a reviewer voted to exclude: counted for each of them as the paper's result and their vote stand.
+    if (was === "include") for (const one of before) if (one.decision === "exclude") countsOf(one.id).missed = Math.max(0, (countsOf(one.id).missed ?? 0) - 1);
+    if (now === "include" && !paper.withdrawn) for (const one of after) if (one.decision === "exclude") countsOf(one.id).missed = (countsOf(one.id).missed ?? 0) + 1;
+    if (paper.sourceId && was === "include") included[paper.sourceId] = Math.max(0, (included[paper.sourceId] ?? 1) - 1);
+    if (paper.sourceId && now === "include" && !paper.withdrawn) included[paper.sourceId] = (included[paper.sourceId] ?? 0) + 1;
 
     const cast = ballots();
     // How many of its models would include it goes on the places its people have yet to vote from, for the order that puts those papers first.
@@ -172,6 +178,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   await ctx.db.patch("screeningJobProgress", progress._id, {
     counts,
     reasons: Object.fromEntries(Object.entries(reasons).filter(([, n]) => n > 0)),
+    included: Object.fromEntries(Object.entries(included).filter(([, n]) => n > 0)),
     ...(perReviewer.size ? { reviewers: { ...progress.reviewers, ...Object.fromEntries(perReviewer) } } : {}),
     ...(freed && progress.running ? { running: Math.max(0, progress.running - freed) } : {}),
     ...(withdrawn ? { withdrawn: Math.max(0, (progress.withdrawn ?? 0) + withdrawn) } : {}),

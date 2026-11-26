@@ -372,10 +372,10 @@ export function VoteMark({ vote, hidden = false, failed = false, settled = false
       </TooltipHint>
     );
   }
-  // Kept from the person looking: nothing is said of it, not even whether there is a vote.
+  // A vote kept from the person looking: that it was cast, and nothing of how.
   if (hidden) {
     return (
-      <span role="img" aria-label={`${who}: ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+      <span role="img" aria-label={`${who}: voted, ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
         <Lock aria-hidden className="size-3" />
       </span>
     );

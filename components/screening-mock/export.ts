@@ -1,26 +1,29 @@
 // What a screening gives out as files: its papers, its votes, its flow diagram, its methods paragraph and its whole
-// record. Every file is built here, from the screening as it stands and from who is taking it out. The Export dialog
-// and a selection on Papers call the same builders, so they give the same rows, and what is hidden from someone on a
-// page is hidden from them in every file.
+// record. Every file is built here, from the screening as it stands and from the papers as the server gives them to
+// whoever takes the file out. The Export dialog and a selection on Papers call the same builders, so they give the
+// same rows, and what is hidden from someone on a page is hidden from them in every file.
 
+import type { ConvexReactClient } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { sentencesOf } from "@/lib/screening/passages";
+import { kappa } from "@/lib/screening/rules";
+import { changeSays } from "./activity-words";
 import {
   DECISION_LABEL,
   EVERY_LABEL,
   NO_VOTE,
   RESULT_LABEL,
-  SCHEDULE,
   SETTLE_LABEL,
   activeReviewers,
-  agreement,
-  confidenceOf,
-  count,
-  doiOf,
-  evidence,
-  excludedBy,
+  bareOf,
+  castOf,
   failedLabel,
   foundTotal,
   growing,
   keptOf,
+  leftOf,
+  leftTotal,
   listed,
   modelsOf,
   nameOn,
@@ -28,40 +31,35 @@ import {
   numberWord,
   paperTotal,
   plural,
+  pointsMax,
   readersOf,
-  reasonOf,
-  scoreOf,
-  seesVotes,
+  settledOf,
   slug,
   taken,
   votingReviewers,
-  workspaceOf,
   type Paper,
+  type Result,
   type Screening,
-  type Standing,
-  PDF_LEFT,
-  bareOf,
-  leftOf,
-  leftTotal,
-  pdfAdded,
-  pdfStands,
 } from "./data";
 import { collectionName } from "./form-data";
+import type { Figures } from "./store";
 
-/** A screening as it stands, and the person taking a file out of it. */
-export type Taken = { screening: Screening; state: Pick<Standing, "papers" | "votes" | "settled" | "counts">; me: string };
+/** A screening as it stands, with the figures the server keeps of it, and the person taking a file out of it. */
+export type Taken = { screening: Screening; counts: Record<Result, number>; me: string; figures: Figures | undefined };
 
-const sees = ({ screening, state, me }: Taken, paper: Paper) => seesVotes(screening, state, me, paper);
 const iso = (at: number) => new Date(at).toISOString();
 /** A day as a file says it, with its year: a file is read long after the year it was made in. */
 const fullDay = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const MORE_AUTHORS = "and others";
-const authorsOf = (paper: Paper) => paper.authors.filter((author) => author !== MORE_AUTHORS);
-/** A list of authors the source gave incomplete ends "and others": a file keeps that, since the missing names can't be made up. */
-const cutShort = (paper: Paper) => paper.authors.includes(MORE_AUTHORS);
-/** The papers still open: in conflict, waiting for votes, or still on their way from a source. */
-const openIn = ({ screening, state }: Taken) => state.counts.conflict + state.counts.waiting + (paperTotal(screening.sources) - state.papers.length);
+const MINUTE = 60_000;
+/** After the screening began: its first reviewers and criteria are written in the moment it is made. */
+const later = (screening: Screening, at: number) => at > screening.createdAt + MINUTE;
+const doiOf = (paper: Pick<Paper, "doi">) => paper.doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "");
+const authorsOf = (paper: Pick<Paper, "authors">) => paper.authors ?? [];
+/** The papers still open: in conflict, or waiting for votes, the ones still on their way from a source among them. */
+const openIn = ({ counts }: Taken) => counts.conflict + counts.waiting;
 const kindOf = (reviewer: { kind: "person" | "model" }) => (reviewer.kind === "model" ? "AI model" : "Person");
+/** Its excluded papers by the reason, the most common first. */
+const excludedBy = (figures: Figures | undefined) => Object.entries(figures?.reasons ?? {}).sort((a, b) => b[1] - a[1]);
 
 /** A file's name: the screening, what the file holds, "unfinished" while it is running with papers still open, "with-open-papers" where it was marked finished with some, and the day it was taken out. A file sent on says by its name what it is a picture of. */
 export const fileName = (out: Taken, what: string, ending: string, at: number) => `${slug(out.screening.name)}-${what}${!openIn(out) ? "" : out.screening.finishedAt ? "-with-open-papers" : "-unfinished"}-${iso(at).slice(0, 10)}.${ending}`;
@@ -69,23 +67,38 @@ export const fileName = (out: Taken, what: string, ending: string, at: number) =
 /** A file of rows, as a spreadsheet opens it: every cell quoted, a quote in a cell doubled. */
 const toCsv = (lines: unknown[][]) => lines.map((line) => line.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
 
-/** What is hidden from the person among some papers: the others' votes on the ones they have yet to vote on. A file says how many it leaves out. */
-export const hiddenIn = (out: Taken, papers: Paper[]) => {
-  const unseen = papers.filter((paper) => !sees(out, paper));
-  return { papers: unseen.length, votes: unseen.reduce((sum, paper) => sum + out.state.votes[paper.id]!.filter((one) => one.vote && one.reviewer.id !== out.me).length, 0) };
-};
+/** Papers one read of a file's rows takes. */
+const EXPORT_PAGE = 100;
+type ListArgs = Omit<(typeof api.screening.paperViews.list)["_args"], "paginationOpts">;
+/** A list of a screening's papers, a page at a time, as the server gives them to the person asking. */
+async function* pagesOf(convex: ConvexReactClient, args: ListArgs) {
+  let cursor: string | null = null;
+  do {
+    const read: { page: Paper[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.paperViews.list, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
+    yield read.page;
+    cursor = read.isDone ? null : read.continueCursor;
+  } while (cursor);
+}
+/**
+ * Every paper of a list, for a file that holds them all. ponytail: the whole list is held in the browser while its
+ * file is built, which a plan's most papers a screening (a few thousand) keeps small; a screening of far more would
+ * have the server write the file a part at a time, as convex/exports.ts does for a library.
+ */
+export async function everyPaper(convex: ConvexReactClient, args: ListArgs) {
+  let all: Paper[] = [];
+  for await (const page of pagesOf(convex, args)) all = all.concat(page);
+  return all;
+}
 
 /** The columns of the papers file, each with what it holds. The file's rows, the guide in the dialog and the guide in the whole record are made from this one list. */
 export const PAPER_GUIDE = {
   paper_id: "The paper's id in this screening. A paper has the same id in every file.",
   doi: "Its DOI, where it has one.",
   title: "Its title.",
-  authors: `Its authors, separated by semicolons. "${MORE_AUTHORS}" ends a list the source gave incomplete.`,
+  authors: "Its authors, separated by semicolons.",
   year: "The year it was published.",
   journal: "Where it was published.",
-  abstract: "Its abstract in English, as the reviewers read it.",
-  abstract_original: "The abstract in its own language, where the paper isn't written in English.",
-  language: "That language.",
+  abstract: "Its abstract, as the reviewers read it.",
   source: "The source that brought it into the screening.",
   added: "When it was added: at the start, or the time of the check that found it.",
   result: "Where it stands: Included, Maybe, Excluded, In conflict or Waiting for votes.",
@@ -103,42 +116,36 @@ type PaperColumn = keyof typeof PAPER_GUIDE;
 const PAPER_COLUMNS = Object.keys(PAPER_GUIDE) as PaperColumn[];
 
 /** One row for each paper: what it is, where it came from and where it stands. */
-export function paperRows(out: Taken, papers: Paper[]): Array<Record<PaperColumn, string | number>> {
-  const { screening, state } = out;
+export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper[]): Array<Record<PaperColumn, string | number>> {
+  const most = pointsMax(screening);
   return papers.map((paper) => {
-    const shown = sees(out, paper);
-    const settled = state.settled[paper.id]!;
-    const cast = state.votes[paper.id]!;
-    const votes = cast.flatMap((one) => one.vote ?? []);
-    const reason = settled.result === "exclude" ? reasonOf(cast, settled) : undefined;
-    const how = (decision: "include" | "maybe" | "exclude") => (shown ? votes.filter((vote) => vote.decision === decision).length : "");
-    const score = shown && screening.criteria.length && votes.length ? scoreOf(screening, cast) : null;
+    const settled = settledOf(paper);
+    const votes = paper.cast.flatMap((one) => one.vote ?? []);
+    const how = (decision: "include" | "maybe" | "exclude") => (paper.sees ? votes.filter((vote) => vote.decision === decision).length : "");
     return {
       paper_id: paper.id,
       doi: doiOf(paper) ?? "",
       title: paper.title,
-      authors: paper.authors.join("; "),
-      year: paper.year,
-      journal: paper.venue,
-      abstract: paper.sentences.join(" "),
-      abstract_original: paper.original?.text ?? "",
-      language: paper.original?.language ?? "",
+      authors: authorsOf(paper).join("; "),
+      year: paper.year ?? "",
+      journal: paper.venue ?? "",
+      abstract: paper.abstract,
       source: screening.sources.find((source) => source.id === paper.source)?.name ?? "",
-      added: paper.batch === undefined ? "At the start" : iso(paper.batch),
+      added: paper.addedAt === undefined ? "At the start" : iso(paper.addedAt),
       result: RESULT_LABEL[settled.result],
-      excluded_for: reason ? failedLabel(reason, screening.criteria) : "",
+      excluded_for: settled.result === "exclude" && paper.reason ? failedLabel(paper.reason, screening.criteria) : "",
       settled_by: settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "",
       settled_note: settled.note ?? "",
       votes_include: how("include"),
       votes_maybe: how("maybe"),
       votes_exclude: how("exclude"),
-      points: score ? score.points : "",
-      points_max: score ? score.of : "",
-      cited_by: paper.cited,
+      points: paper.points ?? "",
+      points_max: paper.points === undefined ? "" : most,
+      cited_by: paper.cited ?? "",
     };
   });
 }
-export const papersCsv = (out: Taken, papers: Paper[]) => toCsv([PAPER_COLUMNS, ...paperRows(out, papers).map((row) => PAPER_COLUMNS.map((column) => row[column]))]);
+export const papersCsv = (out: Pick<Taken, "screening">, papers: Paper[]) => toCsv([PAPER_COLUMNS, ...paperRows(out, papers).map((row) => PAPER_COLUMNS.map((column) => row[column]))]);
 
 /** The papers for a reference manager, each with its id in the screening, the identifier and the abstract it is filed by. */
 export const risOf = (papers: Paper[]) =>
@@ -150,38 +157,31 @@ export const risOf = (papers: Paper[]) =>
         `ID  - ${paper.id}`,
         `TI  - ${paper.title}`,
         ...authorsOf(paper).map((author) => `AU  - ${author}`),
-        `PY  - ${paper.year}`,
-        `JO  - ${paper.venue}`,
+        ...(paper.year === undefined ? [] : [`PY  - ${paper.year}`]),
+        ...(paper.venue ? [`JO  - ${paper.venue}`] : []),
         ...(doi ? [`DO  - ${doi}`, `UR  - https://doi.org/${doi}`] : []),
-        `AB  - ${paper.sentences.join(" ")}`,
-        ...(paper.original ? [`LA  - ${paper.original.language}`] : []),
-        ...(cutShort(paper) ? ["N1  - The source gave an incomplete list of authors."] : []),
+        `AB  - ${paper.abstract}`,
         "ER  - ",
       ].join("\n");
     })
     .join("\n\n");
 /** Text as a BibTeX field holds it: the signs BibTeX reads as its own are escaped, so an "&" in a journal's name or a brace in a title can't break the file. */
 const bibText = (text: string) => text.replace(/\\/g, "\\textbackslash{}").replace(/([&%$#_{}])/g, "\\$1");
-/** The same as BibTeX. A paper's key is worked out over every paper of the screening, so it is the same key in a file of some of them. */
-export const bibOf = (papers: Paper[], every: Paper[] = papers) => {
+/** The same as BibTeX. A paper's key is its first author and year, with a letter where the file holds two alike. */
+export const bibOf = (papers: Paper[]) => {
   // Papers by the same first author in the same year take a, b, c, and after z the letters double.
   const used = new Map<string, number>();
   const letters = (n: number): string => (n < 26 ? String.fromCharCode(97 + n) : letters(Math.floor(n / 26) - 1) + String.fromCharCode(97 + (n % 26)));
-  const keys = new Map(every.map((paper) => {
-    const base = `${(authorsOf(paper)[0] ?? "paper").split(" ").pop()!.toLowerCase().replace(/[^a-z]/g, "")}${paper.year}`;
-    const n = used.get(base) ?? 0;
-    used.set(base, n + 1);
-    return [paper.id, `${base}${letters(n)}`];
-  }));
   return papers
     .map((paper) => {
+      const base = `${(authorsOf(paper)[0] ?? "paper").split(" ").pop()!.toLowerCase().replace(/[^a-z]/g, "")}${paper.year ?? ""}`;
+      const n = used.get(base) ?? 0;
+      used.set(base, n + 1);
       const doi = doiOf(paper);
-      // "and others" is BibTeX's own way to end a list it doesn't have all of.
-      const authors = [...authorsOf(paper), ...(cutShort(paper) ? ["others"] : [])].join(" and ");
-      const words = [["title", paper.title], ["author", authors], ["journal", paper.venue], ["abstract", paper.sentences.join(" ")], ...(paper.original ? [["language", paper.original.language]] : [])].map(([name, value]) => [name, bibText(value!)]);
+      const words = [["title", paper.title], ["author", authorsOf(paper).join(" and ")], ...(paper.venue ? [["journal", paper.venue]] : []), ["abstract", paper.abstract]].map(([name, value]) => [name, bibText(value!)]);
       // An identifier is written as it is: a DOI's own signs are not text.
-      const fields = [...words.slice(0, 2), ["year", String(paper.year)], ...words.slice(2, 3), ...(doi ? [["doi", doi]] : []), ...words.slice(3), ["paperid", paper.id]];
-      return `@article{${keys.get(paper.id)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
+      const fields = [...words.slice(0, 2), ...(paper.year === undefined ? [] : [["year", String(paper.year)]]), ...words.slice(2), ...(doi ? [["doi", doi]] : []), ["paperid", paper.id]];
+      return `@article{${base}${letters(n)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
     })
     .join("\n\n");
 };
@@ -193,16 +193,14 @@ const VOTE_KEPT = "Voted, hidden";
  * to vote on, the others' rows say only what the page says: that a vote was cast, never which. Their own row is whole.
  * `whose` keeps one reviewer's rows.
  */
-export function voteRows(out: Taken, papers: Paper[], whose?: string) {
-  const { state, me } = out;
-  return papers.flatMap((paper) => {
-    const shown = sees(out, paper);
-    return state.votes[paper.id]!.flatMap((entry) => {
+export function voteRows(screening: Screening, papers: Paper[], whose?: string) {
+  return papers.flatMap((paper) =>
+    castOf(screening, paper).flatMap((entry) => {
       if (whose && entry.reviewer.id !== whose) return [];
-      const kept = !shown && entry.reviewer.id !== me && Boolean(entry.vote);
-      return [{ paper, reviewer: entry.reviewer, vote: kept ? undefined : entry.vote, kept, status: entry.failed ? NO_VOTE.failed : kept ? VOTE_KEPT : entry.vote ? "Voted" : state.settled[paper.id]!.final ? NO_VOTE.none : NO_VOTE.yet }];
-    });
-  });
+      const kept = Boolean(entry.hidden);
+      return [{ paper, reviewer: entry.reviewer, vote: entry.vote, kept, status: entry.failed ? NO_VOTE.failed : kept ? VOTE_KEPT : entry.vote ? "Voted" : settledOf(paper).final ? NO_VOTE.none : NO_VOTE.yet }];
+    }),
+  );
 }
 /** The columns of the votes file, each with what it holds. `criteria` stands for one column for each criterion. */
 export const VOTE_GUIDE = {
@@ -222,16 +220,15 @@ export const VOTE_GUIDE = {
   settled_note: PAPER_GUIDE.settled_note,
   voted_at: "When the vote was cast.",
 } as const;
-export const votesCsv = (out: Taken, papers: Paper[], whose?: string) => {
-  const { screening, state } = out;
+export const votesCsv = (screening: Screening, _me: string, papers: Paper[], whose?: string) => {
   const { criteria } = screening;
   return toCsv([
     // A criterion's column carries its number, so two with the same short name are still two columns.
     ["paper_id", "doi", "paper", "year", "reviewer", "reviewer_kind", "status", "decision", "reason", ...criteria.map((criterion, i) => `${i + 1}. ${criterion.short}`), "note", "paper_result", "settled_by", "settled_note", "voted_at"],
-    ...voteRows(out, papers, whose).map(({ paper, reviewer, vote, status }) => {
-      const settled = state.settled[paper.id]!;
+    ...voteRows(screening, papers, whose).map(({ paper, reviewer, vote, status }) => {
+      const settled = settledOf(paper);
       return [
-        paper.id, doiOf(paper) ?? "", paper.title, paper.year, reviewer.name, kindOf(reviewer), status, vote ? DECISION_LABEL[vote.decision] : "",
+        paper.id, doiOf(paper) ?? "", paper.title, paper.year ?? "", reviewer.name, kindOf(reviewer), status, vote ? DECISION_LABEL[vote.decision] : "",
         vote?.reason ? failedLabel(vote.reason, criteria) : "", ...criteria.map((criterion) => vote?.answers[criterion.key] ?? ""), vote?.note ?? "", RESULT_LABEL[settled.result],
         settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "", settled.note ?? "", vote ? iso(vote.at) : "",
       ];
@@ -246,22 +243,20 @@ export type FlowRow = { main: FlowBox; side: FlowBox[] };
 
 /** The flow of records, counted the way a PRISMA 2020 diagram counts them. */
 export function flowOf(out: Taken): FlowRow[] {
-  const { screening, state } = out;
-  const { counts } = state;
+  const { screening, counts, figures } = out;
   const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
   // What the sources held and the screening never took: papers with no abstract, and what couldn't be read or found.
   const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
-  const looks = screening.updates ?? [];
-  const later = looks.reduce((sum, look) => sum + look.found, 0);
+  const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   return [
     {
-      main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(later ? [{ label: looks.length === 1 ? `Of these, by the later search on ${fullDay(looks[0]!.at)}` : `Of these, by ${looks.length} later searches, the last on ${fullDay(looks.at(-1)!.at)}`, n: later }] : [])] },
+      main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(looks.added && looks.lastAt ? [{ label: looks.later === 1 ? `Of these, by the later search on ${fullDay(looks.lastAt)}` : `Of these, by ${looks.later} later searches, the last on ${fullDay(looks.lastAt)}`, n: looks.added }] : [])] },
       side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: "Duplicates", n: found - kept }, ...(bare ? [{ label: "No abstract", n: bare }] : []), ...(left - bare ? [{ label: "Could not be read or found", n: left - bare }] : [])] }],
     },
     {
       main: { title: open ? "Records in screening on title and abstract" : "Records screened on title and abstract", n: kept },
       side: [
-        { title: "Records excluded", n: counts.exclude, lines: excludedBy(state).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n })) },
+        { title: "Records excluded", n: counts.exclude, lines: excludedBy(figures).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n })) },
         ...(counts.maybe || open ? [{ title: open ? "Not yet included or excluded" : "Neither included nor excluded", n: counts.maybe + open, lines: [...(counts.maybe ? [{ label: "Left at Maybe", n: counts.maybe }] : []), ...(open ? [{ label: "Still open", n: open }] : [])] }] : []),
       ],
     },
@@ -305,27 +300,29 @@ export function flowSvg(out: Taken, at: number) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${y - gap + 30 + captionLines.length * 14}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${parts.join("")}${captionLines.map((text, k) => `<text x="${mainX}" y="${y - gap + 26 + k * 14}" font-size="11" fill="#666">${esc(text)}</text>`).join("")}</svg>`;
 }
 
+/** How far two reviewers agree, from the server's count of their votes on the papers both voted on. */
+const pairOf = (figures: Figures | undefined, a: string, b: string) => {
+  const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));
+  return held ? kappa(held.matrix) : null;
+};
+
 /** A paragraph for a review's methods section: what was done, in the past tense for what is done and the present for a screening still running. */
 export function methodsOf(out: Taken) {
-  const { screening, state, me } = out;
-  const { papers, votes, counts } = state;
+  const { screening, counts, figures } = out;
   const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
   const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
-  const looks = screening.updates ?? [];
-  const later = looks.reduce((sum, look) => sum + look.found, 0);
+  const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   const { people, each } = readersOf(screening);
   const [models, reviewers] = [modelsOf(screening), activeReviewers(screening)];
-  // Agreement is worked out on the votes the person taking it out may see.
-  const seen = { ...state, canSee: (paper: Paper) => seesVotes(screening, state, me, paper) };
-  const pair = people.length > 1 ? agreement(people[0]!.id, people[1]!.id, seen) : null;
-  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, seen)?.kappa ?? [])).sort((a, b) => a - b);
+  const pair = people.length > 1 ? pairOf(figures, people[0]!.id, people[1]!.id) : null;
+  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => pairOf(figures, a.id, b.id)?.kappa ?? [])).sort((a, b) => a - b);
   const names = people.map((person) => person.name);
   // Who reads each record, said the way a methods section says it.
   const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${names[0]})` : people.length === 2 ? `Both human reviewers (${names.join(" and ")})` : `All ${people.length} human reviewers (${names.join(", ")})`) : `${numberWord(each)} of the ${people.length} human reviewers (${names.join(", ")})`;
-  const unread = count(papers, (paper) => votes[paper.id]!.some((one) => one.failed));
-  const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
-  // What changed its settings or its reviewers after it began. Asking a reviewer, reminding one, pausing the models, sharing, moving and finishing are in its activity too, and change neither.
-  const changed = screening.changes.filter((change) => change.at > screening.createdAt && change.by !== SCHEDULE && !/^(Asked|Sent|Paused|Resumed|Moved|Marked|Reopened|Shared|Checked|Started)\b/.test(change.what)).length;
+  // The readings a model couldn't make: its paper was decided by the other reviewers.
+  const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
+  const lateCriteria = screening.criteria.filter((criterion) => later(screening, criterion.addedAt));
+  const changed = figures?.changes ?? 0;
   const settler = nameOn(screening, screening.rule.resolver);
   // The present for a screening still running. One marked finished is told in the past, whether or not papers were left open.
   const running = open > 0 && !screening.finishedAt;
@@ -334,16 +331,16 @@ export function methodsOf(out: Taken) {
   // Marked finished with papers left open: nothing is claimed of every record, since not every one was done.
   const partial = open > 0 && !running;
   // The people who joined after it began were given only what was still open then.
-  const late = people.filter((person) => person.addedAt > screening.createdAt);
+  const late = people.filter((person) => later(screening, person.addedAt));
   return [
     !open ? "" : running ? `Screening was still in progress when this was written: ${num(kept - open)} of ${num(kept)} records had been settled.` : `The screening was marked finished with ${plural(open, "record", "records")} still open: ${num(kept - open)} of ${num(kept)} records had been settled.`,
     `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
-    looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${fullDay(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
+    looks.later && looks.lastAt ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
     `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.`,
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
-    models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer and a quoted passage for every criterion${unread ? `; ${plural(unread, "record", "records")} could not be read by a model and ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",
+    models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",
     screening.rule.settle === "all" ? `A record ${is} settled when all of its reviewers agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its reviewers, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it.`,
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began. The screening's exported record lists each change and what it did.` : "",
@@ -353,19 +350,43 @@ export function methodsOf(out: Taken) {
   ].filter(Boolean).join(" ");
 }
 
+type Said = (typeof api.screening.discussion.all)["_returnType"]["page"][number];
+type Logged = (typeof api.screening.view.activity)["_returnType"]["page"][number];
+/** What its reviewers wrote to each other and what was changed, a page at a time: the parts of the whole record that aren't its papers. */
+async function* saidIn(convex: ConvexReactClient, args: { workspaceId: Id<"workspaces">; jobId: Id<"screeningJobs"> }) {
+  let cursor: string | null = null;
+  do {
+    const read: { page: Said[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.discussion.all, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
+    yield read.page;
+    cursor = read.isDone ? null : read.continueCursor;
+  } while (cursor);
+}
+async function* loggedIn(convex: ConvexReactClient, args: { workspaceId: Id<"workspaces">; jobId: Id<"screeningJobs"> }) {
+  let cursor: string | null = null;
+  do {
+    const read: { page: Logged[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.view.activity, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
+    yield read.page;
+    cursor = read.isDone ? null : read.continueCursor;
+  } while (cursor);
+}
+
 /**
  * The record in one file, for code or for keeping: the screening with its rule, its scoring and where its included
- * papers go, its criteria as they are asked, its reviewers and who else it is shared with, its sources with what each
- * check found, every paper with where it stands, every vote with what a model read, what reviewers wrote to each
- * other, what was changed, and a guide to the columns. Ids tie the parts together. It leaves out what the screening
- * cost and who is online. What is hidden from the person is left out too, and the file says how much.
+ * papers go, its criteria as they are asked, its reviewers, its sources with what each brought, every paper with
+ * where it stands, every vote with what a model read, what reviewers wrote to each other, what was changed, and a
+ * guide to the columns. Ids tie the parts together. It leaves out what the screening cost. What is hidden from the
+ * person is left out too, and the file says how much.
  */
-export function recordOf(out: Taken, at: number) {
-  const { screening, state, me } = out;
+export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"workspaces">, out: Taken, at: number) {
+  const { screening, me, counts } = out;
   const { criteria, rule, scoring, destination } = screening;
-  const hidden = hiddenIn(out, state.papers);
-  const visible = new Set(state.papers.filter((paper) => sees(out, paper)).map((paper) => paper.id));
-  const rows = voteRows(out, state.papers);
+  const of = { workspaceId, jobId: screening.id };
+  const papers = await everyPaper(convex, of);
+  let [said, logged]: [Said[], Logged[]] = [[], []];
+  for await (const page of saidIn(convex, of)) said = said.concat(page);
+  for await (const page of loggedIn(convex, of)) logged = logged.concat(page);
+  const rows = voteRows(screening, papers);
+  const hidden = { votes: rows.filter((row) => row.kept).length, papers: new Set(rows.flatMap((row) => (row.kept ? [row.paper.id] : []))).size };
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
   return {
@@ -375,7 +396,7 @@ export function recordOf(out: Taken, at: number) {
       id: screening.id,
       name: screening.name,
       question: screening.question,
-      workspace: workspaceOf(screening).name,
+      workspace: screening.workspace.name,
       started_by: nameOn(screening, screening.createdBy),
       started_at: iso(screening.createdAt),
       finished_at: screening.finishedAt ? iso(screening.finishedAt) : null,
@@ -383,17 +404,16 @@ export function recordOf(out: Taken, at: number) {
       rule: { people_on_each_paper: rule.each === "all" ? "Everyone" : Number(rule.each), settled_when: SETTLE_LABEL[rule.settle], conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind === "after" ? "Hidden from a reviewer only while the paper waits for that reviewer's own vote" : "At any time" },
       scoring: { points_needed_for_each_star: scoring.stars },
       included_papers_go_to: destination.kind === "none" ? null : { kind: destination.kind, name: collectionName(screening), collection_id: destination.kind === "new" ? null : (destination.collection ?? null), excluded_papers_removed_from_it: destination.prune },
-      shared_with: (screening.viewers ?? []).map((viewer) => ({ name: viewer.name, role: "Viewer", since: iso(viewer.addedAt) })),
-      counts: state.counts,
+      counts,
     },
     criteria: criteria.map((criterion, i) => {
       const [yes, no, unclear] = scoring.points[criterion.key] ?? [0, 0, 0];
-      return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
+      return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
-    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, facts: source.facts ?? [], filters: source.filters ?? [], left_out: source.files ? source.files.filter((file) => !pdfAdded(file)).map((file) => ({ name: file.name, why: PDF_LEFT[pdfStands(file) as keyof typeof PDF_LEFT] })) : (source.left ?? []), left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source), checks: (source.updates ?? []).map((update) => ({ at: iso(update.at), found: update.added, duplicates: update.duplicates })) })),
-    papers: paperRows(out, state.papers).map((row, i) => ({ ...row, source_id: state.papers[i]!.source })),
-    // The votes that were cast and show, each with what a model read for its answers and how sure it was.
+    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
+    papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null })),
+    // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{
       paper_id: paper.id,
       reviewer_id: reviewer.id,
@@ -402,14 +422,14 @@ export function recordOf(out: Taken, at: number) {
       answers: vote.answers,
       note: vote.note ?? null,
       voted_at: iso(vote.at),
-      ...(reviewer.kind === "model" ? { read: Object.fromEntries(criteria.flatMap((criterion) => { const answer = vote.answers[criterion.key]; return answer ? [[criterion.key, { passage: evidence(paper, criterion, criteria, answer).quote, confidence: Number(confidenceOf(paper, reviewer, criterion, answer).toFixed(2)) }]] : []; })) } : {}),
+      ...(reviewer.kind === "model" ? { read: Object.fromEntries(criteria.flatMap((criterion) => { const [sentence, confidence] = [vote.passages?.[criterion.key], vote.confidences?.[criterion.key]]; return vote.answers[criterion.key] ? [[criterion.key, { passage: sentence === undefined || sentence === null ? null : (sentencesOf(paper.abstract)[sentence] ?? null), confidence: confidence === undefined ? null : Number(confidence.toFixed(2)) }]] : []; })) } : {}),
     }] : [])),
     // Who was on a paper and cast no vote on it: someone who has yet to, someone the paper was settled without, a model that couldn't read it.
     without_a_vote: rows.flatMap(({ paper, reviewer, vote, kept, status }) => (vote || kept ? [] : [{ paper_id: paper.id, reviewer_id: reviewer.id, status }])),
     // The votes that were cast and are kept from the person: who cast them shows on the page, and here.
     hidden_votes: rows.flatMap(({ paper, reviewer, kept }) => (kept ? [{ paper_id: paper.id, reviewer_id: reviewer.id }] : [])),
-    discussion: Object.entries(screening.threads ?? {}).flatMap(([paper, lines]) => (visible.has(paper) ? lines.map((line) => ({ paper_id: paper, by: nameOn(screening, line.by), to: line.to ? nameOn(screening, line.to) : null, at: iso(line.at), text: line.text })) : [])),
-    activity: screening.changes.map((change) => ({ at: iso(change.at), by: change.by === SCHEDULE ? "On schedule" : nameOn(screening, change.by), what: change.what, effect: change.effect ?? null })),
+    discussion: said.map((line) => ({ paper_id: line.paperId, by: line.by.name, to: line.to?.name ?? null, at: iso(line.at), text: line.text })),
+    activity: logged.map((row) => { const says = changeSays(row); return { at: iso(row.at), by: row.by.name, what: says.what, effect: says.effect ?? null }; }),
   };
 }
 

@@ -245,7 +245,8 @@ export const sourceSetValidator = v.union(
 export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("scan"), v.literal("broken"), v.literal("wrong"));
 
 /** What a reviewer's votes come to, kept by the bookkeeping worker alone. */
-export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.number(), maybe: v.number(), exclude: v.number(), failed: v.number(), closed: v.number(), spent: v.number() });
+/** What a reviewer's votes come to. `missed`: the papers the screening included that they voted to exclude. */
+export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.number(), maybe: v.number(), exclude: v.number(), failed: v.number(), closed: v.number(), spent: v.number(), missed: v.optional(v.number()) });
 
 // ── What the pages read (./view.ts, ./paperViews.ts) ─────────────────────────────────────────────
 // Each list here is one its writes keep within a cap: a screening's reviewers and sources, and a paper's votes.
@@ -286,6 +287,8 @@ export const reviewerViewValidator = v.object({
   failed: v.number(),
   waiting: v.number(),
   spent: v.number(),
+  // The papers the screening included that they voted to exclude.
+  missed: v.number(),
 });
 export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
 
@@ -306,6 +309,8 @@ export const sourceViewValidator = v.object({
   taken: v.number(),
   duplicates: v.number(),
   left: v.number(),
+  // Of the ones left out, how many for having no abstract.
+  bare: v.number(),
   checkedAt: v.optional(v.number()),
 });
 export const sourceViewsValidator = capped(v.array(sourceViewValidator), MAX_SOURCE_ROWS);
@@ -321,7 +326,7 @@ export const voteViewValidator = v.object({
   confidences: voteConfidencesValidator,
   passages: optionalPassagesValidator,
 });
-/** One reviewer's place on a paper: their vote where the person looking may see it, that a model couldn't read the paper, or only that they are on it. */
+/** One reviewer's place on a paper: their vote where the person looking may see it, that a model couldn't read the paper, that they voted and how is kept from the person (`hidden`), or only that they are on it. */
 const castViewValidator = v.object({ reviewer: v.string(), vote: v.optional(voteViewValidator), failed: v.optional(v.boolean()), hidden: v.optional(v.boolean()) });
 
 /** A paper with the votes the person looking may see (./paperViews.ts `shown`). */
@@ -354,6 +359,24 @@ export const paperViewValidator = v.object({
   messages: v.number(),
   // A reviewer's question on it waits for the person looking.
   asked: v.optional(v.boolean()),
+});
+
+/** Pairs of reviewers whose agreement one read holds. */
+export const PAIRS_MAX = 400;
+/** The figures a screening's overview and its files are drawn from (./view.ts `figures`). */
+export const figuresValidator = v.object({
+  // Its excluded papers by the reason, and its included ones by the source that brought each.
+  reasons: capped(v.record(v.string(), v.number()), MAX_QUESTIONS + 2),
+  included: capped(v.record(v.string(), v.number()), MAX_SOURCE_ROWS),
+  // Each pair of reviewers' votes on the papers both voted on: include, maybe and exclude by the same three, row by row.
+  pairs: capped(v.array(v.object({ a: v.string(), b: v.string(), matrix: capped(v.array(v.number()), 9) })), PAIRS_MAX),
+  // The votes each person cast since the time asked for.
+  recent: capped(v.record(v.string(), v.number()), MAX_REVIEWERS),
+  startedWith: v.number(),
+  // Its checks for new papers after the start: how many, when the last one was, and what they found and added.
+  checks: v.object({ later: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number() }),
+  // How many times its settings were changed.
+  changes: v.number(),
 });
 
 /** The papers one move of a change's preview names, and the moves there can be: from each of five results to the four others. */

@@ -8,7 +8,6 @@ import { stream } from "convex-helpers/server/stream";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { effortValidator } from "../aiModelConfig/validators";
 import { itemKey, moreValidator } from "../activity/validators";
 import { availableCredits, planLimit } from "../billing/accounts";
 import { modelsLimit } from "./screenings";
@@ -22,9 +21,9 @@ import { isFinal } from "../../lib/screening/rules";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { reviewersOf, sourcesOf } from "./dealing";
+import { reviewersOf, sourcesOf, viewId } from "./dealing";
 import { NO_RESULTS } from "./settling";
-import { criteriaValidator, everyValidator, leftOutWhyValidator, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { criteriaValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -97,7 +96,7 @@ export type Summary = Infer<typeof summaryValidator>;
 
 /** A reviewer's row as the pages read it, with their counts. */
 async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screeningReviewers">] | undefined, members: Map<Id<"users">, boolean>): Promise<ReviewerView> {
-  const tally = { cast: counts?.cast ?? 0, include: counts?.include ?? 0, maybe: counts?.maybe ?? 0, exclude: counts?.exclude ?? 0, failed: counts?.failed ?? 0, spent: counts?.spent ?? 0 };
+  const tally = { cast: counts?.cast ?? 0, include: counts?.include ?? 0, maybe: counts?.maybe ?? 0, exclude: counts?.exclude ?? 0, failed: counts?.failed ?? 0, spent: counts?.spent ?? 0, missed: counts?.missed ?? 0 };
   const waiting = Math.max(0, reviewer.dealt - tally.cast - tally.failed - (counts?.closed ?? 0));
   const base = { row: reviewer._id, addedAt: reviewer.addedAt, ...(reviewer.left === undefined ? {} : { left: reviewer.left }), ...(reviewer.discarded === undefined ? {} : { discarded: reviewer.discarded }), ...(reviewer.reminded === undefined ? {} : { reminded: reviewer.reminded }), dealt: reviewer.dealt, ...tally, waiting };
   if (reviewer.kind === "model") {
@@ -280,7 +279,19 @@ export const tally = workspaceQuery({
   handler: async (ctx, { workspaceId }) => ({ open: await countOf(ctx, screeningsOf(workspaceId, false)), finished: await countOf(ctx, screeningsOf(workspaceId, true)) }),
 });
 
-const checkValidator = v.object({ id: v.id("screeningChecks"), at: v.number(), by: v.optional(personValidator), state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")), first: v.boolean(), found: v.number(), added: v.number() });
+const checkValidator = v.object({
+  id: v.id("screeningChecks"),
+  at: v.number(),
+  by: v.optional(personValidator),
+  state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  first: v.boolean(),
+  found: v.number(),
+  added: v.number(),
+  // Where the papers it added stand now, for a check that added few enough to count.
+  counts: v.optional(countsValidator),
+});
+/** The most papers a check may have added for where they stand to be counted with it. */
+const CHECK_COUNTED = 200;
 
 /** Checks one page of a screening's checks holds at most, and the latest of them looked through for the last that brought papers. */
 const CHECKS_PAGE = 50;
@@ -347,7 +358,7 @@ export const getAction = defineUserQuery({
       stars: job.stars ?? [],
       each: rule.each,
       blind: rule.blind,
-      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
+      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
       destination: job.libraryDestination
         ? { kind: "community" as const, name: job.libraryDestination.name, prune: job.prune === true }
         : job.newCollection
@@ -368,6 +379,46 @@ export const getAction = defineUserQuery({
 });
 export const get = userQuery(getAction);
 export const getForAssistant = assistantQuery(getAction);
+
+/** Checks counted for a methods paragraph, saves of its settings counted, and votes counted for a person's pace. */
+const CHECKS_COUNTED = 400;
+const CHANGES_COUNTED = 200;
+const RECENT_VOTES = 500;
+
+export const figuresAction = defineUserQuery({
+  path: "screening/view:figures",
+  description:
+    "Reads the figures a screening's overview and its files are drawn from: its excluded papers by the reason, its included papers by the source that brought each, how far each pair of reviewers agrees (a 3 by 3 count of their votes on the papers both voted on, include, maybe and exclude by the same three), " +
+    "how many votes each person cast since `since`, how many papers it started with, its later checks for new papers with what they found and added, and how many times its settings were changed.",
+  args: { jobId: v.id("screeningJobs"), since: v.number() },
+  returns: v.union(v.null(), figuresValidator),
+  run: async (ctx, actor, { jobId, since }) => {
+    const standing = await standingOn(ctx, actor, jobId);
+    if (!standing || standing.job.shape !== 2) return null;
+    const [progress, reviewers, pairs, checks, saves] = await Promise.all([
+      progressRow(ctx as QueryCtx, jobId),
+      reviewersOf(ctx, jobId),
+      ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", jobId)).take(PAIRS_MAX),
+      ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(CHECKS_COUNTED),
+      ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", standing.job.workspaceId).eq("item", itemKey("screening", jobId))).take(CHANGES_COUNTED),
+    ]);
+    const idOf = new Map(reviewers.map((one) => [one._id, viewId(one)]));
+    const people = reviewers.filter((one) => one.kind === "person" && one.left === undefined && one.userId);
+    const recent = await Promise.all(people.map(async (one) => [viewId(one), (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", one._id).eq("status", "cast").gte("at", since)).take(RECENT_VOTES)).length] as const));
+    const later = checks.filter((check) => check.from > 0 && check.state === "done");
+    return {
+      reasons: progress?.reasons ?? {},
+      included: progress?.included ?? {},
+      pairs: pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
+      recent: Object.fromEntries(recent),
+      startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
+      checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0) },
+      changes: saves.filter((row) => row.code === "settings").length,
+    };
+  },
+});
+export const figures = userQuery(figuresAction);
+export const figuresForAssistant = assistantQuery(figuresAction);
 
 /** What a source held that the screening doesn't take, a page at a time. */
 export const leftOutAction = defineUserQuery({
@@ -416,7 +467,14 @@ export const checksAction = defineUserQuery({
     const read = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) });
     const people = new Map<Id<"users">, Person>();
     for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, user ? personOf(user) : { id: check.by, name: SOMEONE }); }
-    return { ...read, page: read.page.map((check) => ({ id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added })) };
+    const stand = async (check: Doc<"screeningChecks">) => {
+      if (check.from === 0 || !check.added || check.added > CHECK_COUNTED) return undefined;
+      const papers = await ctx.db.query("screeningResults").withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", check._id)).take(CHECK_COUNTED);
+      const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
+      for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
+      return counts;
+    };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(counts ? { counts } : {}) }; })) };
   },
 });
 export const checks = userQuery(checksAction);

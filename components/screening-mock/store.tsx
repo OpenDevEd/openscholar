@@ -4,7 +4,7 @@
 // turned into the shape the pages share (./data.ts), with what they can do to it. Every page of an
 // open screening reads this one, so the frame, the Overview and the settings always agree.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -14,7 +14,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
 import type { Answer } from "@/lib/screening/setup";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { GROWS, keptOf, num, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, keptOf, num, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -36,7 +36,7 @@ export type ModelsState = "checking" | "gathering" | "paused" | "credits" | "wai
 
 /** A reviewer as the pages read them, from the server's row. */
 export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
-  const { dealt, cast, include, maybe, exclude, failed, waiting, spent } = row;
+  const { dealt, cast, include, maybe, exclude, failed, waiting, spent, missed } = row;
   return {
     id: row.id,
     row: row.row,
@@ -49,7 +49,7 @@ export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
     ...(row.left === undefined ? {} : { left: row.left }),
     ...(row.discarded === undefined ? {} : { discarded: row.discarded }),
     ...(row.reminded === undefined ? {} : { reminded: row.reminded }),
-    tally: { dealt, cast, include, maybe, exclude, failed, waiting, spent },
+    tally: { dealt, cast, include, maybe, exclude, failed, waiting, spent, missed },
   };
 }
 
@@ -67,7 +67,7 @@ function toSource(source: View["sources"][number]): Source {
     range: [source.first ?? 1, source.last ?? total],
     duplicates: source.duplicates,
     set: source.set as Source["set"],
-    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
+    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
     addedAt: source.addedAt,
   };
 }
@@ -122,6 +122,10 @@ export function useOpenScreening(id: string) {
   const remove = useWorkspaceMutation(api.screening.screenings.remove);
   const check = useWorkspaceMutation(api.screening.living.checkNow);
   const join = useWorkspaceMutation(api.screening.reviewers.joinIn);
+  const retry = useWorkspaceMutation(api.screening.reviewers.retry);
+  const remind = useWorkspaceMutation(api.screening.reviewers.remind);
+  const move = useWorkspaceMutation(api.screening.reviewers.move);
+  const takeOff = useWorkspaceMutation(api.screening.reviewers.remove);
   if (view === undefined) return undefined;
   if (!view || !screening) return null;
   const models = screening.reviewers.filter((one) => one.kind === "model" && !one.left);
@@ -185,9 +189,32 @@ export function useOpenScreening(id: string) {
     check: () => check({ jobId }),
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
     join: () => join({ jobId }),
+    /** Sends a model back to the papers it couldn't read. */
+    retry: (model: Reviewer) => (model.row ? retry({ jobId, reviewerId: model.row }) : Promise.resolve(null)),
+    /** Sends a person a reminder by email that papers wait for their vote. */
+    remind: (person: Reviewer) => (person.row ? remind({ jobId, reviewerId: person.row }) : Promise.resolve(null)),
+    /** Moves papers one person hasn't voted on yet to another. */
+    move: (from: Reviewer, to: Reviewer, papers: number) => (from.row && to.row ? move({ jobId, from: from.row, to: to.row, papers }) : Promise.resolve({ moved: 0 })),
+    /** Takes a reviewer off. Their votes keep counting unless they are thrown out. */
+    takeOff: (reviewer: Reviewer, discard: boolean) => (reviewer.row ? takeOff({ jobId, reviewerId: reviewer.row, ...(discard ? { discard: true } : {}) }) : Promise.resolve(null)),
   };
 }
 export type Open = NonNullable<ReturnType<typeof useOpenScreening>>;
+
+const HOUR = 3_600_000;
+/** How many days of votes set a person's pace. */
+export const PACE_DAYS = 3;
+/**
+ * The figures a screening's overview and its files are drawn from: its excluded papers by reason, its included ones
+ * by source, how far each pair of reviewers agrees, and each person's votes of the last days. Undefined while read.
+ */
+export function useFigures(id: Id<"screeningJobs">) {
+  // The time the pace is counted from is taken once, to the hour, so it is the same read for as long as the page is open.
+  const [now] = useState(() => Math.floor(Date.now() / HOUR) * HOUR);
+  const figures = useProtectedQuery(api.screening.view.figures, inWorkspace(useWorkspace(), { jobId: id, since: now - PACE_DAYS * DAY })).data;
+  return { figures: figures ?? undefined, now };
+}
+export type Figures = NonNullable<ReturnType<typeof useFigures>["figures"]>;
 
 /** How far a screening's models have read: the place of the slowest of them, as the meters show it. */
 export const modelsDone = (models: Reviewer[]) => (models.length ? Math.min(...models.map((model) => (model.tally?.cast ?? 0) + (model.tally?.failed ?? 0))) : 0);

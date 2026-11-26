@@ -13,7 +13,7 @@ import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { decide, isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { reviewersOf, votesOf } from "./dealing";
+import { reviewersOf, viewId, votesOf } from "./dealing";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { askedOf } from "./view";
 
@@ -22,7 +22,6 @@ type Vote = Doc<"screeningVotes">;
 type Reviewer = Doc<"screeningReviewers">;
 
 /** What a reviewer is named by on a page: a person's account, a model's own row. */
-const viewId = (reviewer: Reviewer) => (reviewer.kind === "person" && reviewer.userId ? reviewer.userId : reviewer._id);
 
 type VoteView = Infer<typeof voteViewValidator>;
 const paperValidator = paperViewValidator;
@@ -48,7 +47,7 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
 /**
  * A paper with the votes the person looking may see. The others' votes are kept from a reviewer only while the paper
  * still waits for their own (lib/screening/rules.ts `seesVotes`): then each other reviewer is named as being on it,
- * and nothing of their vote is told. Their own vote always shows.
+ * with whether they have voted and nothing of how. Their own vote always shows.
  */
 export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper: Paper, votes: Vote[]): PaperView {
   const mine = reviewer ? votes.find((vote) => vote.reviewerId === reviewer._id) : undefined;
@@ -61,7 +60,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
       const by = reviewers.get(vote.reviewerId);
       const own = vote.reviewerId === reviewer?._id;
       const told = sees || own ? voteOf(job, vote, by) : undefined;
-      return { reviewer: by ? viewId(by) : vote.reviewerId, ...(told ? { vote: told } : {}), ...((sees || own) && vote.status === "failed" ? { failed: true } : {}), ...(!sees && !own ? { hidden: true } : {}) };
+      return { reviewer: by ? viewId(by) : vote.reviewerId, ...(told ? { vote: told } : {}), ...(vote.status === "failed" ? { failed: true } : {}), ...(!sees && !own && vote.status === "cast" ? { hidden: true } : {}) };
     });
   return {
     id: paper._id,
@@ -157,31 +156,34 @@ export const queueAction = defineUserQuery({
 export const queue = userQuery(queueAction);
 export const queueForAssistant = assistantQuery(queueAction);
 
-const SORTS = v.union(v.literal("added"), v.literal("title"), v.literal("newest"), v.literal("split"), v.literal("points"));
+const SORTS = v.union(v.literal("added"), v.literal("title"), v.literal("title-desc"), v.literal("result"), v.literal("newest"), v.literal("split"), v.literal("points"));
 
 export const listAction = defineUserQuery({
   path: "screening/paperViews:list",
   description:
-    "Lists a screening's papers, a page at a time, each with where it stands and its reviewers' votes as the person may see them. Kept to one result (`result`: include, maybe, exclude, conflict or waiting), one source, the papers one check of the sources brought (`check`), one reason for excluding, " +
-    "the papers a reviewer is on (`reviewer`, a person's ID or a model's row), with `voted` the ones they voted one way (include, maybe, exclude), have yet to vote on (`none`) or a model couldn't read (`failed`), and with `also` the ones those other reviewers voted on too. `text` keeps the papers whose title or authors match. " +
-    "In the order they were added, by title, newest published first, most divided first (`split`) or most points first.",
+    "Lists a screening's papers, a page at a time, each with where it stands and its reviewers' votes as the person may see them. Kept to one result (`result`: include, maybe, exclude, conflict or waiting), one source, the papers one check of the sources brought (`check`, or `start` for the ones it started with), one reason for excluding, " +
+    "the papers a reviewer is on (`reviewer`, a person's ID or a model's row), with `voted` the ones they voted one way (include, maybe, exclude), have yet to vote on (`none`), a model couldn't read (`failed`) or, for a person, settled themselves whatever the votes said (`settled`), and with `also` the ones those other reviewers voted on too. `text` keeps the papers whose title or authors match. " +
+    "In the order they were added, by title either way, grouped by result, newest published first, most divided first (`split`) or most points first.",
   args: {
     ...byJob,
     result: v.optional(paperResultValidator),
     source: v.optional(v.id("screeningSources")),
-    check: v.optional(v.id("screeningChecks")),
+    check: v.optional(v.union(v.id("screeningChecks"), v.literal("start"))),
     reason: v.optional(v.string()),
     reviewer: v.optional(v.string()),
-    voted: v.optional(v.union(decisionValidator, v.literal("none"), v.literal("failed"))),
+    voted: v.optional(v.union(decisionValidator, v.literal("none"), v.literal("failed"), v.literal("settled"))),
     also: v.optional(v.array(v.string())),
     text: v.optional(v.string()),
     sort: v.optional(SORTS),
     paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(paperValidator),
-  run: async (ctx, actor, { jobId, result, source, check, reason, reviewer, voted, also, text, sort = "added", paginationOpts }) => {
+  run: async (ctx, actor, { jobId, result, source, check: asked, reason, reviewer, voted, also, text, sort = "added", paginationOpts }) => {
     const looking = await lookingAt(ctx, actor, jobId);
     if (!looking) return NONE;
+    // The papers it started with are the ones its first look in its sources brought.
+    const check = asked === "start" ? looking.first : asked;
+    if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
     const others = (also ?? []).flatMap((id) => rowOf(id)?._id ?? []);
@@ -201,6 +203,14 @@ export const listAction = defineUserQuery({
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(options);
       return { ...read, page: await withVotes(read.page.filter(keeps)) };
     }
+    const papers = stream(ctx.db, schema).query("screeningResults");
+    // The conflicts one person settled: by whoever settled them, who needn't be one of its reviewers.
+    if (reviewer && voted === "settled") {
+      const settler = ctx.db.normalizeId("users", reviewer);
+      if (!settler) return NONE;
+      const read = await papers.withIndex("by_job_and_resolver", (q) => q.eq("jobId", jobId).eq("resolved.by", settler)).filterWith(async (paper) => keeps(paper)).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
+      return { ...read, page: await withVotes(read.page) };
+    }
     const row = reviewer ? rowOf(reviewer) : undefined;
     if (reviewer && !row) return NONE;
     if (row) {
@@ -208,20 +218,26 @@ export const listAction = defineUserQuery({
       const votes = ctx.db.query("screeningVotes");
       const read = await (voted === "none" || voted === "failed"
         ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
-        : voted
+        : voted && voted !== "settled"
           ? votes.withIndex("by_reviewer_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
       ).paginate(options);
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.
-      const papers = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
-      return { ...read, page: await withVotes(papers) };
+      const theirs = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
+      // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too: a list that held it would say what its mark doesn't.
+      const told = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
+      return { ...read, page: (await withVotes(theirs)).filter((paper) => !told || paper.sees) };
     }
-    const papers = stream(ctx.db, schema).query("screeningResults");
-    const field = { title: "title", newest: "publicationYear", split: "split", points: "score" } as const;
-    const down = sort === "newest" || sort === "split" || sort === "points";
+    const field = { title: "title", "title-desc": "title", newest: "publicationYear", split: "split", points: "score" } as const;
+    const down = sort === "title-desc" || sort === "newest" || sort === "split" || sort === "points";
     // The one filter an index takes with each order, most telling first; whatever else was asked for is kept in passing.
     const read = await (
-      sort === "added"
+      // Grouped by where they stand, in the order the index keeps the results in: one result alone is in the order its papers were added.
+      sort === "result"
+        ? result
+          ? papers.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result))
+          : papers.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId))
+        : sort === "added"
         ? reason
           ? papers.withIndex("by_job_and_reason", (q) => q.eq("jobId", jobId).eq("reason", reason))
           : check

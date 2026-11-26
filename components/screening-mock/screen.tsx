@@ -40,7 +40,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, questionOf, sentencesOf, settledOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
+import { plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
@@ -100,8 +100,6 @@ const apartAt = (given: Array<Answer | undefined>) => {
   return given.findIndex((one) => one !== undefined && one !== top);
 };
 
-/** Someone whose vote is on a paper and who the screening no longer lists. */
-const someone = (id: string): Reviewer => ({ id, kind: "person", name: "Someone who left", addedAt: 0 });
 /** A list with one item put in at a place. */
 const insertAt = <T,>(list: T[], at: number, item: T) => [...list.slice(0, at), item, ...list.slice(at)];
 /** A vote as it is cast again: what an undo puts back. */
@@ -150,7 +148,7 @@ function Screen({ open }: { open: Open }) {
   const { folded, guides, paced: paces, set: setKept } = useKept();
   const paced = paces[open.me] ?? NO_PACE;
   const holding = `${id}:${queue}:${order}:${words.toLowerCase()}:${voted}`;
-  const myVote = (one: Paper) => one.cast.find((place) => place.reviewer === open.me)?.vote;
+  const myVote = (one: Paper) => voteOn(one, open.me);
   // Dealt with: no longer among what the queue holds. In To do that is a paper you voted on, in Vote again one whose vote you have cast again, and in Conflicts one that is settled. Done keeps every paper, and dims one that is no longer the vote it is narrowed to.
   const dealtWith = (one: Paper) => (queue === "todo" ? Boolean(myVote(one)) : queue === "again" ? !myVote(one)?.flagged : queue === "conflicts" ? one.result !== "conflict" : voted !== "any" && myVote(one)?.decision !== voted);
 
@@ -234,7 +232,7 @@ function Screen({ open }: { open: Open }) {
   const mine = paper ? myVote(paper) : undefined;
   const visible = paper?.sees ?? false;
   // Your own column first, then the other people, then the models, the same on every paper.
-  const cast = paper ? youFirst(paper.cast.map((place) => ({ ...place, vote: place.vote, reviewer: screening.reviewers.find((one) => one.id === place.reviewer) ?? someone(place.reviewer) })), open.me) : [];
+  const cast = paper ? youFirst(castOf(screening, paper), open.me) : [];
   // The last thing done here, read as it stands now: what the vote led to shows beside it.
   const lastRead = useProtectedQuery(api.screening.paperViews.paper, inWorkspace(workspaceId, last && last.paper.id !== paper?.id ? { jobId: id, paperId: last.paper.id } : "skip")).data;
   const lastPaper = last ? (last.paper.id === paper?.id ? paper : (lastRead ?? last.paper)) : undefined;
@@ -1061,7 +1059,7 @@ function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; 
 }
 
 /** A reviewer's face at the head of their column, with their name under it where the table has the room: it opens their vote, its reason and their note. */
-function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: { reviewer: Reviewer; vote: Vote | undefined; failed?: boolean; settled: boolean; you: boolean; kept: boolean; criteria: Criterion[]; /** The classes that show the name, from the width where the columns are wide enough for it. */ named: string }) {
+function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: { reviewer: Reviewer; vote: Vote | undefined; failed?: boolean; settled: boolean; you: boolean; /** They voted, and how is kept from the person looking. */ kept: boolean; criteria: Criterion[]; /** The classes that show the name, from the width where the columns are wide enough for it. */ named: string }) {
   const style = vote ? RESULT_STYLE[vote.decision] : null;
   return (
     <Popover>
@@ -1085,7 +1083,7 @@ function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: {
           {failed ? (
             <StateChip tone="destructive" icon={TriangleAlert}>{NO_VOTE.failed}</StateChip>
           ) : kept ? (
-            <ShutChip by="vote" />
+            <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
           ) : vote && style ? (
             <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
           ) : (
@@ -1103,7 +1101,7 @@ function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: {
 /** Each reviewer's answer to each criterion, and their vote: who said what. */
 export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, settled = false, passage }: {
   criteria: Criterion[];
-  cast: Array<{ reviewer: Reviewer; vote?: Vote; failed?: boolean }>;
+  cast: Array<{ reviewer: Reviewer; vote?: Vote; failed?: boolean; /** They voted, and how is kept from the person looking. */ hidden?: boolean }>;
   /** Whose face is ringed as yours. */
   me?: string;
   shown: { reviewer: string; criterion: string } | null;
@@ -1115,7 +1113,6 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
   /** What opens under the row of the answer that is shown, such as the passage a model read. */
   passage?: ReactNode;
 }) {
-  const kept = (reviewer: Reviewer) => hidden && reviewer.id !== me;
   // The passage's place in what scrolls is the outside system: once it has opened it is brought into view, so it never opens out of sight under the vote bar.
   const opened = useRef<HTMLDivElement>(null);
   // Where the table's box is wide enough, each column widens and carries its reviewer's name under the face. How wide that is depends on how many columns there are. Written out whole, so Tailwind finds them.
@@ -1127,10 +1124,10 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
     <div className={cn("-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 [--mark:1.75rem] *:my-[3px] sm:w-fit sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]", wide.column)} style={{ "--marks": `repeat(${cast.length}, var(--mark))` } as React.CSSProperties}>
       {/* Where the faces stand without names, the ring around one of them is named in the corner beside them. */}
       {me && cast.some((one) => one.reviewer.id === me) ? <span className={cn("flex items-center gap-1.5 self-end pb-1 text-xs text-muted-foreground", wide.key)}><span aria-hidden className="ms-0.5 size-2.5 rounded-full ring-2 ring-primary/70 ring-offset-1 ring-offset-card" />You</span> : <span />}
-      {cast.map(({ reviewer, vote, failed }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} settled={settled} you={reviewer.id === me} kept={kept(reviewer)} criteria={criteria} named={wide.name} />)}
+      {cast.map(({ reviewer, vote, failed, hidden: kept }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} settled={settled} you={reviewer.id === me} kept={Boolean(kept)} criteria={criteria} named={wide.name} />)}
       {/* While the others' votes are kept from you the criteria's rows would hold nothing but locks: the faces and the row of votes say who has voted, and that is all there is to see. */}
       {hidden ? null : criteria.map((criterion, n) => {
-        const given = cast.map((one) => (kept(one.reviewer) ? undefined : one.vote?.answers[criterion.key]));
+        const given = cast.map((one) => one.vote?.answers[criterion.key]);
         const split = new Set(given.filter(Boolean)).size > 1;
         return (
           <div key={criterion.key} className="contents">
@@ -1141,9 +1138,9 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
                 <button type="button" aria-label={`${criterion.short}: show the answer that differs`} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>Differ<ChevronDown aria-hidden className="size-3" /></button>
               ) : null}
             </span>
-            {cast.map(({ reviewer, vote }, i) => {
-              if (kept(reviewer)) {
-                return <VoteMark key={reviewer.id} vote={vote} hidden who={`${reviewer.name}, ${criterion.short}`} className="mx-auto flex" />;
+            {cast.map(({ reviewer, hidden: kept }, i) => {
+              if (kept) {
+                return <VoteMark key={reviewer.id} hidden who={`${reviewer.name}, ${criterion.short}`} className="mx-auto flex" />;
               }
               const answer = given[i];
               if (!answer) return <span key={reviewer.id} className="mx-auto size-6 rounded-md border border-dashed border-border" />;
@@ -1167,8 +1164,8 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
         );
       })}
       <span className={cn("text-xs font-medium", !hidden && "border-t border-border-subtle pt-2")}>Vote</span>
-      {cast.map(({ reviewer, vote, failed }) => (
-        <span key={reviewer.id} className={cn("flex justify-center", !hidden && "border-t border-border-subtle pt-2")}><VoteMark vote={vote} hidden={kept(reviewer)} failed={failed} settled={settled} who={reviewer.name} /></span>
+      {cast.map(({ reviewer, vote, failed, hidden: kept }) => (
+        <span key={reviewer.id} className={cn("flex justify-center", !hidden && "border-t border-border-subtle pt-2")}><VoteMark vote={vote} hidden={kept} failed={failed} settled={settled} who={reviewer.name} /></span>
       ))}
     </div>
     </div>

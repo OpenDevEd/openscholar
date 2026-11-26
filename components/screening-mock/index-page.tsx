@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -43,7 +43,6 @@ const SORTS = [
   { value: "oldest", label: "Oldest" },
   { value: "name", label: "Name" },
 ] as const;
-type Sort = (typeof SORTS)[number]["value"];
 /** The groups the rows fall in, and past All a tab for each, under the same name: the tabs' counts add up to All's. */
 const GROUPS = ["Needs you", "In progress", "Finished"] as const;
 const SHOWS = ["you", "open", "finished"] as const;

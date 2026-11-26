@@ -7,7 +7,6 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { Answer } from "@/lib/screening/setup";
 import { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf, type Decision, type Result } from "@/lib/screening/rules";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
@@ -47,7 +46,7 @@ export type Workspace = { id: string; kind: "organization" | "personal"; name: s
 export const lookOf = (workspace: Workspace) => ({ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id });
 
 /** A reviewer's counts, kept by the server: papers given to them, the ones voted on by how, the ones a model couldn't read, the ones that still wait, and what a model has cost. */
-export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; spent: number };
+export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; spent: number; /** The papers the screening included that they voted to exclude. */ missed: number };
 
 /**
  * Someone or something that votes: a person, a person invited by email who has no account yet, or a
@@ -96,7 +95,7 @@ export type SourceSet =
   | { kind: "pdf"; files: Array<{ file: Id<"_storage">; name: string }> }
   | { kind: "dois"; file: Id<"_storage"> };
 /** How a source's reading stands on the server, once the screening exists: what was read of it, taken, merged with another source's and left out. */
-export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; checkedAt?: number; removedAt?: number };
+export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; checkedAt?: number; removedAt?: number };
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
 export type Source = {
   id: string;
@@ -133,7 +132,7 @@ export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No suc
 /** How many things a source held that the screening doesn't take. */
 export const leftOf = (source: Source) => source.read?.left ?? (source.files ? source.files.filter((file) => !pdfAdded(file)).length : (source.left?.length ?? 0)) + (source.bare ?? 0);
 /** How many of those are papers with no abstract. */
-export const bareOf = (source: Source) => (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length + (source.files ?? []).filter((file) => pdfStands(file) === "abstract").length;
+export const bareOf = (source: Source) => source.read?.bare ?? (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length + (source.files ?? []).filter((file) => pdfStands(file) === "abstract").length;
 export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + leftOf(source), 0);
 /** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
 export type LeftOut = { name: string; why: string };
@@ -213,6 +212,15 @@ export type Paper = NonNullable<FunctionReturnType<typeof api.screening.paperVie
 export type Cast = Paper["cast"][number];
 /** A reviewer's vote on a paper. A model's carries how sure it was of each answer and the sentence of the abstract it relied on, counted from 0. */
 export type Vote = NonNullable<Cast["vote"]>;
+/** A paper's places with who holds each, as the pages draw them. Someone whose vote stands and who the screening no longer lists is still named. */
+export const castOf = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) =>
+  paper.cast.map((place) => ({ ...place, vote: place.vote, reviewer: screening.reviewers.find((one) => one.id === place.reviewer) ?? ({ id: place.reviewer, kind: "person", name: "Someone who left", addedAt: 0 } satisfies Reviewer) }));
+/** One reviewer's vote on a paper, where the person looking may see it. */
+export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
+/** Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes. */
+export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0));
+/** The most points a paper can earn under the screening's scoring. */
+export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => screening.criteria.reduce((sum, criterion) => sum + Math.max(...(screening.scoring.points[criterion.key] ?? [1, 0, 0])), 0);
 /** Where a paper stands, and who settled it where a person did. */
 export type Settled = { result: Result; final?: Decision; resolvedBy?: string; note?: string; reason?: string };
 /** Where a paper stands, as its own row says it. */

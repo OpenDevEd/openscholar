@@ -1491,6 +1491,8 @@ export default defineSchema({
     .index("by_job_and_result_and_score", ["jobId", "result", "score"])
     .index("by_job_and_result_and_split", ["jobId", "result", "split"])
     .index("by_job_and_reason", ["jobId", "reason"])
+    // The papers one person settled, whatever their votes say.
+    .index("by_job_and_resolver", ["jobId", "resolved.by"])
     .index("by_job_and_source", ["jobId", "sourceId"])
     .index("by_job_and_check", ["jobId", "checkId"])
     .index("by_job_and_doiKey", ["jobId", "doiKey"])
@@ -1543,6 +1545,8 @@ export default defineSchema({
     counts: v.optional(v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number() })),
     reasons: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS + 2),
     reviewers: capped(v.optional(v.record(v.id("screeningReviewers"), reviewerCountsValidator)), MAX_LIST_CAP),
+    // Its included papers by the source that brought each.
+    included: capped(v.optional(v.record(v.string(), v.number())), MAX_LIST_CAP),
     // Papers kept on record whose source was taken out: its papers are the ones it placed, less these.
     withdrawn: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
@@ -1640,6 +1644,8 @@ export default defineSchema({
     taken: v.number(),
     duplicates: v.number(),
     left: v.number(),
+    // Of the ones left out, how many for having no abstract.
+    bare: v.optional(v.number()),
     // Where a living check goes on from: when it last looked.
     checkedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),

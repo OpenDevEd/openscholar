@@ -3,10 +3,10 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { createContext, use, useLayoutEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
-import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
+import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -27,14 +27,13 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
+import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { useScreeningOverlays } from "./overlays";
 import { StateChip, Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
 import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
-import { AddModel, AddPerson } from "./team";
 
 type View = "overview" | "screen" | "papers" | "settings";
 
@@ -382,15 +381,6 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         {overlays.overlays}
       </PageWrapper>
     </MotionConfig>
-  );
-}
-
-/** An icon-only button that opens a picker. The picker hands it the trigger's own props, and the hint names it. */
-function PickerButton({ hint, className, ...button }: ComponentProps<typeof Button> & { hint: string }) {
-  return (
-    <TooltipHint label={hint}>
-      <Button variant="outline" size="icon" aria-label={hint} {...button} className={cn("size-8 shrink-0", className)} />
-    </TooltipHint>
   );
 }
 

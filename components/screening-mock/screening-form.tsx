@@ -10,7 +10,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, Eye, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -226,8 +226,6 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   }
   return parts;
 }
-/** What a save changed, in a few words, for the screening's activity. */
-const describe = (before: Screening, after: Screening) => changesOf(before, after).map((part) => part.text).join(", ").replace(/, ([A-Z])/g, (_, letter: string) => `, ${letter.toLowerCase()}`);
 /** A list with one item put back where it was. */
 const insertAt = <T,>(list: T[], at: number, item: T) => [...list.slice(0, at), item, ...list.slice(at)];
 /** A list in the saved order, with what is new to it after. */

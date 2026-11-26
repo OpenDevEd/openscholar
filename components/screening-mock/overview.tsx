@@ -4,7 +4,8 @@
 // to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
 // section asks for.
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -20,14 +21,21 @@ import { Slider } from "@/components/ui/slider";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
+import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { kappa } from "@/lib/screening/rules";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, inOrder, num, plural, excludedBy, bareOf, leftOf, leftTotal, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
+import { DAY, PERSON_SAYS, inOrder, num, plural, bareOf, leftOf, leftTotal, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
-import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText, collectionName } from "./effects";
+import { EffectList, NO_PREVIEW, effectLines, collectionName } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, LeftOutNote, StateChip } from "./parts";
-import { walletOf, credits, useMock, type Open, spentOf, perPaper } from "./store";
+import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
+import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,6 +50,9 @@ const PLACE = {
 const HATCH = "bg-foreground/10 bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
 /** A row or a count that opens its papers. */
 const ROW_LINK = "rounded-lg outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50";
+const notSaved = (error: unknown) => showStyledToast("error", getErrorMessage(error, "That didn't work. Try again."));
+/** The cells of a pair's matrix where the two voted the same way. */
+const SAME = [0, 4, 8];
 
 /** The Overview as a page of the open screening. */
 export function OverviewPage() {
@@ -50,9 +61,10 @@ export function OverviewPage() {
 }
 
 function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
-  const { screening, papers } = open;
+  const { screening, total } = open;
+  const read = useFigures(screening.id);
 
-  if (!papers.length && open.gathering) {
+  if (!total && open.gathering) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">Its papers are on their way</p>
@@ -60,7 +72,7 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
       </div>
     );
   }
-  if (!papers.length) {
+  if (!total) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">No papers yet</p>
@@ -75,12 +87,12 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
       <Progress open={open} onExport={onExport} />
       {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. Two rows of two, each smaller block beside the one it goes with: who started it, where its papers go and what its models cost beside the reviewers, and the checks that bring papers in beside how far the reviewers agree. */}
       <div className="grid grid-cols-1 items-start gap-8 @5xl/overview:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="min-w-0"><Reviewers open={open} /></div>
+        <div className="min-w-0"><Reviewers open={open} figures={read.figures} now={read.now} /></div>
         <div className="min-w-0"><Facts open={open} /></div>
-        <div className="min-w-0"><Agreement open={open} /></div>
-        <div className="min-w-0"><Checks open={open} /></div>
+        <div className="min-w-0"><Agreement open={open} figures={read.figures} /></div>
+        <div className="min-w-0"><Checks open={open} figures={read.figures} /></div>
       </div>
-      <Flow open={open} onExport={onExport} />
+      <Flow open={open} figures={read.figures} onExport={onExport} />
     </div>
   );
 }
@@ -90,20 +102,20 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
 /** How far the screening has got, in the colour of what it needs: the person looking, nobody, or someone else. */
 function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { finish } = useWorkspace();
-  const { screening, papers, counts, toDo, conflicts } = open;
+  const { screening, total, counts, toDo, conflicts } = open;
   const settledAll = counts.conflict + counts.waiting === 0;
-  const settle = conflicts.length > 0 && open.canResolve;
-  const tone: Tone = toDo.length || settle ? "primary" : settledAll ? "success" : "neutral";
+  const settle = conflicts > 0 && open.canResolve;
+  const tone: Tone = toDo || settle ? "primary" : settledAll ? "success" : "neutral";
   const finishable = settledAll && open.canChange && !open.screening.finishedAt;
   const to = screening.destination;
   const extract = `/extraction/new?${to.collection ? `collection=${to.collection}` : `screening=${screening.id}`}`;
   const finished = Boolean(screening.finishedAt);
 
-  const screen = toDo.length ? (
-    <Button asChild size="sm" variant={finished ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo.length} /> {toDo.length === 1 ? "paper" : "papers"}</NextLink></Button>
+  const screen = toDo ? (
+    <Button asChild size="sm" variant={finished ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo} /> {toDo === 1 ? "paper" : "papers"}</NextLink></Button>
   ) : null;
-  const conflictsButton = conflicts.length ? (
-    <Button asChild size="sm" variant={toDo.length || finished || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</NextLink></Button>
+  const conflictsButton = conflicts ? (
+    <Button asChild size="sm" variant={toDo || finished || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts} /> {conflicts === 1 ? "conflict" : "conflicts"}</NextLink></Button>
   ) : null;
 
   return (
@@ -141,8 +153,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
       >
         <div className="space-y-3">
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
-            <span className="text-sm text-muted-foreground">of {num(papers.length)} papers settled</span>
+            <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={total - counts.conflict - counts.waiting} /></span>
+            <span className="text-sm text-muted-foreground">of {num(total)} papers settled</span>
             {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING}</Chip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
@@ -174,17 +186,14 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
 /** Your own votes, each count opening those papers, and the papers of yours that still wait for someone else. */
 function Yours({ open }: { open: Open }) {
   const { screening } = open;
-  const mine = open.yours.flatMap((paper) => open.myVote(paper) ?? []);
-  if (!mine.length) return null;
-  const waiting = open.yours.filter((paper) => open.myVote(paper) && open.settled[paper.id]!.result === "waiting");
-  const others = [...new Map(waiting.flatMap((paper) => open.votes[paper.id]!.filter((one) => !one.vote && !one.failed).map((one) => [one.reviewer.id, one.reviewer] as const))).values()];
-  const named = others.slice(0, 2);
+  const mine = screening.reviewers.find((one) => one.id === open.me)?.tally;
+  if (!mine?.cast) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-card/70 px-3 py-2 text-sm">
-      <span className="font-medium">Your {plural(mine.length, "vote", "votes")}</span>
+      <span className="font-medium">Your {plural(mine.cast, "vote", "votes")}</span>
       <span className="flex items-center gap-1">
         {DECISIONS.map((decision) => {
-          const n = count(mine, (vote) => vote.decision === decision);
+          const n = mine[decision];
           const Icon = RESULT_STYLE[decision].icon;
           return n ? (
             <NextLink key={decision} href={papersHref(screening.id, { voted: decision })} aria-label={`${n} you voted ${DECISION_LABEL[decision]}`} className={cn("flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium tabular-nums", TONE[RESULT_STYLE[decision].tone].ink, ROW_LINK)}>
@@ -194,21 +203,8 @@ function Yours({ open }: { open: Open }) {
           ) : null;
         })}
       </span>
-      {waiting.length ? (
-        <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">
-          {/* A sentence of its own, about papers: "them" after "Your 73 votes" read as votes that wait. */}
-          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={INLINE_LINK}>{plural(waiting.length, "paper you voted on", "papers you voted on")}</NextLink>
-          {waiting.length === 1 ? " still waits for " : " still wait for "}
-          {named.map((reviewer, i) => (
-            <span key={reviewer.id}>
-              {i ? (i === named.length - 1 && others.length <= 2 ? " and " : ", ") : ""}
-              {/* Your papers that still wait for this reviewer's vote. */}
-              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className={cn(INLINE_LINK, "font-normal")}>{shortName(reviewer)}</NextLink>
-            </span>
-          ))}
-          {others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote.
-        </span>
-      ) : null}
+      {/* The papers of theirs that still wait for someone else, where any paper still waits. */}
+      {open.counts.waiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>The papers you voted on that still wait for other votes</NextLink> : null}
     </div>
   );
 }
@@ -219,8 +215,8 @@ function Yours({ open }: { open: Open }) {
 /** The columns of the Reviewers table: on a phone a row is two lines, the name alone on the first. */
 const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,3.25rem)_10.5rem_2rem]";
 
-function Reviewers({ open }: { open: Open }) {
-  const { screening, papers, votes, settled } = open;
+function Reviewers({ open, figures, now }: { open: Open; figures: Figures | undefined; now: number }) {
+  const { screening, counts } = open;
   const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   // Taking someone off keeps their votes counting. Throwing the votes out is asked for, in the same dialog.
@@ -228,49 +224,32 @@ function Reviewers({ open }: { open: Open }) {
   // The person some papers are being moved from, while that is being set up.
   const [moving, setMoving] = useState<string | null>(null);
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const rows = useMemo(
-    () =>
-      reviewers.map((reviewer) => {
-        const theirs = papers.filter((paper) => votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id));
-        const cast = theirs.flatMap((paper) => votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote ?? []);
-        // Which way someone else voted counts only on the papers whose votes the person looking may see: the split and the agreement leave the rest out, as the Papers page does.
-        const seen = reviewer.id === open.me ? theirs : theirs.filter((paper) => open.canSee(paper));
-        const told = seen.flatMap((paper) => votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote ?? []);
-        const judged = theirs.flatMap((paper) => {
-          const [vote, final] = [votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote, settled[paper.id]!.final];
-          return vote && final ? [{ vote: vote.decision, final }] : [];
-        });
-        // A vote is compared with the people's: the other people given the paper for a person, all of them for a model, and never with a model's. There is something to agree with where at least one of those people has voted and the ones who have voted alike.
-        const compared = seen.flatMap((paper) => {
-          const cast = votes[paper.id]!.filter((one) => !one.failed);
-          const mine = cast.find((one) => one.reviewer.id === reviewer.id)?.vote;
-          const people = cast.flatMap((one) => (one.reviewer.kind === "person" && one.reviewer.id !== reviewer.id && one.vote ? [one.vote.decision] : []));
-          if (!mine || !people.length || new Set(people).size > 1) return [];
-          return [people[0] === mine.decision];
-        });
-        // A person's pace is what they voted on in the last three days. At that pace, how long what is left takes them.
-        // What is left for them is what their To do holds: their papers without their vote that aren't settled already without it.
-        const left = theirs.filter((paper) => !votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote && !settled[paper.id]!.final).length;
-        // There is a pace to go by once their first vote is a day old: five votes in the first five minutes of a screening say nothing about the weeks to come.
-        const perDay = cast.some((vote) => vote.at < NOW - DAY) ? count(cast, (vote) => vote.at > NOW - 3 * DAY) / 3 : 0;
-        return {
-          reviewer,
-          assigned: theirs.length,
-          done: cast.length,
-          split: DECISIONS.map((decision) => count(told, (vote) => vote.decision === decision)),
-          agrees: compared.length ? count(compared, (same) => same) / compared.length : null,
-          compared: compared.length,
-          missed: count(judged, (one) => one.final === "include" && one.vote === "exclude"),
-          // Out of every included paper, the number Progress shows: one it never voted on is one it didn't exclude.
-          included: count(papers, (paper) => settled[paper.id]!.final === "include"),
-          left,
-          perDay,
-          // Nothing voted in three days by someone who has been on the screening that long. A screening made from another keeps its reviewers' older dates, so its own start counts too.
-          idle: left > 0 && perDay === 0 && Math.max(reviewer.addedAt, screening.createdAt) < NOW - 3 * DAY && cast.every((vote) => vote.at < NOW - 3 * DAY),
-        };
-      }),
-    [reviewers, papers, votes, settled],
-  );
+  const isPerson = new Set(screening.reviewers.filter((one) => one.kind === "person").map((one) => one.id));
+  const rows: ReviewerRowData[] = reviewers.map((reviewer) => {
+    const tally = reviewer.tally;
+    // A vote is compared with each person's on the same paper, and never with a model's: every pair of votes on a paper both voted on, and how many of them are the same.
+    const withPeople = (figures?.pairs ?? []).filter((pair) => (pair.a === reviewer.id && isPerson.has(pair.b)) || (pair.b === reviewer.id && isPerson.has(pair.a)));
+    const compared = withPeople.reduce((sum, pair) => sum + pair.matrix.reduce((all, n) => all + n, 0), 0);
+    const same = withPeople.reduce((sum, pair) => sum + SAME.reduce((all, cell) => all + pair.matrix[cell]!, 0), 0);
+    const left = tally?.waiting ?? 0;
+    // A person's pace is what they voted on in the last three days. There is a pace to go by once they have been on it a day: five votes in the first five minutes say nothing about the weeks to come.
+    const perDay = reviewer.kind === "person" && Math.max(reviewer.addedAt, screening.createdAt) < now - DAY ? (figures?.recent[reviewer.id] ?? 0) / PACE_DAYS : 0;
+    return {
+      reviewer,
+      assigned: tally?.dealt ?? 0,
+      done: tally?.cast ?? 0,
+      split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
+      agrees: compared ? same / compared : null,
+      compared,
+      missed: tally?.missed ?? 0,
+      // Out of every included paper, the number Progress shows: one it never voted on is one it didn't exclude.
+      included: counts.include,
+      left,
+      perDay,
+      // Nothing voted in three days by someone who has been on the screening that long.
+      idle: Boolean(figures) && left > 0 && perDay === 0 && Math.max(reviewer.addedAt, screening.createdAt) < now - PACE_DAYS * DAY,
+    };
+  });
   type Row = (typeof rows)[number];
   const by = (row: Row) => (sort === "voted" ? row.done / Math.max(row.assigned, 1) : (row.agrees ?? -1));
   const ordered = (list: Row[]) => (sort ? [...list].sort((a, b) => by(b) - by(a)) : list);
@@ -280,18 +259,23 @@ function Reviewers({ open }: { open: Open }) {
   ].filter((group) => group.rows.length);
   // Who papers can be moved from: a person with papers left that someone else doesn't have. Where every person reads every paper there is nobody to move one to.
   const takers = rows.filter((row) => row.reviewer.kind === "person" && !row.reviewer.email);
-  const gone = screening.reviewers.filter((one) => one.left && !one.email).map((reviewer) => ({ reviewer, cast: count(papers, (paper) => votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id && one.vote)) }));
+  const gone = screening.reviewers.filter((one) => one.left && !one.email).map((reviewer) => ({ reviewer, cast: reviewer.tally?.cast ?? 0 }));
   const stillVoting = takers.filter((row) => row.left > 0);
   // Said where there is more than one person: for one alone, their own row says it.
   const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? `Everyone done in about ${daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))}, at this pace` : null;
-  const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
-  const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now(), ...(discard ? { discarded: Date.now() } : {}) } : one)) });
-  const leavingVotes = leaving ? count(open.papers, (paper) => open.votes[paper.id]!.some((one) => one.reviewer.id === leaving.id && one.vote)) : 0;
   const { people: readers, each } = readersOf(screening);
   const people = readers.length;
+  // Where every person reads every paper, everyone already has the papers there are to move.
+  const givers = open.canChange && !screening.finishedAt && each < people ? takers.filter((row) => row.left > 0) : [];
+  const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: now, ...(discard ? { discarded: now } : {}) } : one)) });
+  const leavingVotes = leaving?.tally?.cast ?? 0;
+  // What taking them off would do, counted by the server for that change before it is made.
+  const previewChange = useWorkspaceAction(api.screening.effects.preview);
+  const counted = useSWR(leaving?.row ? ["screening-leave", screening.id, leaving.row, discard] : null, () => previewChange({ jobId: screening.id, change: { remove: [{ reviewerId: leaving!.row!, ...(discard ? { discard: true } : {}) }] } }), { revalidateOnFocus: false, keepPreviousData: true });
+  const preview = counted.data ?? NO_PREVIEW;
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
   const [a, b] = reviewers;
-  const pair = reviewers.length === 2 ? agreement(b!.id, a!.id, open) : null;
+  const pair = reviewers.length === 2 ? pairOf(figures, b!.id, a!.id) : null;
   const leavingMe = leaving?.id === open.me;
 
   // A column the table can be ordered by: highest first, and a second press puts the table back as it was.
@@ -331,7 +315,6 @@ function Reviewers({ open }: { open: Open }) {
         </>
       }
     >
-      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="each reviewer's Include, Maybe and Exclude counts and the agreement" /></div>
       {rows.length ? (
         <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
@@ -341,7 +324,7 @@ function Reviewers({ open }: { open: Open }) {
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", "Agrees with people")}
               <Help title="Agrees with people" side="bottom" facts={<><HelpFact>A person with the other people on the paper</HelpFact><HelpFact>A model with the people, never with a model</HelpFact></>}>
-                <p>How often this reviewer voted as the people did, on the papers where the people who have voted so far voted alike. A low figure is a reviewer who reads the criteria differently from the rest.</p>
+                <p>How often this reviewer&apos;s vote on a paper was the same as a person&apos;s vote on it, over every such pair of votes. A low figure is a reviewer who reads the criteria differently from the rest.</p>
                 <p>Under a model, the papers the screening included that it voted to exclude.</p>
               </Help>
             </span>
@@ -381,9 +364,10 @@ function Reviewers({ open }: { open: Open }) {
         title={leavingMe ? "Leave this screening?" : leaving ? `Take ${leaving.name} off this screening?` : ""}
         confirm={leavingMe ? "Leave" : "Take off"}
         onClose={() => { setLeaving(null); setDiscard(false); }}
-        onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
+        disabled={counted.isLoading}
+        onConfirm={() => void (leaving && open.takeOff(leaving, discard).catch(notSaved))}
       >
-        {leaving ? <EffectList lines={effectLines(screening, without(leaving), { me: open.me })} moves={effectMoves(screening, without(leaving))} unseen={(paper) => !open.canSee(paper)} /> : null}
+        {leaving ? <EffectList lines={effectLines(screening, without(leaving), preview, { me: open.me })} moves={preview.moves} screening={screening.id} /> : null}
         {/* Their work stands unless whoever takes them off says otherwise: the votes go only where that is asked for, and what it undoes shows above before it is done. */}
         {leaving && leavingVotes ? (
           <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
@@ -409,10 +393,14 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   const [from, setFrom] = useState(first);
   const [chosen, setChosen] = useState<string | null>(null);
   const [asked, setAsked] = useState<number | null>(null);
+  const workspaceId = usePageWorkspace();
   const giver = people.find((row) => row.reviewer.id === from) ?? people[0]!;
-  const others = people.filter((row) => row !== giver).map((row) => ({ row, can: open.movable(giver.reviewer.id, row.reviewer.id).length }));
+  const others = people.filter((row) => row !== giver);
   // Whoever has the least left is offered first.
-  const taker = others.find((one) => one.row.reviewer.id === chosen && one.can) ?? [...others].filter((one) => one.can).sort((x, y) => x.row.left - y.row.left)[0];
+  const picked = others.find((row) => row.reviewer.id === chosen) ?? [...others].sort((x, y) => x.left - y.left)[0];
+  // How many of the giver's papers the taker doesn't already have: counted by the server for the two of them.
+  const can = useProtectedQuery(api.screening.reviewers.movable, inWorkspace(workspaceId, picked && giver.reviewer.row && picked.reviewer.row ? { jobId: open.screening.id, from: giver.reviewer.row, to: picked.reviewer.row } : "skip")).data;
+  const taker = picked && can ? { row: picked, can } : undefined;
   const most = taker?.can ?? 0;
   // To start with, enough to leave the two with the same number.
   const papers = Math.max(1, Math.min(most, asked ?? Math.round((giver.left - (taker?.row.left ?? 0)) / 2)));
@@ -434,10 +422,10 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
     </div>
   );
   return (
-    <ConfirmChange open title="Move papers between reviewers" confirm={taker ? `Move ${plural(papers, "paper", "papers")}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
+    <ConfirmChange open title="Move papers between reviewers" confirm={taker ? `Move ${plural(papers, "paper", "papers")}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => void (taker && open.move(giver.reviewer, taker.row.reviewer, papers).catch(notSaved))}>
       <div className="flex flex-wrap items-center gap-2">
         <FilterMenu name="From" value={giver.reviewer.id} onChange={(next) => { setFrom(next); setChosen(null); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={people.filter((row) => row.left > 0).map((row) => ({ value: row.reviewer.id, label: nameOf(row), icon: face(row), count: row.left }))} />
-        {taker ? <FilterMenu name="To" value={taker.row.reviewer.id} onChange={(next) => { setChosen(next); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={others.filter((one) => one.can).map((one) => ({ value: one.row.reviewer.id, label: nameOf(one.row), icon: face(one.row), count: one.can }))} /> : null}
+        {picked ? <FilterMenu name="To" value={picked.reviewer.id} onChange={(next) => { setChosen(next); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={others.map((row) => ({ value: row.reviewer.id, label: nameOf(row), icon: face(row), count: row.left }))} /> : null}
       </div>
       {taker ? (
         <>
@@ -453,8 +441,11 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
           {doneAfter && doneBefore ? <p className="text-sm tabular-nums"><span className="font-medium">Everyone done in about {daysFrom(doneAfter)}</span>{doneAfter === doneBefore ? <span className="text-muted-foreground">, the same as now</span> : <span className="text-muted-foreground">, where it is about {daysFrom(doneBefore)} now</span>}</p> : null}
           <p className="text-sm text-muted-foreground">It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} queue go. Votes already cast stay where they are.</p>
         </>
+      ) : can === undefined ? (
+        // While the two are counted, the dialog keeps the room the count will take.
+        <div aria-hidden className="h-40" />
       ) : (
-        <EmptyNote>Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} papers.</EmptyNote>
+        <EmptyNote>{picked ? `${nameOf(picked) === "You" ? "You already have" : `${firstName(picked.reviewer.name)} already has`} all of ${nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} papers.` : "There is nobody else to move papers to."}</EmptyNote>
       )}
     </ConfirmChange>
   );
@@ -473,8 +464,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const peopleOn = readersOf(screening).people.length;
   const takes = doneIn(left, perDay);
   const id = screening.id;
-  const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
-  const unread = unreadPapers.length;
+  const unread = reviewer.kind === "model" ? (reviewer.tally?.failed ?? 0) : 0;
   const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
   const retry = open.retryOf(reviewer);
   const held = open.modelsNow && open.modelsNow !== "reading" ? MODELS_SAY[open.modelsNow] : null;
@@ -495,7 +485,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (held?.row ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? PERSON_SAYS.invited : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : (personOf(reviewer.id)?.seen)}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? PERSON_SAYS.invited : assigned && done === assigned ? "Done" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : `Added ${ago(reviewer.addedAt)}`}</p>
           )}
         </div>
       </div>
@@ -520,14 +510,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </PopoverTrigger>
             <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
               <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
-              <ScrollArea shades className="-mx-1 min-h-10 flex-1">
-              <ul className="space-y-0.5">
-                {unreadPapers.map((paper) => (
-                  <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title} ({paper.year})</span></NextLink></li>
-                ))}
-              </ul>
-              </ScrollArea>
-              {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => open.retry(reviewer)} variant="default" size="sm" className="shrink-0" /> : null}
+              <Unread open={open} model={reviewer} />
+              {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch(notSaved)} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -559,7 +543,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of {num(included)} included</p>
           )
         ) : agrees !== null ? (
-          <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {compared} papers</p>
+          <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {plural(compared, "pair of votes", "pairs of votes")}</p>
         ) : null}
       </div>
       <div role="cell" className="@max-2xl/reviewers:col-start-3 @max-2xl/reviewers:row-start-1">
@@ -572,9 +556,9 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See {mine ? "your" : "their"} votes in Papers</NextLink></DropdownMenuItem>
-              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => open.retry(reviewer)}><RotateCcw />{retryLabel(unread, credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{credits(retry.short)} credits short</span> : null}</DropdownMenuItem> : null}
+              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch(notSaved)}><RotateCcw />{retryLabel(unread, credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{credits(retry.short)} credits short</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && left ? (
-                <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${plural(left, "paper waits", "papers wait")} for them` })}><Mail />Send a reminder</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch(notSaved)}><Mail />Send a reminder</DropdownMenuItem>
               ) : null}
               {onMove ? <DropdownMenuItem onSelect={onMove}><Move />Move papers to someone else</DropdownMenuItem> : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />{mine ? "Leave this screening" : "Take off this screening"}</DropdownMenuItem>
@@ -583,6 +567,26 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** Papers one page of what a model couldn't read holds. */
+const UNREAD_PAGE = 8;
+/** The papers a model got to and couldn't read, a page at a time: each opens on the Papers page. */
+function Unread({ open, model }: { open: Open; model: Reviewer }) {
+  const id = open.screening.id;
+  const papers = useCursorPage(api.screening.paperViews.list, inWorkspace(usePageWorkspace(), { jobId: id, reviewer: model.id, voted: "failed" as const }), UNREAD_PAGE);
+  return (
+    <>
+      <ScrollArea shades className="-mx-1 min-h-10 flex-1">
+        <ul className={cn("space-y-0.5 transition-opacity", papers.isStale && "opacity-60")}>
+          {papers.items.map((paper) => (
+            <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
+          ))}
+        </ul>
+      </ScrollArea>
+      {papers.hasPages ? <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><Button variant="ghost" size="xs" disabled={!papers.canPrevious} onClick={papers.previous}>Earlier</Button><Button variant="ghost" size="xs" disabled={!papers.canNext} onClick={papers.next}>More</Button></div> : null}
+    </>
   );
 }
 
@@ -599,6 +603,11 @@ const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destr
 /** The papers two reviewers both voted on, the ones they split on first. */
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
 const sameText = (pair: { same: number }) => `${Math.round(pair.same * 100)}% same`;
+/** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
+const pairOf = (figures: Figures | undefined, a: string, b: string) => {
+  const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));
+  return held ? kappa(held.matrix) : null;
+};
 const KAPPA_HELP = (
   <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0.6 and up substantial</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>Below 0 worse than chance</HelpFact></>}>
     <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
@@ -607,13 +616,10 @@ const KAPPA_HELP = (
 );
 
 /** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
-function Agreement({ open }: { open: Open }) {
+function Agreement({ open, figures }: { open: Open; figures: Figures | undefined }) {
   const { screening } = open;
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const pairs = useMemo(
-    () => reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: agreement(a.id, b.id, open) }))),
-    [reviewers, open],
-  );
+  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
   if (reviewers.length < 3) return null;
   const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
@@ -633,7 +639,6 @@ function Agreement({ open }: { open: Open }) {
         </span>
       }
     >
-      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="these figures" /></div>
       {overall === null ? (
         <EmptyNote>How far the reviewers agree shows here once two of them have voted on the same papers.</EmptyNote>
       ) : (
@@ -709,16 +714,16 @@ function Agreement({ open }: { open: Open }) {
 /** The facts about the screening, as wells beside the reviewers: who started it, where its included papers go, what its models cost, and its checks for new papers. */
 function Facts({ open }: { open: Open }) {
   const { screening, counts } = open;
-  const store = useMock();
-  const starter = personOf(screening.createdBy);
-  const workspace = workspaceOf(screening);
+  const starter = personIn(screening, screening.createdBy);
+  const workspace = screening.workspace;
   const models = modelsOf(screening);
   // What was spent counts a model since taken off: the credits went. What it comes to in the end is that and what the models still on it have left to read.
-  const spent = spentOf(screening);
+  const spent = screening.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0);
   const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
-  // The papers a model got to and couldn't read: the line under what was spent says so, as each model's row does. A paper two models failed on is one paper.
-  const unread = new Set(models.flatMap((model) => open.unread(model).map((paper) => paper.id))).size;
-  const left = walletOf(screening, store);
+  // The readings that failed: the line under what was spent says so, as each model's row does.
+  const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
+  // The workspace's credits are its members' to see: anyone else is told nothing of them.
+  const left = open.wallet ?? Infinity;
   const to = screening.destination;
   const collection = to.kind === "none" ? null : (collectionName(screening) ?? "A collection");
   return (
@@ -727,7 +732,7 @@ function Facts({ open }: { open: Open }) {
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
         <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? "Someone" }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">started it {ago(screening.createdAt)}</span>
-        <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} />
+        <WorkspaceTag size="sm" workspace={lookOf(workspace)} />
       </Panel>
 
       <Section
@@ -770,11 +775,11 @@ function Facts({ open }: { open: Open }) {
                   <AnimatedNumber value={Math.ceil(spent)} /> spent
                   {open.modelsNow === "reading" ? <AiIcon working className="size-3.5" /> : null}
                 </p>
-                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${plural(unread, "paper", "papers")} couldn't be read` : "Every paper is read"}</p>
+                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${plural(unread, "reading", "readings")} failed` : "Every paper is read"}</p>
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
-                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.canChange ? <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip> : <StateChip tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</StateChip>}
+                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip>}
                 <Chip>{plural(models.length, "model", "models")}</Chip>
               </div>
             </>
@@ -792,12 +797,17 @@ function Facts({ open }: { open: Open }) {
 }
 
 const RECENT_CHECKS = 3;
+/** Checks one page of every check holds. */
+const ALL_CHECKS = 20;
 
 /** Whether the screening checks its sources for new papers by itself, each check and what it brought, and the papers it started with. */
-function Checks({ open }: { open: Open }) {
-  const { screening, papers, settled } = open;
+function Checks({ open, figures }: { open: Open; figures: Figures | undefined }) {
+  const { screening } = open;
+  const workspaceId = usePageWorkspace();
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
+  // The latest checks, a page at a time once every one is asked for. The look it started with is its own row under them.
+  const read = useCursorPage(api.screening.view.checks, inWorkspace(workspaceId, sources.length ? { jobId: screening.id } : "skip"), ALL_CHECKS);
   // A screening that is not living and has no source to check has no checks to show. A living one whose sources can't gain papers keeps the part, shut, with why: its "Living" chip would otherwise promise checks that never come.
   if (!sources.length) {
     return screening.living ? (
@@ -806,10 +816,10 @@ function Checks({ open }: { open: Open }) {
       </Section>
     ) : null;
   }
-  const all = [...(screening.updates ?? [])].reverse();
+  const all = read.items.filter((check) => !check.first && check.state !== "running");
   const shown = checks === "all" ? all : all.slice(0, RECENT_CHECKS);
+  const later = figures?.checks.later ?? all.length;
   const fixed = screening.sources.length - sources.length;
-  const atStart = papers.filter((paper) => paper.batch === undefined).length;
   return (
     <Section
       id="new-papers"
@@ -819,7 +829,7 @@ function Checks({ open }: { open: Open }) {
           <p>A check runs each source&apos;s search again and adds the papers this screening doesn&apos;t have yet. Uploaded files and pasted lists never change, so checks skip them.</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check now</Button> : null}
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={() => void open.check().catch(notSaved)}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check now</Button> : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -834,39 +844,31 @@ function Checks({ open }: { open: Open }) {
         </div>
         <div className="divide-y divide-border-subtle">
           <AnimatePresence initial={false}>
-            {shown.map((update) => {
-              const batch = papers.filter((paper) => paper.batch === update.at);
-              const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
-              for (const paper of batch) counts[settled[paper.id]!.result]++;
-              const who = update.by === SCHEDULE ? null : personOf(update.by);
-              const added = String(update.at);
+            {shown.map((check) => {
+              const who = check.by;
               return (
-                <motion.div key={update.at} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
+                <motion.div key={check.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                   <div className="flex items-start gap-3 px-4 py-3">
                     {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? `${update.by === open.me ? "You" : who.name} checked` : "Scheduled check"}</span><span className="text-xs text-muted-foreground">{ago(update.at)}</span></p>
-                      {update.found ? (
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? `${who.id === open.me ? "You" : who.name} checked` : "Scheduled check"}</span><span className="text-xs text-muted-foreground">{ago(check.at)}</span></p>
+                      {check.state === "failed" ? (
+                        <StateChip tone="destructive">Couldn&apos;t be finished</StateChip>
+                      ) : check.found ? (
                         <>
-                          {/* Each source that gained papers, with how many were new to the screening. */}
-                          {screening.sources.flatMap((source) => {
-                            const found = source.updates?.find((one) => one.at === update.at);
-                            const fresh = found ? found.added - found.duplicates : 0;
-                            return fresh ? [<NextLink key={source.id} href={papersHref(screening.id, { added, source: source.id })} className={cn(INLINE_LINK, "block text-xs font-normal text-muted-foreground hover:text-foreground")}><span className="line-clamp-2">{fresh} new from {source.name}</span></NextLink>] : [];
-                          })}
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <Chip>{update.found} found</Chip>
-                            {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
-                            {update.added ? <LinkChip href={papersHref(screening.id, { added })} tone="primary">{update.added} added</LinkChip> : null}
+                            <Chip>{num(check.found)} found</Chip>
+                            {check.found - check.added ? <Chip>{num(check.found - check.added)} already in it</Chip> : null}
+                            {check.added ? <LinkChip href={papersHref(screening.id, { added: check.id })} tone="primary">{num(check.added)} added</LinkChip> : null}
                           </div>
                           {/* Where the papers it added stand now. */}
-                          {batch.length ? (
+                          {check.counts ? (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <ResultBar counts={counts} className="h-1.5 min-w-24 flex-1" />
+                              <ResultBar counts={check.counts} className="h-1.5 min-w-24 flex-1" />
                               <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                                {RESULTS.filter((result) => counts[result]).map((result) => {
+                                {RESULTS.filter((result) => check.counts![result]).map((result) => {
                                   const Icon = RESULT_ICON[result];
-                                  return <span key={result} role="img" aria-label={`${counts[result]} ${RESULT_LABEL[result].toLowerCase()}`} className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground"><Icon className="size-3.5" />{counts[result]}</span>;
+                                  return <span key={result} role="img" aria-label={`${check.counts![result]} ${RESULT_LABEL[result].toLowerCase()}`} className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground"><Icon className="size-3.5" />{check.counts![result]}</span>;
                                 })}
                               </span>
                             </div>
@@ -881,16 +883,17 @@ function Checks({ open }: { open: Open }) {
               );
             })}
           </AnimatePresence>
-          {all.length > RECENT_CHECKS ? (
-            <div className="px-4 py-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void setPlace({ checks: checks === "all" ? null : "all" })}>{checks === "all" ? "Show the last 3" : `See every check, ${all.length} in all`}</Button>
+          {later > RECENT_CHECKS ? (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void setPlace({ checks: checks === "all" ? null : "all" })}>{checks === "all" ? "Show the last 3" : `See every check, ${num(later)} in all`}</Button>
+              {checks === "all" && read.hasPages ? <span className="ms-auto flex items-center gap-1"><Button variant="ghost" size="xs" disabled={!read.canPrevious} onClick={read.previous}>Later ones</Button><Button variant="ghost" size="xs" disabled={!read.canNext} onClick={read.next}>Earlier ones</Button></span> : null}
             </div>
           ) : null}
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">At the start</span><span className="text-xs text-muted-foreground">{ago(screening.createdAt)}</span></p>
-              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{plural(atStart, "paper", "papers")} from {plural(screening.sources.length, "source", "sources")}</LinkChip>
+              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{figures ? `${plural(figures.startedWith, "paper", "papers")} from ` : "Papers from "}{plural(screening.sources.length, "source", "sources")}</LinkChip>
             </div>
           </div>
         </div>
@@ -904,16 +907,17 @@ function Checks({ open }: { open: Open }) {
 type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; /** The result the count is of, which gives it that result's colour as in Progress. */ tone?: Result; indent?: boolean; /** The question a reason stands for. */ question?: string; /** A reason for excluding, which is drawn where the label would be. */ reason?: string };
 
 /** The counts a PRISMA diagram is drawn from, left to right: found, removed before screening (duplicates, and what a source left out), the papers screened, and included. Every count above none opens its papers. */
-function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
-  const { screening, papers, settled, counts } = open;
+function Flow({ open, figures, onExport }: { open: Open; figures: Figures | undefined; onExport: (tab: ExportTab) => void }) {
+  const { screening, counts } = open;
   const id = screening.id;
   // What the sources held: the papers they brought, and what they left out for having no abstract or nothing to read.
   const left = leftTotal(screening.sources);
   const bare = screening.sources.reduce((sum, source) => sum + bareOf(source), 0);
   const found = foundTotal(screening.sources) + left;
   const kept = paperTotal(screening.sources);
-  const arriving = open.gathering ? kept - papers.length : 0;
-  const reasons = excludedBy(open);
+  const arriving = open.gathering ? Math.max(0, open.gathering.of - open.gathering.done) : 0;
+  // Its excluded papers by the reason, the most common first.
+  const reasons = Object.entries(figures?.reasons ?? {}).sort((x, y) => y[1] - x[1]);
   const neutral = "bg-foreground/25";
   const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[] }> = [
     { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
@@ -943,7 +947,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       tone: "include",
       href: papersHref(id, { result: "include" }),
       rows: screening.sources.flatMap((source) => {
-        const value = count(papers, (paper) => paper.source === source.id && settled[paper.id]!.result === "include");
+        const value = figures?.included[source.id] ?? 0;
         return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar, tone: "include" as const }] : [];
       }),
     },

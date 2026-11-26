@@ -52,6 +52,30 @@ export const threadAction = defineUserQuery({
 export const thread = userQuery(threadAction);
 export const threadForAssistant = assistantQuery(threadAction);
 
+export const allAction = defineUserQuery({
+  path: "screening/discussion:all",
+  description: "Lists everything a screening's reviewers wrote to each other about its papers, a page at a time, each line with the paper it is about, who wrote it, when, and who it asks where it is a question. What was written about a paper is left out for a reviewer while that paper waits for their own vote.",
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ id: v.id("screeningMessages"), paperId: v.id("screeningResults"), by: person, at: v.number(), text: v.string(), to: v.optional(person) })),
+  run: async (ctx, actor, { jobId, paginationOpts }) => {
+    const standing = await standingOn(ctx, actor, jobId);
+    if (!standing || standing.job.shape !== 2) return { page: [], isDone: true, continueCursor: "" };
+    const read = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LINES) });
+    // Each paper the page speaks of is looked at once: whether the person may read what was written about it.
+    const seen = new Map<Id<"screeningResults">, boolean>();
+    for (const paperId of new Set(read.page.map((line) => line.resultId))) seen.set(paperId, (await readable(ctx, actor, jobId, paperId)) !== null);
+    const lines = read.page.filter((line) => seen.get(line.resultId));
+    const people = new Map<Id<"users">, { id: Id<"users">; name: string; imageUrl?: string }>();
+    for (const id of new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))) {
+      const user = await ctx.db.get("users", id);
+      people.set(id, user ? { id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) } : { id, name: "Someone who left" });
+    }
+    return { ...read, page: lines.map((line) => ({ id: line._id, paperId: line.resultId, by: people.get(line.by)!, at: line._creationTime, text: line.text, ...(line.to ? { to: people.get(line.to)! } : {}) })) };
+  },
+});
+export const all = userQuery(allAction);
+export const allForAssistant = assistantQuery(allAction);
+
 /**
  * Writes a line in the discussion of one paper of a screening, for one of its reviewers or whoever settles its
  * conflicts. With `to`, it is a question put to that person, who is on the screening: it waits on their list until

@@ -19,6 +19,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { num, plural, readersOf, type Reviewer, inQuotes } from "./data";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
+import { ExportDialog } from "./export-dialog";
 import { EffectList, collectionName, type EffectLine } from "./effects";
 import { settingsHref } from "./links";
 import { Panel, ReviewerMark, OpenPapersChips } from "./parts";
@@ -33,7 +34,7 @@ export type Over = "activity" | "export" | "people" | "move" | "finish" | "delet
  */
 export function useScreeningOverlays(state: Open | null, { start = null, onClosed, onDeleted }: { start?: Over | null; onClosed?: () => void; onDeleted?: () => void } = {}) {
   const [over, setOver] = useState<Over | null>(start);
-  const [, setExportTab] = useState<ExportTab>("papers");
+  const [exportTab, setExportTab] = useState<ExportTab>("papers");
   // A reviewer about to be added, one about to be taken off and one about to be made a viewer: each says what it does before it happens.
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
@@ -101,6 +102,8 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const overlays = (
     <>
       <ActivitySheet open={over === "activity"} onClose={close} state={state} />
+      {/* Its files are read only once it is opened. */}
+      {over === "export" ? <ExportDialog open onClose={close} state={state} tab={exportTab} onTab={setExportTab} /> : null}
       <PeopleDialog open={over === "people"} onClose={close} state={state} onAdd={(reviewer) => { setOver(null); setAdding(reviewer); }} onRemove={(reviewer) => { setOver(null); setLeaving(reviewer); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
       <MoveDialog open={over === "move"} onOpenChange={(next) => !next && close()} kind="screening" id={id} name={screening.name} />
       <ConfirmChange open={over === "finish"} title="Mark this screening as finished?" confirm="Mark as finished" onClose={close} onConfirm={() => void state.finish().catch(failed)}>

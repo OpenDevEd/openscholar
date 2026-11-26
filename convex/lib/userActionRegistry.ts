@@ -35,9 +35,9 @@ import { estimateAction as screeningEstimateAction, listJobsAction as screeningJ
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
-import { activityAction as screeningActivityAction, checksAction as screeningChecksAction, getAction as screeningAction, leftOutAction as screeningLeftOutAction, listAction as screeningsAction } from "../screening/view";
+import { activityAction as screeningActivityAction, checksAction as screeningChecksAction, figuresAction as screeningFiguresAction, getAction as screeningAction, leftOutAction as screeningLeftOutAction, listAction as screeningsAction } from "../screening/view";
 import { listAction as screeningVotedPapersAction, paperAction as screeningVotedPaperAction, queueAction as screeningQueueAction } from "../screening/paperViews";
-import { threadAction as screeningThreadAction } from "../screening/discussion";
+import { allAction as screeningDiscussionAction, threadAction as screeningThreadAction } from "../screening/discussion";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
 import { countAction as countLibraryAccessAction, countPeopleAction as countLibraryAccessPeopleAction, listAction as listLibraryAccessAction, listPeopleAction as listLibraryAccessPeopleAction } from "../organizations/libraryAccess";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
@@ -218,10 +218,12 @@ export const USER_ACTIONS: readonly UserAction[] = [
   screeningLeftOutAction,
   screeningActivityAction,
   screeningChecksAction,
+  screeningFiguresAction,
   screeningVotedPapersAction,
   screeningVotedPaperAction,
   screeningQueueAction,
   screeningThreadAction,
+  screeningDiscussionAction,
   saveToLibraryAction,
   setLibraryRatingAction,
   removeFromLibraryAction,

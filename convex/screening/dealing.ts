@@ -20,6 +20,9 @@ export const sourcesOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">)
 /** A screening's reviewers in the order they were added, whoever has left included. */
 export const reviewersOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) => ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_REVIEWERS);
 
+/** What names a reviewer on a page: a person their account, a model its row. */
+export const viewId = (reviewer: Reviewer) => (reviewer.kind === "person" && reviewer.userId ? reviewer.userId : reviewer._id);
+
 /** The people papers are dealt to: on the screening, with an account. Someone invited by email is dealt none until they join. */
 export const dealable = (reviewer: Reviewer) => reviewer.kind === "person" && reviewer.userId !== undefined && reviewer.left === undefined;
 export const readingModel = (reviewer: Reviewer) => reviewer.kind === "model" && reviewer.left === undefined;
