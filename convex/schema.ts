@@ -6,10 +6,10 @@ import { sourceMetadataFields } from "./lib/paperMetadata";
 import { paperIdentityFields } from "./lib/paperRef";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
-  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS, MAX_STARS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { MAX_SOURCE_ROWS, answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
@@ -1275,6 +1275,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     createdBy: v.id("users"),
     status: v.union(
+      // Not started yet: the form that starts it has given it sources, which it reads so the form can say what they hold (./screening/screenings.ts `sync`). Only whoever is filling the form sees it.
+      v.literal("draft"),
       v.literal("processing"),
       v.literal("completed"),
       v.literal("cancelled"),
@@ -1339,15 +1341,41 @@ export default defineSchema({
     outOfCredits: v.optional(v.literal(true)),
     // The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts).
     chatStep: v.optional(v.id("assistantSteps")),
+    // A screening with reviewers (plans/screening-reviewers): people and models each vote on a paper, and a rule settles it.
+    // It is `processing` until a person finishes it, and `completed` from then until one reopens it.
+    shape: v.optional(v.literal(2)),
+    // What the review asks, which its criteria are written from.
+    question: v.optional(v.string()),
+    criteria: capped(v.optional(v.array(criterionValidator)), MAX_QUESTIONS),
+    // The points each star starts at.
+    stars: capped(v.optional(v.array(v.number())), MAX_STARS),
+    rule: v.optional(ruleValidator),
+    // A living screening looks in its sources again on a schedule: how often, and when next.
+    living: v.optional(v.object({ every: everyValidator, next: v.number() })),
+    finishedAt: v.optional(v.number()),
+    // Its models are held where they are until someone lets them go on.
+    paused: v.optional(v.literal(true)),
+    // When its settings last changed without its settled papers being checked again: a paper settled by then keeps its result (convex/screening/settling.ts).
+    heldAt: v.optional(v.number()),
+    // When something last happened in it, to within a minute: what its list orders by.
+    activeAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_status", ["workspaceId", "status"])
+    // The living screenings whose next check is due.
+    .index("by_living_next", ["living.next"])
+    // A workspace's screenings by name, and by when something last happened in them.
+    .index("by_workspace_and_name", ["workspaceId", "name"])
+    .index("by_workspace_and_activeAt", ["workspaceId", "activeAt"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId"] })
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
+    // The ones never started, oldest touched first, for the sweep that takes them away (./screening/screenings.ts `sweepDrafts`).
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
     // A search's screenings, which share its answers and move with it (#654).
     .index("by_screening", ["screeningId"]),
 
@@ -1384,6 +1412,8 @@ export default defineSchema({
     // Where the paper landed (./screening/scoring.ts), set as it settles and again when an
     // answer of its is changed; a job's list reads its papers by it. Results from before it
     // was kept get theirs from migrations/screeningOutcomes.
+    // The result a paper had before screenings had reviewers (migrations/screeningReviewers): it stands until someone votes on the paper, or its settled papers are checked again.
+    kept: v.optional(decisionValidator),
     outcome: v.optional(screeningOutcomeValidator),
     // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
     // later change adds only the difference. Missing while it waits for the bookkeeping
@@ -1429,8 +1459,53 @@ export default defineSchema({
     // worker (convex/screening/bookkeeping.ts), which clears it.
     doneAt: v.optional(v.commitTs()),
     errorMessage: v.optional(v.string()),
+    // In a screening with reviewers: the source that brought it, the check of the sources that found it, and its place in the round its people are dealt from.
+    sourceId: v.optional(v.id("screeningSources")),
+    checkId: v.optional(v.id("screeningChecks")),
+    place: v.optional(v.number()),
+    // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
+    file: v.optional(v.id("_storage")),
+    pages: v.optional(v.number()),
+    // Where it stands, written by the bookkeeping worker alone, and when it came to be settled.
+    result: v.optional(paperResultValidator),
+    settledAt: v.optional(v.number()),
+    // Why it is excluded: a criterion's key, or another reason.
+    reason: v.optional(v.string()),
+    // A person settled it, whatever its votes say.
+    resolved: v.optional(v.object({ decision: decisionValidator, by: v.id("users"), note: v.optional(v.string()), reason: v.optional(v.string()), at: v.number() })),
+    // Set with `doneAt` by what lets go of a held result: a person's vote on it, or a check of the settled papers under new settings.
+    reopen: v.optional(v.union(v.literal("vote"), v.literal("recheck"))),
+    // The reviewers it was moved away from: it goes back to one only where nobody else is left to take it.
+    away: capped(v.optional(v.array(v.id("screeningReviewers"))), MAX_LIST_CAP),
+    // What makes it the same paper as another source's: its DOI, and its title with its year.
+    doiKey: v.optional(v.string()),
+    titleKey: v.optional(v.string()),
+    // How many lines its discussion has.
+    messages: v.optional(v.number()),
+    // Its source was taken out of the screening: it is kept on record with its votes, and counted nowhere (`out`, once the bookkeeping worker has taken it out of the counts).
+    withdrawn: v.optional(v.literal(true)),
+    out: v.optional(v.literal(true)),
+    // How far its reviewers are from agreeing: the votes that aren't on the side most of them took. What "most divided first" orders by.
+    split: v.optional(v.number()),
   })
     .index("by_job", ["jobId"])
+    .index("by_job_and_result", ["jobId", "result"])
+    // A screening's papers in each order its Papers page offers, all of them or the ones that stand one way.
+    .index("by_job_and_title", ["jobId", "title"])
+    .index("by_job_and_publicationYear", ["jobId", "publicationYear"])
+    .index("by_job_and_score", ["jobId", "score"])
+    .index("by_job_and_split", ["jobId", "split"])
+    .index("by_job_and_result_and_title", ["jobId", "result", "title"])
+    .index("by_job_and_result_and_publicationYear", ["jobId", "result", "publicationYear"])
+    .index("by_job_and_result_and_score", ["jobId", "result", "score"])
+    .index("by_job_and_result_and_split", ["jobId", "result", "split"])
+    .index("by_job_and_reason", ["jobId", "reason"])
+    // The papers one person settled, whatever their votes say.
+    .index("by_job_and_resolver", ["jobId", "resolved.by"])
+    .index("by_job_and_source", ["jobId", "sourceId"])
+    .index("by_job_and_check", ["jobId", "checkId"])
+    .index("by_job_and_doiKey", ["jobId", "doiKey"])
+    .index("by_job_and_titleKey", ["jobId", "titleKey"])
     .index("by_job_paperKey", ["jobId", "paperKey"])
     .index("by_paperKey", ["paperKey"])
     // A job's papers of one outcome, in the order the job took them.
@@ -1445,7 +1520,8 @@ export default defineSchema({
     .index("by_workId", ["workId"])
     // A job's papers waiting for that bookkeeping, which a move waits for (#654).
     .index("by_job_and_doneAt", ["jobId", "doneAt"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome", "libraryWrite"] }),
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome", "libraryWrite"] })
+    .searchIndex("search_papers", { searchField: "searchText", filterFields: ["jobId", "result", "sourceId"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.
@@ -1473,7 +1549,244 @@ export default defineSchema({
     // Papers it put into its library collection, and papers it couldn't, the library holding no record of them.
     libraryAdded: v.optional(v.number()),
     libraryMissing: v.optional(v.number()),
+    // In a screening with reviewers: its settled and split papers by where they stand (the rest wait for votes), the
+    // excluded ones by reason, and what each reviewer's votes come to.
+    counts: v.optional(v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number() })),
+    reasons: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS + 2),
+    reviewers: capped(v.optional(v.record(v.id("screeningReviewers"), reviewerCountsValidator)), MAX_LIST_CAP),
+    // Its included papers by the source that brought each.
+    included: capped(v.optional(v.record(v.string(), v.number())), MAX_LIST_CAP),
+    // Papers kept on record whose source was taken out: its papers are the ones it placed, less these.
+    withdrawn: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // SCREENING WITH REVIEWERS (plans/screening-reviewers)
+  // ═══════════════════════════════════════════════════════════════
+  // Who votes on a screening: a person by their account, a person invited by email until they join, or a model at
+  // one effort. One taken off (`left`) keeps the votes they cast unless those were thrown out (`discarded`).
+  screeningReviewers: defineTable({
+    jobId: v.id("screeningJobs"),
+    kind: v.union(v.literal("person"), v.literal("model")),
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    modelId: v.optional(v.id("models")),
+    effort: v.optional(effortValidator),
+    addedAt: v.number(),
+    addedBy: v.id("users"),
+    left: v.optional(v.number()),
+    discarded: v.optional(v.number()),
+    reminded: v.optional(v.number()),
+    // Papers given to them, voted on or not: kept by whatever deals papers (convex/screening/dealing.ts).
+    dealt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_and_user", ["jobId", "userId"])
+    .index("by_user", ["userId"])
+    .index("by_email", ["email"]),
+
+  // A reviewer's place on a paper, from when the paper is given to them. A model's row is its unit of work in the
+  // pool: it waits for one of its workspace's slots (`waitingWorkspace`), runs (`workId`), and ends cast or failed.
+  screeningVotes: defineTable({
+    jobId: v.id("screeningJobs"),
+    resultId: v.id("screeningResults"),
+    reviewerId: v.id("screeningReviewers"),
+    // The paper's place in the round: a reviewer's queue is in this order.
+    place: v.number(),
+    status: voteStatusValidator,
+    decision: v.optional(decisionValidator),
+    answers: capped(v.optional(v.record(v.string(), answerValidator)), MAX_QUESTIONS),
+    confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
+    passages: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
+    // Why it excludes: a criterion's key, or another reason.
+    reason: v.optional(v.string()),
+    note: v.optional(v.string()),
+    // When it was cast.
+    at: v.optional(v.number()),
+    // A person's vote cast before a criterion became a must-have: it stands, and asks for a new one.
+    flagged: v.optional(v.literal(true)),
+    // On a place a person has yet to vote from: how many of the paper's models would include it, as a negative number, so the papers the models lean to come first in the order of an index.
+    lean: v.optional(v.number()),
+    waitingWorkspace: v.optional(v.id("workspaces")),
+    waitingSince: v.optional(v.number()),
+    workId: v.optional(v.string()),
+    // Set while it holds one of its workspace's slots, until the bookkeeping worker counts it off.
+    slot: v.optional(v.literal(true)),
+    credits: v.optional(v.number()),
+    error: v.optional(v.string()),
+    // What it has added to its reviewer's counts and to the agreement between reviewers, so a later change adds only the difference.
+    counted: v.optional(v.object({ status: voteStatusValidator, decision: v.optional(decisionValidator), credits: v.optional(v.number()) })),
+  })
+    .index("by_result", ["resultId"])
+    .index("by_job_and_place", ["jobId", "place"])
+    .index("by_reviewer_and_status_and_place", ["reviewerId", "status", "place"])
+    .index("by_reviewer_and_status_and_lean_and_place", ["reviewerId", "status", "lean", "place"])
+    // A reviewer's votes, the latest first, all of them or the ones cast one way.
+    .index("by_reviewer_and_status_and_at", ["reviewerId", "status", "at"])
+    .index("by_reviewer_and_status_and_decision_and_at", ["reviewerId", "status", "decision", "at"])
+    .index("by_reviewer_and_flagged_and_place", ["reviewerId", "flagged", "place"])
+    .index("by_workId", ["workId"])
+    // The readings of a screening under way: it stays in its workspace until there are none (./screening/moving.ts).
+    .index("by_job_and_slot", ["jobId", "slot"])
+    .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"]),
+
+  // Where a screening's papers come from, each read a step at a time: what it held, took, merged with another
+  // source's and left out, and where its reading stands.
+  screeningSources: defineTable({
+    jobId: v.id("screeningJobs"),
+    set: sourceSetValidator,
+    name: v.string(),
+    detail: v.optional(v.string()),
+    // What tells it from another source of the same name, as its list said it: a search's filters, where a Zotero collection sits.
+    facts: sourceFactsValidator,
+    // The papers taken of it, counting from 1; all of them without a range.
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
+    addedAt: v.number(),
+    addedBy: v.id("users"),
+    // The workspace it is read in, once its screening has moved to another: a search, a collection, a library and a screening stay where they were (./screening/moving.ts).
+    workspaceId: v.optional(v.id("workspaces")),
+    // Taken out of the screening: its papers nobody voted on went with it.
+    removedAt: v.optional(v.number()),
+    state: v.union(v.literal("waiting"), v.literal("reading"), v.literal("done"), v.literal("failed")),
+    failure: v.optional(v.string()),
+    // How far its reading is: the set's papers passed, and where the set goes on.
+    read: v.number(),
+    resume: v.optional(v.string()),
+    snapshot: v.optional(searchSnapshotValidator),
+    // What it holds, as last counted, and of the papers read: those the screening took, those another source had brought, and those left out.
+    total: v.optional(v.number()),
+    taken: v.number(),
+    duplicates: v.number(),
+    left: v.number(),
+    // Of the ones left out, how many for having no abstract.
+    bare: v.optional(v.number()),
+    // Of the ones taken, how many are screened as their own PDF, and the pages those have: what an AI reviewer is sent of them.
+    filed: v.optional(v.number()),
+    filePages: v.optional(v.number()),
+    // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
+    capped: v.optional(v.literal(true)),
+    // Where a living check goes on from: when it last looked.
+    checkedAt: v.optional(v.number()),
+  }).index("by_job", ["jobId"]),
+
+  // The few facts of a paper that a screening's lists are narrowed by, a small row beside each paper, kept in step by
+  // a trigger (./screening/cards.ts): how many papers stand each way under any narrowing is counted from these.
+  screeningCards: defineTable({
+    jobId: v.id("screeningJobs"),
+    resultId: v.id("screeningResults"),
+    result: paperResultValidator,
+    sourceId: v.optional(v.id("screeningSources")),
+    checkId: v.optional(v.id("screeningChecks")),
+    reason: v.optional(v.string()),
+    withdrawn: v.optional(v.literal(true)),
+  })
+    .index("by_result", ["resultId"])
+    .index("by_job", ["jobId"]),
+
+  // A person's Zotero libraries as last read, and each library's collections, a row each (./zotero/tree.ts): the
+  // form that starts a screening pages through them and finds one by name here. `under`: what a collection holds
+  // with everything under it, by Zotero's own counts. `parent` is "" at the top, and `library` "" for their own.
+  zoteroTrees: defineTable({
+    userId: v.id("users"),
+    library: v.string(),
+    state: v.union(v.literal("reading"), v.literal("counting"), v.literal("done"), v.literal("failed")),
+    readAt: v.number(),
+    total: v.number(),
+    read: v.number(),
+  }).index("by_user_and_library", ["userId", "library"]),
+  zoteroCollections: defineTable({
+    userId: v.id("users"),
+    library: v.string(),
+    key: v.string(),
+    name: v.string(),
+    parent: v.string(),
+    items: v.number(),
+    inside: v.number(),
+    under: v.number(),
+    readAt: v.number(),
+  })
+    .index("by_user_and_library_and_key", ["userId", "library", "key"])
+    .index("by_user_and_library_and_parent_and_name", ["userId", "library", "parent", "name"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId", "library"] }),
+
+  // A PDF handed to a screening, one of a drop of them in the form. A cheap model reads its first pages once, when it
+  // is added (./screening/heldPdfs.ts), and what it found is kept here for the screening's source to take.
+  screeningFiles: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    batch: v.string(),
+    // Its place in the drop, from 0.
+    at: v.number(),
+    file: v.id("_storage"),
+    name: v.string(),
+    bytes: v.number(),
+    state: pdfStateValidator,
+    pages: v.optional(v.number()),
+    title: v.optional(v.string()),
+    authors: screeningAuthorsValidator,
+    year: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    // The index holds the paper its DOI names, under the title it prints: the screening shows that paper.
+    known: v.optional(v.boolean()),
+    workId: v.optional(v.string()),
+  })
+    .index("by_batch_and_at", ["batch", "at"])
+    .index("by_workId", ["workId"]),
+
+  // What a source held that the screening doesn't take, each with why.
+  screeningLeftOut: defineTable({
+    jobId: v.id("screeningJobs"),
+    sourceId: v.id("screeningSources"),
+    name: v.string(),
+    why: leftOutWhyValidator,
+    // The paper it was read as, for a file someone says was matched to the wrong one.
+    paperKey: v.optional(v.string()),
+  })
+    .index("by_source", ["sourceId"])
+    .index("by_source_and_paperKey", ["sourceId", "paperKey"])
+    .index("by_job_and_why", ["jobId", "why"]),
+
+  // Each look in a screening's sources: the one it started with, then each check of a living screening, on its
+  // schedule (no `by`) or by hand. It holds where the papers it brings stand in the round.
+  screeningChecks: defineTable({
+    jobId: v.id("screeningJobs"),
+    at: v.number(),
+    by: v.optional(v.id("users")),
+    state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+    // The place its first paper takes, and what it has brought so far.
+    from: v.number(),
+    found: v.number(),
+    added: v.number(),
+    // The papers it added, by the source that brought them.
+    bySource: capped(v.optional(v.record(v.id("screeningSources"), v.number())), MAX_SOURCE_ROWS),
+    // When its reading last gave it a step: a check that goes quiet is set off again (convex/screening/gathering.ts `watch`).
+    beat: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_and_state", ["jobId", "state"]),
+
+  // How two reviewers' votes fell against each other over the papers both voted on (lib/screening/rules.ts `kappa`).
+  // `a` is the reviewer added first.
+  screeningAgreement: defineTable({ jobId: v.id("screeningJobs"), a: v.id("screeningReviewers"), b: v.id("screeningReviewers"), matrix: capped(v.array(v.number()), 9) })
+    .index("by_job_and_a_and_b", ["jobId", "a", "b"]),
+
+  // What reviewers say to each other about a paper. With `to`, a question that waits (`open`) until that person writes on the paper.
+  screeningMessages: defineTable({
+    jobId: v.id("screeningJobs"),
+    resultId: v.id("screeningResults"),
+    by: v.id("users"),
+    text: v.string(),
+    to: v.optional(v.id("users")),
+    open: v.optional(v.literal(true)),
+  })
+    .index("by_result", ["resultId"])
+    .index("by_job_and_to_and_open", ["jobId", "to", "open"]),
+
+  // A person's settings on one screening: its emails turned off.
+  // `conflictsAt`: when they were last told conflicts wait for them, which is at most once a day.
+  screeningNotices: defineTable({ jobId: v.id("screeningJobs"), userId: v.id("users"), off: v.boolean(), conflictsAt: v.optional(v.number()) }).index("by_job_and_user", ["jobId", "userId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make
