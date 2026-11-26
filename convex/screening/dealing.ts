@@ -32,7 +32,8 @@ export const modelRow = (job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningRe
   status: "waiting" as const,
   ...(modelsFree(job) ? { waitingWorkspace: job.workspaceId, waitingSince: job.createdAt } : {}),
 });
-const personRow = (job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningResults">, "_id" | "place">, reviewer: Reviewer) => ({ jobId: job._id, resultId: paper._id, reviewerId: reviewer._id, place: paper.place ?? 0, status: "waiting" as const });
+// `lean` starts at none of its models: every waiting place has a number, so the index that orders by it holds them all.
+const personRow = (job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningResults">, "_id" | "place">, reviewer: Reviewer) => ({ jobId: job._id, resultId: paper._id, reviewerId: reviewer._id, place: paper.place ?? 0, status: "waiting" as const, lean: 0 });
 
 /**
  * Gives a paper that just arrived to its reviewers, and says how many rows each got, for the caller to add to

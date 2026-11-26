@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { cellOf, decide, emptyMatrix, isFinal, reasonOf, scoreOf, settle, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
+import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, settle, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { countDealt, dealOpen, reviewersOf } from "./dealing";
@@ -121,13 +121,18 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     }
 
     const cast = ballots();
+    // How many of its models would include it goes on the places its people have yet to vote from, for the order that puts those papers first.
+    const lean = -votes.filter((vote, at) => byId.get(vote.reviewerId)?.kind === "model" && cast[at]!.status === "cast" && cast[at]!.decision === "include").length;
+    for (const vote of votes) if (vote.status === "waiting" && byId.get(vote.reviewerId)?.kind === "person" && (vote.lean ?? 0) !== lean) await ctx.db.patch("screeningVotes", vote._id, { lean });
+    const given = cast.flatMap((one) => (one.status === "cast" && one.decision ? [one.decision] : []));
+    const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
     const reason = now === "exclude" ? (reasonOf(cast, paper.resolved?.reason) ?? "other") : undefined;
     const { points, stars } = scoreOf(job.criteria ?? [], job.stars ?? [], cast);
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);
     if (now !== "waiting") counts[now]++;
     if (was === "exclude") reasons[paper.reason ?? "other"] = (reasons[paper.reason ?? "other"] ?? 1) - 1;
     if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
-    const patch = { result: now, reason, score: points, stars, reopen: undefined, ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
+    const patch = { result: now, reason, score: points, stars, split, reopen: undefined, ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);
     // Included papers go where the screening sends them, and one that ends excluded leaves the collection it came from, where that was asked.
     if ((now === "include") !== (was === "include") || (now === "exclude") !== (was === "exclude")) {

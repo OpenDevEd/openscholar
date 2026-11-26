@@ -1473,9 +1473,21 @@ export default defineSchema({
     titleKey: v.optional(v.string()),
     // How many lines its discussion has.
     messages: v.optional(v.number()),
+    // How far its reviewers are from agreeing: the votes that aren't on the side most of them took. What "most divided first" orders by.
+    split: v.optional(v.number()),
   })
     .index("by_job", ["jobId"])
     .index("by_job_and_result", ["jobId", "result"])
+    // A screening's papers in each order its Papers page offers, all of them or the ones that stand one way.
+    .index("by_job_and_title", ["jobId", "title"])
+    .index("by_job_and_publicationYear", ["jobId", "publicationYear"])
+    .index("by_job_and_score", ["jobId", "score"])
+    .index("by_job_and_split", ["jobId", "split"])
+    .index("by_job_and_result_and_title", ["jobId", "result", "title"])
+    .index("by_job_and_result_and_publicationYear", ["jobId", "result", "publicationYear"])
+    .index("by_job_and_result_and_score", ["jobId", "result", "score"])
+    .index("by_job_and_result_and_split", ["jobId", "result", "split"])
+    .index("by_job_and_reason", ["jobId", "reason"])
     .index("by_job_and_source", ["jobId", "sourceId"])
     .index("by_job_and_check", ["jobId", "checkId"])
     .index("by_job_and_doiKey", ["jobId", "doiKey"])
@@ -1575,6 +1587,8 @@ export default defineSchema({
     at: v.optional(v.number()),
     // A person's vote cast before a criterion became a must-have: it stands, and asks for a new one.
     flagged: v.optional(v.literal(true)),
+    // On a place a person has yet to vote from: how many of the paper's models would include it, as a negative number, so the papers the models lean to come first in the order of an index.
+    lean: v.optional(v.number()),
     waitingWorkspace: v.optional(v.id("workspaces")),
     waitingSince: v.optional(v.number()),
     workId: v.optional(v.string()),
@@ -1588,6 +1602,10 @@ export default defineSchema({
     .index("by_result", ["resultId"])
     .index("by_job_and_place", ["jobId", "place"])
     .index("by_reviewer_and_status_and_place", ["reviewerId", "status", "place"])
+    .index("by_reviewer_and_status_and_lean_and_place", ["reviewerId", "status", "lean", "place"])
+    // A reviewer's votes, the latest first, all of them or the ones cast one way.
+    .index("by_reviewer_and_status_and_at", ["reviewerId", "status", "at"])
+    .index("by_reviewer_and_decision_and_at", ["reviewerId", "decision", "at"])
     .index("by_reviewer_and_flagged_and_place", ["reviewerId", "flagged", "place"])
     .index("by_workId", ["workId"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"]),
