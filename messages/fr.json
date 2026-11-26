@@ -8202,7 +8202,7 @@
         "stillReading": "Lecture en cours",
         "found": "{soFar, select, true {<n></n> trouvés jusqu'ici} other {<n></n> trouvés}}",
         "leftOut": "<n></n> écartés",
-        "merged": "<n></n> doublons fusionnés",
+        "merged": "{count, plural, one {<n></n> doublon fusionné} other {<n></n> doublons fusionnés}}",
         "link": "{upTo, select, true {Jusqu'à <n></n> {count, plural, one {article} other {articles}}} other {<n></n> {count, plural, one {article} other {articles}}}}",
         "toScreen": "<n></n> à cribler",
         "readingIt": "Lecture en cours",

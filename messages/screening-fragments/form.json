@@ -144,7 +144,7 @@
     "stillReading": "Still reading",
     "found": "{soFar, select, true {<n></n> found so far} other {<n></n> found}}",
     "leftOut": "<n></n> left out",
-    "merged": "<n></n> duplicates merged",
+    "merged": "{count, plural, one {<n></n> duplicate merged} other {<n></n> duplicates merged}}",
     "link": "{upTo, select, true {Up to <n></n> {count, plural, one {paper} other {papers}}} other {<n></n> {count, plural, one {paper} other {papers}}}}",
     "toScreen": "<n></n> to screen",
     "readingIt": "Reading it",

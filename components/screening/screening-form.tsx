@@ -880,7 +880,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reading ? <Chip><Spinner className="size-3" />{t("papers.stillReading")}</Chip> : null}
                 <Chip>{t.rich("papers.found", { soFar, n: () => <AnimatedNumber value={found + leftTotal(sources)} /> })}</Chip>
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
-                <Chip>{t.rich("papers.merged", { n: () => <AnimatedNumber value={found - papers} /> })}</Chip>
+                <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip>
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
