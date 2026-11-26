@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS, MAX_STARS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { criteriaValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteAnswersValidator, votePassagesValidator, voteStatusValidator } from "./screening/validators";
+import { answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
@@ -1344,7 +1344,7 @@ export default defineSchema({
     shape: v.optional(v.literal(2)),
     // What the review asks, which its criteria are written from.
     question: v.optional(v.string()),
-    criteria: v.optional(criteriaValidator),
+    criteria: capped(v.optional(v.array(criterionValidator)), MAX_QUESTIONS),
     // The points each star starts at.
     stars: capped(v.optional(v.array(v.number())), MAX_STARS),
     rule: v.optional(ruleValidator),
@@ -1588,9 +1588,9 @@ export default defineSchema({
     place: v.number(),
     status: voteStatusValidator,
     decision: v.optional(decisionValidator),
-    answers: v.optional(voteAnswersValidator),
+    answers: capped(v.optional(v.record(v.string(), answerValidator)), MAX_QUESTIONS),
     confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
-    passages: v.optional(votePassagesValidator),
+    passages: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
     // Why it excludes: a criterion's key, or another reason.
     reason: v.optional(v.string()),
     note: v.optional(v.string()),

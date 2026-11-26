@@ -261,8 +261,7 @@ it("opens a shared screening to its guest to read and export from their own work
     return jobId;
   });
   const item = { workspaceId, kind: "screening" as const, id: jobId };
-  // A screening is shared to view only.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  // Shared to look: a screening is also shared to vote, which makes its guest one of its reviewers (../screening/reviewers.ts).
   await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
 
   // Its members read what it cost and how many guests it has. Carol, from her own workspace, reads whose it is and nothing of what it cost.

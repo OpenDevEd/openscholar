@@ -31,7 +31,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useMutation: () => vi.fn(), useQuery: () => undefined }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
-    screening: { queries: { getActiveScreeningJobProgress: "screening:getActiveScreeningJobProgress" } },
+    screening: { view: { rail: "screening:rail" } },
     extraction: { queries: { jobs: { runningJob: "extraction:runningJob" } } },
     organizations: { queries: { workspaces: "organizations:workspaces", myInvitations: "organizations:myInvitations" }, manage: { create: "create", invite: "invite", declineInvitation: "decline", confirmJoin: "confirmJoin" } },
     workspaces: { queries: { personal: "workspaces:personal", bySlug: "workspaces:bySlug" } },
@@ -44,7 +44,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     reads.mounted.push(ref);
     if (args === "skip") return { data: undefined };
     if (ref === "workspaces:personal") return { data: "ws_own" };
-    if (ref === "screening:getActiveScreeningJobProgress") return { data: reads.screening };
+    if (ref === "screening:rail") return { data: reads.screening };
     if (ref === "organizations:workspaces") return { data: { page: [{ workspaceId: "ws_own", kind: "personal", name: "Ada", role: "admin" }], isDone: true, continueCursor: "" } };
     if (ref === "organizations:myInvitations") return { data: { page: [], isDone: true, continueCursor: "" } };
     return { data: null };
@@ -97,10 +97,10 @@ describe("<AppSidebar>", () => {
     reads.flags = true;
   });
 
-  it("rings Screen with the percent the active screening's query gives", () => {
-    reads.screening = { jobId: "job_1", status: "processing", totalPapers: 100, processedPapers: 100, failedPapers: 0, qualifiedPapers: 80, percentComplete: 99 };
+  it("rings Screen while a screening's models read, with how far they are, and never at a hundred before they are done", () => {
+    reads.screening = { reading: { jobId: "job_1", done: 199, total: 200 }, waiting: 0 };
     renderSidebar();
-    expect(reads.mounted).toContain("screening:getActiveScreeningJobProgress");
+    expect(reads.mounted).toContain("screening:rail");
     expect(screen.getByText("99%")).toBeInTheDocument();
     expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
