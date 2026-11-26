@@ -22,6 +22,8 @@ import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./valida
 type Preview = Infer<typeof previewValidator>;
 /** Papers one step of the count looks at: each with its votes, a few hundred rows. */
 const STEP = 200;
+/** How many slices of one result's papers are counted at once. */
+const SLICES = 8;
 /** A count with nothing in it yet. Made anew each time: what it holds is added to, and a shared one would carry one request's figures into the next. */
 const nothing = (): Preview => ({ total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, removed: 0, included: 0, moves: [], again: 0 });
 const SETTLED = ["include", "maybe", "exclude"] as const;
@@ -39,9 +41,9 @@ type Step = Infer<typeof stepReturns>;
  * or not the change asks.
  */
 export const step = internalQuery({
-  args: { ...stepArgs, result: paperResultValidator, cursor: v.union(v.string(), v.null()), recheck: v.boolean() },
+  args: { ...stepArgs, result: paperResultValidator, cursor: v.union(v.string(), v.null()), recheck: v.boolean(), slice: v.object({ from: v.optional(v.number()), to: v.optional(v.number()) }) },
   returns: stepReturns,
-  handler: async (ctx, { userId, workspaceId, jobId, change, result, cursor, recheck }): Promise<Step> => {
+  handler: async (ctx, { userId, workspaceId, jobId, change, result, cursor, recheck, slice }): Promise<Step> => {
     const job = await requireMember(ctx, { userId, workspaceId }, jobId);
     const plan = await planned(ctx, job, change);
     const byId = new Map(plan.reviewers.map((one) => [one._id, one]));
@@ -72,7 +74,7 @@ export const step = internalQuery({
     const loads: Record<string, number> = {};
     let [reopened, eachChanged] = [0, 0];
 
-    const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: STEP });
+    const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result_and_place", (q) => { const one = q.eq("jobId", jobId).eq("result", result); return slice.from === undefined ? (slice.to === undefined ? one : one.lt("place", slice.to)) : slice.to === undefined ? one.gte("place", slice.from) : one.gte("place", slice.from).lt("place", slice.to); }).paginate({ cursor, numItems: STEP });
     for (const paper of page.page) {
       if (paper.withdrawn) continue;
       const before = (await votesOf(ctx, paper._id)).map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
@@ -137,7 +139,7 @@ export const step = internalQuery({
   },
 });
 
-const startReturns = v.object({ total: v.number(), removed: v.number(), included: v.number(), decides: v.boolean(), discards: v.boolean(), cast: v.record(v.string(), v.number()), dealt: v.record(v.string(), v.number()) });
+const startReturns = v.object({ total: v.number(), places: v.number(), removed: v.number(), included: v.number(), decides: v.boolean(), discards: v.boolean(), cast: v.record(v.string(), v.number()), dealt: v.record(v.string(), v.number()) });
 type Start = Infer<typeof startReturns>;
 
 /** What is known of a change without looking at a paper: what the screening has, what the change takes out, the votes of whoever it takes off, and the papers each person has before it. */
@@ -152,12 +154,13 @@ export const start = internalQuery({
     const gone = new Set<Id<"screeningReviewers">>(plan.leaving.map(({ reviewer }) => reviewer._id));
     return {
       total: Math.max(0, papersOf(job, progress) - removed),
+      places: job.totalPapers,
       removed,
       included: progress?.counts?.include ?? 0,
       decides: plan.decides,
       discards: plan.leaving.some(({ discard }) => discard),
       cast: Object.fromEntries(plan.leaving.map(({ reviewer }) => [reviewer._id, progress?.reviewers?.[reviewer._id]?.cast ?? 0])),
-      dealt: Object.fromEntries([...plan.reviewers.filter((one) => dealable(one) && !gone.has(one._id)).map((one) => [one._id, one.dealt] as const), ...plan.joining.map((one) => [one.userId, 0] as const)]),
+      dealt: Object.fromEntries([...plan.reviewers.filter((one) => dealable(one) && !gone.has(one._id)).map((one) => [one._id, one.dealt] as const), ...plan.joining.map((one) => { const old = plan.reviewers.find((row) => row.kind === "person" && row.userId === one.userId); return old ? ([old._id, old.dealt] as const) : ([one.userId, 0] as const); })]),
     };
   },
 });
@@ -197,16 +200,19 @@ export const preview = workspaceAction({
     const counted: Preview = { ...nothing(), total: base.total, removed: base.removed, included: base.included, leaving: Object.fromEntries(Object.entries(base.cast).map(([id, cast]) => [id, { cast, unvoted: 0, voted: 0, to: [], settled: 0, waiting: 0 }])) };
     const loads: Record<string, number> = {};
     // The papers still open are settled again under the change. The settled ones are looked at only where the change can move them: a check of them, or votes thrown out.
-    // Each result is its own range of papers, so they are counted side by side, a page after a page within one.
-    // ponytail: one action reads every page while the dialog waits: 500 steps for a screening of 100,000 papers, inside an action's ten minutes. A count kept in a table and carried on by scheduled steps is the upgrade if a screening grows past that.
-    const through = async (result: Result, recheck: boolean, each: (read: Step) => void) => {
-      let cursor: string | null = null;
-      do {
-        const read: Step = await ctx.runQuery(internal.screening.effects.step, { ...asked, result, cursor, recheck });
-        each(read);
-        cursor = read.cursor;
-      } while (cursor);
-    };
+    // Each result is its own range of papers, and each result is cut by the papers' places into slices of about the same size: every slice is counted side by side, a page after a page within one, so a screening ten times larger takes about as long while it has slices to spare.
+    // ponytail: one action reads every page while the dialog waits, SLICES at a time: a screening of 100,000 papers is about 60 steps a slice. A count kept in a table and carried on by scheduled steps is the upgrade if a screening grows past that.
+    // The first slice has no floor, so a paper with no place is counted in it, and the last has no ceiling.
+    const slices: Array<{ from?: number; to?: number }> = Array.from({ length: SLICES }, (_, at) => ({ ...(at ? { from: Math.ceil((at * base.places) / SLICES) } : {}), ...(at < SLICES - 1 ? { to: Math.ceil(((at + 1) * base.places) / SLICES) } : {}) }));
+    const through = (result: Result, recheck: boolean, each: (read: Step) => void) =>
+      Promise.all(slices.map(async (slice) => {
+        let cursor: string | null = null;
+        do {
+          const read: Step = await ctx.runQuery(internal.screening.effects.step, { ...asked, result, cursor, recheck, slice });
+          each(read);
+          cursor = read.cursor;
+        } while (cursor);
+      }));
     await Promise.all([
       ...(["waiting", "conflict", ...(change.recheck || base.discards ? SETTLED : [])] as const).map((result) => through(result, change.recheck === true, (read) => add(counted, loads, read))),
       // How many settled papers the change would move if they were checked again: what it holds back, and what asking for the check lets go.

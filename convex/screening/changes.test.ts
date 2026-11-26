@@ -192,5 +192,8 @@ describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"]
     });
     expect(said.joining[joiner]?.dealt ?? null).toEqual(change.addPeople ? dealt : null);
     if (change.remove) expect(said.leaving[at.ben]?.cast).toBe(before.cast.ben);
+    // The fewest and the most papers a person is said to hold once it is saved are what the people on it hold.
+    const held = await made.t.run(async (ctx) => (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).filter((one) => one.kind === "person" && one.left === undefined).map((one) => one.dealt));
+    expect(said.loads).toEqual({ least: Math.min(...held), most: Math.max(...held) });
   });
 });

@@ -1496,6 +1496,8 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_and_result", ["jobId", "result"])
+    // The papers that stand one way, by their place: a preview counts them a slice of places at a time, side by side (convex/screening/effects.ts).
+    .index("by_job_and_result_and_place", ["jobId", "result", "place"])
     // A screening's papers in each order its Papers page offers, all of them or the ones that stand one way.
     .index("by_job_and_title", ["jobId", "title"])
     .index("by_job_and_publicationYear", ["jobId", "publicationYear"])
