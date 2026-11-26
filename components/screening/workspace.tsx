@@ -97,8 +97,9 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
     whoIcon: each ? Users : AiIcon,
     when: words.t(`settle.says.${screening.rule.settle}`),
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
-    see: screening.rule.blind === "after" ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : t("rule.visible"),
-    seeIcon: screening.rule.blind === "after" ? Lock : Eye,
+    // Once it is finished nobody has a vote left to cast, and every vote shows (lib/screening/rules.ts `seesVotes`).
+    see: screening.rule.blind === "after" && !screening.finishedAt ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : screening.finishedAt && screening.rule.blind === "after" ? t("rule.visibleFinished") : t("rule.visible"),
+    seeIcon: screening.rule.blind === "after" && !screening.finishedAt ? Lock : Eye,
   };
 }
 
@@ -179,7 +180,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const workspace = screening.workspace;
   // On Screen a row that came and went would move the paper being read.
   const banner = bannerKind(open, view === "screen");
-  const now = passingKind(open);
+  const now = passingKind(open, view === "screen");
   // It opens its place in the tabs' row by its width, and closes it as it goes.
   const passing = <AnimatePresence initial={false}>{now ? <Opening across key="now"><Passing kind={now} open={open} workspace={workspace.name} /></Opening> : null}</AnimatePresence>;
   // The people on it: its workspace's people who review it, and whoever it is shared with from outside, to vote or to look. Its models are not people, and are counted with the reviewers on the Overview.
@@ -297,7 +298,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const role = !open.isReviewer
     ? { label: words.looker(open.canChange), icon: Eye, text: open.canChange ? t("role.member", { finished: String(Boolean(screening.finishedAt)) }) : t("role.viewer", { workspace: workspace.name }) }
     : !open.canChange
-      ? { label: t("role.guest"), icon: Users, text: t("role.guestSays", { workspace: workspace.name }) }
+      ? { label: t("role.guest"), icon: Users, text: t("role.guestSays", { workspace: workspace.name, personal: String(workspace.kind === "personal") }) }
       : null;
 
   return (
@@ -397,10 +398,12 @@ function bannerKind(open: Open, quiet: boolean): BannerKind | null {
  * What comes and goes by itself as papers arrive and models read: nobody has to do anything about it. It is a chip
  * at the end of the tabs' row, which takes no row of its own, so nothing under the tabs moves when it comes or goes.
  */
-type PassingKind = "gathering" | "checking" | "waiting" | "reading" | "nothing";
-function passingKind(open: Open): PassingKind | null {
+type PassingKind = "gathering" | "checking" | "waiting" | "reading" | "nothing" | "arrived";
+function passingKind(open: Open, quiet: boolean): PassingKind | null {
   const { modelsNow } = open;
   if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
+  // On Screen, where the row for it would move the paper being read, the papers that came in for the person are said here: a queue that grew says why.
+  if (quiet && !open.screening.finishedAt && open.latest?.mine) return "arrived";
   // A check that found nothing says so, where nothing else has to be said.
   if (open.lastCheck?.added === 0 && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
   return null;
@@ -493,6 +496,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
 function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; workspace: string }) {
   const { screening, reading, total } = open;
   const t = useTranslations("screening.frame");
+  const words = useWords();
   const pieces = useTranslations("screening.pieces");
   const says = "@max-[34rem]/strip:sr-only";
   const figures = "tabular-nums text-muted-foreground";
@@ -523,5 +527,6 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
     );
   }
   if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.nothing")}</Chip>;
+  if (kind === "arrived" && open.latest) return <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</StateChip>;
   return null;
 }

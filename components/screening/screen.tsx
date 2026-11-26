@@ -722,6 +722,8 @@ function Screen({ open }: { open: Open }) {
                         <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: t("paper.fromSource", { count: fromSource, source: source.name }) } : undefined} added={paper.batch !== undefined && paper.addedAt !== undefined ? { at: paper.addedAt, href: papersHref(id, { added: paper.batch }) } : undefined} />
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
                         {discussion && said ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
+                        {/* A paper read as its PDF is many screens long: the votes under it are a press away from its head. */}
+                        {paper.pdf ? <button type="button" onClick={() => reach("data-votes")} className="flex h-6 shrink-0 items-center gap-1 rounded-full bg-foreground/[0.07] px-2 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">{t("votes.title")}<ChevronDown aria-hidden className="size-3.5" /></button> : null}
                       </div>
                       <div className="space-y-3">
                         {/* A paper with no abstract is read as the PDF it is. */}
@@ -1253,7 +1255,7 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
           <AnswerMark answer={answer} label={criterion.short} />
         </span>
       </div>
-      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">{t("evidence.noSentence")}</p>}
+      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">{paper.abstract?.trim() ? t("evidence.noSentence") : t("evidence.noSentencePdf")}</p>}
     </div>
   );
 }

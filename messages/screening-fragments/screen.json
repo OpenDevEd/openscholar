@@ -125,7 +125,7 @@
   "note": {
     "label": "Note",
     "settling": "Why, for the record (optional)",
-    "voting": "A note for the others, saved with your vote"
+    "voting": "A note for the others, saved with your vote. A question for one of them goes in Discussion, below"
   },
   "settle": {
     "title": "Settle this conflict",
@@ -168,6 +168,7 @@
     "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
     "unsure": "Unsure: {sure, number, percent} sure",
     "sure": "{sure, number, percent} sure",
-    "noSentence": "It named no sentence of the abstract for this answer."
+    "noSentence": "It named no sentence of the abstract for this answer.",
+    "noSentencePdf": "It read this paper as its PDF. A model names a sentence only where it reads an abstract."
   }
 }

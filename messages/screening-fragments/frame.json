@@ -37,6 +37,7 @@
     "hiddenMine": "Votes hidden in your To do",
     "hiddenTheirs": "Votes hidden in reviewers' To do",
     "visible": "Votes visible to all",
+    "visibleFinished": "Votes visible now it is finished",
     "conflictsGoTo": "Conflicts go to {who}",
     "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
     "chips": "Each paper gets the votes named in these chips, and is settled once they are in.",
@@ -48,12 +49,13 @@
     "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
     "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
     "guest": "Guest",
-    "guestSays": "{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings."
+    "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} changes its settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings.}}"
   },
   "banner": {
     "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
     "arrived": "<link>{count, plural, one {# new paper} other {# new papers}}</link> came in {ago}",
     "screenNew": "Screen your {count, plural, one {# new paper} other {# new papers}} first",
+    "arrivedForYou": "{count, plural, one {# new paper for you came in {ago}} other {# new papers for you came in {ago}}}",
     "nothing": "The last check found no new papers",
     "counting": "<done></done> of {of, number}",
     "modelPrice": "{name}, {price}",
@@ -77,7 +79,7 @@
     "emailsOff": "This screening won't email you any more",
     "emailsOn": "This screening emails you again",
     "stopEmails": "Stop its emails to me",
-    "emailAgain": "Email me about it again",
+    "emailAgain": "Its emails to me are off: turn them on",
     "pauseModels": "Pause models",
     "duplicate": "Duplicate as a new screening",
     "move": "Move to another workspace",
@@ -94,6 +96,8 @@
   "finish": {
     "title": "Mark this screening as finished?",
     "unsettled": "{count, plural, one {# paper is not settled, and stays as it is} other {# papers are not settled, and stay as they are}}",
+    "votingStops": "Nobody can vote on it until it is reopened",
+    "votesShow": "The votes that were hidden from reviewers show to everyone on it",
     "modelsStop": "The models stop reading",
     "checksStop": "It stops checking for new papers",
     "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"

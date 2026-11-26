@@ -652,7 +652,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                       const visible = one.sees;
                       const cast = castOf(screening, one);
                       const state = settledOf(one);
-                      const waitsForMe = open.isReviewer && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);
+                      const waitsForMe = open.isReviewer && !screening.finishedAt && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);
                       const isOpen = paper?.id === one.id;
                       return (
                         <TableRow key={one.id} data-paper={one.id} data-state={isOpen ? "selected" : undefined} className="cursor-pointer border-border-subtle" style={{ height: ROW }} onClick={() => (isOpen ? close() : show(one.id))}>
@@ -806,7 +806,8 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const mine = missing[0]!.id === open.me;
     return (
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className={cn("shrink-0", mine && "font-medium text-primary")}>{mine ? t("why.waitingOnYou") : t("why.waitingOn")}</span>
+        {/* Once it is finished nobody is waited on: the line says who cast no vote. */}
+        <span className={cn("shrink-0", mine && !open.screening.finishedAt && "font-medium text-primary")}>{open.screening.finishedAt ? t("why.noVoteFrom") : mine ? t("why.waitingOnYou") : t("why.waitingOn")}</span>
         <Faces
           reviewers={missing}
           me={open.me}

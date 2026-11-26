@@ -12,7 +12,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -353,10 +353,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const made = useMemo<Screening | null>(() => {
     if (!setup) return null;
     const start = blank(setup.me);
-    // Screen all on a results page: the form starts on that search, named after it, with the questions its page screens with as criteria.
+    // Screen all on a results page: the form starts on that search, with the questions its page screens with as criteria. Where the search was written from a question put to the assistant, that question is the screening's, and its name: the words a person asked say more than the query made from them.
     if (!copied && picked) {
       const criteria = searchOffer(picked).questions?.map((question) => criterionFrom(question)) ?? [];
-      return { ...start, name: picked.query.slice(0, 200), sources: [sourceFrom(searchOffer(picked))], criteria, scoring: defaultScoring(criteria) };
+      const asked = picked.latestQuestion?.trim() ?? "";
+      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom(searchOffer(picked))], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
@@ -364,11 +365,14 @@ export function ScreeningForm({ id }: { id?: string }) {
       return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, detail: t("inLibrary", { name: handed.library.name }), total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied) return start;
+    // A copy takes the papers the one it copies took: the same part of each source. Whoever votes on that one from outside its workspace is not on the copy: a screening is shared with a guest once it exists (`guestsLeft`).
     const mine = (one: Reviewer) => one.kind === "model" || !one.guest;
-    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id })), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } };
+    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id })), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
   }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
+  // The guests who vote on the screening this one is copied from, by name: they are not on the copy, and the form says how they get on it.
+  const guestsLeft = !id && copied ? activeReviewers(copied).filter((one) => one.kind === "person" && one.guest).map((one) => one.name) : [];
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
   // A new screening being filled in is its maker's, in the workspace it was begun in: its files, its searches and what was read of them are that workspace's.
   const key = id ?? `new:${workspaceId ?? ""}:${setup?.me.id ?? ""}:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
@@ -490,7 +494,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   if (saved && !open?.canChange) {
     return (
       <ListEmpty icon={Lock} action={<Button asChild variant="outline" size="sm"><NextLink href={overviewHref(saved.id)}>{t("goToOverview")}<ChevronRight /></NextLink></Button>}>
-        {t("onlyMembers", { workspace: saved.workspace.name })}
+        {t("onlyMembers", { workspace: saved.workspace.name, personal: String(saved.workspace.kind === "personal") })}
       </ListEmpty>
     );
   }
@@ -507,7 +511,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Someone invited by email reads papers once they have joined.
   const { people: joined, each } = readersOf(draft);
   const models = modelsOf(draft);
-  const found = foundTotal(sources);
+  // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
+  const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
   // What its sources hold, and what a wider range of one of them promises on top: nobody knows how many of those are new until the source is read again.
   const papers = paperTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
   const pdfs = pdfsOf(sources);
@@ -1234,8 +1239,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </div>
                   </motion.div>
                 ))}
+                {/* Criteria being written hold the room about five of them take, from the press of the button: what is under the list moves once, under the hand that pressed, and hardly again when they arrive. */}
+                {writing ? <motion.div key="writing" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex min-h-[17.5rem] items-center justify-center gap-2 px-4 py-4 text-sm text-muted-foreground"><AiIcon working className="size-4" />{t("criteria.writing")}</p></motion.div> : null}
                 {/* The line a list with nothing in it shows grows in as its last row shrinks away, as a row does. */}
-                {!criterionRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">{writing ? <><AiIcon working className="size-4" />{t("criteria.writing")}</> : t("criteria.none")}</p></motion.div> : null}
+                {!criterionRows.length && !writing ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">{t("criteria.none")}</p></motion.div> : null}
               </AnimatePresence>
               <form className="flex items-center gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
                 <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="h-9 flex-1" />
@@ -1337,6 +1344,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 })}
                 {!reviewerRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="px-4 py-4 text-sm text-muted-foreground">{t("reviewers.none")}</p></motion.div> : null}
               </AnimatePresence>
+              {guestsLeft.length ? <p className="flex items-start gap-2 px-4 py-2.5 text-xs text-muted-foreground"><Users aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("reviewers.guestsLeft", { count: guestsLeft.length, names: words.listed(guestsLeft) })}</span></p> : null}
               <div className="grid gap-2 px-4 py-2.5 sm:grid-cols-2">
                 <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />{t("reviewers.addPerson")}</Button>

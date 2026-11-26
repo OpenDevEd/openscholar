@@ -5071,6 +5071,7 @@
         "chat": "{name} shared a chat"
       },
       "pointOwn": "It sits in your own workspace",
+      "pointOwnScreening": "You open it from your own workspace. It is the screening the others vote on too, not a copy",
       "pointCredits": "Work you run on it uses your credits",
       "open": "Open",
       "openFailed": "Couldn't open it",
@@ -8105,7 +8106,7 @@
       "again": "{name}, again",
       "inLibrary": "In {name}",
       "loading": "Loading the form",
-      "onlyMembers": "Only members of {workspace} can change these settings",
+      "onlyMembers": "{personal, select, true {Only {workspace} can change these settings} other {Only members of {workspace} can change these settings}}",
       "goToOverview": "Go to the Overview",
       "thisWorkspace": "this workspace",
       "share": {
@@ -8212,7 +8213,7 @@
         "removedOnSave": "Removed when you save",
         "atStart": "{count, plural, other {# at the start}}",
         "allOfIt": "All of it",
-        "all": "{count, plural, other {All #}}",
+        "all": "{count, plural, one {Its # record} other {All # records}}",
         "inSource": "{count, plural, other {# in the source}}",
         "readAsPdf": "{count, plural, one {# read as its PDF} other {# read as PDFs}}",
         "duplicates": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
@@ -8323,6 +8324,7 @@
         "allRead": "All read",
         "none": "No reviewers yet",
         "addPerson": "Add a person",
+        "guestsLeft": "{count, plural, one {{names} votes on the screening this is copied from as a guest, and is not on this one. Share it with them once it has started.} other {{names} vote on the screening this is copied from as guests, and are not on this one. Share it with them once it has started.}}",
         "addModel": "Add a model"
       },
       "decided": {
@@ -8465,6 +8467,7 @@
         "hiddenMine": "Votes hidden in your To do",
         "hiddenTheirs": "Votes hidden in reviewers' To do",
         "visible": "Votes visible to all",
+        "visibleFinished": "Votes visible now it is finished",
         "conflictsGoTo": "Conflicts go to {who}",
         "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
         "chips": "Each paper gets the votes named in these chips, and is settled once they are in.",
@@ -8476,12 +8479,13 @@
         "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
         "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
         "guest": "Guest",
-        "guestSays": "{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings."
+        "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} changes its settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings.}}"
       },
       "banner": {
         "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
         "arrived": "<link>{count, plural, one {# new paper} other {# new papers}}</link> came in {ago}",
         "screenNew": "Screen your {count, plural, one {# new paper} other {# new papers}} first",
+        "arrivedForYou": "{count, plural, one {# new paper for you came in {ago}} other {# new papers for you came in {ago}}}",
         "nothing": "The last check found no new papers",
         "counting": "<done></done> of {of, number}",
         "modelPrice": "{name}, {price}",
@@ -8505,7 +8509,7 @@
         "emailsOff": "This screening won't email you any more",
         "emailsOn": "This screening emails you again",
         "stopEmails": "Stop its emails to me",
-        "emailAgain": "Email me about it again",
+        "emailAgain": "Its emails to me are off: turn them on",
         "pauseModels": "Pause models",
         "duplicate": "Duplicate as a new screening",
         "move": "Move to another workspace",
@@ -8522,6 +8526,8 @@
       "finish": {
         "title": "Mark this screening as finished?",
         "unsettled": "{count, plural, one {# paper is not settled, and stays as it is} other {# papers are not settled, and stay as they are}}",
+        "votingStops": "Nobody can vote on it until it is reopened",
+        "votesShow": "The votes that were hidden from reviewers show to everyone on it",
         "modelsStop": "The models stop reading",
         "checksStop": "It stops checking for new papers",
         "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
@@ -8846,7 +8852,7 @@
         "change": "Change",
         "choose": "Choose a collection",
         "aCollection": "A collection",
-        "nowhereYet": "Nowhere yet",
+        "nowhereYet": "Kept in this screening",
         "count": "<num>{count, number}</num> {saved, select, true {saved so far} other {included}}"
       },
       "credits": {
@@ -9035,7 +9041,8 @@
       "why": {
         "nobodyCanVote": "No reviewer can vote on it yet",
         "waitingOnYou": "Waiting on you",
-        "waitingOn": "Waiting on"
+        "waitingOn": "Waiting on",
+        "noVoteFrom": "No vote from"
       },
       "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
       "note": {
@@ -9294,7 +9301,7 @@
       "note": {
         "label": "Note",
         "settling": "Why, for the record (optional)",
-        "voting": "A note for the others, saved with your vote"
+        "voting": "A note for the others, saved with your vote. A question for one of them goes in Discussion, below"
       },
       "settle": {
         "title": "Settle this conflict",
@@ -9337,7 +9344,8 @@
         "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
         "unsure": "Unsure: {sure, number, percent} sure",
         "sure": "{sure, number, percent} sure",
-        "noSentence": "It named no sentence of the abstract for this answer."
+        "noSentence": "It named no sentence of the abstract for this answer.",
+        "noSentencePdf": "It read this paper as its PDF. A model names a sentence only where it reads an abstract."
       }
     },
     "sources": {
@@ -9592,6 +9600,7 @@
         "failed": "Model couldn't read the paper"
       },
       "hiddenUntilVote": "Hidden until you vote",
+      "hiddenWhileToDo": "Hidden while papers wait for your vote",
       "votesHiddenSays": "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.",
       "ago": {
         "now": "just now",

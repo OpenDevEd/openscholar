@@ -47,7 +47,7 @@
   "again": "{name}, again",
   "inLibrary": "In {name}",
   "loading": "Loading the form",
-  "onlyMembers": "Only members of {workspace} can change these settings",
+  "onlyMembers": "{personal, select, true {Only {workspace} can change these settings} other {Only members of {workspace} can change these settings}}",
   "goToOverview": "Go to the Overview",
   "thisWorkspace": "this workspace",
   "share": {
@@ -154,7 +154,7 @@
     "removedOnSave": "Removed when you save",
     "atStart": "{count, plural, other {# at the start}}",
     "allOfIt": "All of it",
-    "all": "{count, plural, other {All #}}",
+    "all": "{count, plural, one {Its # record} other {All # records}}",
     "inSource": "{count, plural, other {# in the source}}",
     "readAsPdf": "{count, plural, one {# read as its PDF} other {# read as PDFs}}",
     "duplicates": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
@@ -265,6 +265,7 @@
     "allRead": "All read",
     "none": "No reviewers yet",
     "addPerson": "Add a person",
+    "guestsLeft": "{count, plural, one {{names} votes on the screening this is copied from as a guest, and is not on this one. Share it with them once it has started.} other {{names} vote on the screening this is copied from as guests, and are not on this one. Share it with them once it has started.}}",
     "addModel": "Add a model"
   },
   "decided": {

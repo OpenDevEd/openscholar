@@ -4,7 +4,7 @@
 // to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
 // section asks for.
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -167,12 +167,12 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
             {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
             {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
-            {!open.gathering && removed.left ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</LinkChip> : null}
+            {!open.gathering && removed.left ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
             {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
             {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">{t("progress.capped")}</LinkChip> : null}
             {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
-            {unreadPdfs(screening) ? <LinkChip href={settingsHref(screening.id, "reviewers")} tone="warning" icon={FileText} className="self-center">{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</LinkChip> : null}
-            {!open.gathering && removed.merged ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{t("progress.merged", { count: removed.merged })}</LinkChip> : null}
+            {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText} className="self-center">{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
+            {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
@@ -229,6 +229,11 @@ function Yours({ open }: { open: Open }) {
 
 // ── Reviewers ────────────────────────────────────────────────────────────────────────────────────
 
+
+/** A count that opens the part of the settings it comes from, for whoever may open them: its workspace's members. For anyone else it is the count alone, and leads nowhere they can't go. */
+function SettingsChip({ open, part, ...chip }: { open: Open; part: "papers" | "reviewers" } & Omit<ComponentProps<typeof LinkChip>, "href">) {
+  return open.canChange ? <LinkChip href={settingsHref(open.screening.id, part)} {...chip} /> : <StateChip tone={chip.tone ?? "neutral"} icon={chip.icon} className={chip.className}>{chip.children}</StateChip>;
+}
 
 /**
  * The columns of the Reviewers table. On a phone a row is two lines of its own, the name alone on the first. Wider,
@@ -552,7 +557,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
         <div role="cell" className="col-span-4 flex justify-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-          <Chip icon={Lock}>{words.t("hiddenUntilVote")}</Chip>
+          <Chip icon={Lock}>{words.t("hiddenWhileToDo")}</Chip>
         </div>
       ) : (
       <>
@@ -996,8 +1001,9 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
     {
       title: t("flow.removed"),
       total: found - kept,
-      href: settingsHref(id, "papers"),
-      rows: [{ key: "duplicates", label: words.t("removed.merged"), value: merged }, { key: "bare", label: words.t("removed.bare"), value: bare }, { key: "unread", label: words.t("removed.unread"), value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
+      // Its sources are in its settings, which its workspace's members open: for anyone else these are counts.
+      ...(open.canChange ? { href: settingsHref(id, "papers") } : {}),
+      rows: [{ key: "duplicates", label: words.t("removed.merged"), value: merged }, { key: "bare", label: words.t("removed.bare"), value: bare }, { key: "unread", label: words.t("removed.unread"), value: left - bare }].flatMap((row) => (row.value ? [{ ...row, ...(open.canChange ? { href: settingsHref(id, "papers") } : {}), fill: neutral }] : [])),
     },
     {
       title: t("flow.papers"),

@@ -133,6 +133,7 @@
     "failed": "Model couldn't read the paper"
   },
   "hiddenUntilVote": "Hidden until you vote",
+  "hiddenWhileToDo": "Hidden while papers wait for your vote",
   "votesHiddenSays": "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.",
   "ago": {
     "now": "just now",

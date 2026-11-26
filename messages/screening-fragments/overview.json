@@ -145,7 +145,7 @@
     "change": "Change",
     "choose": "Choose a collection",
     "aCollection": "A collection",
-    "nowhereYet": "Nowhere yet",
+    "nowhereYet": "Kept in this screening",
     "count": "<num>{count, number}</num> {saved, select, true {saved so far} other {included}}"
   },
   "credits": {

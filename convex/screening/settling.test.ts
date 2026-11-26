@@ -105,8 +105,12 @@ describe("a paper settled on its votes", () => {
     const { jobId, papers } = await started(made, ["ann", "ben"], 1);
     const vote = voter(made, jobId);
     await expect(vote("cat", papers[0]!._id, "include")).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+    const toDo = async () => (await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId: made.workspaceId, jobId, queue: "todo", paginationOpts: { cursor: null, numItems: 10 } })).page.length;
+    expect(await toDo()).toBe(1);
     await made.as.cat!.mutation(api.screening.screenings.finish, { workspaceId: made.workspaceId, jobId });
     await expect(vote("ann", papers[0]!._id, "include")).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+    // Nothing is to do in a finished screening: its queue is as empty as its count.
+    expect(await toDo()).toBe(0);
     await made.as.ann!.mutation(api.screening.screenings.reopen, { workspaceId: made.workspaceId, jobId });
     await vote("ann", papers[0]!._id, "include");
   });

@@ -128,7 +128,8 @@
   "why": {
     "nobodyCanVote": "No reviewer can vote on it yet",
     "waitingOnYou": "Waiting on you",
-    "waitingOn": "Waiting on"
+    "waitingOn": "Waiting on",
+    "noVoteFrom": "No vote from"
   },
   "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
   "note": {

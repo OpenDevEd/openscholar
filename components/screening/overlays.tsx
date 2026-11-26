@@ -151,6 +151,8 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         <EffectList
           lines={[
             ...(unsettled ? [t("finish.unsettled", { count: unsettled })] : []),
+            t("finish.votingStops"),
+            ...(screening.rule.blind === "after" ? [t("finish.votesShow")] : []),
             ...(state.reading.length ? [t("finish.modelsStop")] : []),
             ...(screening.living ? [t("finish.checksStop")] : []),
             t("finish.movesToFinished"),

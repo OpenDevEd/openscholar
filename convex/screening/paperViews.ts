@@ -199,19 +199,21 @@ export const queueAction = defineUserQuery({
     const { job, reviewer } = looking;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const needle = text?.trim() ?? "";
+    // A finished screening takes no vote, so nothing is to do in it: the queue is as empty as its count says (./dealing.ts `waitsOn`).
+    const todo = job.finishedAt === undefined;
     if (needle) {
       // Found by its words, best match first, then kept to the queue.
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(options);
       // A paper whose source was taken out is in no queue, found by its words or not.
       const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn && holdsAll(paper, needle)));
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
-      return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
+      return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
     }
     if (queue === "conflicts") {
       const read = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "conflict")).paginate(options);
       return { ...read, page: await views(ctx, looking, read.page) };
     }
-    if (!reviewer) return NONE;
+    if (!reviewer || (queue === "todo" && !todo)) return NONE;
     const votes = ctx.db.query("screeningVotes");
     // Where votes are hidden until the person votes, an order by the models' votes would give them away.
     const lean = order === "lean" && job.rule!.blind === "always";

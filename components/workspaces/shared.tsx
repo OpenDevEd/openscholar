@@ -303,7 +303,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       }
     >
       <ul className={LIST}>
-        <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{t("pointOwn")}</Point>
+        <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{invitation.kind === "screening" ? t("pointOwnScreening") : t("pointOwn")}</Point>
         {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
         <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? t("pointScreening") : t("pointCredits")}</Point>
       </ul>
