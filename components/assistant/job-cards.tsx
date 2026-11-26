@@ -385,7 +385,7 @@ function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
       credits={job.credits}
       done={done}
       total={job.total}
-      href={mine ? `/screening?job=${job.jobId}` : null}
+      href={mine ? `/screening/${job.jobId}` : null}
       end={<EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("screening.cancel")} onCancel={cancel} mine={mine} />}
       bar={
         <>

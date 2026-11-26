@@ -198,7 +198,7 @@ async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">, quiet: boolean)
   if (!facts) return `<job_ended>${end.kind} ${end.jobId} ended (${end.status}); it can no longer be read.</job_ended>`;
   const spent = `credits: ${facts.credits}${facts.cap === undefined ? "" : ` of ${facts.cap} approved`}`;
   if (facts.kind === "screening") {
-    return `<job_ended>screening ${facts.jobId}${facts.label ? ` (${facts.label})` : ""}; status: ${end.status}${facts.capped ? ", stopped at the credits approved" : ""}; page: /screening?job=${facts.jobId}; papers: ${facts.total}; included: ${facts.included}; unclear: ${facts.unclear}; excluded: ${facts.excluded}; failed: ${facts.failed}; ${spent}${facts.failure ? `; why it failed: ${facts.failure}` : ""}</job_ended>`;
+    return `<job_ended>screening ${facts.jobId}${facts.label ? ` (${facts.label})` : ""}; status: ${end.status}${facts.capped ? ", stopped at the credits approved" : ""}; page: /screening/${facts.jobId}; papers: ${facts.total}; included: ${facts.included}; unclear: ${facts.unclear}; excluded: ${facts.excluded}; failed: ${facts.failed}; ${spent}${facts.failure ? `; why it failed: ${facts.failure}` : ""}</job_ended>`;
   }
   return `<job_ended>extraction ${facts.jobId} (${facts.name}); status: ${end.status}; page: /extraction/${facts.jobId}; papers: ${facts.total}; answered: ${facts.done}; failed: ${facts.failed}; questions: ${facts.questions.map((question) => question.key + " " + question.question).join(" | ")}; ${spent}${facts.stopped ? `; why it stopped: ${facts.stopped}` : ""}</job_ended>`;
 }

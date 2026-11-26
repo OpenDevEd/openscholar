@@ -6,7 +6,11 @@ describe("the record a reply's link points at", () => {
     expect(recordOf("/results/abc-123")?.kind).toBe("search");
     expect(recordOf("/library?col=k1")?.kind).toBe("collection");
     expect(recordOf("https://openalex.org/W2084286260")).toEqual({ kind: "paper", paperId: "W2084286260" });
+    expect(recordOf("/screening/j1")?.kind).toBe("screening");
+    expect(recordOf("/screening/j1/papers?paper=p1")?.kind).toBe("screening");
+    // A chat from before each screening had its own address still shows its links as screenings.
     expect(recordOf("/screening?job=j1")?.kind).toBe("screening");
+    expect(recordOf("/screening/new")).toBeNull();
     expect(recordOf("/extraction/x1")?.kind).toBe("extraction");
     expect(recordOf("/evidence-communities/l1/configuration?section=sources")?.kind).toBe("library");
     expect(recordOf("/topics/T13305")?.kind).toBe("topic");

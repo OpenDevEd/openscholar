@@ -88,9 +88,9 @@ const CORE_PATHS = [
   "library/papers:collect",
   "library/collections:listCollections",
   "library/collections:createCollection",
-  "screening/queries:listJobs",
-  "screening/papers:list",
-  "screening/papers:get",
+  "screening/view:list",
+  "screening/view:get",
+  "screening/paperViews:list",
   "extraction/queries:listJobs",
   "research/web:search",
   "assistant/files:read",
@@ -122,7 +122,13 @@ export function definition(entry: UserAction) {
  * offered it the assistant picked it over its chat twin and told the person to start the job themselves
  * (extraction/mutations:startJob over extraction/start:extract).
  */
-const REACHABLE = USER_ACTIONS.filter((entry) => entry.kind === "query" || !entry.spendsCredits || entry.estimate !== undefined);
+/**
+ * The screening actions from before a screening had reviewers. They stay registered while their functions exist, and
+ * are out of the assistant's reach: it reads screenings with screening/view, screening/paperViews and
+ * screening/discussion, and changes nothing in them (plans/screening-reviewers, decision 19).
+ */
+const RETIRED = new Set(["screening/start:screen", "screening/mutations:cancelScreeningJob", "screening/papers:answer", "screening/papers:list", "screening/papers:get", "screening/queries:listJobs", "screening/queries:getScreeningJob", "screening/queries:listScreeningResults", "screening/queries:slots", "screening/queries:estimate"]);
+const REACHABLE = USER_ACTIONS.filter((entry) => !RETIRED.has(entry.path) && (entry.kind === "query" || !entry.spendsCredits || entry.estimate !== undefined));
 const entryAt = (path: string) => REACHABLE.find((entry) => entry.path === path);
 
 /** The core actions, as registered. */
