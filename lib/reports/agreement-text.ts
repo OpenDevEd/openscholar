@@ -1,16 +1,14 @@
-// The publishing agreement an author signs for a single work, as BeeWriter holds it
-// (openscholar-proposal/end-user-agreements/publishing-agreement-single-work). It is the text Openscholar Reports
-// starts with; admins change it at Settings > Admin > Publishing, and each change is a new version.
+// The publishing agreement an author signs for a single work, the final text after review in Kenya. It is the text
+// Openscholar Reports starts with; admins change it at Settings > Admin > Publishing, and each change is a new version.
+// Blanks in square brackets are filled for each report (lib/reports/agreement.ts).
 export const DEFAULT_AGREEMENT = `# Publishing agreement: single work (Openscholar Reports)
-
-Draft for discussion, 2 November 2026. Not legal advice; to be reviewed by a lawyer in Kenya before first use. For route 1 (one-off work) in the introduction.
 
 **Publishing agreement**
 
 This agreement is made on [date] between:
 
-1. [Name of author(s) or organisation], of [address] (the “Author”). Where there are several authors, one of them signs on behalf of all and confirms that they have the others’ agreement; and
-2. Openscholar, [legal form], registered in Kenya under number [number], of [address] (“Openscholar”).
+1. [Name of author(s) or organisation] (the “Author”). Where there are several authors, one of them signs on behalf of all and confirms that they have the others’ agreement; and
+2. eKitabu, LLC, a limited liability company of the United States, of Rainbow Tower, 5th floor, Nairobi, Kenya, which runs Openscholar (“Openscholar”).
 
 ## 1. The Work
 
@@ -18,7 +16,7 @@ The Work is: [title], by [authors], [number of pages], [date of completion] (the
 
 ## 2. Publication
 
-2.1. Openscholar will publish the Work in the series Openscholar Reports, register a DOI for it with Crossref, and keep a landing page for it on openscholar.ai.
+2.1. Openscholar will publish the Work in the series Openscholar Reports and keep a landing page for it on openscholar.ai. [identifiers]
 
 2.2. The Work will carry the byline [byline] on its cover or first page. Openscholar may add a cover sheet with this information.
 
@@ -45,21 +43,21 @@ The Work is: [title], by [authors], [number of pages], [date of completion] (the
 
 ## 5. Metadata
 
-The Author will provide the title, authors (with ORCID iDs where available) and affiliations, date, abstract, keywords and funder information. Openscholar will register accurate metadata with Crossref and correct it if the Author reports an error.
+The Author will provide the title, authors (with ORCID iDs where available) and affiliations, date, abstract, keywords and funder information. Openscholar will register accurate metadata for the Work and correct it if the Author reports an error.
 
 ## 6. Permanence and withdrawal
 
 6.1. The Author understands that a DOI is permanent and cannot be deleted.
 
-6.2. Openscholar will keep the landing page online and keep an archived copy of the Work in a long-term archive.
+6.2. Openscholar will keep the landing page online.
 
 6.3. If the Work has to be withdrawn (for example for legal reasons), the DOI will continue to resolve to a page explaining that the Work has been withdrawn. Corrections are published as a new version or a correction notice.
 
-## 7. Fees
+## 7. Fee
 
-7.1. Crossref fees: Openscholar registers the DOI under its own Crossref membership. [Crossref charges Openscholar no content registration fee / The Crossref content registration fee is [amount].]
+7.1. Publishing the Work costs the publication fee shown on openscholar.ai when the Work is made live. It is paid from the Author’s Openscholar workspace, and only after Openscholar has accepted the Work. Nothing is owed for a Work that Openscholar declines.
 
-7.2. Any other fees: [none / as agreed between the parties].
+7.2. Credit in the workspace’s publication balance, vouchers and promotion codes may pay for part or all of the fee.
 
 ## 8. General
 
@@ -67,6 +65,6 @@ The Author will provide the title, authors (with ORCID iDs where available) and 
 
 8.2. Sections 3, 4 and 6 continue to apply after publication.
 
-Signed for the Author: ____________________ Name, date
+8.3. The Author signs this agreement on openscholar.ai. Openscholar accepts it by publishing the Work.
 
-Signed for Openscholar: ____________________ Name, role, date`;
+Signed for the Author: ____________________ Name, date`;
