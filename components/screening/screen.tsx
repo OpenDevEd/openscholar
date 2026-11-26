@@ -149,16 +149,21 @@ function Screen({ open }: { open: Open }) {
   // The queue as the server holds it, a page at a time: found by a paper's title or authors, Done by your vote, and To do in the order asked for.
   // It is read as it stands, so a paper you have dealt with leaves it and the ones after it move up. The open one is the exception: it keeps its place, with your vote on it, until you move on.
   const listed = useCursorPageAt("page", api.screening.paperViews.queue, inWorkspace(workspaceId, { jobId: id, queue, ...(queue === "todo" ? { order } : {}), ...(queue === "done" && voted !== "any" ? { voted } : {}), ...(words ? { text: words } : {}) }), QUEUE_PAGE, { scroll: false });
-  // The paper the address names is read by itself, so Back, a reload or a link shows the paper its address says, whether or not the queue still holds it.
-  const named = useProtectedQuery(api.screening.paperViews.paper, inWorkspace(workspaceId, picked ? { jobId: id, paperId: picked as Id<"screeningResults"> } : "skip")).data;
+  const holding = `${id}:${queue}:${order}:${words.toLowerCase()}:${voted}`;
+  // With no paper named in the address, the page's first is the open one, and stays it while the queue changes under the person: someone else settling a conflict never swaps the paper being read, or written about, for the next one.
+  const [led, setLed] = useState<{ of: string; id: string } | null>(null);
+  const leading = `${holding}:${listed.page}`;
+  if (!picked && !listed.isLoading && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
+  const opened = picked ?? (led?.of === leading ? led.id : null);
+  // The open paper is read by itself, so Back, a reload or a link shows the paper its address says, whether or not the queue still holds it.
+  const named = useProtectedQuery(api.screening.paperViews.paper, inWorkspace(workspaceId, opened ? { jobId: id, paperId: opened as Id<"screeningResults"> } : "skip")).data;
   const { folded, guides, paced: paces, set: setKept } = useKept();
   const paced = paces[open.me] ?? NO_PACE;
-  const holding = `${id}:${queue}:${order}:${words.toLowerCase()}:${voted}`;
   const myVote = (one: Paper) => voteOn(one, open.me);
   // Dealt with: no longer among what the queue holds. In To do that is a paper you voted on, in Vote again one whose vote you have cast again, and in Conflicts one that is settled. Done keeps every paper, and dims one that is no longer the vote it is narrowed to.
   const dealtWith = (one: Paper) => (queue === "todo" ? Boolean(myVote(one)) : queue === "again" ? !myVote(one)?.flagged : queue === "conflicts" ? one.result !== "conflict" : voted !== "any" && myVote(one)?.decision !== voted);
 
-  const paper: Paper | undefined = (picked ? (named ?? listed.items.find((one) => one.id === picked)) : undefined) ?? (picked && named === undefined ? undefined : listed.items[0]);
+  const paper: Paper | undefined = (opened ? (named ?? listed.items.find((one) => one.id === opened)) : undefined) ?? (opened && named === undefined ? undefined : listed.items[0]);
   // Where the open paper stood in the list when the list last held it. Once your vote takes it out of the queue it is shown there still. A paper opened from a link, which the list never held, leads the first page.
   const [stood, setStood] = useState<{ id: string; at: number; page: number } | null>(null);
   const inPage = paper ? listed.items.findIndex((one) => one.id === paper.id) : -1;
@@ -244,7 +249,9 @@ function Screen({ open }: { open: Open }) {
   // The last thing done here, read as it stands now: what the vote led to shows beside it.
   const lastRead = useProtectedQuery(api.screening.paperViews.paper, inWorkspace(workspaceId, last && last.paper.id !== paper?.id ? { jobId: id, paperId: last.paper.id } : "skip")).data;
   const lastPaper = last ? (last.paper.id === paper?.id ? paper : (lastRead ?? last.paper)) : undefined;
-  const mayDecide = resolving ? open.canResolve : open.isReviewer;
+  // No vote is cast, and no conflict settled, in a finished screening: the buttons give way to a line that says so.
+  const finished = Boolean(screening.finishedAt);
+  const mayDecide = !finished && (resolving ? open.canResolve : open.isReviewer);
   const answering = !resolving && open.isReviewer;
   const resolver = whoIs(screening, screening.rule.resolver, open.me);
 
@@ -260,13 +267,20 @@ function Screen({ open }: { open: Open }) {
       setReasonFor(null);
       return setWriting(paper.id);
     }
-    setHistory((all) => [...all, { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() }]);
+    const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() };
+    setHistory((all) => [...all, cast]);
+    // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
+    const refused = (error: unknown) => {
+      setHistory((all) => all.filter((one) => one !== cast));
+      openIt(paper);
+      failed(error);
+    };
     // Each vote after the first of a sitting adds the time since the one before to the person's pace. Five minutes or more is a break, not a paper.
     const gap = history.length ? (Date.now() - history.at(-1)!.at) / 1000 : Infinity;
     if (gap < 300) setKept({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
-    if (resolving) open.resolve(paper.id, decision, note, reason).catch(failed);
+    if (resolving) open.resolve(paper.id, decision, note, reason).catch(refused);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
-    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(failed);
+    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(refused);
     setReasonFor(null);
     setWriting(null);
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
@@ -493,7 +507,7 @@ function Screen({ open }: { open: Open }) {
     </>
   );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
-  const reading = listed.isLoading || (Boolean(picked) && named === undefined && !paper);
+  const reading = listed.isLoading || (Boolean(opened) && named === undefined && !paper);
   if (reading || (!paper && !narrowed)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
@@ -887,7 +901,7 @@ function Screen({ open }: { open: Open }) {
             {/* The vote */}
             <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
               {!mayDecide ? (
-                <ShutNote by={resolving ? "settler" : "reviewer"}>{resolving ? `${resolver === "you" ? "You settle" : `${resolver} settles`} conflicts on this screening. You can read them here.` : notReviewerSays(open.canChange, Boolean(screening.finishedAt))}</ShutNote>
+                <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? `This screening is finished, so no more votes are cast.${open.canChange ? " Reopen it to vote again." : ""}` : resolving ? `${resolver === "you" ? "You settle" : `${resolver} settles`} conflicts on this screening. You can read them here.` : notReviewerSays(open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
                   <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder="Why exclude it?" aria-label="Why exclude it" className="h-8 text-sm" />
@@ -900,9 +914,9 @@ function Screen({ open }: { open: Open }) {
                 <>
                   {/* With every paper in the queue voted on, the line above the buttons says so: the buttons stay, to change a vote. */}
                   {through ? (
-                    <div className="flex h-8 items-center gap-2">
+                    <div className="flex min-h-8 items-center gap-2">
                       <CircleCheck className="size-4 shrink-0 text-muted-foreground" />
-                      <p className="min-w-0 flex-1 truncate text-sm font-medium">{resolving ? "Every conflict here is settled" : "You voted on every paper here"}</p>
+                      <p className="min-w-0 flex-1 text-sm font-medium leading-tight">{resolving ? "Every conflict here is settled" : "You voted on every paper here"}</p>
                       {!resolving && conflicts ? <Button asChild size="sm" className="shrink-0" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} {plural(conflicts, "conflict", "conflicts")}</NextLink></Button> : null}
                       {resolving && toDo ? <Button asChild size="sm" className="shrink-0"><NextLink href={screenHref(id)}><ListChecks />Screen {plural(toDo, "paper", "papers")}</NextLink></Button> : null}
                     </div>

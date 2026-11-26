@@ -13,9 +13,9 @@ import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { readsPdfs } from "@/lib/assistant/files";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { screeningPaperCredits, screeningPdfsCredits } from "@/lib/pricing/estimate";
-import type { Answer } from "@/lib/screening/rules";
+import { modelsProgress, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, baseTaken, keptOf, num, paperTotal, readBy, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, baseTaken, keptOf, num, paperTotal, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -192,6 +192,8 @@ export function useOpenScreening(id: string) {
     modelsNow: view.models as ModelsState | null,
     /** The workspace's credits, for its members. */
     wallet: view.credits,
+    /** The papers its workspace's models read at once. */
+    atOnce: view.atOnce,
     spent: (model: Reviewer) => model.tally?.spent ?? 0,
     /** The most a model can come to: what it has cost, and the papers it has still to read. */
     most: (model: Reviewer) => (model.tally?.spent ?? 0) + (model.model ? readingOf(screening, model.model, model.tally?.waiting ?? 0) : 0),
@@ -242,4 +244,5 @@ export function useFigures(id: Id<"screeningJobs">) {
 export type Figures = NonNullable<ReturnType<typeof useFigures>["figures"]>;
 
 /** How far a screening's models have read: the place of the slowest of them, as the meters show it. */
-export const modelsDone = (models: Reviewer[]) => (models.length ? Math.min(...models.map((model) => readBy(model.tally))) : 0);
+/** How far these models have read, the one furthest behind (lib/screening/rules.ts `modelsProgress`): where none has a paper left, all of `total`. */
+export const modelsRead = (models: Reviewer[], total: number) => modelsProgress(models.flatMap((model) => model.tally ?? [])) ?? { done: total, of: total };

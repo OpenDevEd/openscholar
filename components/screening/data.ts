@@ -214,6 +214,14 @@ export const excludeGroups = (criteria: Criterion[], many = false) => {
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** A reason for excluding in words, for a file, a tooltip or a screen reader: the criterion that wasn't met, named as such, or one of the other reasons. On a page it is drawn, by `Reason`. */
 export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `${reasonLabel(key, criteria)} not met` : reasonLabel(key, criteria));
+/**
+ * A reason for excluding as a file or a drawing holds it, which nobody can hover over to read the rest: the criterion
+ * that wasn't met, by the name someone gave it, or by its whole question where its name is only that question cut short.
+ */
+export const failedInFull = (key: string, criteria: Criterion[]) => {
+  const criterion = criteria.find((one) => one.key === key);
+  return criterion ? `Not met: ${criterion.short === shortOf(criterion.text) ? criterion.text : criterion.short}` : reasonLabel(key, criteria);
+};
 /** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
 export const unclearLabel = (key: string, criteria: Criterion[]) => `${criteria.find((criterion) => criterion.key === key)?.short ?? key} unclear`;
 /** The question a short name or a reason stands for, where the name isn't already the question's own words. */
@@ -243,8 +251,6 @@ export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.ca
 export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0));
 /** The most points a paper can earn under the screening's scoring. */
 export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => scoreOf(screening.criteria.map(({ key }) => { const [yes, no, unclear] = screening.scoring.points[key] ?? [1, 0, 0]; return { key, points: { yes, no, unclear } }; }), [], []).of;
-/** How many of its papers a model has read: the ones it voted on and the ones it couldn't read. One count for its meter, its row and the frame. */
-export const readBy = (tally: Pick<Tally, "cast" | "failed"> | undefined) => (tally?.cast ?? 0) + (tally?.failed ?? 0);
 /** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
 export const pairOf = (figures: { pairs: Array<{ a: string; b: string; matrix: number[] }> } | undefined, a: string, b: string) => {
   const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));

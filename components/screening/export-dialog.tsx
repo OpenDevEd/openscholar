@@ -139,8 +139,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
     record: {
       title: "The whole record",
       help: (
-        <Help title="The whole record" facts={<><HelpFact>JSON is for code and for keeping</HelpFact><HelpFact>Ids tie its parts together</HelpFact></>}>
-          What a review keeps of its screening, in one file: its rule, its scoring and its criteria as they are asked, its reviewers and who else it is shared with, its sources with what each check found, every paper with where it stands, every vote with the sentence a model named for its answer, what reviewers wrote to each other, what was changed, and a guide to every column. It leaves out what the screening cost.
+        <Help title="The whole record" facts={<HelpFact>For analysis and for keeping</HelpFact>}>
+          One JSON file of the whole screening: its papers, votes, criteria, reviewers, sources, discussion and changes, with a guide to every column. A model&apos;s answers come with the passages it named. What the screening cost is left out.
         </Help>
       ),
     },

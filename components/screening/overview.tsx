@@ -8,7 +8,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { Lock, TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { FileText, Lock, TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "./parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -27,12 +27,12 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { HIDDEN_UNTIL_VOTE, DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
+import { HIDDEN_UNTIL_VOTE, DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
-import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
+import { credits, pdfsOf, readsFiles, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -207,7 +207,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where any paper still waits. */}
-      {open.counts.waiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>The papers you voted on that still wait for other votes</NextLink> : null}
+      {open.counts.waiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>See which of them still wait for other votes</NextLink> : null}
     </div>
   );
 }
@@ -237,9 +237,10 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
     const perDay = reviewer.kind === "person" && Math.max(reviewer.addedAt, screening.createdAt) < now - DAY ? (figures?.recent[reviewer.id] ?? 0) / PACE_DAYS : 0;
     return {
       reviewer,
-      assigned: tally?.dealt ?? 0,
-      // A model's meter is what it has read, the papers it couldn't read among them: those are listed on their own line.
-      done: reviewer.kind === "model" ? readBy(tally) : (tally?.cast ?? 0),
+      // The papers that are theirs to vote on: what they were given, less the ones settled without them. Screen counts the same way (convex/screening/dealing.ts `waitingOf`).
+      assigned: Math.max(0, (tally?.dealt ?? 0) - (tally?.closed ?? 0)),
+      // What they voted on. The papers a model got to and couldn't read are not among them: they are on a line of their own under it.
+      done: tally?.cast ?? 0,
       split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
       agrees: compared ? same / compared : null,
       compared,
@@ -441,7 +442,9 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const takes = doneIn(left, perDay);
   const id = screening.id;
   const unread = reviewer.kind === "model" ? (reviewer.tally?.failed ?? 0) : 0;
-  const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
+  const reading = reviewer.kind === "model" && left > 0 && !screening.finishedAt;
+  // A model that takes no files is given none of the papers that are only a PDF: its row says so, where it would otherwise look as if it had read everything.
+  const pdfs = reviewer.kind === "model" && reviewer.model && !readsFiles(reviewer.model) ? pdfsOf(screening.sources).papers : 0;
   const retry = open.retryOf(reviewer);
   const held = open.modelsNow && open.modelsNow !== "reading" ? MODELS_SAY[open.modelsNow] : null;
   const mine = reviewer.id === open.me;
@@ -485,12 +488,13 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <Button variant="ghost" size="sm" className={cn(above, "flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${plural(unread, "paper", "papers")} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
-              <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
+              <p>It couldn&apos;t read {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
               <Unread open={open} model={reviewer} />
               {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch(notSaved)} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
         ) : null}
+        {pdfs ? <p className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"><FileText className="size-3.5 shrink-0" />Not on the {plural(pdfs, "PDF", "PDFs")}: it reads text only</p> : null}
       </div>
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
@@ -608,6 +612,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const sharedSays = shared.length ? (Math.min(...shared) === Math.max(...shared) ? `${plural(shared[0]!, "paper", "papers")} each` : `${num(Math.min(...shared))} to ${num(Math.max(...shared))} papers each`) : "";
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
+  const kept = screening.reviewers.some((one) => one.tally?.kept);
   const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : shortName(reviewer));
 
   return (
@@ -624,7 +629,8 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
       }
     >
       {overall === null ? (
-        <EmptyNote>How far the reviewers agree shows here once two of them have voted on the same papers.</EmptyNote>
+        // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
+        kept ? <ShutNote by="vote">How far the reviewers agree shows once you have voted on every paper of yours: it would give away how the others voted.</ShutNote> : <EmptyNote>How far the reviewers agree shows here once two of them have voted on the same papers.</EmptyNote>
       ) : (
         <div className="space-y-3">
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
@@ -674,7 +680,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <li key={`${a.id}:${b.id}`}>
                 <NextLink href={pairHref(screening.id, a, b)} className="flex items-center gap-3 px-4 py-2.5 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
                   <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
-                  <span className="min-w-0 flex-1 line-clamp-2">{b.name} and {a.name}</span>
+                  <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{b.name} and {a.name}</span>
                   {pair ? (
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="text-xs tabular-nums text-muted-foreground">{sameText(pair)}</span>
@@ -704,6 +710,7 @@ function Facts({ open }: { open: Open }) {
   // What was spent counts a model since taken off: the credits went. What it comes to in the end is that and what the models still on it have left to read.
   const spent = screening.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0);
   const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
+  const offSpent = spent - models.reduce((sum, model) => sum + open.spent(model), 0);
   // The readings that failed: the line under what was spent says so, as each model's row does.
   const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
   // The workspace's credits are its members' to see: anyone else is told nothing of them.
@@ -765,6 +772,8 @@ function Facts({ open }: { open: Open }) {
               <div className="flex flex-wrap gap-1.5">
                 {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip>}
                 <Chip>{plural(models.length, "model", "models")}</Chip>
+                {/* The total counts what a model spent before it was taken off: said, so it adds up with the rows above. */}
+                {offSpent >= 1 ? <Chip>{credits(offSpent)} by models taken off</Chip> : null}
               </div>
             </>
           ) : (
@@ -886,7 +895,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">At the start</span><span className="text-xs text-muted-foreground">{ago(screening.createdAt)}</span></p>
-              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{figures ? `${plural(figures.startedWith, "paper", "papers")} from ` : "Papers from "}{plural(screening.sources.length, "source", "sources")}</LinkChip>
+              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{figures ? `${plural(figures.startedWith, "paper", "papers")} from ` : "Papers from "}{plural(screening.sources.filter((source) => source.addedAt <= screening.createdAt).length || 1, "source", "sources")}</LinkChip>
             </div>
           </div>
         </div>

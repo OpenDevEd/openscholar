@@ -93,6 +93,8 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
   };
 }
 
+/** Whether a paper's title and authors hold every word looked for. The search index finds a paper by any one of them, best match first: someone who types two words means both. */
+const holdsAll = (paper: Paper, needle: string) => { const text = (paper.searchText ?? "").toLowerCase(); return needle.toLowerCase().split(/\s+/).filter(Boolean).every((word) => text.includes(word)); };
 const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOf(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
 const byJob = { jobId: v.id("screeningJobs") };
@@ -201,7 +203,7 @@ export const queueAction = defineUserQuery({
       // Found by its words, best match first, then kept to the queue.
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(options);
       // A paper whose source was taken out is in no queue, found by its words or not.
-      const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn));
+      const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn && holdsAll(paper, needle)));
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
       return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
     }
@@ -270,7 +272,7 @@ export const listAction = defineUserQuery({
     const needle = text?.trim() ?? "";
     if (needle) {
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(options);
-      return { ...read, page: await withVotes(read.page.filter(keeps)) };
+      return { ...read, page: await withVotes(read.page.filter((paper) => keeps(paper) && holdsAll(paper, needle))) };
     }
     const papers = stream(ctx.db, schema).query("screeningResults");
     // The conflicts one person settled: by whoever settled them, who needn't be one of its reviewers.

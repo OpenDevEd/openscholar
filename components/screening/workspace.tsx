@@ -33,7 +33,7 @@ import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
 import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./pieces";
-import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
+import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
 
 type View = "overview" | "screen" | "papers" | "settings";
 
@@ -444,7 +444,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
             A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {open.canChange ? "you add credits" : `${workspace} adds credits`}.
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsDone(reading))} of {num(total)} papers</span>
+        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsRead(reading, total).done)} of {num(modelsRead(reading, total).of)} papers</span>
         {/* With credits added, the models are let go on from where they stopped. */}
         {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing"><Coins />Add credits</NextLink></Button> : null}
         {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
@@ -466,7 +466,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
     );
   }
   if (kind === "paused") {
-    const done = modelsDone(modelsOf(screening));
+    const read = modelsRead(modelsOf(screening), total);
     return (
       <div className={row}>
         <CirclePause className={icon} />
@@ -474,7 +474,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
           {MODELS_SAY.paused.says}
           <Help title="Paused models">Paused models read nothing and spend no credits. People can keep voting. {open.canChange ? "Resume the models to have them read on." : `A member of ${workspace} can resume them.`}</Help>
         </span>
-        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(total)} papers read</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{num(read.done)} of {num(read.of)} papers read</span>
         {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
       </div>
     );
@@ -485,8 +485,8 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
         <Clock className={icon} />
         <span className="flex items-center gap-1">
           <span className="font-medium">{MODELS_SAY.waiting.says} <NextLink href={overviewHref(open.waitingFor.id)} className={INLINE_LINK}>{open.waitingFor.name}</NextLink></span>
-          <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>40 papers at a time</HelpFact>}>
-            {workspace}&apos;s models read 40 papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
+          <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>{open.atOnce} papers at a time</HelpFact>}>
+            {workspace}&apos;s models read {open.atOnce} papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
           </Help>
         </span>
         <Meter value={open.waitingFor.done} max={open.waitingFor.of} className="w-40" />
@@ -495,13 +495,13 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
     );
   }
   if (kind === "reading") {
-    const done = modelsDone(reading);
+    const read = modelsRead(reading, total);
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />
         <span className="font-medium">{reading.length === 1 ? modelLink(reading[0]!) : `${reading.length} models`} reading</span>
-        <Meter value={done} max={total} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(total)}</span>
+        <Meter value={read.done} max={read.of} className="w-40" />
+        <span className="text-xs tabular-nums text-muted-foreground">{num(read.done)} of {num(read.of)}</span>
       </div>
     );
   }

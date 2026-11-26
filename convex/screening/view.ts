@@ -17,7 +17,7 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
-import { isFinal } from "../../lib/screening/rules";
+import { isFinal, modelsProgress } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
@@ -143,10 +143,10 @@ async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspac
   const head = await ctx.db.query("screeningVotes").withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0)).first();
   const ahead = head && head.jobId !== except ? await ctx.db.get("screeningJobs", head.jobId) : null;
   if (!ahead) return null;
-  // How far its models have read: the place of the slowest of them.
+  // How far its models have read: the one furthest behind, as every page says it (`modelsProgress`).
   const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
-  const read = theirs.filter((one) => one.kind === "model" && one.left === undefined).map((one) => (counted?.reviewers?.[one._id]?.cast ?? 0) + (counted?.reviewers?.[one._id]?.failed ?? 0));
-  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: papersOf(ahead, counted) };
+  const read = modelsProgress(theirs.filter(readingModel).map((one) => ({ dealt: one.dealt, ...counted?.reviewers?.[one._id] })));
+  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read?.done ?? 0, of: read?.of ?? papersOf(ahead, counted) };
 }
 
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
@@ -334,10 +334,8 @@ export const rail = workspaceQuery({
     for (const job of open) {
       if (job.shape !== 2 || !modelsFree(job)) continue;
       const [reviewers, progress] = await Promise.all([reviewersOf(ctx, job._id), progressRow(ctx as QueryCtx, job._id)]);
-      const models = reviewers.filter(readingModel);
-      const total = models.reduce((sum, one) => sum + one.dealt, 0);
-      const done = models.reduce((sum, one) => sum + (progress?.reviewers?.[one._id]?.cast ?? 0) + (progress?.reviewers?.[one._id]?.failed ?? 0), 0);
-      if (done < total) return { reading: { jobId: job._id, done, total }, waiting };
+      const read = modelsProgress(reviewers.filter(readingModel).map((one) => ({ dealt: one.dealt, ...progress?.reviewers?.[one._id] })));
+      if (read) return { reading: { jobId: job._id, done: read.done, total: read.of }, waiting };
     }
     return { reading: null, waiting };
   },
@@ -416,6 +414,8 @@ export const getAction = defineUserQuery({
       sources: sourceViewsValidator,
       // Where its included papers go.
       destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), libraryId: v.optional(v.id("evidenceLibraries")), libraryCollection: v.optional(v.string()), prune: v.boolean() }),
+      // The papers its workspace's models read at once, as its plan gives.
+      atOnce: v.number(),
       // Whether its workspace is out of credits for its models, and what the workspace has, for someone who may see that.
       outOfCredits: v.boolean(),
       credits: v.optional(v.number()),
@@ -450,6 +450,7 @@ export const getAction = defineUserQuery({
     const theirs = last && reviewer ? await newFor(ctx, reviewer._id, last, LATEST_COUNTED) : 0;
     return {
       ...summary,
+      atOnce: await paperLimit(ctx, job.workspaceId),
       ...(job.question ? { question: job.question } : {}),
       criteria: job.criteria ?? [],
       stars: job.stars ?? [],

@@ -586,9 +586,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                       <TableHead rowSpan={2} className={cn("w-52 ps-6", reasonHidden)}>
                         <span className="inline-flex items-center gap-1">
                           Reason
-                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points on included papers only</HelpFact><HelpFact>Points from the most common answer</HelpFact></>}>
+                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points on included papers only</HelpFact><HelpFact>Points from the most common answer</HelpFact>{screening.scoring.stars.length ? <HelpFact>1 to {screening.scoring.stars.length} stars from {screening.scoring.stars.join(", ")} points</HelpFact> : null}</>}>
                             <p>Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.</p>
-                            <p>An included paper shows its points and stars. Each criterion earns the points set in the screening&apos;s settings, from the answer most reviewers gave, and the stars follow the point thresholds set there.</p>
+                            <p>An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave: a yes earns 1 unless {open.canChange ? "the screening's settings say otherwise" : `${screening.workspace.name}'s members set otherwise`}. The stars follow the points.</p>
                           </Help>
                         </span>
                       </TableHead>

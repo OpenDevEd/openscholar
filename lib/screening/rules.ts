@@ -149,6 +149,15 @@ export function takesOver(paper: string, person: string, before: number, waiting
  */
 export const seesVotes = (blind: Rule["blind"], result: Result | undefined, mine: Ballot["status"] | undefined, finished: boolean) => blind === "always" || finished || isFinal(result) || mine !== "waiting";
 
+/**
+ * How far a screening's models have read, as the one figure every page shows: the model furthest behind, by the papers
+ * it has got through (read, or tried and couldn't) of the ones that are its to read. Null where none has a paper left.
+ */
+export function modelsProgress(models: Array<{ dealt: number; cast?: number; failed?: number; closed?: number }>): { done: number; of: number } | null {
+  const behind = models.map((one) => ({ done: (one.cast ?? 0) + (one.failed ?? 0), of: Math.max(0, one.dealt - (one.closed ?? 0)) })).filter((one) => one.done < one.of);
+  return behind.length ? behind.reduce((slow, one) => (one.done / one.of < slow.done / slow.of ? one : slow)) : null;
+}
+
 /** Someone whose account is gone still has a name where their votes are. */
 export const SOMEONE = "Someone who left";
 /** A model as a reviewer before it has a row: the model at one effort. The server and the pages name it the same way. */
