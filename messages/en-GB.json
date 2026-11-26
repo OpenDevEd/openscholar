@@ -8405,7 +8405,7 @@
         "overWallet": "{credits} credits more than the workspace has",
         "walletShare": "Share of the workspace's credits: {share}",
         "shareOf": "{under, select, true {Under {share} of} other {{share} of}}",
-        "inWorkspace": "{credits} in {workspace}",
+        "inWorkspace": "{own, select, true {{credits} available} other {{credits} in {workspace}}}",
         "leftAfter": "{credits} left after",
         "spent": "{credits} spent so far"
       },
@@ -8875,7 +8875,7 @@
         "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
         "arriving": "Its papers are still arriving",
         "allRead": "Every paper is read",
-        "leftIn": "{credits} left in {workspace}",
+        "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
         "takenOff": "{credits} by models taken off",
         "nothingToPay": "Nothing to pay"
       },

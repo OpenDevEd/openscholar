@@ -843,7 +843,7 @@ function Facts({ open }: { open: Open }) {
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
-                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name })}</LinkChip>}
+                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name, own: String(screening.workspace.kind === "personal" && open.canChange) })}</LinkChip>}
                 <Chip>{words.count("models", models.length)}</Chip>
                 {/* The total counts what a model spent before it was taken off: said, so it adds up with the rows above. */}
                 {offSpent >= 1 ? <Chip>{t("credits.takenOff", { credits: words.credits(offSpent) })}</Chip> : null}

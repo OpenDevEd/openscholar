@@ -1542,7 +1542,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? t("cost.shareOf", { under: "true", share: format.number(0.01, { style: "percent" }) }) : t("cost.shareOf", { under: "false", share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}</span> : null}
-                  <WorkspaceTag size="sm" workspace={saved ? lookOf(saved.workspace) : (here ?? { kind: "personal", name: workspace.name })}>{t("cost.inWorkspace", { credits: words.credits(wallet), workspace: workspace.name })}</WorkspaceTag>
+                  <WorkspaceTag size="sm" workspace={saved ? lookOf(saved.workspace) : (here ?? { kind: "personal", name: workspace.name })}>{t("cost.inWorkspace", { credits: words.credits(wallet), workspace: workspace.name, own: String((saved ? saved.workspace.kind : here?.kind) === "personal" && (!saved || Boolean(open?.canChange))) })}</WorkspaceTag>
                   {cost > wallet ? <StateChip tone="warning" icon={Coins}>{t("block.creditsShort", { credits: words.credits(cost - wallet) })}</StateChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
                   {spentSoFar ? <Chip>{t("cost.spent", { credits: words.credits(spentSoFar) })}</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}

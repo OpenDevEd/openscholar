@@ -159,7 +159,7 @@
     "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
     "arriving": "Its papers are still arriving",
     "allRead": "Every paper is read",
-    "leftIn": "{credits} left in {workspace}",
+    "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
     "takenOff": "{credits} by models taken off",
     "nothingToPay": "Nothing to pay"
   },

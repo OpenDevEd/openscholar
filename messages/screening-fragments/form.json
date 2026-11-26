@@ -345,7 +345,7 @@
     "overWallet": "{credits} credits more than the workspace has",
     "walletShare": "Share of the workspace's credits: {share}",
     "shareOf": "{under, select, true {Under {share} of} other {{share} of}}",
-    "inWorkspace": "{credits} in {workspace}",
+    "inWorkspace": "{own, select, true {{credits} available} other {{credits} in {workspace}}}",
     "leftAfter": "{credits} left after",
     "spent": "{credits} spent so far"
   },
