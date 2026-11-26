@@ -113,7 +113,27 @@ export async function byDois(dois: string[], spend: Spend): Promise<Map<string, 
     }
   }
   for (const doi of odd) keep(await readWork<Work>(`https://doi.org/${encodeURIComponent(doi)}`, SCREENING_FIELDS, spend).catch(() => null));
+  // A paper our own index holds with no abstract takes OpenAlex's.
+  const filled = await withAbstracts([...found.values()], spend);
+  for (const paper of filled) { const doi = normalDoi(paper.doi); if (doi) found.set(doi, paper); }
   return found;
+}
+
+/**
+ * OpenAlex's abstract for each of these papers that came without one. Our own index holds fewer abstracts than
+ * OpenAlex does: of 12 papers a search on it gave with none, OpenAlex had the abstract of 6. A paper is not left out
+ * of a screening for want of an abstract OpenAlex has.
+ */
+export async function withAbstracts(papers: SearchPaper[], spend: Spend): Promise<SearchPaper[]> {
+  const bare = papers.filter((paper) => !paper.abstract?.trim() && /^openalex:W\d+$/.test(paper.paper));
+  const found = new Map<string, string>();
+  for (let at = 0; at < bare.length; at += DOIS_A_REQUEST) {
+    const ids = bare.slice(at, at + DOIS_A_REQUEST).map((paper) => paper.paper.slice("openalex:".length));
+    // A paper OpenAlex can't be asked about now is screened, or left out, as it came.
+    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,abstract_inverted_index" }, spend).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
+    for (const work of works) { const paper = work.id ? toPaper(work) : null; if (paper?.abstract) found.set(paper.paper, paper.abstract); }
+  }
+  return found.size ? papers.map((paper) => (found.has(paper.paper) ? { ...paper, abstract: found.get(paper.paper)! } : paper)) : papers;
 }
 
 /**

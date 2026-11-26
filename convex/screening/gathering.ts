@@ -29,7 +29,7 @@ import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
 import { papersIn } from "./estimate";
 import { plainTitle } from "../../lib/screening/files";
-import { handedPapers, handedStart, type LeftOut } from "./held";
+import { handedPapers, handedStart, withAbstracts, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
 import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator } from "./validators";
@@ -187,7 +187,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     const paged = source.snapshot !== undefined && numbered(source.snapshot.request, last);
     const { papers, ended, resume, taken } = await searchPapers(ctx, reader, { searchId: set.searchId, first: from, last: to }, source.snapshot, paged ? { goesOn: false } : { resume: source.resume, goesOn: true });
     const read = paged ? to - from + 1 : taken;
-    return void (await give(papers, read, ended || from + read > last, resume));
+    // A paper the search's index holds with no abstract takes OpenAlex's, where it has one.
+    const who: { clerkId: string } | null = papers.some((paper) => !paper.abstract?.trim()) ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
+    return void (await give(who ? await withAbstracts(papers, spender(ctx, who.clerkId)) : papers, read, ended || from + read > last, resume));
   }
   if (set.kind === "evidenceLibrary") {
     const job = (await ctx.runQuery(internal.screening.gathering.jobOf, { checkId }))!;

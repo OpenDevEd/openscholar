@@ -366,7 +366,8 @@ export function StickyColumn({ clear = "1rem", className, children }: { clear?: 
  * corner (max-lg:pe-[5.5rem]). From lg up the wide page itself stops short of that button.
  */
 export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
-  return <div {...rest} className={cn("sticky bottom-0 z-20 border-t border-border-subtle bg-card shadow-[0_-10px_30px_-22px_rgb(0_0_0/0.3)]", className)} />;
+  // `data-action-bar` lifts the app's toasts above it (app/globals.css): one over the bar hid the button it was about.
+  return <div data-action-bar {...rest} className={cn("sticky bottom-0 z-20 border-t border-border-subtle bg-card shadow-[0_-10px_30px_-22px_rgb(0_0_0/0.3)]", className)} />;
 }
 
 /** A small tag after a name, as "You" is drawn: what kind of reviewer it is, or that they were taken off. */

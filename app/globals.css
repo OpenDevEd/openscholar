@@ -811,3 +811,9 @@ html[data-question-stage] body > * {
 .cl-modalBackdrop {
   pointer-events: auto;
 }
+
+/* A page with a bar fixed to its foot (the form that starts a screening, Screen) lifts toasts above the bar: a toast over it hid the button it was about. */
+body:has([data-action-bar]) [data-sonner-toaster][data-y-position="bottom"] {
+  --offset-bottom: 5.5rem !important;
+  --mobile-offset-bottom: 9rem !important;
+}
