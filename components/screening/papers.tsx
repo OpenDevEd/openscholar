@@ -727,7 +727,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               </ListEmpty>
             )}
           </Wide>
-          {listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("table.pageItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total }} /> : null}
+          {listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("table.pageItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total, ...(total === undefined ? {} : { pageCount: Math.ceil(total / PAGE) }) }} /> : null}
         </div>
 
       </div>

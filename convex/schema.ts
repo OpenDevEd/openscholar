@@ -1753,6 +1753,21 @@ export default defineSchema({
     .index("by_batch_and_at", ["batch", "at"])
     .index("by_workId", ["workId"]),
 
+  // A record a source held that the screening already had: the record, and the paper it was merged into.
+  screeningMerged: defineTable({
+    jobId: v.id("screeningJobs"),
+    sourceId: v.id("screeningSources"),
+    name: v.string(),
+    into: v.id("screeningResults"),
+    // The record it was read as, where the source names its records: one met again in the same reading is counted once.
+    paperKey: v.optional(v.string()),
+    // The reading of its source that last met it (`screeningSources.pass`).
+    pass: v.number(),
+  })
+    .index("by_source_and_pass", ["sourceId", "pass"])
+    .index("by_source_and_paperKey", ["sourceId", "paperKey"])
+    .index("by_job", ["jobId"]),
+
   // What a source held that the screening doesn't take, each with why.
   screeningLeftOut: defineTable({
     jobId: v.id("screeningJobs"),

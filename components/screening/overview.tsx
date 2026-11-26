@@ -361,6 +361,23 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
             </div>
           ))}
+          {/* Whoever was invited by email to vote and has yet to answer: counted among its people, and no reviewer until they join. */}
+          {open.invited.length ? (
+            <div role="rowgroup" className={cn(ACROSS, "divide-y divide-border-subtle border-t border-border-subtle")}>
+              <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
+                <span role="cell">{t("reviewers.invited")} <span className="font-normal tabular-nums text-muted-foreground">{open.invited.length}</span></span>
+              </div>
+              {open.invited.map((one) => (
+                <div key={one.email} role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                  <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">
+                    <ReviewerMark reviewer={{ kind: "person", name: one.email, email: one.email }} className="size-8" />
+                    <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{one.email}</span>
+                  </span>
+                  <span role="cell" className="text-end text-xs text-muted-foreground">{words.t(screening.finishedAt ? "person.invitedFinished" : "person.invited")}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {/* Whoever was taken off, and what became of their votes: results can rest on votes from someone no longer in the lists above. */}
           {gone.length ? (
             <div role="rowgroup" className={cn(ACROSS, "divide-y divide-border-subtle border-t border-border-subtle")}>
@@ -759,6 +776,8 @@ function Facts({ open }: { open: Open }) {
   const spent = screening.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0);
   const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
   const offSpent = spent - models.reduce((sum, model) => sum + open.spent(model), 0);
+  // Just started: its papers are in and none has reached a model yet. Nothing is read, so nothing says every paper is.
+  const unreached = open.total > 0 && !screening.finishedAt && models.length > 0 && models.every((model) => theirsOf(model.tally) === 0);
   // The readings that failed: the line under what was spent says so, as each model's row does.
   const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
   // The workspace's credits are its members' to see: anyone else is told nothing of them.
@@ -814,7 +833,7 @@ function Facts({ open }: { open: Open }) {
                   {t.rich("credits.spent", { count: Math.ceil(spent), num: () => <AnimatedNumber value={Math.ceil(spent)} /> })}
                   {open.modelsNow === "reading" ? <AiIcon working className="size-3.5" /> : null}
                 </p>
-                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? t("credits.onceRead", { credits: words.credits(most) }) : unread ? t("credits.failed", { count: unread }) : open.gathering ? t("credits.arriving") : t("credits.allRead")}</p>
+                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? t("credits.onceRead", { credits: words.credits(most) }) : unread ? t("credits.failed", { count: unread }) : open.gathering || unreached ? t("credits.arriving") : t("credits.allRead")}</p>
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">

@@ -169,7 +169,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                 const fixed = typeof entry.role === "string" ? (given ? { kind: given.kind, label: given.can } : null) : entry.role;
                 return (
                   <motion.li key={entry.key} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
-                    <IdentityRow className="rounded-xl px-2 py-2" avatar={entry.avatar} name={entry.name} you={entry.you} detail={entry.detail}>
+                    <IdentityRow wrap className="rounded-xl px-2 py-2" avatar={entry.avatar} name={entry.name} you={entry.you} detail={entry.detail}>
                       {entry.onRole && typeof entry.role === "string" ? (
                         <Segmented label={t("accessOf", { name: entry.name })} value={entry.role} onChange={entry.onRole} options={options} />
                       ) : fixed ? (

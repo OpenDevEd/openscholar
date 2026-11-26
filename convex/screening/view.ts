@@ -25,7 +25,7 @@ import { progressRow } from "./bookkeeping";
 import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { INVITED_SHOWN, invitedViewValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -421,6 +421,8 @@ export const getAction = defineUserQuery({
       flagged: v.number(),
       // The people it is shared with from outside its workspace, invitations still waiting included.
       guests: v.number(),
+      // The invitations to vote on it that wait for an answer, for its workspace's members: who was asked. Its list of people has every invitation.
+      invited: invitedViewValidator,
       // The last check of its sources that brought papers: how many, how many of them still wait for votes, and how many wait for the person's own.
       latest: v.optional(v.object({ id: v.id("screeningChecks"), at: v.number(), added: v.number(), open: v.number(), mine: v.number() })),
       // The last check there was, whatever it found, and how many checks it has had since it started.
@@ -467,6 +469,7 @@ export const getAction = defineUserQuery({
       ...(guest ? { guest } : {}),
       flagged,
       guests: await countOf(ctx, itemGuestsOf(jobId)),
+      ...(member ? { invited: (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(INVITED_SHOWN)).flatMap((one) => (one.role === "editor" ? [{ email: one.email }] : [])) } : {}),
       ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
       ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !paper.withdrawn && !isFinal(paper.result)).length, mine: theirs } } : {}),
     };
@@ -533,6 +536,28 @@ export const leftOutAction = defineUserQuery({
 });
 export const leftOut = userQuery(leftOutAction);
 export const leftOutForAssistant = assistantQuery(leftOutAction);
+
+export const mergedAction = defineUserQuery({
+  path: "screening/view:merged",
+  description: "Lists the records one of a screening's sources held that the screening already had, a page at a time: each with the paper it was merged into, and the source that brought that paper.",
+  args: { jobId: v.id("screeningJobs"), sourceId: v.id("screeningSources"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ id: v.id("screeningMerged"), name: v.string(), paper: v.union(v.null(), v.object({ id: v.id("screeningResults"), title: v.string(), sourceId: v.optional(v.id("screeningSources")) })) })),
+  run: async (ctx, actor, { jobId, sourceId, paginationOpts }) => {
+    const standing = await standingOn(ctx, actor, jobId);
+    const source = standing ? await ctx.db.get("screeningSources", sourceId) : null;
+    if (source?.jobId !== jobId) return { page: [], isDone: true, continueCursor: "" };
+    // What its last whole reading merged, as its left-out records are listed (`leftOut`).
+    const read = await ctx.db.query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", source.next?.from ?? source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
+    const page = await Promise.all(read.page.map(async (one) => {
+      const paper = await ctx.db.get("screeningResults", one.into);
+      // The paper it was merged into may since have left with its source.
+      return { id: one._id, name: one.name, paper: paper && paper.jobId === jobId && !paper.withdrawn ? { id: paper._id, title: paper.title, ...(paper.sourceId ? { sourceId: paper.sourceId } : {}) } : null };
+    }));
+    return { ...read, page };
+  },
+});
+export const merged = userQuery(mergedAction);
+export const mergedForAssistant = assistantQuery(mergedAction);
 
 /** Changes one page of a screening's activity holds at most. */
 const ACTIVITY_PAGE = 50;

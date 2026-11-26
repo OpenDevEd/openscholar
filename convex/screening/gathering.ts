@@ -360,6 +360,18 @@ export const fill = internalMutation({
       if (was) await ctx.db.patch("screeningLeftOut", was._id, { pass, why });
       else await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
     };
+    /**
+     * Keeps a record the screening already has, with the paper it was merged into, and says whether it counts. A
+     * source that names its records (`paperKey`) can meet one twice in a reading, as Zotero does an item filed in two
+     * collections: that is one record, counted once. A file's records are each their own: every repeat is kept.
+     */
+    const merge = async (name: string, into: Id<"screeningResults">, paperKey?: string) => {
+      const was = paperKey ? await ctx.db.query("screeningMerged").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first() : null;
+      if (was?.pass === pass) return false;
+      if (was) await ctx.db.patch("screeningMerged", was._id, { pass, into, name: name.slice(0, 300) });
+      else await ctx.db.insert("screeningMerged", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), into, ...(paperKey ? { paperKey } : {}) });
+      return true;
+    };
     for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     for (const sent of papers) {
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
@@ -379,7 +391,8 @@ export const fill = internalMutation({
       if (twin) {
         // The first source added keeps the paper: one another source holds is a duplicate merged. So is one a file lists twice, under another record or, on the file's first reading, under any: nothing of its own was there before. A source read again finds its own papers, which are neither new nor merged.
         // ponytail: a file read again after its range changed can't tell a repeat under the same record from a paper its first reading took, so those repeats go uncounted then. A count of the pass on each paper would tell them apart.
-        if (twin.sourceId !== sourceId || twin.paperKey !== identity.paperKey || (pass === 0 && FROM_A_FILE.includes(source.set.kind))) duplicates++;
+        const listed = pass === 0 && FROM_A_FILE.includes(source.set.kind);
+        if ((twin.sourceId !== sourceId || twin.paperKey !== identity.paperKey || listed) && (await merge(title, twin._id, listed ? undefined : paper.paper))) duplicates++;
         continue;
       }
       // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.

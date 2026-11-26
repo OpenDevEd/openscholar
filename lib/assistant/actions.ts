@@ -107,6 +107,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "screening/view:get": { kind: "screening", words: "screening" },
   "screening/view:figures": { kind: "screening", words: "screening" },
   "screening/view:leftOut": { kind: "screening", words: "screening" },
+  "screening/view:merged": { kind: "screening", words: "screening" },
   "screening/view:activity": { kind: "screening", words: "screening" },
   "screening/view:checks": { kind: "screening", words: "screening" },
   "screening/paperViews:list": { kind: "screening", words: "screening" },

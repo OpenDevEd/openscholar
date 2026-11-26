@@ -179,6 +179,11 @@
     "nothingHere": "Nothing here yet.",
     "pagerSources": "sources",
     "pagerLeftOut": "left out",
+    "pagerMerged": "duplicates",
+    "mergedFrom": "Same paper as one from {source}",
+    "mergedSame": "Listed more than once in this source",
+    "mergedElsewhere": "another source",
+    "mergedGone": "The paper it matched has left the screening",
     "firstPapers": "The first papers of this range",
     "titleYear": "{title} ({year})",
     "andMore": "{count, plural, other {and # more}}"

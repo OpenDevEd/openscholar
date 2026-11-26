@@ -30,7 +30,7 @@ import { changeOpens, changeSays } from "./activity-words";
 import { modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import { papersHref } from "./links";
-import { Help, ReviewerMark, ReviewerName, ShutChip, ShutNote } from "./pieces";
+import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { perPaper, type Open } from "./store";
 import { AddModel } from "./team";
 import { useWords } from "./words";
@@ -214,7 +214,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
         </div>
         {may ? (
           <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
-            {finished ? <ShutChip by="member">{t("peopleDialog.finishedAdds")}</ShutChip> : (
+            {finished ? <div className="min-w-0 flex-1"><ShutNote by="member">{t("peopleDialog.finishedAdds")}</ShutNote></div> : (
               <>
                 <span className="text-xs font-medium text-muted-foreground">{t("peopleDialog.addAs")}</span>
                 <Segmented label={t("peopleDialog.addAs")} value={addAs} onChange={setAddAs} options={ROLES.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }))} />

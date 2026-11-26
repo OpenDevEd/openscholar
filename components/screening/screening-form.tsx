@@ -447,7 +447,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [find, setFind] = useState("");
   const [recheck, setRecheck] = useState(false);
   // The source whose row is open, and on which part: the papers taken from it, or what it held and left out.
-  const [openSource, setOpenSource] = useState<{ id: string; part: "papers" | "left" } | null>(null);
+  const [openSource, setOpenSource] = useState<{ id: string; part: "papers" | "left" | "merged" } | null>(null);
   const [text, setText] = useState("");
   const [writing, setWriting] = useState(false);
   const [scoring, setScoring] = useState(false);
@@ -954,7 +954,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     <>
                                       <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? t("papers.atStart", { count: baseTotal(source) }) : heldBy(source) === null ? t("papers.allOfIt") : t("papers.all", { count: heldBy(source)! })) : t("papers.inSource", { count: baseTotal(source) })}</Chip>
                                       {source.read?.filed ? <Chip icon={FileText}>{t("papers.readAsPdf", { count: source.read.filed })}</Chip> : null}
-                                      {doubled > 0 && taken(source) ? <Chip>{t("papers.duplicates", { count: doubled })}</Chip> : null}
+                                      {/* The records it merged open from the chip that counts them, as what it left out does: each with the paper that stands for it. */}
+                                      {doubled > 0 && taken(source) ? (
+                                        rowOf(source) ? (
+                                          <button type="button" aria-expanded={open === "merged"} onClick={() => setOpenSource(open === "merged" ? null : { id: source.id, part: "merged" })} className="flex rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
+                                            <Chip>{t("papers.duplicates", { count: doubled })}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "merged" && "rotate-180")} /></Chip>
+                                          </button>
+                                        ) : <Chip>{t("papers.duplicates", { count: doubled })}</Chip>
+                                      ) : null}
                                       {grew > 0 && own && !gone ? (
                                         <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
                                       ) : grew > 0 ? (
@@ -999,6 +1006,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
                                       {/* Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own. */}
                                       {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} /> : null}
+                                    </div>
+                                  ) : open === "merged" ? (
+                                    <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
+                                      {rowOf(source) ? <Merged {...rowOf(source)!} total={doubled} open={own} sources={sources} /> : null}
                                     </div>
                                   ) : (
                                   <div className="space-y-4 pb-4 ps-16 pe-4 max-sm:ps-4">
@@ -1606,14 +1617,15 @@ function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKee
   const name = <ReviewerName reviewer={gone ? { ...reviewer, left: undefined } : reviewer} you={you} className={cn("text-sm font-medium", gone && "text-muted-foreground line-through")} />;
   return (
     <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER, DIVIDED_ROW)}>
-      <div className={cn("flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors", gone && TONE.warning.panel)}>
+      <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
         <ReviewerMark reviewer={reviewer} className="size-9 self-start" />
-        <div className="min-w-0 flex-1">
+        {/* The name keeps its room: where the chips beside it are many, they run onto a second line among themselves. */}
+        <div className="min-w-40 flex-1">
           {href && !gone ? <NextLink href={href} className="flex w-fit max-w-full rounded outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{name}</NextLink> : name}
           <p className="truncate text-xs text-muted-foreground">{detail}</p>
         </div>
         {/* On a phone the chips take a line of their own under the name. */}
-        {chips ? <span className="flex flex-wrap items-center justify-end gap-1.5 max-sm:order-last max-sm:basis-full max-sm:justify-start max-sm:ps-12">{chips}</span> : null}
+        {chips ? <span className="flex min-w-0 shrink flex-wrap items-center justify-end gap-1.5 max-sm:order-last max-sm:basis-full max-sm:justify-start max-sm:ps-12">{chips}</span> : null}
         {gone ? (
           <Button variant="ghost" size="sm" className="h-8" onClick={onKeep}><Undo2 />{t("papers.keep")}</Button>
         ) : (
@@ -1718,6 +1730,33 @@ function SampleTitles({ set, sourceId, first, taken }: { set: NonNullable<Source
 }
 
 const LEFT_PAGE = 8;
+
+/**
+ * The records a source held that the screening already had, a page at a time: each with the source whose record
+ * stands for it, which opens that paper once the screening is running.
+ */
+function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** The running screening, whose papers open. */ open: string | null; sources: Source[] }) {
+  const t = useTranslations("screening.form");
+  const rows = useCursorPage(api.screening.view.merged, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
+  return (
+    <div className="space-y-2">
+      {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
+      <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
+        {rows.items.map((row) => {
+          // The source that brought the paper this record is the same as: another one, or this one where it lists the paper more than once.
+          const from = row.paper?.sourceId === sourceId ? t("papers.mergedSame") : row.paper ? t("papers.mergedFrom", { source: sources.find((one) => one.id === row.paper!.sourceId)?.name ?? t("papers.mergedElsewhere") }) : t("papers.mergedGone");
+          return (
+            <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
+              <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
+              {row.paper && open ? <LinkChip href={papersHref(open, { paper: row.paper.id })} className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></LinkChip> : <Chip className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></Chip>}
+            </li>
+          );
+        })}
+      </ul>
+      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerMerged")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
+    </div>
+  );
+}
 /** What one of a running screening's sources held and didn't take, a page at a time, each with why. */
 function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number }) {
   const t = useTranslations("screening.form");

@@ -104,6 +104,23 @@ describe("what a source leaves out", () => {
     await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 4, ended: true });
     expect(await sourceOf()).toMatchObject({ read: 4, taken: 2, duplicates: 2, left: 0 });
     expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toHaveLength(0);
+    // Each repeat is named with the paper that stands for it, which this same file brought.
+    const merged = (await made.as.ann!.query(api.screening.view.merged, { workspaceId: made.workspaceId, jobId, sourceId, paginationOpts: { cursor: null, numItems: 10 } })).page;
+    expect(merged.map((row) => [row.name, row.paper?.title, row.paper?.sourceId])).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId]]);
+  });
+
+  it("names a record another source already brought, and counts one it meets twice in a reading once", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0, { sources: [{ set: { kind: "saved" }, name: "Saved papers" }, { set: { kind: "saved" }, name: "Saved again" }] });
+    const { checkId, sources } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sources: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((one) => one._id) }));
+    const [first, second] = sources as [Id<"screeningSources">, Id<"screeningSources">];
+    for (const sourceId of sources) await made.t.mutation(internal.screening.gathering.begin, { sourceId });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, papers: [paper(1)], read: 1, ended: true });
+    // The second source holds that paper too, and lists it under two of its folders, as a Zotero library does.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, papers: [paper(1), paper(1), paper(2)], read: 3, ended: true });
+    expect(await made.t.run((ctx) => ctx.db.get("screeningSources", second))).toMatchObject({ taken: 1, duplicates: 1 });
+    const merged = (await made.as.ann!.query(api.screening.view.merged, { workspaceId: made.workspaceId, jobId, sourceId: second, paginationOpts: { cursor: null, numItems: 10 } })).page;
+    expect(merged.map((row) => [row.name, row.paper?.sourceId])).toEqual([["Paper 1", first]]);
   });
 
   it("passes over a paper the screening holds whose abstract a later reading doesn't bring, and leaves out only one that is new", async () => {

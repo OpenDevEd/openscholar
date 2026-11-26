@@ -46,11 +46,11 @@ export function YouTag({ className }: { className?: string }) {
 }
 
 /** A name, cut where it runs out of room, with You after yours. */
-export function PersonName({ name, you = false, className }: { name: string; you?: boolean; className?: string }) {
+export function PersonName({ name, you = false, wrap = false, className }: { name: string; you?: boolean; /** Where a second line costs nothing, a long name or an address runs onto it and is read whole. */ wrap?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* A name cut short for room, an address most of all, is read whole under the pointer. */}
-      <TooltipHint label={name} onlyWhenClipped><span className="min-w-0 truncate">{name}</span></TooltipHint>
+      <TooltipHint label={name} onlyWhenClipped><span className={cn("min-w-0", wrap ? "line-clamp-2 [overflow-wrap:anywhere]" : "truncate")}>{name}</span></TooltipHint>
       {you ? <YouTag /> : null}
     </span>
   );
@@ -77,13 +77,14 @@ export function EmailAvatar() {
 }
 
 /** A person or an organization in a list: their photo or logo, their name over a detail line, then what ends the row. */
-export function IdentityRow({ avatar, name, you = false, detail, className, children }: { avatar: ReactNode; name: string; you?: boolean; detail?: ReactNode; className?: string; children?: ReactNode }) {
+export function IdentityRow({ avatar, name, you = false, wrap = false, detail, className, children }: { avatar: ReactNode; name: string; you?: boolean; /** In a list whose rows may be two lines tall: the name and the line under it each run onto a second line before they are cut. */ wrap?: boolean; detail?: ReactNode; className?: string; children?: ReactNode }) {
+  const line = cn("text-xs text-muted-foreground", wrap ? "line-clamp-2 [overflow-wrap:anywhere]" : "truncate");
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <span className="flex shrink-0 self-start">{avatar}</span>
       <div className="min-w-0 flex-1">
-        <PersonName name={name} you={you} className="text-sm font-medium" />
-        {detail ? (typeof detail === "string" ? <TooltipHint label={detail} onlyWhenClipped><p className="truncate text-xs text-muted-foreground">{detail}</p></TooltipHint> : <p className="truncate text-xs text-muted-foreground">{detail}</p>) : null}
+        <PersonName name={name} you={you} wrap={wrap} className="text-sm font-medium" />
+        {detail ? (typeof detail === "string" ? <TooltipHint label={detail} onlyWhenClipped><p className={line}>{detail}</p></TooltipHint> : <p className={line}>{detail}</p>) : null}
       </div>
       {children}
     </div>

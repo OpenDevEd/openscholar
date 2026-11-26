@@ -51,6 +51,7 @@
     "people": "People",
     "models": "Models",
     "takenOff": "Taken off",
+    "invited": "Invited",
     "thrownOut": "Votes thrown out",
     "stillCount": "{count, plural, one {# vote still counts} other {# votes still count}}",
     "castNone": "Cast no vote",

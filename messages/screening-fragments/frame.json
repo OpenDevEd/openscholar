@@ -149,7 +149,7 @@
     "modelToo": "{you, select, true {A model is a reviewer too: it reads every open paper and votes, paid from your credits.} other {A model is a reviewer too: it reads every open paper and votes, paid from {workspace}'s credits.}}",
     "close": "Close",
     "addAs": "Add people as",
-    "finishedAdds": "Finished: people added now look at it. Reopen it to add reviewers",
+    "finishedAdds": "This screening is finished: people added now can look at it. Reopen it to add reviewers.",
     "addModel": "Add a model",
     "membersAdd": "Members of {workspace} add people and change what each may do.",
     "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",

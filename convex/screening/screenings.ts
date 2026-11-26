@@ -436,9 +436,11 @@ export const erase = internalMutation({
     for (const message of messages) await ctx.db.delete("screeningMessages", message._id);
     const left = votes.length || messages.length ? [] : await ctx.db.query("screeningLeftOut").withIndex("by_job_and_why", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const one of left) await ctx.db.delete("screeningLeftOut", one._id);
-    const papers = votes.length || messages.length || left.length ? [] : await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    const merged = votes.length || messages.length || left.length ? [] : await ctx.db.query("screeningMerged").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    for (const one of merged) await ctx.db.delete("screeningMerged", one._id);
+    const papers = votes.length || messages.length || left.length || merged.length ? [] : await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const paper of papers) await ctx.db.delete("screeningResults", paper._id);
-    if (votes.length || messages.length || left.length || papers.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
+    if (votes.length || messages.length || left.length || merged.length || papers.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
     // The small tables go the same way: a step of each, and the screening itself once none is left.
     const pairs = await ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const row of pairs) await ctx.db.delete("screeningAgreement", row._id);

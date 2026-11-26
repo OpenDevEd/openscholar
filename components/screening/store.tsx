@@ -210,6 +210,8 @@ export function useOpenScreening(id: string) {
     latest: view.latest ?? null,
     /** How many people it is shared with from outside its workspace. */
     guests: view.guests,
+    /** Whoever was invited by email to vote on it and has yet to answer, for its workspace's members. */
+    invited: view.invited ?? [],
     /** The person's papers to vote on, the screening's papers in conflict, which one person settles and everyone may read, and the papers someone asked them about. */
     toDo: view.forYou,
     conflicts: view.counts.conflict,
