@@ -162,7 +162,7 @@ export const save = workspaceMutation({
     // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
     for (const range of change.ranges ?? []) {
       const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
-      if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0 });
+      if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined });
     }
     for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
     // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.

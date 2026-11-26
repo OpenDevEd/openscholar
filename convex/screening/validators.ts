@@ -342,6 +342,8 @@ export const sourceViewValidator = v.object({
   left: v.number(),
   // Of the ones left out, how many for having no abstract.
   bare: v.number(),
+  // Its reading stopped at the most papers the workspace's plan gives one screening.
+  capped: v.optional(v.literal(true)),
   checkedAt: v.optional(v.number()),
 });
 export const sourceViewsValidator = capped(v.array(sourceViewValidator), MAX_SOURCE_ROWS);

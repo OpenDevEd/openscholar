@@ -24,6 +24,7 @@ import { ZOTERO_PAGE } from "../zotero/libraryValidators";
 import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
+import { planLimit } from "../billing/accounts";
 import { papersIn } from "./estimate";
 import { handedPapers, handedStart, PDFS_A_STEP, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
@@ -232,6 +233,9 @@ export const fill = internalMutation({
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const now = Date.now();
     let [taken, duplicates, left, bare] = [0, 0, 0, 0];
+    // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
+    const most = await planLimit(ctx, job.workspaceId, "request_papers");
+    let capped = false;
     const leave = async (name: string, why: Why, paperKey?: string) => {
       left++;
       if (why === "abstract") bare++;
@@ -256,6 +260,7 @@ export const fill = internalMutation({
         continue;
       }
       const place = check.from + check.added + taken;
+      if (typeof most === "number" && place >= most) { capped = true; break; }
       const resultId = await ctx.db.insert("screeningResults", {
         ...sourceMetadata(paper),
         jobId: job._id,
@@ -282,7 +287,7 @@ export const fill = internalMutation({
       await dealNew(ctx, job, { _id: resultId, place }, reviewers, dealt);
       taken++;
     }
-    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended ? { state: "done" as const, checkedAt: now } : {}) });
+    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
     await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);

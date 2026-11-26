@@ -1648,6 +1648,8 @@ export default defineSchema({
     left: v.number(),
     // Of the ones left out, how many for having no abstract.
     bare: v.optional(v.number()),
+    // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
+    capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
     checkedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),

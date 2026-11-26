@@ -8,7 +8,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -157,6 +157,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING}</Chip> : null}
             {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
             {!open.gathering && removed.left ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{num(removed.left)} left out{removed.bare === removed.left ? ": no abstract" : ""}</LinkChip> : null}
+            {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
+            {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">Stopped at your plan&apos;s paper limit</LinkChip> : null}
             {!open.gathering && removed.merged ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{plural(removed.merged, "duplicate", "duplicates")} merged</LinkChip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
