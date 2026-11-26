@@ -219,6 +219,7 @@ vi.mock("@/lib/ai/client/router", () => ({
     execute: vi.fn(),
     isConfigured: true,
   }),
+  useBatchTranslations: () => ({ credits: undefined }),
 }));
 
 vi.mock("@/lib/keyword-validation", () => ({
