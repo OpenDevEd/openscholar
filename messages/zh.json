@@ -6498,8 +6498,7 @@
       "seriesSaved": "系列名称已保存",
       "seriesName": "系列名称",
       "issn": "ISSN",
-      "issnHint": "在系列获得 ISSN 之前请留空。在此之前，署名行显示为 ISSN {pending}。",
-      "issnPending": "待定",
+      "issnHint": "在系列获得 ISSN 之前请留空。在此之前，署名行不写 ISSN。",
       "issnSaved": "ISSN 已保存",
       "enterSeriesName": "请输入系列名称。",
       "enterByline": "请输入署名行。",
@@ -6870,7 +6869,6 @@
       "yourTitle": "您的标题",
       "noDoi": "尚无 DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN 待定",
       "live": "已上线",
       "seePlans": "查看方案",
       "activation": {
@@ -7595,7 +7593,7 @@
         },
         "byline": {
           "title": "系列行",
-          "about": "本系列每份报告都会印出的一行，写明系列名称、ISSN 和报告的 DOI。",
+          "about": "本系列每份报告都会印出的一行，写明系列名称和报告的 DOI。",
           "note": "它必须是 PDF 中的文字而不是图片，因为检查会查找它。选择“请替我添加”，Openscholar 会添加包含该行的最后一页。"
         },
         "checks": {
@@ -7605,8 +7603,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "标识该系列的编号，就像期刊的编号一样。",
-          "note": "在系列完成注册前处于待定状态。你的报告的 DOI 不受影响。"
+          "about": "标识该系列的编号，就像期刊的编号一样。"
         },
         "activation": {
           "title": "激活",

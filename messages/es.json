@@ -6499,8 +6499,7 @@
       "seriesSaved": "Nombre de la serie guardado",
       "seriesName": "Nombre de la serie",
       "issn": "ISSN",
-      "issnHint": "Déjalo vacío hasta que la serie tenga uno. Mientras tanto, las líneas de autoría dicen ISSN {pending}.",
-      "issnPending": "Pendiente",
+      "issnHint": "Déjalo vacío hasta que la serie tenga uno. Mientras tanto, las líneas de autoría no mencionan el ISSN.",
       "issnSaved": "ISSN guardado",
       "enterSeriesName": "Escribe el nombre de la serie.",
       "enterByline": "Escribe la línea de autoría.",
@@ -6871,7 +6870,6 @@
       "yourTitle": "Tu título",
       "noDoi": "Aún sin DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN pendiente",
       "live": "Publicado",
       "seePlans": "Ver planes",
       "activation": {
@@ -7596,7 +7594,7 @@
         },
         "byline": {
           "title": "La línea de la serie",
-          "about": "La línea que imprime cada informe de esta serie, con el nombre de la serie, su ISSN y el DOI del informe.",
+          "about": "La línea que imprime cada informe de esta serie, con el nombre de la serie y el DOI del informe.",
           "note": "Tiene que ser texto en el PDF, no una imagen, porque las comprobaciones la buscan. Elige Añadidla por mí y Openscholar añade una última página con la línea."
         },
         "checks": {
@@ -7606,8 +7604,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "El número que identifica la serie, como el de una revista.",
-          "note": "Pendiente hasta que se registre la serie. El DOI de tu informe funciona sin él."
+          "about": "El número que identifica la serie, como el de una revista."
         },
         "activation": {
           "title": "Activación",
