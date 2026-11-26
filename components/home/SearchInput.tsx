@@ -1,6 +1,5 @@
 "use client";
 
-import { ButtonCredits } from "@/components/ui/button-credits";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { Search, AiIcon } from "@/components/icons";
@@ -29,8 +28,6 @@ interface SearchInputProps {
   disabled: boolean;
   /** Shows the line under the box: the switch to research mode, or what research mode does. */
   hints: boolean;
-  /** What turning a question into a search costs, said on the Research button. */
-  credits?: number;
   className?: string;
 }
 
@@ -41,7 +38,6 @@ export function SearchInput({
   isEnhancing,
   disabled,
   hints,
-  credits,
   className,
 }: SearchInputProps) {
   const t = useTranslations("home");
@@ -210,7 +206,6 @@ export function SearchInput({
                           >
                             {t("researchButton")}
                           </motion.span>
-                          <ButtonCredits credits={credits} className="hidden text-current opacity-80 sm:flex" />
                         </motion.span>
                       ) : (
                         <motion.span

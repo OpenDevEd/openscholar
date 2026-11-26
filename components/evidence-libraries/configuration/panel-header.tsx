@@ -97,7 +97,7 @@ export function PanelHeader({
             // At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
             // and 200% text. At normal text it stays one line.
             <TooltipHint label={title} onlyWhenClipped>
-              <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
+              <h1 dir="auto" className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
             </TooltipHint>
           ) : null}
           {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}

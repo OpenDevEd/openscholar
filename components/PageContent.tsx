@@ -55,7 +55,7 @@ function PageContent() {
 
   const { write: writeQuery } = useQuestionToQuery();
   // Writing a query is free for anyone, so whether to offer sign-in depends on the rest of the AI.
-  const { isConfigured: isAIConfigured, credits: researchCredits } = useEnhanceSearchQuery();
+  const { isConfigured: isAIConfigured } = useEnhanceSearchQuery();
 
   const createSearchFilters = useCreateSearchFilters();
   const searched = useHasSearched();
@@ -133,7 +133,6 @@ function PageContent() {
             disabled={isFormDisabled}
             // Only someone who hasn't searched yet needs telling about research mode.
             hints={searched === false}
-            credits={researchCredits}
             className="w-full"
           />
           <AutoHeight>

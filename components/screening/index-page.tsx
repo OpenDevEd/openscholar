@@ -202,7 +202,7 @@ export function ScreeningsIndex() {
                           {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}
                           <NextLink href={overviewHref(id)} tabIndex={-1} aria-hidden className="absolute inset-0" />
                           <TooltipHint label={row.name} onlyWhenClipped>
-                            <NextLink href={overviewHref(id)} className={cn(ABOVE, "min-w-0 self-end text-sm font-semibold [grid-area:title] hover:underline line-clamp-2")}>{row.name}</NextLink>
+                            <NextLink dir="auto" href={overviewHref(id)} className={cn(ABOVE, "min-w-0 self-end text-sm font-semibold [grid-area:title] hover:underline line-clamp-2")}>{row.name}</NextLink>
                           </TooltipHint>
                           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 self-start text-xs text-muted-foreground [grid-area:meta]">
                             {t.rich("startedBy", {
@@ -297,7 +297,7 @@ function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: strin
         const there = (path: string) => workspaceHref(row.slug, path);
         return (
           <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
-            <PlainLink href={there(overviewHref(row.id))} className={cn(ABOVE, "min-w-0 text-sm font-semibold hover:underline")}>{row.name}</PlainLink>
+            <PlainLink dir="auto" href={there(overviewHref(row.id))} className={cn(ABOVE, "min-w-0 text-sm font-semibold hover:underline")}>{row.name}</PlainLink>
             <Chip className="h-5 px-1.5">{t("inWorkspace", { name: row.in })}</Chip>
             <span className="ms-auto flex flex-wrap items-center gap-1.5">
               {row.forYou ? <LinkChip elsewhere href={there(screenHref(row.id))} tone="primary" icon={ListChecks} className="shrink-0">{t("forYouToScreen", { count: row.forYou })}</LinkChip> : null}
