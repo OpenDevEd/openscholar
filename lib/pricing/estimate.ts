@@ -86,3 +86,6 @@ export function screeningPaperCredits(pricing: Pricing): number {
 export function tokensIn(text: string): number {
   return Math.ceil(text.length / 2);
 }
+
+/** How many bands of length a screening's papers read as PDFs are counted in (convex/schema.ts `screeningSources.fileSpread`): the last holds every paper of 1,017 pages or more. */
+export const PDF_BANDS = 128;
