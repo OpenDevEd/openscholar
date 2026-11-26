@@ -223,8 +223,8 @@ function Yours({ open }: { open: Open }) {
           ) : null;
         })}
       </span>
-      {/* The papers of theirs that still wait for someone else, where any paper still waits. */}
-      {open.counts.waiting && !screening.finishedAt ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
+      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening).each > 1 || (modelsOf(screening).length > 0 && screening.rule.models !== "advice")) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }

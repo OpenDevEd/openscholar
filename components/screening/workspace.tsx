@@ -100,6 +100,8 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
     when: words.t(`settle.says.${screening.rule.settle}`),
+    // As advice, the models' votes settle nothing on a paper a person has: said beside the rule, where it changes what the rule means.
+    advice: screening.rule.models === "advice" && screening.rule.settle !== "one" && each > 0 && models > 0 ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
     // Once it is finished nobody has a vote left to cast, and every vote shows (lib/screening/rules.ts `seesVotes`).
     see: screening.rule.blind === "after" && !screening.finishedAt ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : screening.finishedAt && screening.rule.blind === "after" ? t("rule.visibleFinished") : t("rule.visible"),
@@ -340,6 +342,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <FadeRow scrolls scrollbar="none" className="flex items-center gap-2 max-sm:flex-wrap">
         <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
         <Chip icon={Check}>{facts.when}</Chip>
+        {facts.advice ? <Chip icon={AiIcon}>{facts.advice}</Chip> : null}
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
         {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}

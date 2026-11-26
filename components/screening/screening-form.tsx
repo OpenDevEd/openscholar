@@ -536,7 +536,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
   // A model on it with nothing left to read that it can read: never while the change is counted, never one that is given no PDF it can't read, and never one only being added, which the lines under Changes speak for.
-  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers && Boolean(saved?.reviewers.some((one) => one.id === model.id && !one.left));
+  // Never before the model has been given its papers: just after a save that adds it, it has none yet, and nothing read.
+  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && (model.tally?.dealt ?? 0) > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers && Boolean(saved?.reviewers.some((one) => one.id === model.id && !one.left));
   // How much of what the models still cost is the papers they are sent as PDFs: said beside the PDFs' pages, where a price a paper times the papers falls short of the total.
   const pdfCost = models.reduce((sum, model) => sum + pdfReadingCredits(model.model!, ahead(model), pdfs), 0);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
@@ -1392,7 +1393,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
                 {/* A rule that doesn't apply says why in its place: with no model there is nothing to count, and the first vote is a person's whatever the setting. */}
-                {!models.length ? <span className="text-sm text-muted-foreground">{t("decided.addModel")}</span>
+                {!models.length ? <JumpLink to="reviewers" className={cn(INLINE_LINK, "text-sm font-normal")}>{t("decided.addModel")}</JumpLink>
                   : draft.rule.settle === "one" ? <span className="text-sm text-muted-foreground">{t("decided.modelsUnderOne")}</span>
                   : <Segmented label={t("decided.modelVotes")} value={draft.rule.models} onChange={(next) => set({ rule: { ...draft.rule, models: next } })} options={[{ id: "vote" as const, label: t("decided.countAsVote") }, { id: "advice" as const, label: t("decided.adviceOnly") }]} />}
               </RuleRow>
@@ -1417,8 +1418,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {/* Someone invited by email is counted: the rule waits for their vote as for anyone's. */}
                 {models.length + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) ? (
                   <>
-                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: models.length + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) })}</p>
-                    <RuleExamples rule={draft.rule} people={readers} models={models.length} />
+                    {/* As advice the models' votes show on the papers, but the people's are the ones the examples count. */}
+                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: (draft.rule.models === "advice" && readers && draft.rule.settle !== "one" ? 0 : models.length) + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) })}</p>
+                    <RuleExamples rule={draft.rule} people={readers} models={draft.rule.models === "advice" && readers && draft.rule.settle !== "one" ? 0 : models.length} />
                   </>
                 ) : <p className="text-xs text-muted-foreground">{t("decided.addReviewer")}</p>}
               </div>

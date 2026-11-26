@@ -31,6 +31,7 @@
     "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
   },
   "rule": {
+    "advice": "AI votes are advice",
     "title": "How a paper is decided",
     "eachPaper": "{who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# AI model} other {# AI models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# AI model} other {# AI models}}}} on each paper",
     "noReviewer": "No reviewer yet",
