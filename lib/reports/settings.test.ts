@@ -15,5 +15,10 @@ describe("a series' byline", () => {
     expect(line("{series}, {doi}, ISSN {issn}")).toBe(`Openscholar Reports, ${DOI}`);
     expect(line("ISSN {issn}, {series}: {doi}")).toBe(`Openscholar Reports: ${DOI}`);
     expect(line("{series} ISSN {issn} {doi}")).toBe(`Openscholar Reports ${DOI}`);
+    expect(line("An Openscholar Report, ISSN {issn}: {doi} ({licence})")).toBe(`An Openscholar Report: ${DOI} (CC BY 4.0)`);
+    expect(line("{series}; ISSN: {issn}; {doi}")).toBe(`Openscholar Reports; ${DOI}`);
+    expect(line("{series}, (ISSN {issn}), {doi}")).toBe(`Openscholar Reports, ${DOI}`);
+    expect(line("{series} [ISSN {issn}] {doi}")).toBe(`Openscholar Reports ${DOI}`);
+    expect(line("{series} (ISSN {issn}, online) {doi}")).toBe(`Openscholar Reports (online) ${DOI}`);
   });
 });
