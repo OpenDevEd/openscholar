@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
+import { cellOf, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";

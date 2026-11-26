@@ -7,7 +7,6 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { sentencesOf } from "@/lib/screening/passages";
-import { kappa } from "@/lib/screening/rules";
 import { changeSays } from "./activity-words";
 import {
   DECISION_LABEL,
@@ -19,11 +18,9 @@ import {
   bareOf,
   castOf,
   failedLabel,
-  foundTotal,
   growing,
   keptOf,
   leftOf,
-  leftTotal,
   listed,
   modelsOf,
   nameOn,
@@ -41,6 +38,9 @@ import {
   type Result,
   type Screening,
   collectionName,
+  pairOf,
+  REMOVED_LABEL,
+  removedOf,
 } from "./data";
 import type { Figures } from "./store";
 
@@ -244,14 +244,15 @@ export type FlowRow = { main: FlowBox; side: FlowBox[] };
 /** The flow of records, counted the way a PRISMA 2020 diagram counts them. */
 export function flowOf(out: Taken): FlowRow[] {
   const { screening, counts, figures } = out;
-  const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
-  // What the sources held and the screening never took: papers with no abstract, and what couldn't be read or found.
-  const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
+  const [kept, open] = [paperTotal(screening.sources), openIn(out)];
+  // What the sources held and the screening never took: the duplicates merged, papers with no abstract, and what couldn't be read or found.
+  const { left, bare, merged } = removedOf(screening.sources);
+  const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   return [
     {
       main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(looks.added && looks.lastAt ? [{ label: looks.later === 1 ? `Of these, by the later search on ${fullDay(looks.lastAt)}` : `Of these, by ${looks.later} later searches, the last on ${fullDay(looks.lastAt)}`, n: looks.added }] : [])] },
-      side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: "Duplicates", n: found - kept }, ...(bare ? [{ label: "No abstract", n: bare }] : []), ...(left - bare ? [{ label: "Could not be read or found", n: left - bare }] : [])] }],
+      side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: REMOVED_LABEL.merged, n: merged }, ...(bare ? [{ label: REMOVED_LABEL.bare, n: bare }] : []), ...(left - bare ? [{ label: REMOVED_LABEL.unread, n: left - bare }] : [])] }],
     },
     {
       main: { title: open ? "Records in screening on title and abstract" : "Records screened on title and abstract", n: kept },
@@ -300,17 +301,12 @@ export function flowSvg(out: Taken, at: number) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${y - gap + 30 + captionLines.length * 14}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${parts.join("")}${captionLines.map((text, k) => `<text x="${mainX}" y="${y - gap + 26 + k * 14}" font-size="11" fill="#666">${esc(text)}</text>`).join("")}</svg>`;
 }
 
-/** How far two reviewers agree, from the server's count of their votes on the papers both voted on. */
-const pairOf = (figures: Figures | undefined, a: string, b: string) => {
-  const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));
-  return held ? kappa(held.matrix) : null;
-};
-
 /** A paragraph for a review's methods section: what was done, in the past tense for what is done and the present for a screening still running. */
 export function methodsOf(out: Taken) {
   const { screening, counts, figures } = out;
-  const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
-  const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
+  const [kept, open] = [paperTotal(screening.sources), openIn(out)];
+  const { left, bare, merged } = removedOf(screening.sources);
+  const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   const { people, each } = readersOf(screening);
   const [models, reviewers] = [modelsOf(screening), activeReviewers(screening)];
@@ -341,7 +337,7 @@ export function methodsOf(out: Taken) {
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",
-    screening.rule.settle === "all" ? `A record ${is} settled when all of its reviewers agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its reviewers, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it.`,
+    screening.rule.settle === "all" ? `A record ${is} settled once all of its reviewers ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its reviewers once all of them ${running ? "have" : "had"} voted, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it.`,
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${names[0]} and ${names[1]} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (Cohen's kappa ${pair.kappa.toFixed(2)}).` : "",

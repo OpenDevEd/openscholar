@@ -23,7 +23,7 @@ import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
 import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
 import { NO_RESULTS } from "./settling";
-import { criteriaValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -277,16 +277,31 @@ export const mine = workspaceQuery({
 /** Open screenings looked at for one whose models are reading. */
 const READING_LOOKED = 5;
 
+/** The open screenings the person reviews, in any workspace, with what waits for them on each: papers to vote on, and conflicts where they settle them. */
+async function waitsFor(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
+  const rows = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX);
+  const found = await Promise.all(rows.filter((row) => row.left === undefined).map(async (row) => {
+    const job = await ctx.db.get("screeningJobs", row.jobId);
+    if (!job || job.shape !== 2 || job.finishedAt !== undefined) return [];
+    const progress = await progressRow(ctx as QueryCtx, job._id);
+    const [forYou, conflicts] = [waitingOf(row, progress?.reviewers?.[row._id]), job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0];
+    return forYou + conflicts ? [{ job, forYou, conflicts }] : [];
+  }));
+  return found.flat();
+}
+
 /**
- * What the workspace's models are reading, for the ring around Screen in the rail: the newest open screening whose
- * models still have papers to read, with how many of their readings are done. Null where none is reading: a
- * screening stays open while its people vote, and that is no run to wait on.
+ * What the rail says of Screen. `reading`: the workspace's newest open screening whose models still have papers to
+ * read, with how many of their readings are done, for the ring around its icon; null where none is reading, since a
+ * screening stays open while its people vote and that is no run to wait on. `waiting`: how many screenings wait for
+ * the person, in whichever workspace, for the count on the icon.
  */
-export const reading = workspaceQuery({
+export const rail = workspaceQuery({
   args: {},
-  returns: v.union(v.null(), v.object({ jobId: v.id("screeningJobs"), done: v.number(), total: v.number() })),
+  returns: v.union(v.null(), v.object({ reading: v.union(v.null(), v.object({ jobId: v.id("screeningJobs"), done: v.number(), total: v.number() })), waiting: v.number() })),
   signedOut: null,
-  handler: async (ctx, { workspaceId }) => {
+  handler: async (ctx, { userId, workspaceId }) => {
+    const waiting = (await waitsFor(ctx, userId)).length;
     const open = await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(READING_LOOKED);
     for (const job of open) {
       if (job.shape !== 2 || !modelsFree(job)) continue;
@@ -294,9 +309,32 @@ export const reading = workspaceQuery({
       const models = reviewers.filter(readingModel);
       const total = models.reduce((sum, one) => sum + one.dealt, 0);
       const done = models.reduce((sum, one) => sum + (progress?.reviewers?.[one._id]?.cast ?? 0) + (progress?.reviewers?.[one._id]?.failed ?? 0), 0);
-      if (done < total) return { jobId: job._id, done, total };
+      if (done < total) return { reading: { jobId: job._id, done, total }, waiting };
     }
-    return null;
+    return { reading: null, waiting };
+  },
+});
+
+/**
+ * Lists the screenings that wait for the person in a workspace other than the one they are in, which that
+ * workspace's own list doesn't hold: the ones of another workspace they belong to, and, from an organization's
+ * pages, the ones shared with them from outside, which open in their own workspace.
+ */
+export const elsewhere = workspaceQuery({
+  args: {},
+  returns: elsewhereValidator,
+  handler: async (ctx, actor) => {
+    const [user, own] = await Promise.all([ctx.db.get("users", actor.userId), inOwnWorkspace(ctx, actor)]);
+    if (!user) return [];
+    const there = (await waitsFor(ctx, actor.userId)).filter(({ job }) => job.workspaceId !== actor.workspaceId);
+    const pointed = await Promise.all(there.map(async ({ job, forYou, conflicts }) => {
+      const member = (await actorIn(ctx, user, job.workspaceId)) !== null;
+      // One shared with them from outside is in their own workspace's list already.
+      if (!member && own) return [];
+      const workspace = await workspaceOf(ctx, job.workspaceId);
+      return [{ id: job._id, name: job.name ?? "Screening", in: workspace.name, ...(member && workspace.slug ? { slug: workspace.slug } : {}), forYou, conflicts }];
+    }));
+    return pointed.flat().slice(0, ELSEWHERE_MAX);
   },
 });
 

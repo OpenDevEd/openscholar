@@ -8,7 +8,6 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { workspaceMutation } from "../lib/userActions";
-import type { InWorkspace } from "../workspaces/actor";
 import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";

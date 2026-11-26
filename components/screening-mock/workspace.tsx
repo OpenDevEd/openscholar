@@ -27,7 +27,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
+import { plural, inOrder, num, SETTLE_MEANS, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
@@ -283,7 +283,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           }
         >
           <p>Each paper gets the votes named in these chips, and is settled once they are in.</p>
-          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>{screening.rule.settle === "all" ? "When its reviewers split" : "With no majority among its reviewers"}, the paper is in conflict until {settlerSettles(screening, open.me)} it.</p>}
+          <p>{SETTLE_MEANS[screening.rule.settle]}</p>{screening.rule.settle === "one" ? null : <p>A paper in conflict stays open until {settlerSettles(screening, open.me)} it.</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
           {screening.rule.blind === "after" ? <p>{VOTES_HIDDEN_SAYS}</p> : null}
           {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}

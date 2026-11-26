@@ -5,7 +5,7 @@
 // and the list of what a source held and the screening doesn't take.
 
 import { useId, useState, type ReactNode } from "react";
-import NextLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronsUpDown, Copy, FileSpreadsheet, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Undo2, UserRound, Users, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";

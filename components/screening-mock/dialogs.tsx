@@ -26,7 +26,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { changeOpens, changeSays } from "./activity-words";
-import { PERSON_SAYS, VOTES_HIDDEN_SAYS, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
+import { PERSON_SAYS, VOTES_HIDDEN_SAYS, readBy, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
 import { papersHref } from "./links";
 import { Help, ReviewerMark, ReviewerName, ShutNote } from "./parts";
 import { perPaper, type Open } from "./store";
@@ -238,7 +238,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               key: one.id,
               avatar: <ReviewerMark reviewer={one} className="size-9" />,
               name: one.name,
-              detail: `${perPaper(one.model!)}, read ${num((one.tally?.cast ?? 0) + (one.tally?.failed ?? 0))} of ${num(one.tally?.dealt ?? 0)}`,
+              detail: `${perPaper(one.model!)}, read ${num(readBy(one.tally))} of ${num(one.tally?.dealt ?? 0)}`,
               role: { kind: "edit" as const, label: "Model" },
               ...(may ? { onRemove: () => onRemove(one) } : {}),
             })),

@@ -6,7 +6,7 @@
 import { copyText } from "@/components/copy-text";
 import { useState } from "react";
 import { useConvex } from "convex/react";
-import NextLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { RESULTS, type Result, num, plural, slug, DECISION_LABEL, RESULT_LABEL, ago, failedLabel, questionOf, listed, inOrder, nameOn, votingReviewers, emptyResult } from "./data";
+import { RESULTS, type Result, num, plural, slug, youOr, DECISION_LABEL, RESULT_LABEL, ago, failedLabel, questionOf, listed, inOrder, nameOn, votingReviewers, emptyResult } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./parts";
 import { bibOf, everyPaper, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
@@ -200,7 +200,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 narrows={false}
                 align="end"
                 className="h-8 rounded-full px-3.5 text-xs"
-                choices={[{ value: "all", label: "Everyone" }, ...reviewers.map((reviewer) => ({ value: reviewer.id, label: reviewer.id === state.me ? "You" : reviewer.name, icon: <ReviewerMark reviewer={reviewer} className="size-4" />, group: "One reviewer" }))]}
+                choices={[{ value: "all", label: "Everyone" }, ...reviewers.map((reviewer) => ({ value: reviewer.id, label: youOr(reviewer, state.me), icon: <ReviewerMark reviewer={reviewer} className="size-4" />, group: "One reviewer" }))]}
               />
             ) : undefined}
           >

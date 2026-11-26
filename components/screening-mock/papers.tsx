@@ -5,7 +5,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import NextLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
@@ -36,7 +36,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, inOrder, type Criterion, listed as inWords, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, castOf, failedLabel, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, whoIs, NO_VOTE, shortName, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS, emptyResult, firstName } from "./data";
+import { plural, num, inQuotes, inOrder, youOr, type Criterion, listed as inWords, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, castOf, failedLabel, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, whoIs, NO_VOTE, shortName, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS, emptyResult, firstName } from "./data";
 import { papersHref, screenHref } from "./links";
 import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
@@ -346,7 +346,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                 <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{label as string}</DropdownMenuLabel>
                 {(list as Reviewer[]).map((one) => (
                   <DropdownMenuItem key={one.id} role="menuitemcheckbox" aria-checked={everyone.includes(one.id)} onSelect={(event) => { event.preventDefault(); pick(one.id); }}>
-                    <ReviewerMark reviewer={one} className="size-4" /><span className="min-w-0 flex-1 truncate">{one.id === open.me ? "You" : one.name}</span>{everyone.includes(one.id) ? <Check className="size-4" /> : null}
+                    <ReviewerMark reviewer={one} className="size-4" /><span className="min-w-0 flex-1 truncate">{youOr(one, open.me)}</span>{everyone.includes(one.id) ? <Check className="size-4" /> : null}
                   </DropdownMenuItem>
                 ))}
               </div>
@@ -990,7 +990,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             </Help>
           </h3>
           {/* Settling it now ends the wait for whoever has yet to vote: said before it is done (it was only seen afterwards, as their column going). */}
-          {awaited.length ? <Note icon={Hourglass}>{inWords(awaited.map((one) => (one.id === open.me ? "You" : one.name)))} {awaited.length === 1 && awaited[0]!.id !== open.me ? "has" : "have"} yet to vote. Your decision settles the paper without {awaited.length === 1 ? "that vote" : "those votes"}, and takes it off {awaited.every((one) => one.id === open.me) ? "your list" : awaited.some((one) => one.id === open.me) ? "your lists" : awaited.length === 1 ? "their list" : "their lists"}.</Note> : null}
+          {awaited.length ? <Note icon={Hourglass}>{inWords(awaited.map((one) => youOr(one, open.me)))} {awaited.length === 1 && awaited[0]!.id !== open.me ? "has" : "have"} yet to vote. Your decision settles the paper without {awaited.length === 1 ? "that vote" : "those votes"}, and takes it off {awaited.every((one) => one.id === open.me) ? "your list" : awaited.some((one) => one.id === open.me) ? "your lists" : awaited.length === 1 ? "their list" : "their lists"}.</Note> : null}
           {buttons("result")}
           <Button variant="ghost" size="sm" className="w-full" onClick={() => setDeciding(null)}>Cancel</Button>
         </section>

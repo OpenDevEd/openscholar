@@ -157,10 +157,10 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         {leaving && leavingVotes ? (
           <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
             <span className="min-w-0 flex-1">
-              <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
+              <span className="font-medium">Stop counting {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
               <span className="block text-xs text-muted-foreground">{discard ? `${leavingMe ? "Your" : "Their"} votes stay on record and stop counting.` : `${leavingMe ? "Your" : "Their"} votes keep counting.`}</span>
             </span>
-            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Throw out ${leavingMe ? "your" : "their"} votes`} />
+            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Stop counting ${leavingMe ? "your" : "their"} votes`} />
           </label>
         ) : null}
       </ConfirmChange>

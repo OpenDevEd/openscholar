@@ -46,9 +46,10 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
+import { EVERY_MS, MAX_SOURCES } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { LEFT_WHY, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, PERIOD, SHORT_NAME_LENGTH, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo } from "./data";
+import { LEFT_WHY, SETTLE_MEANS, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, SHORT_NAME_LENGTH, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo } from "./data";
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
@@ -679,7 +680,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="papers"
             title="Papers"
-            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A screening reads a title and an abstract. A record that Openscholar&apos;s index knows takes both from there.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a paper with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
+            help={<><Help title="Papers" facts={<><HelpFact>Up to {MAX_SOURCES} sources</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A screening reads a title and an abstract. A record that Openscholar&apos;s index knows takes both from there.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a paper with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
             aside={
               <>
                 {/* What the sources held, what of that can't be screened, what two of them both held, and what is left. */}
@@ -878,7 +879,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Segmented
                     label="Check for new papers"
                     value={draft.living?.every ?? "off"}
-                    onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + PERIOD[next] } })}
+                    onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + EVERY_MS[next] } })}
                     options={[{ id: "off" as const, label: "Off" }, ...(["day", "week", "month"] as const).map((id) => ({ id, label: EVERY_LABEL[id] }))]}
                   />
                 </div>
@@ -1131,7 +1132,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Segmented label="People on each paper" value={draft.rule.each !== "all" && Number(draft.rule.each) > joined.length ? (String(joined.length) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: joined.length }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: String(k + 1) })), { id: "all" as const, label: "Everyone" }]} />
                 ) : <span className="text-sm text-muted-foreground">Add a person to choose</span>}
               </RuleRow>
-              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">Every reviewer given a paper has one vote, a model as much as a person. {SETTLE_LABEL.all}: any split is a conflict. {SETTLE_LABEL.most}: more than half on one side settles it, and with no such majority it is a conflict. {SETTLE_LABEL.one}: the first vote settles it, so there is never a conflict.</Help>}>
+              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper"><p>Every reviewer given a paper has one vote, a model as much as a person.</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}><span className="font-medium text-foreground">{SETTLE_LABEL[rule]}.</span> {SETTLE_MEANS[rule]}</p>)}</Help>}>
                 <Segmented label="A paper is settled when" value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: SETTLE_LABEL[id] }))} />
               </RuleRow>
               <RuleRow name="Conflicts are settled by" help={<Help title="Conflicts">This person sees every vote on the paper, and their decision is its result.</Help>}>

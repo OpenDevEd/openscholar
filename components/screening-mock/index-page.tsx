@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
+import PlainLink from "next/link";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { useRunBy } from "@/components/workspaces/run-by";
@@ -27,8 +28,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
+import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inOrder, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, growing, modelsOf, type Result, type Reviewer, lookerLabel, inQuotes } from "./data";
+import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, growing, modelsOf, type Result, type Reviewer, lookerLabel, inQuotes } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { useScreeningOverlays } from "./overlays";
 import { FilterMenu, Help, LinkChip, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
@@ -43,7 +45,7 @@ const SORTS = [
   { value: "oldest", label: "Oldest" },
   { value: "name", label: "Name" },
 ] as const;
-/** The groups the rows fall in, and past All a tab for each, under the same name: the tabs' counts add up to All's. */
+/** The groups the rows fall in, and past All a tab for each, under the same name. In progress holds every screening that isn't finished, the ones that need the person among them. */
 const GROUPS = ["Needs you", "In progress", "Finished"] as const;
 const SHOWS = ["you", "open", "finished"] as const;
 /** Which screenings the list shows, kept in the address: Back from a screening returns to the list as it was left. */
@@ -80,6 +82,7 @@ export function ScreeningsIndex() {
   // What waits for the person, and what is shared with them from elsewhere: read whole, since both are theirs alone and few.
   const mine = useProtectedQuery(api.screening.view.mine, inWorkspace(here, {})).data;
   const tally = useProtectedQuery(api.screening.view.tally, inWorkspace(here, {})).data;
+  const elsewhere = useProtectedQuery(api.screening.view.elsewhere, inWorkspace(here, {})).data ?? [];
   // "Needs you first" is the newest first with what waits for the person above them.
   const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(words ? { text: words } : {}) }), PAGE);
 
@@ -93,7 +96,7 @@ export function ScreeningsIndex() {
   const paged = show === "you" ? [] : listed.items.filter((row) => !(sort === "you" && show !== "finished" && waiting.has(row.id)));
   const rows = (show === "you" ? needs : [...pinned, ...paged, ...(show === "all" && listed.page === 1 ? shared.filter((row) => !waiting.has(row.id)) : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }));
   const loading = mine === undefined || tally === undefined || (show !== "you" && listed.isLoading);
-  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: Math.max(0, tally.open - mine.page.filter((row) => row.member && !row.finishedAt && needing(row)).length), finished: tally.finished } : undefined;
+  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt && needing(row)).length, finished: tally.finished } : undefined;
   const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
@@ -115,6 +118,7 @@ export function ScreeningsIndex() {
               </Button>
             }
           >
+            <Elsewhere rows={elsewhere} />
             {empty ? (
               <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
                 <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>
@@ -204,7 +208,7 @@ export function ScreeningsIndex() {
                           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 self-start text-xs text-muted-foreground [grid-area:meta]">
                             <span className="flex min-w-0 items-center gap-1.5">
                               <IdentityAvatar name={row.createdBy.name} imageUrl={row.createdBy.imageUrl} className="size-4" />
-                              <span className="truncate">{row.createdBy.id === me ? "You" : row.createdBy.name}</span>
+                              <span className="truncate">{youOr(row.createdBy, me)}</span>
                             </span>
                             <span className="whitespace-nowrap">started it {ago(row.createdAt)}</span>
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={{ kind: row.workspace.kind, name: row.workspace.name, imageUrl: row.workspace.imageUrl, colour: row.workspace.colour, workspaceId: row.workspace.id }} /></span> : null}
@@ -271,6 +275,32 @@ export function ScreeningsIndex() {
 }
 
 /** A group's labelled row before its first screening on the page, under the default order. */
+/** The screenings that wait for the person in another workspace. This list holds this workspace's own, so each of those is a link to where it is. */
+function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number }> }) {
+  if (!rows.length) return null;
+  return (
+    <ul aria-label="Waiting for you in another workspace" className="divide-y divide-border-subtle border-b border-border-subtle">
+      <li className="flex items-baseline gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
+        <span>Waiting for you in another workspace</span>
+        <span className="tabular-nums text-muted-foreground">{rows.length}</span>
+      </li>
+      {rows.map((row) => {
+        const there = (path: string) => workspaceHref(row.slug, path);
+        return (
+          <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
+            <PlainLink href={there(overviewHref(row.id))} className={cn(ABOVE, "min-w-0 text-sm font-semibold hover:underline")}>{row.name}</PlainLink>
+            <Chip className="h-5 px-1.5">In {row.in}</Chip>
+            <span className="ms-auto flex flex-wrap items-center gap-1.5">
+              {row.forYou ? <LinkChip elsewhere href={there(screenHref(row.id))} tone="primary" icon={ListChecks} className="shrink-0">{num(row.forYou)} for you to screen</LinkChip> : null}
+              {row.conflicts ? <LinkChip elsewhere href={there(screenHref(row.id, { queue: "conflicts" }))} tone="info" icon={GitCompare} className="shrink-0">{plural(row.conflicts, "conflict", "conflicts")} to settle</LinkChip> : null}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Group({ label, note, count, children }: { label: string | null; /** What the group holds, where its name doesn't say: with it, a row that shows no question is a screening where nobody waits for an answer. */ note?: string; /** How many it holds, where that is known without reading every page. */ count?: number; children: ReactNode }) {
   return (
     <>

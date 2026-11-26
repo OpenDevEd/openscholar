@@ -202,7 +202,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
   const is = (p: string) => (p === "/" ? path === "/" || path.startsWith("/results") : path === p || path.startsWith(`${p}/`));
-  const { data: screening } = useProtectedQuery(api.screening.view.reading, inWorkspace(here, {}));
+  const { data: screening } = useProtectedQuery(api.screening.view.rail, inWorkspace(here, {}));
   const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
   const tint = current ? workspaceTint(current) : undefined;
   const item = (props: Omit<React.ComponentProps<typeof RailItem>, "onClick">) => <RailItem {...props} onClick={onClose} />;
@@ -271,7 +271,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 label: t("screen"),
                 active: is("/screening"),
                 // The ring is a screening's models reading. People voting is no run to wait on, so an open screening with nothing left to read shows none.
-                running: screening ? { done: screening.done, total: screening.total, what: tc("screening"), percent: Math.floor((screening.done / screening.total) * 100) } : undefined,
+                running: screening?.reading ? { done: screening.reading.done, total: screening.reading.total, what: tc("screening"), percent: Math.floor((screening.reading.done / screening.reading.total) * 100) } : undefined,
+                // How many screenings wait for the person, in whichever workspace: the list says where.
+                badge: screening?.waiting || undefined,
               })}
               {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
               <AnimatePresence initial={false}>

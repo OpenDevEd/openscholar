@@ -146,3 +146,9 @@ export function takesOver(paper: string, person: string, before: number, waiting
  * and every file.
  */
 export const seesVotes = (blind: Rule["blind"], result: Result | undefined, mine: Ballot["status"] | undefined) => blind === "always" || isFinal(result) || mine !== "waiting";
+
+/** The most sources a screening reads at a time: the ones taken out don't count. */
+export const MAX_SOURCES = 20;
+
+/** How long a living screening waits between two checks of its sources. */
+export const EVERY_MS = { day: 86_400_000, week: 7 * 86_400_000, month: 30 * 86_400_000 } as const;

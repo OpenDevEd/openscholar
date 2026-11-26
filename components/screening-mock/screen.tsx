@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
-import NextLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TriangleAlert, Undo2, UserPlus, X, type AppIcon, Minus } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "@/components/screening/parts";
@@ -40,7 +40,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
+import { plural, num, inQuotes, youOr, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
@@ -229,6 +229,8 @@ function Screen({ open }: { open: Open }) {
   const excludeShows = useTransform(dragged, [-110, -24], [1, 0]);
 
   const resolving = queue === "conflicts";
+  // Settling a conflict decides the paper for everyone. It is not the settler's own vote.
+  const nextAfter = resolving ? "Next paper after each decision" : "Next paper after each vote";
   const mine = paper ? myVote(paper) : undefined;
   const visible = paper?.sees ?? false;
   // Your own column first, then the other people, then the models, the same on every paper.
@@ -712,7 +714,7 @@ function Screen({ open }: { open: Open }) {
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
                   aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? `${num(criteria.filter((criterion) => given[criterion.key] !== undefined).length)} of ${num(criteria.length)} answered` : plural(criteria.length, "criterion", "criteria")}</span> : undefined}
                   help={
-                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={Highlighter}>Marked words: what a criterion looks for</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>Words the criteria look for</HelpFact></>}>
+                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={Highlighter}>Marked words: the words a criterion looks for</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>How they show in the abstract</HelpFact></>}>
                       {answering ? "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude."}
                     </Help>
                   }
@@ -842,8 +844,8 @@ function Screen({ open }: { open: Open }) {
               </Popover>
               {mayDecide && queue !== "done" ? (
                 <label className="flex basis-full items-center justify-between gap-2 text-xs text-muted-foreground max-lg:hidden">
-                  Next paper after each vote
-                  <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
+                  {nextAfter}
+                  <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
               ) : null}
               {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="min-[87.5rem]:hidden">Now in Conflicts</LinkChip> : null}
@@ -855,8 +857,8 @@ function Screen({ open }: { open: Open }) {
                     <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
                     <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
                       <label className="flex items-center gap-3 text-sm">
-                        <span className="min-w-0 flex-1">Next paper after each vote</span>
-                        <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
+                        <span className="min-w-0 flex-1">{nextAfter}</span>
+                        <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                       </label>
                       {/* What a drag of the paper does, on a paper that can be dragged: one still to vote on. */}
                       {swipeable ? (
@@ -1148,7 +1150,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
               const on = shown?.reviewer === reviewer.id && shown.criterion === criterion.key;
               // Every answer opens what is behind it: a model's the passage it read, a person's their vote and their note.
               return (
-                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${reviewer.id === me ? "You" : reviewer.name}, ${criterion.short}: ${reviewer.kind === "model" ? "show the passage" : reviewer.id === me ? "show your vote and note" : "show their vote and note"}`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
+                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${youOr(reviewer, me)}, ${criterion.short}: ${reviewer.kind === "model" ? "show the passage" : reviewer.id === me ? "show your vote and note" : "show their vote and note"}`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
                   <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} pressable={!on} />
                 </button>
               );

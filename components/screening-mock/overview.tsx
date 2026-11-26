@@ -7,7 +7,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { AnimatePresence, motion } from "motion/react";
-import NextLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
 import { AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
@@ -26,11 +26,10 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
-import { kappa } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, collectionName, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
+import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -76,8 +75,9 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">No papers yet</p>
-        <p className="max-w-md text-sm text-muted-foreground">This screening has no source to take papers from.</p>
-        {open.canChange ? <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id, "papers")}>Add a source</NextLink></Button> : null}
+        {/* No source, or sources that held nothing it can screen: Settings shows which, and what each left out. */}
+        <p className="max-w-md text-sm text-muted-foreground">{screening.sources.length ? "Its sources held no paper it can screen." : "This screening has no source to take papers from."}</p>
+        {open.canChange ? <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id, "papers")}>{screening.sources.length ? "See its sources" : "Add a source"}</NextLink></Button> : null}
       </div>
     );
   }
@@ -133,7 +133,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             })}
           >
             {/* What settles a paper here, said outright: the rule's own name is in the chips over the page, and this must read without them. */}
-            <p>{screening.rule.settle === "all" ? "A paper settles when all its reviewers vote the same way." : screening.rule.settle === "most" ? "A paper settles when most of its reviewers vote the same way." : "A paper settles with its first vote."} Maybe is a result like the others, so a paper at Maybe counts as settled.</p>
+            <p>{SETTLE_MEANS[screening.rule.settle]} Maybe is a result like the others, so a paper at Maybe counts as settled.</p>
             <p>A paper at Maybe is not saved with the included papers. It stays under Maybe on the Papers page, and its result can still change when a reviewer changes their vote.</p>
           </Help>
         }
@@ -241,7 +241,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
     return {
       reviewer,
       assigned: tally?.dealt ?? 0,
-      done: tally?.cast ?? 0,
+      // A model's meter is what it has read, the papers it couldn't read among them: those are listed on their own line.
+      done: reviewer.kind === "model" ? readBy(tally) : (tally?.cast ?? 0),
       split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
       agrees: compared ? same / compared : null,
       compared,
@@ -362,7 +363,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
           ) : null}
         </div>
       ) : (
-        <EmptyNote>Nobody votes on these papers yet.{open.canChange ? " Add a person or a model with the buttons beside Share." : ""}</EmptyNote>
+        <EmptyNote>Nobody votes on these papers yet.{open.canChange ? " Add a person or a model from People, at the top of the page." : ""}</EmptyNote>
       )}
       <ConfirmChange
         open={leaving !== null}
@@ -377,10 +378,10 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
         {leaving && leavingVotes ? (
           <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
             <span className="min-w-0 flex-1">
-              <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
+              <span className="font-medium">Stop counting {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
               <span className="block text-xs text-muted-foreground">{discard ? `${leavingMe ? "Your" : "Their"} votes stay on record and stop counting.` : `${leavingMe ? "Your" : "Their"} votes keep counting.`}</span>
             </span>
-            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Throw out ${leavingMe ? "your" : "their"} votes`} />
+            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Stop counting ${leavingMe ? "your" : "their"} votes`} />
           </label>
         ) : null}
       </ConfirmChange>
@@ -417,7 +418,7 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   const doneBefore = lastDay((row) => row.left);
   const doneAfter = taker ? lastDay((row) => (row === giver ? row.left - papers : row === taker.row ? row.left + papers : row.left)) : null;
   const face = (row: ReviewerRowData) => <ReviewerMark reviewer={row.reviewer} className="size-4" />;
-  const nameOf = (row: ReviewerRowData) => (row.reviewer.id === open.me ? "You" : row.reviewer.name);
+  const nameOf = (row: ReviewerRowData) => youOr(row.reviewer, open.me);
   const load = (row: ReviewerRowData, after: number) => (
     <div key={row.reviewer.id} className="flex items-center gap-2.5 px-3 py-2.5 text-sm">
       <ReviewerMark reviewer={row.reviewer} className="size-7" />
@@ -608,11 +609,6 @@ const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destr
 /** The papers two reviewers both voted on, the ones they split on first. */
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
 const sameText = (pair: { same: number }) => `${Math.round(pair.same * 100)}% same`;
-/** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
-const pairOf = (figures: Figures | undefined, a: string, b: string) => {
-  const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));
-  return held ? kappa(held.matrix) : null;
-};
 const KAPPA_HELP = (
   <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0.6 and up substantial</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>Below 0 worse than chance</HelpFact></>}>
     <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
@@ -653,7 +649,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <span className="flex items-center gap-3">
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
               <span className="text-sm">
-                <span className="font-medium">Overall agreement, as Cohen&apos;s kappa</span>
+                <span className="font-medium">Mean pairwise Cohen&apos;s kappa</span>
                 <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {plural(known.length, "pair", "pairs")} of reviewers</span>
               </span>
             </span>
@@ -735,7 +731,7 @@ function Facts({ open }: { open: Open }) {
     <div className="space-y-6">
       <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
-        <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? "Someone" }} you={screening.createdBy === open.me} className="font-medium" /></span>
+        <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? SOMEONE }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">started it {ago(screening.createdAt)}</span>
         <WorkspaceTag size="sm" workspace={lookOf(workspace)} />
       </Panel>
@@ -856,7 +852,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                   <div className="flex items-start gap-3 px-4 py-3">
                     {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? `${who.id === open.me ? "You" : who.name} checked` : "Scheduled check"}</span><span className="text-xs text-muted-foreground">{ago(check.at)}</span></p>
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? `${youOr(who, open.me)} checked` : "Scheduled check"}</span><span className="text-xs text-muted-foreground">{ago(check.at)}</span></p>
                       {check.state === "failed" ? (
                         <StateChip tone="destructive">Couldn&apos;t be finished</StateChip>
                       ) : check.found ? (
@@ -929,7 +925,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       title: "Removed before screening",
       total: found - kept,
       href: settingsHref(id, "papers"),
-      rows: [{ key: "duplicates", label: "Duplicates merged", value: merged }, { key: "bare", label: "No abstract", value: bare }, { key: "unread", label: "Couldn't be read or found", value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
+      rows: [{ key: "duplicates", label: REMOVED_LABEL.merged, value: merged }, { key: "bare", label: REMOVED_LABEL.bare, value: bare }, { key: "unread", label: REMOVED_LABEL.unread, value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
     },
     {
       title: "Papers",

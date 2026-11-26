@@ -16,7 +16,7 @@ import { MAX_QUESTIONS, MAX_STARS } from "../lib/listCaps";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
-import { defaultPoints, defaultStars, shortOf, type Criterion } from "../../lib/screening/rules";
+import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS, reviewersOf, sourcesOf, touched } from "./dealing";
 import { startWaitingVotes } from "./slots";
@@ -41,7 +41,7 @@ export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(),
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
 /** The most sources one screening has, and the most models where its workspace's plan sets no number. */
-export const MAX_SOURCES = 20;
+export { MAX_SOURCES };
 const MODELS_A_SCREENING = 5;
 /** How many models one screening in the workspace may have reading: its plan's number (lib/billing/plans.ts `screening_models`). */
 export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
@@ -100,7 +100,7 @@ const setup = {
 };
 
 /** How long until a living screening's next check. */
-export const EVERY_MS = { day: 86_400_000, week: 7 * 86_400_000, month: 30 * 86_400_000 } as const;
+export { EVERY_MS };
 
 /**
  * Makes a screening, with its sources, its reviewers and its first look in the sources. Whoever makes it starts it

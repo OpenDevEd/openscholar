@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf, type Decision, type Result } from "@/lib/screening/rules";
+import { DECISIONS, RESULTS, SHORT_NAME_LENGTH, defaultStars, hash, kappa, readersFor, scoreOf, shortOf, type Decision, type Result } from "@/lib/screening/rules";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
 export type { Decision, Result };
@@ -25,6 +25,10 @@ export const PERSON_SAYS = { invited: "Invited by email, votes once they join", 
 export const standsTo = (person: Pick<Person, "guest"> | undefined) => (person?.guest ? PERSON_SAYS.guest : PERSON_SAYS.member);
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
+/** Someone whose account is gone still has a name where their votes are: the one the server gives them. */
+export const SOMEONE = "Someone who left";
+/** A person as the one looking reads them at the start of a line: "You" for themselves, their name for anyone else. */
+export const youOr = (person: { id: string; name: string }, me: string | undefined) => (person.id === me ? "You" : person.name);
 /** A reviewer's name where there is little room: a person's first name, and a model's whole name, since its first word alone only names its maker. */
 export const shortName = (reviewer: { kind: "person" | "model"; name: string; email?: string }) => (reviewer.kind === "person" && !reviewer.email ? firstName(reviewer.name) : reviewer.name);
 /** A name as part of a file's name or an address. */
@@ -166,6 +170,8 @@ export const keptOf = (source: Source) => (source.read ? source.read.taken : Mat
 export const paperTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + keptOf(source), 0);
 /** What a screening's sources brought before duplicates were merged: the first count of its flow diagram. */
 export const foundTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + taken(source), 0);
+/** What was removed before screening, named the same on the Overview and in the flow diagram. */
+export const REMOVED_LABEL = { merged: "Duplicates merged", bare: "No abstract", unread: "Could not be read or found" } as const;
 /** What its sources held that it doesn't screen: what they left out, how much of that for having no abstract, and the duplicates merged. One count for the progress line and the flow. */
 export function removedOf(sources: Source[]) {
   const left = leftTotal(sources);
@@ -227,13 +233,20 @@ export type Cast = Paper["cast"][number];
 export type Vote = NonNullable<Cast["vote"]>;
 /** A paper's places with who holds each, as the pages draw them. Someone whose vote stands and who the screening no longer lists is still named. */
 export const castOf = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) =>
-  paper.cast.map((place) => ({ ...place, vote: place.vote, reviewer: screening.reviewers.find((one) => one.id === place.reviewer) ?? ({ id: place.reviewer, kind: "person", name: "Someone who left", addedAt: 0 } satisfies Reviewer) }));
+  paper.cast.map((place) => ({ ...place, vote: place.vote, reviewer: screening.reviewers.find((one) => one.id === place.reviewer) ?? ({ id: place.reviewer, kind: "person", name: SOMEONE, addedAt: 0 } satisfies Reviewer) }));
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
 /** Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes. */
 export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0));
 /** The most points a paper can earn under the screening's scoring. */
-export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => screening.criteria.reduce((sum, criterion) => sum + Math.max(...(screening.scoring.points[criterion.key] ?? [1, 0, 0])), 0);
+export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => scoreOf(screening.criteria.map(({ key }) => { const [yes, no, unclear] = screening.scoring.points[key] ?? [1, 0, 0]; return { key, points: { yes, no, unclear } }; }), [], []).of;
+/** How many of its papers a model has read: the ones it voted on and the ones it couldn't read. One count for its meter, its row and the frame. */
+export const readBy = (tally: Pick<Tally, "cast" | "failed"> | undefined) => (tally?.cast ?? 0) + (tally?.failed ?? 0);
+/** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
+export const pairOf = (figures: { pairs: Array<{ a: string; b: string; matrix: number[] }> } | undefined, a: string, b: string) => {
+  const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));
+  return held ? kappa(held.matrix) : null;
+};
 /** Where a paper stands, and who settled it where a person did. */
 export type Settled = { result: Result; final?: Decision; resolvedBy?: string; note?: string; reason?: string };
 /** Where a paper stands, as its own row says it. */
@@ -250,6 +263,12 @@ export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Eve
 export const livingSays = (every: Every) => `Living, new papers ${EVERY_LABEL[every].toLowerCase()}`;
 /** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
 export const SETTLE_LABEL: Record<Rule["settle"], string> = { all: "All agree", most: "Most agree", one: "First vote decides" };
+/** What settles a paper under each rule, said the same wherever it is explained. Under the first two a paper waits until every reviewer given it has voted. */
+export const SETTLE_MEANS: Record<Rule["settle"], string> = {
+  all: "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
+  most: "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+  one: "A paper is settled by the first vote on it, so there is never a conflict.",
+};
 export const SETTLE_SAYS: Record<Rule["settle"], string> = { all: "Settled when all agree", most: "Settled when most agree", one: "Settled by the first vote" };
 /** A check of a screening's sources: how many papers it found, and how many of those were new to the screening. */
 export type Update = { id?: string; at: number; found: number; added: number; by: string };
@@ -293,7 +312,7 @@ export const activeReviewers = (screening: Pick<Screening, "reviewers">) => scre
 /** The people who read a screening's papers, and how many of them each paper goes to. Someone invited by email is dealt no paper until they join, so they are not counted. */
 export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
-  return { people, each: screening.rule.each === "all" ? people.length : Math.min(Number(screening.rule.each), people.length) };
+  return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length) };
 };
 /** Reviewers in the one order every list, row of faces and table shows them: the person looking, then the other people, then the models. Within each, the order they were added in. */
 export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[], me: string) => {
@@ -306,7 +325,7 @@ export const resolves = (screening: Pick<Screening, "rule">, id: string) => scre
 export const whoIs = (screening: Pick<Screening, "reviewers" | "people">, id: string, me: string, short = false) => (id === me ? "you" : short ? firstName(nameOn(screening, id)) : nameOn(screening, id));
 /** Who settles a screening's conflicts, as the start of a sentence about it: "you settle" or "Kwame Mensah settles". */
 export const settlerSettles = (screening: Pick<Screening, "reviewers" | "rule" | "people">, me: string) => (screening.rule.resolver === me ? "you settle" : `${nameOn(screening, screening.rule.resolver)} settles`);
-export const nameOn = (screening: Pick<Screening, "reviewers" | "people">, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? "A reviewer";
+export const nameOn = (screening: Pick<Screening, "reviewers" | "people">, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? SOMEONE;
 export const peopleOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 
@@ -327,10 +346,9 @@ export const waitingQuestions = (said: Message[] | undefined) => (said ?? []).fi
 export const count = <T,>(list: T[], test: (item: T) => boolean) => list.reduce((n, item) => n + (test(item) ? 1 : 0), 0);
 
 export const DAY = 86_400_000;
-export const PERIOD: Record<Every, number> = { day: DAY, week: 7 * DAY, month: 30 * DAY };
 /** The rule a new screening starts with, for whoever starts it. */
 export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after" });
-export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), stars: [1, 2, 3, 4, 5].map((k) => Math.max(1, Math.ceil((k / 5) * criteria.length))) });
+export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), stars: defaultStars(criteria.length) });
 /** The sources a check looks in again. */
 export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind) && !source.read?.removedAt);
 

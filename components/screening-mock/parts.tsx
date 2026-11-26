@@ -5,7 +5,8 @@
 // examples that show what a rule does.
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
-import NextLink from "next/link";
+import PlainLink from "next/link";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
@@ -210,14 +211,15 @@ export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string
   );
 }
 
-export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
+export function LinkChip({ href, tone = "neutral", icon, children, className, elsewhere = false, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode; /** It leads into another workspace: its address is taken as it is, where any other link stays in the workspace the page is in. */ elsewhere?: boolean }) {
+  const Link = elsewhere ? PlainLink : NextLink;
   return (
-    <NextLink {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
+    <Link {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
       <Chip icon={icon} className={cn(TONE[tone].chip, TONE[tone].hover, "min-w-0 shrink pe-1 font-medium transition-colors")}>
         <span className="truncate">{children}</span>
         <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
       </Chip>
-    </NextLink>
+    </Link>
   );
 }
 

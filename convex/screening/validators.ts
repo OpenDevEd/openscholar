@@ -294,6 +294,11 @@ export const reviewerViewValidator = v.object({
 });
 export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
 
+/** Screenings in the person's other workspaces that one page points at. */
+export const ELSEWHERE_MAX = 20;
+/** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
+export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number() })), ELSEWHERE_MAX);
+
 export const sourceViewValidator = v.object({
   id: v.id("screeningSources"),
   set: sourceSetValidator,

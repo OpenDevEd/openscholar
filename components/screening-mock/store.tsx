@@ -11,17 +11,17 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
+import { screeningPaperCredits } from "@/lib/pricing/estimate";
 import type { Answer } from "@/lib/screening/setup";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, keptOf, num, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, keptOf, num, readBy, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
 
 /** What a model costs for one paper, in credits: its price for the tokens that call takes at most, as the real estimate works it out. */
 export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) {
-  return estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.paper);
+  return screeningPaperCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion });
 }
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
@@ -219,4 +219,4 @@ export function useFigures(id: Id<"screeningJobs">) {
 export type Figures = NonNullable<ReturnType<typeof useFigures>["figures"]>;
 
 /** How far a screening's models have read: the place of the slowest of them, as the meters show it. */
-export const modelsDone = (models: Reviewer[]) => (models.length ? Math.min(...models.map((model) => (model.tally?.cast ?? 0) + (model.tally?.failed ?? 0))) : 0);
+export const modelsDone = (models: Reviewer[]) => (models.length ? Math.min(...models.map((model) => readBy(model.tally))) : 0);
