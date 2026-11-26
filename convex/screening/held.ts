@@ -17,6 +17,7 @@ import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from 
 import { readsPdfs } from "../../lib/assistant/files";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
 import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
+import { registered } from "./doiRecords";
 import { DOIS_MAX, doisLookValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
 import type { Infer } from "convex/values";
 
@@ -130,9 +131,11 @@ export const lookDois = workspaceAction({
     const who: { clerkId: string } | null = await ctx.runQuery(internal.screening.held.reader, { userId, workspaceId });
     if (!who) throw createError("NOT_FOUND", "Your account wasn't found.");
     const found = await byDois(dois, spender(ctx, who.clerkId));
-    const bare = [...found.values()].filter((paper) => !paper.abstract?.trim()).length;
+    // A DOI the index has no record of is asked of Crossref, then DataCite.
+    const elsewhere = await registered(dois.filter((doi) => !found.has(doi)));
+    const bare = [...found.values(), ...elsewhere.values()].filter((paper) => !paper.abstract?.trim()).length;
     const file = await ctx.storage.store(new Blob([dois.join("\n")], { type: "text/plain" }));
-    return { file, found: found.size - bare, bare, missing: dois.length - found.size };
+    return { file, found: found.size + elsewhere.size - bare, bare, missing: dois.length - found.size - elsewhere.size };
   },
 });
 
@@ -149,6 +152,9 @@ export const reader = internalQuery({
     return { clerkId: user.clerkId, balance: await availableCredits(ctx, working.workspaceId), model: model && pricing ? { slug: model.modelId, ...pricing, files: readsPdfs(model.inputModalities) } : null };
   },
 });
+
+/** A record no index holds, as the paper a screening reads: what its source gave of it, under a key of its own. */
+const fromRecord = (record: FileRecord, paper: string): SearchPaper => ({ paper, title: record.title, ...(record.abstract ? { abstract: record.abstract } : {}), ...(record.authors ? { authors: record.authors } : {}), ...(record.publicationYear === undefined ? {} : { publicationYear: record.publicationYear }), ...(record.doi ? { doi: record.doi } : {}), ...(record.venue ? { venue: record.venue } : {}) });
 
 type Held = { sourceId: Id<"screeningSources">; set: { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> } | { kind: "dois"; file: Id<"_storage"> } | { kind: "pdf"; batch: string }; state: "waiting" | "reading"; resume?: string; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
@@ -186,7 +192,13 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
   if (set.kind === "dois") {
     const dois = (await textOf(ctx, set.file)).split("\n").filter(Boolean).slice(from - 1, to);
     const found = await byDois(dois, spend);
-    return { papers: dois.flatMap((doi) => found.get(doi) ?? []), left: dois.filter((doi) => !found.has(doi)).map((doi) => ({ name: doi, why: "record" as const })) };
+    // A DOI the index has no record of is the paper Crossref or DataCite registered under it, where one did.
+    const elsewhere = await registered(dois.filter((doi) => !found.has(doi)));
+    const papers = dois.flatMap((doi, at): SearchPaper[] => {
+      const [known, record] = [found.get(doi), elsewhere.get(doi)];
+      return known ? [known] : record ? [fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }))] : [];
+    });
+    return { papers, left: dois.filter((doi) => !found.has(doi) && !elsewhere.has(doi)).map((doi) => ({ name: doi, why: "record" as const })) };
   }
   const kept = source.resume ? await ctx.storage.get(source.resume as Id<"_storage">) : null;
   if (!kept) throw createError("NOT_FOUND", "This file's records are gone. Add it again.");
@@ -199,7 +211,7 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
     // What the person brought is what is screened: the file's own title and abstract where it has them.
     return known
       ? { ...known, title: record.title || known.title, ...(record.abstract ?? known.abstract ? { abstract: record.abstract ?? known.abstract } : {}) }
-      : { paper: paperKey({ source: "upload", file: `${set.file}.${from + at}` }), title: record.title, ...(record.abstract ? { abstract: record.abstract } : {}), ...(record.authors ? { authors: record.authors } : {}), ...(record.publicationYear === undefined ? {} : { publicationYear: record.publicationYear }), ...(record.doi ? { doi: record.doi } : {}), ...(record.venue ? { venue: record.venue } : {}) };
+      : fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
   });
   return { papers, left: [] };
 }
