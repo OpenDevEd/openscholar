@@ -5028,7 +5028,8 @@
         "author": "{plan} laat {count, plural, one {# gas} other {# gaste}} op elke outeurprofiel toe",
         "chat": "{plan} laat {count, plural, one {# gas} other {# gaste}} op elke gesprek toe"
       },
-      "failed": "Kon nie verander wie dit mee gedeel word nie"
+      "failed": "Kon nie verander wie dit mee gedeel word nie",
+      "canVote": "Kan stem"
     },
     "shared": {
       "title": "Met my gedeel",
@@ -5077,7 +5078,8 @@
       "goneTitle": "Hierdie skakel is nie meer oop nie",
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
-      "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is"
+      "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is",
+      "pointScreening": "Stem is gratis. Sy modelle word betaal deur die werkruimte waarin dit is"
     },
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",

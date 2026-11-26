@@ -5028,7 +5028,8 @@
         "author": "{plan} erlaubt {count, plural, one {# Gast} other {# Gäste}} pro Autorenprofil",
         "chat": "{plan} erlaubt {count, plural, one {# Gast} other {# Gäste}} pro Chat"
       },
-      "failed": "Die Freigabe konnte nicht geändert werden"
+      "failed": "Die Freigabe konnte nicht geändert werden",
+      "canVote": "Kann abstimmen"
     },
     "shared": {
       "title": "Mit mir geteilt",
@@ -5077,7 +5078,8 @@
       "goneTitle": "Dieser Link ist nicht mehr offen",
       "goneDetail": "Bitten Sie die Person, die ihn geteilt hat, ihn erneut zu teilen",
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
-      "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde"
+      "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde",
+      "pointScreening": "Abstimmen ist kostenlos. Die Modelle bezahlt der Arbeitsbereich, in dem es liegt"
     },
     "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
     "asRole": "als {role}",

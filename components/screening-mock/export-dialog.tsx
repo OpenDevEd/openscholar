@@ -120,7 +120,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       ),
     },
     votes: {
-      title: `${plural(votes, "vote", "votes")} by ${plural(voters, "reviewer", "reviewers")}`,
+      // Every vote cast is counted. Some are hidden from whoever still has papers to vote on, and the title says so.
+      title: `${plural(votes, "vote", "votes")} by ${plural(voters, "reviewer", "reviewers")}${blind && state.toDo ? ", some hidden from you" : ""}`,
       help: (
         <Help title="Every vote" facts={<><HelpFact>CSV opens in Excel or Google Sheets</HelpFact><HelpFact>A column for each criterion</HelpFact><HelpFact>Each paper by its id and DOI</HelpFact></>}>
           One row for each reviewer on each paper: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn&apos;t read the paper.
@@ -258,7 +259,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ScrollArea>
                 {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
                 <p className="text-xs text-muted-foreground">
-                  {sample.length < votes ? `These are ${sample.length} of the ${num(votes)} votes in the file. ` : ""}
+                  {sample.length < votes ? `These are ${sample.length} of the ${num(votes)} votes cast. ` : ""}
+                  {blind && state.toDo ? "The file has a row for each vote hidden from you, without the vote. " : ""}
                   {whose === "all" && yet + none + failed ? `The file also has ${plural(yet + none + failed, "row", "rows")} with no vote to show: ${listed([...(yet ? ["reviewers who have yet to vote"] : []), ...(none ? ["papers settled without a reviewer's vote"] : []), ...(failed ? ["papers a model couldn't read"] : [])])}.` : ""}
                 </p>
                 <Button asChild variant="outline" size="sm">
@@ -275,7 +277,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <ul className={LIST}>
                   {([
                     ["Papers", total, "Each with its DOI, its abstract, where it came from and where it stands"],
-                    ["Votes", votes, "Each with its reason, its note, its answers, and the sentence a model named"],
+                    ["Votes", votes, blind && state.toDo ? "Each with its reason, its note, its answers, and the sentence a model named. The ones hidden from you are listed without them" : "Each with its reason, its note, its answers, and the sentence a model named"],
                     ["Without a vote", yet + none + failed, "Why each reviewer has no vote on a paper"],
                     ["Criteria", screening.criteria.length, "As they are asked, with their guidance, and which are must-haves"],
                     ["Reviewers", reviewers.length, "People and models, with when each joined or was taken off"],

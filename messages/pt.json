@@ -5028,7 +5028,8 @@
         "author": "O {plan} permite {count, plural, one {# convidado} other {# convidados}} em cada perfil de autor",
         "chat": "O {plan} permite {count, plural, one {# convidado} other {# convidados}} em cada conversa"
       },
-      "failed": "Não foi possível alterar com quem isto é partilhado"
+      "failed": "Não foi possível alterar com quem isto é partilhado",
+      "canVote": "Pode votar"
     },
     "shared": {
       "title": "Partilhado comigo",
@@ -5077,7 +5078,8 @@
       "goneTitle": "Esta ligação já não está aberta",
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
-      "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado"
+      "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado",
+      "pointScreening": "Votar é gratuito. Os modelos são pagos pelo espaço de trabalho onde está"
     },
     "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
     "asRole": "como {role}",

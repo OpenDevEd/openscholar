@@ -5027,7 +5027,8 @@
         "author": "{plan} 允许每个作者档案有 {count, plural, other {# 位访客}}",
         "chat": "{plan} 允许每个对话有 {count, plural, other {# 位访客}}"
       },
-      "failed": "无法更改共享对象"
+      "failed": "无法更改共享对象",
+      "canVote": "可投票"
     },
     "shared": {
       "title": "与我共享",
@@ -5076,7 +5077,8 @@
       "goneTitle": "此链接已失效",
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
-      "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录"
+      "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录",
+      "pointScreening": "投票免费。其模型由所在的工作区付费"
     },
     "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
     "asRole": "身份：{role}",

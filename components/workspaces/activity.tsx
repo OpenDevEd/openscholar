@@ -62,7 +62,7 @@ export function ItemBar({ kind, id, name, started, className, share, guest }: { 
   return (
     <div className={cn("flex min-h-13 min-w-0 items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
       {guest ? (
-        <GuestChips from={guest.from} role={guest.role} person />
+        <GuestChips from={guest.from} role={guest.role} person votes={kind === "screening"} />
       ) : (
         <>
           {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}

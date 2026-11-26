@@ -165,7 +165,7 @@ export type From = { name: string; organization: boolean };
  * may do with it. One in a person's own workspace names them with `person`, where nothing beside
  * it says who shared it.
  */
-export function GuestChips({ from, role, person = false }: { from: From; role: "viewer" | "editor"; person?: boolean }) {
+export function GuestChips({ from, role, person = false, votes = false }: { from: From; role: "viewer" | "editor"; person?: boolean; /** A screening: whoever may change other things votes on it, and changes nothing else. */ votes?: boolean }) {
   const t = useTranslations("workspaces.share");
   const Icon = from.organization ? Building2 : UserRound;
   return (
@@ -178,7 +178,7 @@ export function GuestChips({ from, role, person = false }: { from: From; role: "
       ) : null}
       <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-primary/10 px-2.5">
         <RoleLabel role={role === "viewer" ? "view" : "edit"} className="text-primary">
-          {role === "viewer" ? t("canView") : t("canEdit")}
+          {role === "viewer" ? t("canView") : votes ? t("canVote") : t("canEdit")}
         </RoleLabel>
       </span>
     </>
@@ -209,7 +209,7 @@ function Row({ item }: { item: SharedItem }) {
         </Link>
         <div className="flex flex-wrap items-center gap-1.5">
           <PersonTag name={item.by.name} imageUrl={item.by.imageUrl} />
-          <GuestChips from={item.from} role={item.role} />
+          <GuestChips from={item.from} role={item.role} votes={item.kind === "screening"} />
           {/* A kind that keeps no count of what it holds, an author profile, has none to show. */}
           {item.size === undefined ? null : <span className="inline-flex h-6 items-center rounded-full border border-border-subtle px-2.5 text-xs tabular-nums text-muted-foreground">{t(`size.${item.kind}`, { count: item.size })}</span>}
         </div>
@@ -290,7 +290,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
           ) : null}
           <Chip tone="primary">
             <RoleLabel role={invitation.role === "viewer" ? "view" : "edit"} className="text-primary">
-              {invitation.role === "viewer" ? ts("canView") : ts("canEdit")}
+              {invitation.role === "viewer" ? ts("canView") : invitation.kind === "screening" ? ts("canVote") : ts("canEdit")}
             </RoleLabel>
           </Chip>
           {invitation.size === undefined ? null : (
@@ -303,7 +303,8 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
     >
       <ul className={LIST}>
         <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{t("pointOwn")}</Point>
-        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{t("pointCredits")}</Point>
+        {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
+        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? t("pointScreening") : t("pointCredits")}</Point>
       </ul>
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}

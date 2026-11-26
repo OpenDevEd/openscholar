@@ -5028,7 +5028,8 @@
         "author": "{plan} inaruhusu {count, plural, one {mgeni #} other {wageni #}} kwenye kila wasifu wa mwandishi",
         "chat": "{plan} inaruhusu {count, plural, one {mgeni #} other {wageni #}} kwenye kila mazungumzo"
       },
-      "failed": "Haikuweza kubadilisha nani hiki kinashirikiwa naye"
+      "failed": "Haikuweza kubadilisha nani hiki kinashirikiwa naye",
+      "canVote": "Anaweza kupiga kura"
     },
     "shared": {
       "title": "Vilivyoshirikiwa nami",
@@ -5077,7 +5078,8 @@
       "goneTitle": "Kiungo hiki hakiko wazi tena",
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
-      "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa"
+      "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa",
+      "pointScreening": "Kupiga kura ni bure. Miundo yake hulipiwa na eneo la kazi ilipo"
     },
     "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
     "asRole": "kama {role}",

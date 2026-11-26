@@ -5027,7 +5027,8 @@
         "author": "{plan} permet {count, plural, one {# invité} other {# invités}} par profil d'auteur",
         "chat": "{plan} permet {count, plural, one {# invité} other {# invités}} par discussion"
       },
-      "failed": "Impossible de modifier le partage"
+      "failed": "Impossible de modifier le partage",
+      "canVote": "Peut voter"
     },
     "shared": {
       "title": "Partagés avec moi",
@@ -5076,7 +5077,8 @@
       "goneTitle": "Ce lien n'est plus ouvert",
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
-      "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue"
+      "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue",
+      "pointScreening": "Voter est gratuit. Ses modèles sont payés par l’espace de travail où il se trouve"
     },
     "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
     "asRole": "en tant que {role}",

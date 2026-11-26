@@ -5027,7 +5027,8 @@
         "author": "I-{plan} ivumela {count, plural, one {# isivakashi} other {# izivakashi}} kwiphrofayili ngayinye yombhali",
         "chat": "I-{plan} ivumela {count, plural, one {# isivakashi} other {# izivakashi}} kwengxoxo ngayinye"
       },
-      "failed": "Ayikwazanga ukushintsha ukuthi lokhu kwabelwana nobani"
+      "failed": "Ayikwazanga ukushintsha ukuthi lokhu kwabelwana nobani",
+      "canVote": "Angavota"
     },
     "shared": {
       "title": "Okwabelwane nami",
@@ -5076,7 +5077,8 @@
       "goneTitle": "Lo xhumanisi asisavulekile",
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
-      "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo"
+      "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo",
+      "pointScreening": "Ukuvota kumahhala. Amamodeli alo akhokhelwa indawo yokusebenza elikuyo"
     },
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",

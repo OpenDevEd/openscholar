@@ -26,7 +26,7 @@ export const screeningCriteriaSchema = z.object({
     .array(
       z.object({
         question: z.string().describe('A screening question that is specific and answerable with yes or no.'),
-        short: z.string().describe('A name for the question of two to four words, such as "Randomised trial" or "Adults 18 to 65".'),
+        short: z.string().describe('A name of two to four words for what the question checks, such as "Randomised trial" or "Adults 18 to 65". Never the first words of the question itself.'),
         terms: z
           .array(z.string())
           .max(8)
