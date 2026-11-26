@@ -36,9 +36,9 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, inOrder, youOr, type Criterion, listed as inWords, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, castOf, failedLabel, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, whoIs, NO_VOTE, shortName, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS, emptyResult, firstName } from "./data";
+import { plural, num, inQuotes, inOrder, youOr, bylineOf, awaitedOn, type Criterion, listed as inWords, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, castOf, failedLabel, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, whoIs, NO_VOTE, shortName, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS, emptyResult, firstName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
@@ -526,7 +526,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                         <Checkbox className="mt-0.5" checked={chosen.includes(one.id)} onCheckedChange={() => pickOne(one)} aria-label={`Select ${one.title}`} />
                         <button type="button" aria-expanded={isOpen} onClick={() => (isOpen ? close() : show(one.id))} className="block min-w-0 flex-1 space-y-2 text-start outline-none focus-visible:underline">
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{[one.authors?.join(", "), one.year].filter(Boolean).join(", ")}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{bylineOf(one)}</span>
                           <span className="flex items-center gap-1">
                             {castOf(screening, one).map(({ reviewer: r, vote, failed, hidden }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settledOf(one).final)} hidden={hidden} who={r.id === open.me ? "You" : r.name} />)}
                             <ResultChip result={one.result} className="ms-auto" />
@@ -581,9 +581,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                         ? reviewers.map((one) => (
                             <TableHead key={one.id} className="h-auto px-0 pb-2 text-center align-top">
                               <DropdownMenu>
-                                <TooltipHint label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`}>
+                                <TooltipHint label={votesBy(one, open.me)}>
                                   <DropdownMenuTrigger asChild>
-                                    <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
+                                    <button type="button" aria-label={votesBy(one, open.me)} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
                                       {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
                                       <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{/* The column is narrow: a first word under the face, with the whole name in its menu and its tooltip. */}{one.id === open.me ? "You" : firstName(one.name)}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
@@ -631,7 +631,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                 {one.title}
                                 {one.batch !== undefined && one.batch === newest ? <StateChip tone="primary" className="ms-2 h-5 align-[1px] px-1.5 text-2xs">New</StateChip> : null}
                               </span>
-                              <span className="block truncate text-xs text-muted-foreground">{[one.authors?.join(", "), one.year, one.venue].filter(Boolean).join(", ")}</span>
+                              <span className="block truncate text-xs text-muted-foreground">{bylineOf(one)}</span>
                             </button>
                           </TableCell>
                           {columns === "reviewers"
@@ -763,26 +763,20 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   const entries = castOf(open.screening, paper);
   const cast = entries.flatMap((one) => one.vote ?? []);
   if (state.result === "waiting") {
-    const missing = entries.filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
+    const missing = awaitedOn(open.screening, paper).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
     if (!missing.length) return <span className="text-xs text-muted-foreground">No reviewer can vote on it yet</span>;
     const mine = missing[0]!.id === open.me;
     return (
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className={cn("shrink-0", mine && "font-medium text-primary")}>{mine ? "Waiting on you" : "Waiting on"}</span>
-        <span className="flex items-center">
-          {missing.slice(0, 5).map((one, i) => {
+        <Faces
+          reviewers={missing}
+          me={open.me}
+          linkOf={(one) => {
             const link = narrow({ reviewer: one.id, voted: "none" });
-            const says = `${link.on ? "Stop showing only the papers" : "Papers"} waiting for ${one.id === open.me ? "your vote" : `${one.name}'s vote`}`;
-            return (
-            <TooltipHint key={one.id} label={says}>
-              <NextLink href={link.href} aria-current={link["aria-current"]} aria-label={says} className={cn("flex outline-none ring-2 ring-card transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:ring-ring/50", link.on && "z-10 ring-foreground", one.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
-                <ReviewerMark reviewer={one} you={one.id === open.me} />
-              </NextLink>
-            </TooltipHint>
-            );
-          })}
-          {missing.length > 5 ? <span className="ms-1.5 tabular-nums">+{missing.length - 5}</span> : null}
-        </span>
+            return { href: link.href, on: link.on, says: `${link.on ? "Stop showing only the papers" : "Papers"} waiting for ${one.id === open.me ? "your vote" : `${one.name}'s vote`}` };
+          }}
+        />
       </span>
     );
   }
@@ -864,7 +858,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const failed = cast.filter((one) => one.failed);
   const score = state.result === "include" && paper.points !== undefined ? { points: paper.points, stars: paper.stars ?? 0, of: pointsMax(screening) } : null;
   // The reviewers the paper still waits for: who an override settles it without.
-  const awaited = cast.filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer);
+  const awaited = awaitedOn(screening, paper);
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (note.trim() || undefined);
     if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch(notSaved);
@@ -895,7 +889,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       </div>
       <div className="space-y-2">
         <h2 className="text-base font-semibold leading-snug">{paper.title}</h2>
-        <p className="text-sm text-muted-foreground">{paper.authors?.length ? `${paper.authors.join(", ")}. ` : null}{paper.venue ? <span className="italic">{paper.venue}</span> : null}{paper.venue && paper.year ? ", " : null}{paper.year}</p>
+        <Byline paper={paper} />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <ResultChip result={state.result} />
@@ -944,7 +938,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
                 // On a phone the button goes under the name, so the name is never cut short.
                 <li key={reviewer.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <ReviewerMark reviewer={reviewer} className="size-5" />
-                  <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={reviewer} className="font-medium" /><span className="shrink-0 text-muted-foreground">couldn&apos;t read it</span></span>
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><ReviewerName reviewer={reviewer} className="font-medium" /><VoteFacts vote={undefined} failed criteria={screening.criteria} /></span>
                   {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch(notSaved)} className="justify-self-start max-sm:col-start-2" /> : null}
                 </li>
               );
@@ -952,9 +946,9 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             {cast.filter((one) => one.vote).map(({ reviewer, vote }) => (
               <li key={reviewer.id} className="flex items-start gap-2 text-xs">
                 <ReviewerMark reviewer={reviewer} className="size-5" />
-                <span className="min-w-0 flex-1">
-                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]} {ago(vote!.at)}</span>{vote!.reason ? <> <ReasonChip reason={vote!.reason} criteria={screening.criteria} className="max-w-full min-w-0 shrink align-middle" /></> : null}
-                  {vote!.note ? <span className="block text-muted-foreground">{inQuotes(vote!.note)}</span> : null}
+                <span className="min-w-0 flex-1 space-y-1.5">
+                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="font-medium" />
+                  <VoteFacts vote={vote} criteria={screening.criteria} />
                 </span>
               </li>
             ))}

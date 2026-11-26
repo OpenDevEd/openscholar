@@ -234,6 +234,10 @@ export type Vote = NonNullable<Cast["vote"]>;
 /** A paper's places with who holds each, as the pages draw them. Someone whose vote stands and who the screening no longer lists is still named. */
 export const castOf = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) =>
   paper.cast.map((place) => ({ ...place, vote: place.vote, reviewer: screening.reviewers.find((one) => one.id === place.reviewer) ?? ({ id: place.reviewer, kind: "person", name: SOMEONE, addedAt: 0 } satisfies Reviewer) }));
+/** A paper's authors, year and journal on one line under its title in a list: the first author alone, and no journal, where a row has little room. */
+export const bylineOf = (paper: Pick<Paper, "authors" | "year" | "venue">, short = false) => [short ? paper.authors?.[0] : paper.authors?.join(", "), paper.year, short ? undefined : paper.venue].filter(Boolean).join(", ");
+/** Who a paper still waits for: the reviewers on it who have yet to vote. A vote kept from the person looking is a vote cast, and a model that couldn't read the paper has no say in it. */
+export const awaitedOn = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) => castOf(screening, paper).filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer);
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
 /** Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes. */

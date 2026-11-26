@@ -19,7 +19,7 @@ import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { RESULTS, type Result, num, plural, slug, youOr, DECISION_LABEL, RESULT_LABEL, ago, failedLabel, questionOf, listed, inOrder, nameOn, votingReviewers, emptyResult } from "./data";
+import { RESULTS, type Result, num, plural, slug, youOr, bylineOf, DECISION_LABEL, RESULT_LABEL, ago, failedLabel, questionOf, listed, inOrder, nameOn, votingReviewers, emptyResult } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./parts";
 import { bibOf, everyPaper, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
@@ -214,7 +214,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                         <NextLink href={papersHref(id, { paper: paper.id })} onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">{paper.title}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{[paper.authors?.join(", "), paper.year, paper.venue].filter(Boolean).join(", ")}</span>
+                            <span className="block truncate text-xs text-muted-foreground">{bylineOf(paper)}</span>
                           </span>
                           <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                         </NextLink>

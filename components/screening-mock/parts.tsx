@@ -23,7 +23,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { num, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
+import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -194,13 +194,53 @@ export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Try
 export const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
 export const FIGURE_LINK = "underline decoration-current/35 underline-offset-[3px]";
 
-/** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
-/** What is left out for the person looking, said over the numbers or the file it is left out of: the others' votes on the papers they have yet to vote on. */
-export function LeftOutNote({ votes, papers, of = "" }: { votes: number; papers: number; /** What they are left out of, where "left out" alone doesn't say. */ of?: string }) {
-  if (!votes) return null;
-  return <ShutNote by="vote">{plural(votes, "vote", "votes")} on the {plural(papers, "paper", "papers")} you have yet to vote on {votes === 1 ? "is" : "are"} left out{of ? ` of ${of}` : ""}, so {votes === 1 ? "it" : "they"} can&apos;t sway yours.</ShutNote>;
+/** A paper's authors, journal and year under its title where the paper is open, as a reference gives them. Nothing where it has none of the three. */
+export function Byline({ paper }: { paper: Pick<Paper, "authors" | "venue" | "year"> }) {
+  if (!paper.authors?.length && !paper.venue && !paper.year) return null;
+  return <p className="text-sm text-muted-foreground">{paper.authors?.length ? `${paper.authors.join(", ")}. ` : null}{paper.venue ? <span className="italic">{paper.venue}</span> : null}{paper.venue && paper.year ? ", " : null}{paper.year}</p>;
 }
 
+/** What a link to one reviewer's votes is called, wherever one is. */
+export const votesBy = (reviewer: Pick<Reviewer, "id" | "name">, me: string | undefined) => (reviewer.id === me ? "Your votes" : `Votes by ${reviewer.name}`);
+
+type FaceLink = { href: string; says: string; /** One of the reviewers the row is narrowed to: it stands out, and the others fade. */ on?: boolean };
+/**
+ * Reviewers' faces in a row, overlapped: one row for the list, the bar over a screening, the settings' summary and a
+ * paper's "waiting on". As many as `max` show, then how many more, which opens them all where `more` says where.
+ * With `linkOf` each face is a link, named by what it opens. Without it the row is a picture of who is on something.
+ */
+export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }: { reviewers: Reviewer[]; me: string | undefined; max?: number; linkOf?: (reviewer: Reviewer) => FaceLink; more?: FaceLink; /** The size of a face, where the row has less room than a face's own. */ mark?: string; className?: string }) {
+  const faces = reviewers.slice(0, max);
+  const links = linkOf ? faces.map(linkOf) : [];
+  const narrowed = links.some((link) => link.on);
+  const hidden = reviewers.length - faces.length;
+  return (
+    <span aria-hidden={linkOf ? undefined : true} className={cn("flex shrink-0 items-center", className)}>
+      {faces.map((reviewer, i) => {
+        const shape = cn("flex ring-2 ring-card", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5");
+        const face = <ReviewerMark reviewer={reviewer} you={reviewer.id === me} className={mark} />;
+        const link = links[i];
+        if (!link) return <span key={reviewer.id} className={shape}>{face}</span>;
+        return (
+          <TooltipHint key={reviewer.id} label={link.says}>
+            <NextLink href={link.href} aria-label={link.says} aria-current={link.on ? "true" : undefined} className={cn("relative outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none", shape, narrowed && (link.on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"))}>
+              {face}
+            </NextLink>
+          </TooltipHint>
+        );
+      })}
+      {hidden > 0 ? (
+        more ? (
+          <TooltipHint label={more.says}>
+            <NextLink href={more.href} aria-label={more.says} className="relative ms-1.5 rounded-md px-0.5 text-xs tabular-nums text-muted-foreground outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">+{hidden}</NextLink>
+          </TooltipHint>
+        ) : <span className="ms-1.5 text-xs tabular-nums text-muted-foreground">+{hidden}</span>
+      ) : null}
+    </span>
+  );
+}
+
+/** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 /** The papers a screening still has open, as two counts that open them on Papers: in conflict, and waiting for votes. */
 export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string; conflict: number; waiting: number; onClick?: () => void }) {
   return (
@@ -664,6 +704,33 @@ export function PaperFacts({ paper, source, added }: {
       {paper.cited === undefined ? null : <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>}
       {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. */}
       <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+    </>
+  );
+}
+
+/**
+ * One reviewer's place on a paper, as every list, popover and card that names it shows it: their decision with the
+ * reason on Exclude and when they voted, and under it the note they left, in quotes. A place with no vote in it says why.
+ */
+export function VoteFacts({ vote, failed = false, kept = false, settled = false, criteria, children }: { vote: Vote | undefined; failed?: boolean; /** They voted, and how is kept from the person looking. */ kept?: boolean; /** The paper was settled, so a place nobody voted from never will be. */ settled?: boolean; criteria: Criterion[]; /** What else stands with the decision: the answer a card is about. */ children?: ReactNode }) {
+  const style = vote ? RESULT_STYLE[vote.decision] : null;
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {failed ? (
+          <StateChip tone="destructive" icon={TriangleAlert}>{NO_VOTE.failed}</StateChip>
+        ) : kept ? (
+          <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
+        ) : vote && style ? (
+          <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
+        ) : (
+          <Chip icon={settled ? Minus : Hourglass}>{settled ? NO_VOTE.none : NO_VOTE.yet}</Chip>
+        )}
+        {!kept && vote?.reason ? <ReasonChip reason={vote.reason} criteria={criteria} /> : null}
+        {children}
+        {!kept && vote ? <Chip>{ago(vote.at)}</Chip> : null}
+      </div>
+      {!kept && vote?.note ? <p className="text-sm text-muted-foreground">{inQuotes(vote.note)}</p> : null}
     </>
   );
 }

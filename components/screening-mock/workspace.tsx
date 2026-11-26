@@ -32,7 +32,7 @@ import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { useScreeningOverlays } from "./overlays";
-import { StateChip, Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
+import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
 import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
 
 type View = "overview" | "screen" | "papers" | "settings";
@@ -261,7 +261,16 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     <>
       {/* The workspace is named wherever it isn't the one the person looking works in. */}
       {workspace.id !== here ? <WorkspaceTag size="sm" workspace={lookOf(workspace)} /> : null}
-      <Faces reviewers={reviewers} me={open.me} more={overviewHref(id, "reviewers")} shown={narrowedTo} hrefOf={faceHref} />
+      <Faces
+        reviewers={reviewers}
+        me={open.me}
+        more={{ href: overviewHref(id, "reviewers"), says: "Every reviewer" }}
+        linkOf={(reviewer) => {
+          const on = narrowedTo.includes(reviewer.id);
+          const who = reviewer.id === open.me ? "yourself" : reviewer.name;
+          return { href: faceHref(reviewer), on, says: on ? `Take ${who} out of the filter` : narrowedTo.length ? `Add ${who} to the filter` : votesBy(reviewer, open.me) };
+        }}
+      />
       {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
       {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={() => void open.join()}><UserPlus />Join as a reviewer</Button> : null}
     </>
@@ -384,42 +393,6 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * The reviewers' faces, people first. Each opens the papers that reviewer voted on; past the seventh, the count opens the
- * Overview's list of them all. `shown` are the reviewers the Papers table is narrowed to: their faces stand out, the
- * others fade, and pressing one again takes that reviewer out.
- */
-function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Reviewer[]; me: string; more: string; shown: string[]; hrefOf: (reviewer: Reviewer) => string; max?: number }) {
-  return (
-    <span className="flex shrink-0 items-center">
-      {reviewers.slice(0, max).map((reviewer, i) => {
-        const on = shown.includes(reviewer.id);
-        const [whose, who] = reviewer.id === me ? ["Your", "yourself"] : [`${reviewer.name}'s`, reviewer.name];
-        const says = on ? `Take ${who} out of the filter` : shown.length ? `Add ${who} to the filter` : `${whose} votes`;
-        return (
-          <TooltipHint key={reviewer.id} label={says}>
-            <NextLink
-              href={hrefOf(reviewer)}
-              aria-label={says}
-              aria-current={on ? "true" : undefined}
-              className={cn(
-                "relative flex ring-2 ring-card outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none",
-                reviewer.kind === "model" ? "rounded-md" : "rounded-full",
-                i > 0 && "-ms-1.5",
-                shown.length > 0 && (on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"),
-              )}
-            >
-              <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
-            </NextLink>
-          </TooltipHint>
-        );
-      })}
-      {reviewers.length > max ? (
-        <NextLink href={more} className={cn("ms-1.5 text-xs tabular-nums text-muted-foreground", INLINE_LINK)}>+{reviewers.length - max}</NextLink>
-      ) : null}
-    </span>
-  );
-}
 
 /** What the screening is doing now, which a person may need to act on. Who the person is to it is a chip beside its title, not one of these. */
 type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "arrived" | "waiting" | "reading" | "nothing";

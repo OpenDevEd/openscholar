@@ -55,7 +55,7 @@ import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { OfferRow } from "./sources";
-import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
+import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
 import { credits, paperCredits, perPaper, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -630,10 +630,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       value: reviewersNow.length ? [joined.length ? plural(joined.length, "person", "people") : null, people.length > joined.length ? `${people.length - joined.length} invited` : null, models.length ? plural(models.length, "model", "models") : null].filter(Boolean).join(", ") : "Nobody yet",
       problem: !reviewersNow.length,
       aside: reviewersNow.length ? (
-        <span aria-hidden className="flex shrink-0 items-center">
-          {reviewersNow.slice(0, 4).map((reviewer, i) => <span key={reviewer.id} className={cn("flex", i > 0 && "-ms-1.5")}><ReviewerMark reviewer={reviewer} you={reviewer.id === me} className="size-6 ring-2 ring-card" /></span>)}
-          {reviewersNow.length > 4 ? <span className="ms-1.5 text-xs tabular-nums text-muted-foreground">+{reviewersNow.length - 4}</span> : null}
-        </span>
+        <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
     { id: "decided", label: "How a paper is decided", value: `${SETTLE_LABEL[draft.rule.settle]}${draft.rule.settle === "one" ? "" : `, conflicts to ${!resolver || resolver.id === me ? "you" : firstName(resolver.name)}`}`, problem: false },

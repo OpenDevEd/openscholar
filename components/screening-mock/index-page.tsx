@@ -30,10 +30,10 @@ import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, growing, modelsOf, type Result, type Reviewer, lookerLabel, inQuotes } from "./data";
+import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, growing, modelsOf, type Result, lookerLabel, inQuotes } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { useScreeningOverlays } from "./overlays";
-import { FilterMenu, Help, LinkChip, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
+import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, RESULT_STYLE, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
 import { toReviewer, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -218,7 +218,7 @@ export function ScreeningsIndex() {
                           </span>
                           {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
                           <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
-                            <Faces id={id} reviewers={reviewers} me={me} />
+                            <Faces reviewers={reviewers} me={me} className="[grid-area:faces] @5xl:row-span-2" linkOf={(reviewer) => ({ href: papersHref(id, { reviewer: reviewer.id }), says: votesBy(reviewer, me) })} more={{ href: overviewHref(id, "reviewers"), says: "Every reviewer" }} />
                             <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @5xl:row-span-2 @5xl:[grid-area:when]"><span className="@5xl:hidden">Last activity </span>{ago(row.activeAt)}</span>
                           </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
@@ -317,29 +317,6 @@ function Group({ label, note, count, children }: { label: string | null; /** Wha
 }
 
 /** Its reviewers' faces and marks, each opening the papers that reviewer voted on. */
-function Faces({ id, reviewers, me, max = 6 }: { id: string; reviewers: Reviewer[]; me: string; max?: number }) {
-  const more = reviewers.length - max;
-  return (
-    <span className="flex items-center [grid-area:faces] @5xl:row-span-2">
-      {reviewers.slice(0, max).map((reviewer, i) => {
-        const name = reviewer.id === me ? "Your votes" : `${reviewer.name}'s votes`;
-        return (
-          <TooltipHint key={reviewer.id} label={name}>
-            <NextLink href={papersHref(id, { reviewer: reviewer.id })} aria-label={name} className={cn("relative flex ring-2 ring-card outline-none transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/50", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
-              <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
-            </NextLink>
-          </TooltipHint>
-        );
-      })}
-      {more > 0 ? (
-        <TooltipHint label={plural(more, "more reviewer", "more reviewers")}>
-          <NextLink href={overviewHref(id, "reviewers")} aria-label={plural(more, "more reviewer", "more reviewers")} className={cn(ABOVE, "ms-1.5 px-0.5 text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>+{more}</NextLink>
-        </TooltipHint>
-      ) : null}
-    </span>
-  );
-}
-
 /** A screening's papers as one bar, split by where they stand: each part opens those papers. */
 function Bar({ id, counts }: { id: string; counts: Record<Result, number> }) {
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);

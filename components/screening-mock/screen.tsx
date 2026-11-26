@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TriangleAlert, Undo2, UserPlus, X, type AppIcon, Minus } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -40,10 +40,10 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, youOr, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
+import { plural, num, inQuotes, youOr, bylineOf, awaitedOn, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
+import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -376,7 +376,7 @@ function Screen({ open }: { open: Open }) {
   // Everything in this queue is voted on: say so, where the buttons are.
   const through = queue !== "done" && items.length > 0 && !listed.canNext && items.every(dealtWith);
   const state = paper ? settledOf(paper) : undefined;
-  const waitsOn = paper && state?.result === "waiting" ? cast.filter((one) => !one.vote && !one.failed).map((one) => whoIs(screening, one.reviewer.id, open.me, true)) : [];
+  const waitsOn = paper && state?.result === "waiting" ? awaitedOn(screening, paper).map((one) => (one.id === open.me ? "you" : shortName(one))) : [];
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts : queue === "again" ? open.flagged : toDo;
   const narrowed = Boolean(find.trim()) || (queue === "done" && voted !== "any");
@@ -429,7 +429,7 @@ function Screen({ open }: { open: Open }) {
           <span className={cn("min-w-0 flex-1 transition-opacity", dealt && "opacity-55")}>
             <span className={cn("line-clamp-2 text-sm leading-5", isOpen ? "font-semibold" : "font-medium")}>{one.title}</span>
             <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="min-w-0 truncate">{[one.authors?.[0], one.year].filter(Boolean).join(", ")}</span>
+              <span className="min-w-0 truncate">{bylineOf(one, true)}</span>
               {/* New is what the last check brought, as on Papers. */}{one.batch !== undefined && one.batch === open.latest?.id && queue === "todo" ? <StateChip tone="primary" className="h-5 px-1.5 text-2xs">New</StateChip> : null}
               {queue === "done" && vote ? <span className="ms-auto shrink-0">{ago(vote.at)}</span> : null}
             </span>
@@ -683,7 +683,7 @@ function Screen({ open }: { open: Open }) {
                         </>
                       ) : null}
                       <h2 className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
-                      <p className="text-sm text-muted-foreground">{[paper.authors?.join(", "), paper.venue, paper.year].filter(Boolean).length ? <>{paper.authors?.length ? `${paper.authors.join(", ")}. ` : null}{paper.venue ? <span className="italic">{paper.venue}</span> : null}{paper.venue && paper.year ? ", " : null}{paper.year}</> : null}</p>
+                      <Byline paper={paper} />
                       <div className="flex flex-wrap items-center gap-1.5">
                         <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: fromSource === 1 ? `See the paper from ${source.name}` : `See the ${num(fromSource)} papers from ${source.name}` } : undefined} added={paper.batch !== undefined && paper.addedAt !== undefined ? { at: paper.addedAt, href: papersHref(id, { added: paper.batch }) } : undefined} />
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
@@ -1063,7 +1063,6 @@ function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; 
 
 /** A reviewer's face at the head of their column, with their name under it where the table has the room: it opens their vote, its reason and their note. */
 function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: { reviewer: Reviewer; vote: Vote | undefined; failed?: boolean; settled: boolean; you: boolean; /** They voted, and how is kept from the person looking. */ kept: boolean; criteria: Criterion[]; /** The classes that show the name, from the width where the columns are wide enough for it. */ named: string }) {
-  const style = vote ? RESULT_STYLE[vote.decision] : null;
   return (
     <Popover>
       <TooltipHint label={you ? `${reviewer.name}, you` : reviewer.name}>
@@ -1082,20 +1081,7 @@ function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: {
           <ReviewerMark reviewer={reviewer} className="size-8" />
           <ReviewerName reviewer={reviewer} you={you} className="text-sm font-medium" />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {failed ? (
-            <StateChip tone="destructive" icon={TriangleAlert}>{NO_VOTE.failed}</StateChip>
-          ) : kept ? (
-            <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
-          ) : vote && style ? (
-            <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
-          ) : (
-            <Chip icon={settled ? Minus : Hourglass}>{settled ? NO_VOTE.none : NO_VOTE.yet}</Chip>
-          )}
-          {!kept && vote?.reason ? <ReasonChip reason={vote.reason} criteria={criteria} /> : null}
-          {!kept && vote ? <Chip>{ago(vote.at)}</Chip> : null}
-        </div>
-        {!kept && vote?.note ? <p className="text-sm text-muted-foreground">{inQuotes(vote.note)}</p> : null}
+        <VoteFacts vote={vote} failed={failed} kept={kept} settled={settled} criteria={criteria} />
       </PopoverContent>
     </Popover>
   );
@@ -1179,20 +1165,14 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
 export function Said({ reviewer, vote, criterion, criteria, you = false }: { reviewer: Reviewer; vote: Vote | undefined; criterion: Criterion; criteria: Criterion[]; you?: boolean }) {
   const answer = vote?.answers[criterion.key];
   if (!vote || !answer) return null;
-  const style = RESULT_STYLE[vote.decision];
   return (
     <div className="space-y-2 rounded-2xl bg-inset p-3">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs">
+      <div className="flex items-center gap-2 text-xs">
         <ReviewerMark reviewer={reviewer} className="size-5" />
         <ReviewerName reviewer={reviewer} you={you} className="font-medium" />
-        <span className="text-muted-foreground">voted {ago(vote.at)}</span>
-        <span className="ms-auto flex shrink-0 items-center gap-1.5">
-          <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
-          {vote.reason ? <ReasonChip reason={vote.reason} criteria={criteria} /> : null}
-          <AnswerMark answer={answer} label={criterion.short} />
-        </span>
       </div>
-      {vote.note ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{vote.note}</span></p> : <p className="text-sm text-muted-foreground">{you ? "You left no note with this vote." : "No note with this vote."}</p>}
+      <VoteFacts vote={vote} criteria={criteria}><AnswerMark answer={answer} label={criterion.short} /></VoteFacts>
+      {vote.note ? null : <p className="text-sm text-muted-foreground">{you ? "You left no note with this vote." : "No note with this vote."}</p>}
     </div>
   );
 }

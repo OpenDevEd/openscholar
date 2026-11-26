@@ -33,7 +33,7 @@ import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName,
 import type { ExportTab } from "./dialogs";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
+import { votesBy, TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
 import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -661,7 +661,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
-                <NextLink key={reviewer.id} href={papersHref(screening.id, { reviewer: reviewer.id })} aria-label={reviewer.id === open.me ? "Your votes" : `Votes by ${reviewer.name}`} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
+                <NextLink key={reviewer.id} href={papersHref(screening.id, { reviewer: reviewer.id })} aria-label={votesBy(reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
                   <ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} />
                   <span className="max-w-full truncate text-2xs text-muted-foreground">{short(reviewer)}</span>
                 </NextLink>
