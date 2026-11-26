@@ -83,12 +83,14 @@ export const step = internalQuery({
       const open = !isFinal(now);
 
       if (now !== was) {
-        const move = moves.get(`${was}>${now}`) ?? { from: was, to: now, count: 0, papers: [], hidden: 0 };
+        // A paper whose votes the person asking can't see yet is counted and nothing more: which result it leaves and which it goes to would say how the others voted on it. Those are counted together, under no result.
+        const kept = !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
+        const [from, to] = kept ? (["waiting", "waiting"] as const) : [was, now];
+        const move = moves.get(`${from}>${to}`) ?? { from, to, count: 0, papers: [], hidden: 0 };
         move.count++;
-        // A paper whose votes the person asking can't see yet is counted, not named.
-        if (!seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined)) move.hidden++;
+        if (kept) move.hidden++;
         else if (move.papers.length < PREVIEW_PAPERS) move.papers.push({ id: paper._id, title: paper.title, ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }) });
-        moves.set(`${was}>${now}`, move);
+        moves.set(`${from}>${to}`, move);
         if (open) reopened++;
       }
 

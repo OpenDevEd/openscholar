@@ -52,3 +52,37 @@ it("says how far the others are and not how they voted until the person has vote
   const view = (await made.as.ben!.query(api.screening.view.get, { workspaceId, jobId: open.jobId }))!;
   expect(view.reviewers.find((one) => one.id === made.ids.ann)).toMatchObject({ cast: 1, include: 1 });
 });
+
+it("orders, narrows, finds and previews nothing by votes that are kept from the person", async () => {
+  const made = await team(["ann", "ben", "cat"]);
+  const { workspaceId } = made;
+  const { jobId, papers } = await started(made, ["ann", "ben", "cat"], 3, { rule: { each: "all", settle: "all", blind: "after" } });
+  const [p1, p2, p3] = papers.map((one) => one._id) as [Id<"screeningResults">, Id<"screeningResults">, Id<"screeningResults">];
+  const vote = (name: string, paperId: Id<"screeningResults">, decision: "include" | "exclude") => made.as[name]!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId, decision, ...(decision === "exclude" ? { reason: "other" } : {}) });
+  // Ann and Cat have voted on everything and split on the third paper. Ben has voted on the first only: the other two are kept from him.
+  for (const [name, on, how] of [["ann", p1, "include"], ["ann", p2, "exclude"], ["ann", p3, "include"], ["cat", p1, "include"], ["cat", p2, "exclude"], ["cat", p3, "exclude"], ["ben", p1, "include"]] as const) await vote(name, on, how);
+  await settleAll(made.t);
+  const list = (name: string, more: Record<string, unknown>) => made.as[name]!.query(api.screening.paperViews.list, { workspaceId, jobId, paginationOpts: { cursor: null, numItems: 10 }, ...more });
+  const ids = async (name: string, more: Record<string, unknown>) => (await list(name, more)).page.map((one) => one.id);
+
+  // Most divided first puts the third paper on top for someone who sees every vote, and tells Ben nothing: his come as they were added.
+  expect((await ids("ann", { sort: "split" }))[0]).toBe(p3);
+  expect(await ids("ben", { sort: "split" })).toEqual([p1, p2, p3]);
+  expect(await ids("ben", { sort: "points" })).toEqual(await ids("ben", { sort: "added" }));
+
+  // Ann's papers by how she voted: Ben is given the one he has voted on, and no page that the kept ones would have filled.
+  expect(await list("ben", { reviewer: made.ids.ann, voted: "include" })).toMatchObject({ page: [{ id: p1 }], isDone: true });
+  expect(await list("ben", { reviewer: made.ids.ann, voted: "exclude" })).toMatchObject({ page: [], isDone: true });
+  expect(await ids("ann", { reviewer: made.ids.cat, voted: "exclude" })).toEqual(expect.arrayContaining([p2, p3]));
+  // Found by its words, a paper is still kept to the reviewer and the vote asked for.
+  expect(await ids("ben", { reviewer: made.ids.ann, voted: "exclude", text: "Paper" })).toEqual([]);
+  expect(await ids("ben", { reviewer: made.ids.ann, voted: "include", text: "Paper" })).toEqual([p1]);
+  expect(await ids("ann", { reviewer: made.ids.cat, voted: "exclude", text: "Paper" })).toEqual(expect.arrayContaining([p2, p3]));
+
+  // What a change of rule would move: for Ben, the kept papers are counted under no result.
+  const preview = await made.as.ben!.action(api.screening.effects.preview, { workspaceId, jobId, change: { rule: { each: "all", settle: "one", blind: "after" } } });
+  const kept = preview.moves.filter((move) => move.hidden > 0);
+  expect(kept.length).toBeGreaterThan(0);
+  for (const move of kept) expect(move).toMatchObject({ from: "waiting", to: "waiting", papers: [] });
+  expect(preview.moves.filter((move) => move.from !== move.to).every((move) => move.hidden === 0)).toBe(true);
+});

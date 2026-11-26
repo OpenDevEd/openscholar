@@ -11,7 +11,8 @@
     "result": "Result",
     "newest": "Published, newest first",
     "split": "Most disagreement",
-    "points": "Most points"
+    "points": "Most points",
+    "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away"
   },
   "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
   "settledToast": "Settled {count, number} as {result}",

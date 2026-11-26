@@ -31,3 +31,19 @@ it("counts what each collection holds with everything under it, pages a level by
   await made.t.mutation(internal.zotero.tree.count, { treeId, readAt: 2, cursor: null });
   expect((await made.t.run((ctx) => ctx.db.query("zoteroCollections").collect())).map((one) => [one.key, one.under]).sort()).toEqual([["A", 6], ["B", 3], ["C", 0]]);
 });
+
+it("leaves a long reading alone while it keeps what it reads, and starts one again that went quiet", async () => {
+  const made = await team(["ann"]);
+  const { workspaceId } = made;
+  const began = Date.now();
+  const treeId = await made.t.run((ctx) => ctx.db.insert("zoteroTrees", { userId: made.ids.ann!, library: "", state: "reading", readAt: began, total: 900, read: 0 }));
+  // Ten minutes in, it has just kept another step of a large library.
+  vi.setSystemTime(began + 10 * 60_000);
+  await made.t.mutation(internal.zotero.tree.put, { treeId, readAt: began, total: 900, read: 400, rows: [row("A", "", 1)] });
+  expect(await made.as.ann!.mutation(api.zotero.tree.open, { workspaceId })).toEqual({ state: "reading", total: 900, read: 400 });
+  expect((await made.t.run((ctx) => ctx.db.get("zoteroTrees", treeId)))!.readAt).toBe(began);
+  // Nothing more of it for longer than a step takes: it is read again from the start.
+  vi.setSystemTime(began + 20 * 60_000);
+  expect(await made.as.ann!.mutation(api.zotero.tree.open, { workspaceId })).toEqual({ state: "reading", total: 900, read: 0 });
+  expect((await made.t.run((ctx) => ctx.db.get("zoteroTrees", treeId)))!.readAt).toBe(began + 20 * 60_000);
+});

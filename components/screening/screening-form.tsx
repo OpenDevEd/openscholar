@@ -904,7 +904,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const busy = source.read?.state === "reading" || source.read?.state === "waiting" ? t("papers.readingIt") : null;
                         const itemsLabel = leftOut ? t("papers.leftOutCount", { count: leftOut }) : null;
                         const link = sourceLink(source);
-                        // What it held at the start and what its checks found add up to its total. Each says how many of its own another source already had.
+                        // What it held at the start and what its checks found add up to its total. Each says how many of its own were duplicates: papers another source already had, or that it lists twice itself.
                         const grew = grown(source);
                         const grewDoubled = (source.updates ?? []).reduce((sum, update) => sum + update.duplicates, 0);
                         const grewText = t("papers.grew", { count: grew, doubled: grewDoubled });
@@ -943,7 +943,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     <>
                                       <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? t("papers.atStart", { count: baseTotal(source) }) : heldBy(source) === null ? t("papers.allOfIt") : t("papers.all", { count: heldBy(source)! })) : t("papers.inSource", { count: baseTotal(source) })}</Chip>
                                       {source.read?.filed ? <Chip icon={FileText}>{t("papers.readAsPdf", { count: source.read.filed })}</Chip> : null}
-                                      {doubled > 0 && taken(source) ? <Chip>{t("papers.alreadyElsewhere", { count: doubled })}</Chip> : null}
+                                      {doubled > 0 && taken(source) ? <Chip>{t("papers.duplicates", { count: doubled })}</Chip> : null}
                                       {grew > 0 && own && !gone ? (
                                         <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
                                       ) : grew > 0 ? (

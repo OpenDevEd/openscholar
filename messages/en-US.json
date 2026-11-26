@@ -8207,7 +8207,7 @@
         "toScreen": "<n></n> to screen",
         "readingIt": "Reading it",
         "leftOutCount": "{count, plural, other {# left out}}",
-        "grew": "{doubled, plural, =0 {{count, plural, other {# more since it started}}} other {{count, plural, other {# more since it started}}, # already in another source}}",
+        "grew": "{doubled, plural, =0 {{count, plural, other {# more since it started}}} one {{count, plural, other {# more since it started}}, # duplicate merged} other {{count, plural, other {# more since it started}}, # duplicates merged}}",
         "newTab": "(opens in a new tab)",
         "removedOnSave": "Removed when you save",
         "atStart": "{count, plural, other {# at the start}}",
@@ -8215,7 +8215,7 @@
         "all": "{count, plural, other {All #}}",
         "inSource": "{count, plural, other {# in the source}}",
         "readAsPdf": "{count, plural, one {# read as its PDF} other {# read as PDFs}}",
-        "alreadyElsewhere": "{count, plural, other {# already in another source}}",
+        "duplicates": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
         "checkedEvery": "{every, select, day {Checked every day} week {Checked every week} other {Checked every month}}",
         "couldntBeRead": "Couldn't be read",
         "keep": "Keep",
@@ -8908,7 +8908,8 @@
         "result": "Result",
         "newest": "Published, newest first",
         "split": "Most disagreement",
-        "points": "Most points"
+        "points": "Most points",
+        "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away"
       },
       "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
       "settledToast": "Settled {count, number} as {result}",
@@ -9507,8 +9508,7 @@
         "title": "No title",
         "doi": "No such DOI",
         "record": "No record of it",
-        "broken": "Doesn't open",
-        "twice": "Listed twice"
+        "broken": "Doesn't open"
       },
       "pdf": {
         "known": "In the index",

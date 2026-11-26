@@ -59,8 +59,7 @@
     "title": "No title",
     "doi": "No such DOI",
     "record": "No record of it",
-    "broken": "Doesn't open",
-    "twice": "Listed twice"
+    "broken": "Doesn't open"
   },
   "pdf": {
     "known": "In the index",

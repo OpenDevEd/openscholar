@@ -71,23 +71,30 @@ describe("what a source leaves out", () => {
     expect(await leftOut()).toHaveLength(1);
   });
 
-  it("names a paper a file lists under two records, so the file's records add up to what it held", async () => {
+  it("counts a paper a file lists twice as a duplicate merged, under two records or under one, so the file's records add up to what it held", async () => {
+    const made = await team(["ann"]);
+    const file = await made.t.run((ctx) => ctx.storage.store(new Blob(["title"])));
+    const { jobId } = await started(made, ["ann"], 0, { sources: [{ set: { kind: "upload", file }, name: "export.csv" }] });
+    const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
+    const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
+    await made.t.mutation(internal.screening.gathering.begin, { sourceId });
+    // Two records of one export with the same DOI, each under its own key, a third paper, and that third paper's record once more.
+    const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3), paper(3)];
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 4, ended: true });
+    expect(await sourceOf()).toMatchObject({ read: 4, taken: 2, duplicates: 2, left: 0 });
+    expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toHaveLength(0);
+  });
+
+  it("passes over a paper the screening holds whose abstract a later reading doesn't bring, and leaves out only one that is new", async () => {
     const made = await team(["ann"]);
     const { jobId } = await started(made, ["ann"], 0);
     const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
-    const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
-    const leftOut = () => made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect());
     await made.t.mutation(internal.screening.gathering.begin, { sourceId });
-    // Two records of one export with the same DOI, each under its own key, and a third paper.
-    const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3)];
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 3, ended: true });
-    expect(await sourceOf()).toMatchObject({ read: 3, taken: 2, duplicates: 0, left: 1 });
-    expect(await leftOut()).toMatchObject([{ why: "twice", name: "Paper 2" }]);
-    // Read again, the papers it took are found as its own and the repeat is named once more, not twice.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [paper(1)], read: 1, ended: true });
     await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 3, ended: true });
-    expect(await sourceOf()).toMatchObject({ read: 3, taken: 2, duplicates: 0, left: 1 });
-    expect(await leftOut()).toHaveLength(1);
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
+    expect(await made.t.run((ctx) => ctx.db.get("screeningSources", sourceId))).toMatchObject({ taken: 1, left: 1, bare: 1 });
+    expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toMatchObject([{ name: "Paper 2", why: "abstract" }]);
   });
 });
 

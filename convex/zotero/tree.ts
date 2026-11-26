@@ -43,7 +43,9 @@ export async function ensure(ctx: MutationCtx, userId: Id<"users">, groupId: str
   const library = groupId ?? "";
   const tree = await treeOf(ctx, userId, library);
   const now = Date.now();
-  if (tree && now - tree.readAt < (tree.state === "done" ? FRESH_MS : tree.state === "failed" ? 0 : STUCK_MS)) return stateOf(tree);
+  // A reading under way is stuck once nothing of it has been kept for a while, however long ago it began: a large library takes many steps.
+  const last = tree ? (tree.state === "reading" || tree.state === "counting" ? Math.max(tree.readAt, tree.beat ?? 0) : tree.readAt) : 0;
+  if (tree && now - last < (tree.state === "done" ? FRESH_MS : tree.state === "failed" ? 0 : STUCK_MS)) return stateOf(tree);
   // A reading that went quiet without saying it failed, its action cut short, is started again a few times and then
   // left as failed: a screening that waits on it is told, and doesn't wait for good (../screening/gathering.ts).
   const tries = tree && (tree.state === "reading" || tree.state === "counting") ? (tree.tries ?? 0) + 1 : 0;
@@ -51,7 +53,7 @@ export async function ensure(ctx: MutationCtx, userId: Id<"users">, groupId: str
     await ctx.db.patch("zoteroTrees", tree._id, { state: "failed", readAt: now, tries: 0 });
     return { state: "failed" as const, total: tree.total, read: tree.read };
   }
-  const reading = { state: "reading" as const, readAt: now, total: tree?.total ?? 0, read: 0, tries };
+  const reading = { state: "reading" as const, readAt: now, beat: undefined, total: tree?.total ?? 0, read: 0, tries };
   const treeId = tree ? (await ctx.db.patch("zoteroTrees", tree._id, reading), tree._id) : await ctx.db.insert("zoteroTrees", { userId, library, ...reading });
   await ctx.scheduler.runAfter(0, internal.zotero.tree.step, { treeId, userId, ...(groupId ? { groupId } : {}), readAt: now, start: 0 });
   return { state: "reading" as const, total: reading.total, read: 0 };
@@ -143,7 +145,7 @@ export const put = internalMutation({
       if (was) await ctx.db.patch("zoteroCollections", was._id, now);
       else await ctx.db.insert("zoteroCollections", { userId: tree.userId, library: tree.library, ...now });
     }
-    await ctx.db.patch("zoteroTrees", treeId, { total, read });
+    await ctx.db.patch("zoteroTrees", treeId, { total, read, beat: Date.now() });
     return null;
   },
 });
@@ -168,7 +170,7 @@ export const count = internalMutation({
   handler: async (ctx, { treeId, readAt, cursor }) => {
     const tree = await ctx.db.get("zoteroTrees", treeId);
     if (!tree || tree.readAt !== readAt) return null;
-    if (cursor === null) await ctx.db.patch("zoteroTrees", treeId, { state: "counting" });
+    await ctx.db.patch("zoteroTrees", treeId, { ...(cursor === null ? { state: "counting" as const } : {}), beat: Date.now() });
     const page = await ctx.db.query("zoteroCollections").withIndex("by_user_and_library_and_key", (q) => q.eq("userId", tree.userId).eq("library", tree.library)).paginate({ cursor, numItems: COUNT_STEP });
     for (const row of page.page) {
       if (row.readAt !== readAt) { await ctx.db.delete("zoteroCollections", row._id); continue; }

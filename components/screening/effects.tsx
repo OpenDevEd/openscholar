@@ -283,7 +283,7 @@ export const widenedBy = (before: Pick<Screening, "sources">, after: Pick<Screen
 export const rereadCost = (screening: Screening, counted: Preview) => modelsOf(screening).reduce((sum, model) => sum + readingOf(screening, model.model!, counted.models[model.id]?.atOnce ?? 0), 0);
 
 /** The moves, in words, for a confirmation. */
-export const movesText = ({ words, t }: EffectsSay, moves: Move[]) => moves.map((move) => t("moved", { count: move.count, from: words.result(move.from), to: words.result(move.to) })).join(". ");
+export const movesText = ({ words, t }: EffectsSay, moves: Move[]) => moves.flatMap((move) => (move.count > move.hidden ? [t("moved", { count: move.count - move.hidden, from: words.result(move.from), to: words.result(move.to) })] : [])).join(". ");
 
 const PAPERS_PAGE = 8;
 

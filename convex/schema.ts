@@ -1705,6 +1705,8 @@ export default defineSchema({
     read: v.number(),
     // How many times in a row its reading went quiet and was started again.
     tries: v.optional(v.number()),
+    // When its reading under way last kept something: one that goes on for long is not taken for one that went quiet.
+    beat: v.optional(v.number()),
   }).index("by_user_and_library", ["userId", "library"]),
   zoteroCollections: defineTable({
     userId: v.id("users"),

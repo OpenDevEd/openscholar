@@ -249,13 +249,17 @@ export const listAction = defineUserQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(paperValidator),
-  run: async (ctx, actor, { jobId, result, source, check: asked, reason, reviewer, voted, also, text, sort = "added", paginationOpts }) => {
+  run: async (ctx, actor, { jobId, result, source, check: asked, reason, reviewer, voted, also, text, sort: asked_sort = "added", paginationOpts }) => {
     const looking = await lookingAt(ctx, actor, jobId);
     if (!looking) return NONE;
     // The papers it started with are the ones its first look in its sources brought.
     const check = asked === "start" ? looking.first : asked;
     if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
+    // While the others' votes are kept from the person (./view.ts `keepsVotes`), nothing worked out from those votes orders or narrows what they are given.
+    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers);
+    // How divided a paper's votes are, and the points their answers give it, put the papers in an order that says how the others voted: asked for then, the papers come as they were added.
+    const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
     const others = (also ?? []).flatMap((id) => rowOf(id)?._id ?? []);
     const keeps = (paper: Paper) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? "other") === reason));
@@ -272,7 +276,19 @@ export const listAction = defineUserQuery({
     const needle = text?.trim() ?? "";
     if (needle) {
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(options);
-      return { ...read, page: await withVotes(read.page.filter((paper) => keeps(paper) && holdsAll(paper, needle))) };
+      // Found by its words and still kept to the reviewer and the vote asked for, by what the person may see of them: a vote kept from them is no match for any way of voting.
+      const of = reviewer ? rowOf(reviewer) : undefined;
+      const settler = reviewer && voted === "settled" ? ctx.db.normalizeId("users", reviewer) : null;
+      if (reviewer && (voted === "settled" ? !settler : !of)) return NONE;
+      const place = (paper: PaperView) => (of ? paper.cast.find((one) => one.reviewer === viewId(of)) : undefined);
+      const theirs = (paper: PaperView) => {
+        if (!of || voted === "settled") return true;
+        const on = place(paper);
+        if (!on) return false;
+        return voted === "none" ? !on.vote && !on.hidden && !on.failed : voted === "failed" ? on.failed === true : voted ? on.vote?.decision === voted : on.vote !== undefined || on.hidden === true;
+      };
+      const found = read.page.filter((paper) => keeps(paper) && holdsAll(paper, needle) && (!settler || paper.resolved?.by === settler));
+      return { ...read, page: (await withVotes(found)).filter(theirs) };
     }
     const papers = stream(ctx.db, schema).query("screeningResults");
     // The conflicts one person settled: by whoever settled them, who needn't be one of its reviewers.
@@ -286,17 +302,19 @@ export const listAction = defineUserQuery({
     if (reviewer && !row) return NONE;
     if (row) {
       // One reviewer's papers, in the order of their votes: what they are on, or the ones they voted one way.
-      const votes = ctx.db.query("screeningVotes");
+      const votes = stream(ctx.db, schema).query("screeningVotes");
+      // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too. The papers still waiting for the person's own vote are passed over as the votes are read, so neither a page nor how many pages there are says how many of them there are.
+      const told = kept && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
+      const mine = looking.reviewer?._id;
+      const open = async (vote: Doc<"screeningVotes">) => !told || !mine || !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === mine && one.status === "waiting");
       const read = await (voted === "none" || voted === "failed"
         ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
         : voted && voted !== "settled"
           ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
-      ).paginate(options);
+      ).filterWith(open).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.
       const theirs = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
-      // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too: a list that held it would say what its mark doesn't.
-      const told = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
       return { ...read, page: (await withVotes(theirs)).filter((paper) => !told || paper.sees) };
     }
     const field = { title: "title", "title-desc": "title", newest: "publicationYear", split: "split", points: "score" } as const;

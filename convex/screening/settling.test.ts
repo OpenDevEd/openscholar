@@ -31,6 +31,9 @@ describe("a paper settled on its votes", () => {
     expect(split.counts).toEqual({ include: 1, maybe: 0, exclude: 0, conflict: 1 });
     // An extraction, or another screening, that takes this one's included papers finds them by the old name.
     expect((await papersOf(made.t, jobId)).map((one) => one.outcome)).toEqual(["included", undefined]);
+    const revision = () => made.t.run(async (ctx) => (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())?.exportRevision ?? 0);
+    const included = await revision();
+    expect(included).toBeGreaterThan(0);
     expect(split.reviewers.ann).toMatchObject({ dealt: 2, cast: 2, include: 2 });
     expect(split.reviewers.ben).toMatchObject({ dealt: 2, cast: 2, include: 1, exclude: 1 });
     // Ann by Ben: both included one, and Ann included one Ben excluded.
@@ -52,6 +55,8 @@ describe("a paper settled on its votes", () => {
     await made.as.ann!.mutation(api.screening.voting.resolve, { workspaceId: made.workspaceId, jobId, paperId: second, decision: null });
     await settleAll(made.t);
     expect((await standingOf(made.t, jobId)).counts).toEqual({ include: 1, maybe: 0, exclude: 0, conflict: 1 });
+    // An extraction under way takes the included papers: a paper that moved between the other results is no change to it.
+    expect(await revision()).toBe(included);
   });
 
   it("is settled by the first vote where the rule says so, and waits again when that vote is taken back", async () => {

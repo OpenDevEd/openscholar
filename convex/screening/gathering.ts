@@ -38,6 +38,8 @@ import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator }
 
 type SourceSet = Infer<typeof sourceSetValidator>;
 type Why = Infer<typeof leftOutWhyValidator>;
+/** The sources that are a file someone handed over: read once, where the others are read again at each check. */
+const FROM_A_FILE: string[] = ["upload", "pdf", "dois"];
 
 /** Papers one step takes: up to the end of one of OpenAlex's pages, so no page is asked for twice. */
 const READ_STEP = PAGE_SIZE;
@@ -362,7 +364,6 @@ export const fill = internalMutation({
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
       const title = paper.title.trim();
       if (!title) { await leave(paper.doi ?? "A record with no title", "title", paper.paper); continue; }
-      if (!paper.abstract?.trim() && !paper.file) { await leave(title, "abstract", paper.paper); continue; }
       const abstract = paper.abstract?.trim() ? unglued(paper.abstract) : undefined;
       const identity = identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi });
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
@@ -375,12 +376,13 @@ export const fill = internalMutation({
         continue;
       }
       if (twin) {
-        // The first source added keeps the paper. One this source brought in an earlier reading is neither new nor merged.
-        if (twin.sourceId !== sourceId) duplicates++;
-        // The same paper under another record of this source, as a file that lists it twice: named with what the source left out, so its records add up to what it held.
-        else if (twin.paperKey !== identity.paperKey) await leave(title, "twice", paper.paper);
+        // The first source added keeps the paper: one another source holds is a duplicate merged. So is one a file lists twice, under another record or, on the file's first reading, under any: nothing of its own was there before. A source read again finds its own papers, which are neither new nor merged.
+        // ponytail: a file read again after its range changed can't tell a repeat under the same record from a paper its first reading took, so those repeats go uncounted then. A count of the pass on each paper would tell them apart.
+        if (twin.sourceId !== sourceId || twin.paperKey !== identity.paperKey || (pass === 0 && FROM_A_FILE.includes(source.set.kind))) duplicates++;
         continue;
       }
+      // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.
+      if (!abstract && !paper.file) { await leave(title, "abstract", paper.paper); continue; }
       const place = check.from + check.added + taken;
       if (typeof most === "number" && place >= most) { capped = true; break; }
       const resultId = await ctx.db.insert("screeningResults", {
