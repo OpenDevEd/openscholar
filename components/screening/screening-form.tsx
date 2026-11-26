@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
-import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
+import { useCurrentWorkspace, useWorkspaces, WorkspaceTag } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useGenerateScreeningCriteria } from "@/lib/ai/client/router";
@@ -58,7 +58,7 @@ import { LEFT_WHY, PDF_COSTS_MORE, SETTLE_MEANS, bringsPdfs, collectionName, lef
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
-import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
+import { SCREENINGS_CRUMB, overviewHref, papersHref, newHref } from "./links";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
 import { credits, paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
@@ -356,6 +356,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   // A new screening being filled in is its maker's, in the workspace it was begun in: its files, its searches and what was read of them are that workspace's.
   const key = id ?? `new:${workspaceId ?? ""}:${setup?.me.id ?? ""}:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
   const kept = useKept((store) => store.drafts[key]);
+  // A new screening is kept with the workspace it was begun in. Where this workspace's form is still empty and another holds one of theirs, the form points to it: switching workspace never looks like losing it.
+  const workspaces = useWorkspaces().list;
+  const begun = useKept((store) => store.drafts);
+  const elsewhere = id || kept ? undefined : Object.entries(begun).flatMap(([name, held]) => {
+    const [kind, place, who, copied, search, handoff] = name.split(":");
+    const row = kind === "new" && who === setup?.me.id && place !== (workspaceId ?? "") ? workspaces?.find((one) => one.workspaceId === place) : undefined;
+    return row ? [{ name: held.name.trim(), workspace: row.name, href: `${row.kind === "organization" && row.slug ? `/o/${row.slug}` : ""}${newHref({ ...(copied ? { from: copied } : {}), ...(search ? { search } : {}), ...(handoff ? { handoff } : {}) })}` }] : [];
+  })[0];
   const keep = useKept((store) => store.draft);
   // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
   const [sent, setSent] = useState<Screening | null>(null);
@@ -391,7 +399,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   /** The sources with how their reading stands. A new screening's wait as "reading" until the early read has them. */
   const sources = id ? drafted : drafted.map((source) => {
     const read = earlyRead?.find((one) => one.id === rowOf(source)?.sourceId)?.read;
-    return { ...source, read: read ?? READING, duplicates: read?.duplicates ?? 0 };
+    // A file or a pasted list was counted in the browser when it was added. Once the screening has read all of it, its row says what was read: a DOI listed twice is one paper, and the rows then add up to what was found.
+    const whole = read?.state === "done" && source.scope === "all" && (source.kind === "upload" || source.kind === "dois" || source.kind === "pdf");
+    return { ...source, ...(whole ? { total: read.read, range: [1, read.read] as [number, number] } : {}), read: read ?? READING, duplicates: read?.duplicates ?? 0 };
   });
   // What the last save did, shown under Changes until the next edit.
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
@@ -513,7 +523,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!)) ? `, ${PDF_COSTS_MORE}` : "";
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
   const heldNow = open?.modelsNow ?? null;
-  const lines = saved && changing ? effectItems(saved, draft, preview, { me, wallet, waiting: heldNow === "waiting" }) : [];
+  const lines = saved && changing ? effectItems(saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
   const moves = saved && changing ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
   const needsCriteria = models.length > 0 && draft.criteria.length === 0;
@@ -819,6 +829,12 @@ export function ScreeningForm({ id }: { id?: string }) {
       {/* The summary sits beside the form only where that leaves the form's rows room to stay on one line each; below that it follows the form. */}
       <div className="grid @6xl:grid-cols-[minmax(0,1fr)_24rem] @7xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="min-w-0 space-y-10 p-4 sm:p-6">
+          {elsewhere ? (
+            <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+              <span className="min-w-0 flex-1">Your unfinished screening{elsewhere.name ? ` ${inQuotes(elsewhere.name)}` : ""} is kept in {elsewhere.workspace}, where it was begun.</span>
+              <Button asChild size="sm" variant="outline"><a href={elsewhere.href}>Go on with it there</a></Button>
+            </Panel>
+          ) : null}
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">Name{changed("name")}</label>

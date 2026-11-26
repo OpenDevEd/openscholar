@@ -453,7 +453,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             <SlidersHorizontal />Filters
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
           </Button>
-          <VoteMarksHelp blind={screening.rule.blind === "after"} className="@2xl/papers:hidden">Each paper shows one mark for each reviewer it was given to, in the order of the reviewers.</VoteMarksHelp>
+          <VoteMarksHelp blind={screening.rule.blind === "after"} className="@2xl/papers:hidden">Each paper shows one mark for each reviewer it was given to, in the order of the reviewers. Yours is ringed.</VoteMarksHelp>
         </div>
       </div>
 
@@ -548,7 +548,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{bylineOf(one)}</span>
                           <span className="flex items-center gap-1">
-                            {castOf(screening, one).map(({ reviewer: r, vote, failed, hidden }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settledOf(one).final)} hidden={hidden} who={r.id === open.me ? "You" : r.name} />)}
+                            {/* The marks stand without names here: your own is ringed, as your face is where faces stand without names. */}
+                            {castOf(screening, one).map(({ reviewer: r, vote, failed, hidden }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settledOf(one).final)} hidden={hidden} who={r.id === open.me ? "You" : r.name} className={r.id === open.me ? "ring-2 ring-primary/70 ring-offset-1 ring-offset-card" : undefined} />)}
                             <ResultChip result={one.result} className="ms-auto" />
                           </span>
                         </button>

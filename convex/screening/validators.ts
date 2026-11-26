@@ -267,7 +267,8 @@ export const fileLookValidator = v.object({
 });
 
 /** Why something a source held isn't screened. */
-export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("broken"));
+/** `twice`: the source holds the paper as another of its own records, and that one is screened. */
+export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("broken"), v.literal("twice"));
 
 /** Where a PDF handed to a screening stands: still to be read, read, or a file that doesn't open. */
 export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read"), v.literal("broken"));

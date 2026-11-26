@@ -375,8 +375,10 @@ export const fill = internalMutation({
         continue;
       }
       if (twin) {
-        // The first source added keeps the paper. One this source brought before, or holds twice, is neither new nor merged.
+        // The first source added keeps the paper. One this source brought in an earlier reading is neither new nor merged.
         if (twin.sourceId !== sourceId) duplicates++;
+        // The same paper under another record of this source, as a file that lists it twice: named with what the source left out, so its records add up to what it held.
+        else if (twin.paperKey !== identity.paperKey) await leave(title, "twice", paper.paper);
         continue;
       }
       const place = check.from + check.added + taken;

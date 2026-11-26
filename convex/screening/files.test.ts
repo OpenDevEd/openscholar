@@ -70,6 +70,25 @@ describe("what a source leaves out", () => {
     expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
     expect(await leftOut()).toHaveLength(1);
   });
+
+  it("names a paper a file lists under two records, so the file's records add up to what it held", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0);
+    const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
+    const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
+    const leftOut = () => made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect());
+    await made.t.mutation(internal.screening.gathering.begin, { sourceId });
+    // Two records of one export with the same DOI, each under its own key, and a third paper.
+    const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3)];
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 3, ended: true });
+    expect(await sourceOf()).toMatchObject({ read: 3, taken: 2, duplicates: 0, left: 1 });
+    expect(await leftOut()).toMatchObject([{ why: "twice", name: "Paper 2" }]);
+    // Read again, the papers it took are found as its own and the repeat is named once more, not twice.
+    await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: held, read: 3, ended: true });
+    expect(await sourceOf()).toMatchObject({ read: 3, taken: 2, duplicates: 0, left: 1 });
+    expect(await leftOut()).toHaveLength(1);
+  });
 });
 
 describe("a paper with its own PDF", () => {

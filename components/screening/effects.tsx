@@ -127,8 +127,10 @@ export type EffectFor = {
   waiting?: boolean;
   /** When the change takes hold, where it isn't a save of the settings. */
   onSave?: string;
+  /** The papers still open: someone who joins later gets a share of those, and none where every paper is settled. */
+  openNow?: number;
 };
-export function effectItems(before: Screening, after: Screening, counted: Preview, { me, wallet = Infinity, waiting = false, onSave = ON_SAVE }: EffectFor = {}): EffectLine[] {
+export function effectItems(before: Screening, after: Screening, counted: Preview, { me, wallet = Infinity, waiting = false, onSave = ON_SAVE, openNow }: EffectFor = {}): EffectLine[] {
   const lines: EffectLine[] = [];
   // A reviewer as the reader is told of them: "you" for themselves.
   const whose = (reviewer: Reviewer) => (reviewer.id === me ? "Your" : `${reviewer.name}'s`);
@@ -151,7 +153,8 @@ export function effectItems(before: Screening, after: Screening, counted: Previe
       if (!reads) lines.push({ text: after.gathered !== undefined ? `${reviewer.name} starts once the papers arrive` : `${reviewer.name} has no papers left to read`, section: "reviewers" });
       else lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${plural(total, "paper", "papers")}` : `the ${plural(reads, "paper", "papers")} not settled yet`}`, when: starts, kind: "cost", credits: readingOf(after, reviewer.model!, reads), section: "reviewers" });
     }
-    else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and papers once they join`, kind: "mail", section: "reviewers" });
+    // Someone who joins gets a share of the papers still open then. Where none is open now, the line says so before the invitation goes, not after.
+    else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and ${openNow === 0 ? "papers that come in after they join. Every paper it has now is settled, so none of those goes to them" : "papers once they join"}`, kind: "mail", section: "reviewers" });
     else {
       const dealt = counted.joining[reviewer.id]?.dealt ?? 0;
       lines.push({ text: dealt ? `${reviewer.name} gets ${plural(dealt, "open paper", "open papers")}, an even share, and an email saying so` : `${reviewer.name} joins and gets an email saying so. Every open paper already has its reviewers, so none goes to them yet`, kind: "join", section: "reviewers" });

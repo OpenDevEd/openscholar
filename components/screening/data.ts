@@ -146,7 +146,7 @@ export function termsPattern(terms: string[]) {
 /** Why a paper that was found isn't screened. */
 export const NO_ABSTRACT = "No abstract";
 /** Why something a source held isn't screened, in words, by the reason the server kept. */
-export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No such DOI", record: "No record of it", broken: "Doesn't open" } as const;
+export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No such DOI", record: "No record of it", broken: "Doesn't open", twice: "Listed twice" } as const;
 /** How many things a source held that the screening doesn't take. */
 export const leftOf = (source: Source) => source.read?.left ?? (source.left?.length ?? 0) + (source.bare ?? 0);
 /** How many of those are papers with no abstract. */

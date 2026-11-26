@@ -202,7 +202,7 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
               <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>Add criteria</NextLink></Button>
             </Panel>
           ) : (
-            <EffectList lines={effectLines(screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor) })} />
+            <EffectList lines={effectLines(screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict })} />
           )}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
           {reviewer.model && open.wallet !== undefined ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
