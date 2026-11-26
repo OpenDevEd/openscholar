@@ -1408,6 +1408,8 @@ export default defineSchema({
     // Where the paper landed (./screening/scoring.ts), set as it settles and again when an
     // answer of its is changed; a job's list reads its papers by it. Results from before it
     // was kept get theirs from migrations/screeningOutcomes.
+    // The result a paper had before screenings had reviewers (migrations/screeningReviewers): it stands until someone votes on the paper, or its settled papers are checked again.
+    kept: v.optional(decisionValidator),
     outcome: v.optional(screeningOutcomeValidator),
     // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
     // later change adds only the difference. Missing while it waits for the bookkeeping

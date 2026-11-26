@@ -87,13 +87,15 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const ballots = () => votes.map(ballot);
     const was: Result = paper.result ?? "waiting";
     // Held through a change of settings: settled by then, and nobody has voted on it or asked for it to be checked again since.
-    const held = isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
+    // One brought over from before screenings had reviewers stands as it stood then, until someone votes on it or its settled papers are checked again.
+    const carried = paper.kept && !paper.resolved && !paper.reopen ? paper.kept : undefined;
+    const held = carried !== undefined || (isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0));
     // Where it stands and who is on it is one sum, the same one a change's preview runs (lib/screening/project.ts): this applies it to the rows.
     const places = votes.map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
     // One whose source was taken out stands nowhere: the places nobody voted from go, and its votes stay on record and count for nothing.
     const plan: Pick<Projected, "result" | "made" | "reopened" | "closed" | "gone"> = paper.withdrawn
       ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place) => place.status === "waiting" || place.status === "closed") }
-      : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" });
+      : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" });
     const now = plan.result;
     if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;
@@ -164,7 +166,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if (now !== "waiting") counts[now]++;
     if (was === "exclude") reasons[paper.reason ?? "other"] = (reasons[paper.reason ?? "other"] ?? 1) - 1;
     if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
-    const patch = paper.withdrawn ? { result: undefined, outcome: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], reason, score: points, stars, split, reopen: undefined, out: undefined, ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
+    const patch = paper.withdrawn ? { result: undefined, outcome: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], reason, score: points, stars, split, reopen: undefined, out: undefined, ...(paper.kept && carried === undefined ? { kept: undefined } : {}), ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);
     if (paper.withdrawn) continue;
     // Included papers go where the screening sends them, and one that ends excluded leaves the collection it came from, where that was asked.

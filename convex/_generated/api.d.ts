@@ -368,6 +368,7 @@ import type * as migrations_reportIntake from "../migrations/reportIntake.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_rotateKeptFiles from "../migrations/rotateKeptFiles.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
+import type * as migrations_screeningReviewers from "../migrations/screeningReviewers.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
 import type * as migrations_searchSuggestions from "../migrations/searchSuggestions.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
@@ -914,6 +915,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/rotateKeptFiles": typeof migrations_rotateKeptFiles;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
+  "migrations/screeningReviewers": typeof migrations_screeningReviewers;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
   "migrations/searchSuggestions": typeof migrations_searchSuggestions;
   "migrations/searchText": typeof migrations_searchText;
