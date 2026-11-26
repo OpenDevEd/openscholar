@@ -12,7 +12,7 @@ import { internalMutation } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
 import { readAgain, reviewersOf, sourcesOf, touched } from "./dealing";
-import { startCheck } from "./gathering";
+import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
 import { EVERY_MS } from "./screenings";
 
@@ -43,6 +43,28 @@ export const checkNow = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     if (job.reading) throw createError("CONFLICT", "Its papers are still arriving.");
     await check(ctx, job, actor.userId);
+    return null;
+  },
+});
+
+/**
+ * Reads a source that couldn't be read on from where it stopped. In a look under way it is read in its turn; otherwise
+ * the first look goes on, or a new look starts, so what it brings counts where the screening's other papers do.
+ */
+export const readSourceAgain = workspaceMutation({
+  args: { sourceId: v.id("screeningSources") },
+  returns: v.null(),
+  handler: async (ctx, actor, { sourceId }) => {
+    const source = await ctx.db.get("screeningSources", sourceId);
+    if (!source || source.removedAt !== undefined) throw createError("NOT_FOUND", "This source isn't in the screening any more.");
+    const job = await requireMember(ctx, actor, source.jobId);
+    if (source.state !== "failed") return null;
+    // One that failed before its reading began begins again; one that failed part way goes on from its place.
+    await ctx.db.patch("screeningSources", sourceId, { state: source.snapshot || source.total !== undefined || source.read ? "reading" : "waiting", failure: undefined });
+    if (job.reading) return null;
+    const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
+    if (last && last.from === 0) await readOn(ctx, job, actor.userId);
+    else await startCheck(ctx, job, actor.userId, job.totalPapers);
     return null;
   },
 });

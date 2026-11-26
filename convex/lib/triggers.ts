@@ -6,7 +6,7 @@
  */
 import { Triggers } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
-import type { DataModel, Id } from "../_generated/dataModel";
+import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import { settleEndedJob } from "../billing/spend";
 import { noteEndedJob, tellIdleChat, trackChatJob } from "../assistant/jobEnds";
 import { countJobChange, countPaperChange, countPaperErrorChange, countResultChange, reviseQuestionChange } from "../extraction/counts";
@@ -94,6 +94,12 @@ triggers.register("itemAccess", async (ctx, change) => {
   const grant = change.newDoc ?? change.oldDoc;
   if (grant.kind !== "screening" || (change.operation === "update" && change.oldDoc.role === change.newDoc.role)) return;
   await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { item: string; userId: Id<"users"> }, null>("screening/reviewers:guestChanged"), { item: grant.item, userId: grant.userId });
+});
+// An invitation to vote on a screening that stops waiting without being accepted: the papers that waited for its person are settled without them (../screening/settings.ts `follow`).
+triggers.register("itemInvitations", async (ctx, change) => {
+  const waits = (one: Doc<"itemInvitations"> | null) => one?.kind === "screening" && one.state === "pending" && one.role === "editor";
+  if (!waits(change.oldDoc) || waits(change.newDoc) || change.newDoc?.state === "accepted") return;
+  await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { jobId: string; cursor: null; results: Array<"waiting">; recheck: boolean; stricter: string[]; reread: boolean }, null>("screening/settings:follow"), { jobId: change.oldDoc!.item, cursor: null, results: ["waiting"], recheck: false, stricter: [], reread: false });
 });
 triggers.register("extractionJobs", followShared("extraction"));
 triggers.register("searches", followShared("search"));

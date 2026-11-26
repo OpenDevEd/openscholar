@@ -472,6 +472,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const communities = useLibrarySources();
   const create = useWorkspaceAction(api.screening.screenings.create);
   const saveChange = useWorkspaceMutation(api.screening.settings.save);
+  const readSourceAgain = useWorkspaceMutation(api.screening.living.readSourceAgain);
   const saveToCommunity = useWorkspaceAction(api.screening.settings.saveToCommunity);
   const previewChange = useWorkspaceAction(api.screening.effects.preview);
   const { execute: writeQuestions, credits: writeCredits } = useGenerateScreeningCriteria();
@@ -514,6 +515,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const people = peopleOf(draft);
   // Someone invited by email reads papers once they have joined.
   const { people: joined, each } = readersOf(draft);
+  // Who the rule can put on a paper: the people on it and the ones invited by email.
+  const readers = draft.reviewers.filter((one) => !one.left && one.kind === "person").length;
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -653,14 +656,15 @@ export function ScreeningForm({ id }: { id?: string }) {
       // Someone put back on keeps the votes they cast and their place in the reading. A model whose votes were thrown out starts its reading over.
       const back = d.reviewers.find((one) => one.id === reviewer.id || (one.kind === "model" && reviewer.kind === "model" && one.model && reviewer.model && modelKey(one.model) === modelKey(reviewer.model)));
       const reviewers = back ? d.reviewers.map((one) => (one === back ? { ...one, left: undefined } : one)) : [...d.reviewers, { ...reviewer, addedAt: fresh ? d.createdAt : Date.now() }];
-      const here_ = reviewers.filter((one) => !one.left && one.kind === "person" && !one.email).length;
+      // Someone invited by email counts: the rule waits for them as for anyone on it.
+      const here_ = reviewers.filter((one) => !one.left && one.kind === "person").length;
       return {
         ...d,
         reviewers,
         // A reviewer is no longer someone it is only shared with to look at.
         viewers: d.viewers?.filter((one) => one.id !== reviewer.id),
         // Two people on every paper is how a review is usually screened: a new screening takes that up when its second person is added.
-        ...(fresh && reviewer.kind === "person" && !reviewer.email && here_ === 2 && d.rule.each === "1" ? { rule: { ...d.rule, each: "2" as const } } : {}),
+        ...(fresh && reviewer.kind === "person" && here_ === 2 && d.rule.each === "1" && d.rule.settle !== "one" ? { rule: { ...d.rule, each: "2" as const } } : {}),
       };
     });
   // On a running screening a removed reviewer, source or criterion stays in its list until the save, struck through, with Keep to put it back.
@@ -917,6 +921,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const leftOut = leftOf(source);
                         // While the screening reads it, the row says only that: what it takes and leaves out isn't known yet.
                         const busy = source.read?.state === "reading" || source.read?.state === "waiting" ? t("papers.readingIt") : null;
+                        const stopped = source.read?.state === "failed";
                         const itemsLabel = leftOut ? t("papers.leftOutCount", { count: leftOut }) : null;
                         const link = sourceLink(source);
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own were duplicates: papers another source already had, or that it lists twice itself.
@@ -978,7 +983,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : grew > 0 ? (
                                         <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
                                       ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>{t("papers.checkedEvery", { every: draft.living.every })}</Chip> : null}
-                                      {source.read?.state === "failed" ? <StateChip tone="destructive" icon={TriangleAlert}>{source.read.failure ?? t("papers.couldntBeRead")}</StateChip> : null}
+                                      {stopped ? <StateChip tone="destructive" icon={TriangleAlert}>{source.read!.read ? t("papers.stoppedAfter", { read: source.read!.read, total: words.num(source.total) }) : t("papers.couldntBeRead")}</StateChip> : null}
                                       {/* PDFs not yet in a screening: how their first reading stands, as it arrives. */}
                                       {source.set?.kind === "pdf" && !own ? <PdfFacts batch={source.set.batch} /> : null}
                                       {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
@@ -992,11 +997,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     </button>
                                   ) : null}
                                 </div>
+                                {/* Why, on its own line: what the person can do about it, or that it went wrong in Openscholar. */}
+                                {stopped && !gone ? <p className="text-xs text-destructive">{source.read!.failure ?? t("papers.notSaved")}</p> : null}
                               </div>
                               {gone ? (
                                 <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
                               ) : (
                                 <>
+                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
                                   {baseTotal(source) > 1 ? (
                                     <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })}>
                                       {source.scope === "range" ? t("papers.range", { first: words.num(source.range[0]), last: words.num(source.range[1]) }) : t("papers.choose")}<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
@@ -1369,13 +1377,16 @@ export function ScreeningForm({ id }: { id?: string }) {
           >
             <div className={cn(LIST, "bg-card")}>
               <RuleRow name={t("decided.each")} help={<Help title={t("decided.each")} facts={<><HelpFact>{t("decided.factModels")}</HelpFact><HelpFact>{t("decided.factEveryone")}</HelpFact></>}>{t("decided.eachHelp")}</Help>} detail={shareSays}>
-                {joined.length ? (
-                  // Every number up to the team's size, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
-                  <Segmented label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > joined.length ? (String(joined.length) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: joined.length }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
+                {draft.rule.settle === "one" ? (
+                  // The first vote settles a paper: a second person on it would read it for nothing, or at the same moment.
+                  <span className="text-sm text-muted-foreground">{t("decided.onePerson")}</span>
+                ) : readers ? (
+                  // Every number up to the team's size, invited people included, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
+                  <Segmented label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
               <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: words.t(`settle.means.${rule}`), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
-                <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
+                <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : {}) } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.settledBy")} help={<Help title={t("decided.conflictsTitle")}>{t("decided.conflictsHelp")}</Help>}>
                 {draft.rule.settle === "one" ? (

@@ -14,7 +14,7 @@ import { isFinal, modelKey, seesVotes, type Decision, type Result } from "../../
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
+import { dealable, invitedTo, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -61,7 +61,7 @@ export const step = internalQuery({
     const joiners = plan.joining.map(({ userId: id, before }) => ({ id: idOf(id), before }));
     const [readers, newModels] = [staying.filter(readingModel).map((one) => one._id as string), plan.models.map((model) => idOf(keyOf(model)))];
     // Who papers go to once the change is made: the people dealt to, in the order they joined, the ones who join last, and the models that read.
-    const team = { people: [...staying.filter(dealable).map((one) => one._id as string), ...joiners.map((one) => one.id)], models: [...readers, ...newModels] };
+    const team = { people: [...staying.filter(dealable).map((one) => one._id as string), ...joiners.map((one) => one.id)], models: [...readers, ...newModels], invited: await invitedTo(ctx, jobId) };
     const mine = plan.reviewers.find((one) => one.userId === userId && one.left === undefined)?._id;
     // What each model, on it already or about to join, can be given: a paper that is only its PDF goes to the ones that take files.
     const reads = await readsOf(ctx, staying);

@@ -15,7 +15,7 @@ import { cellOf, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
-import { countDealt, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
+import { countDealt, invitedTo, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
 import { conflictsWait } from "./notices";
 import type { Infer } from "convex/values";
 import type { reviewerCountsValidator } from "./validators";
@@ -83,7 +83,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   let moves = 0;
   const ballot = (vote: Vote) => ballotOf(placeOf(vote, byId.get(vote.reviewerId)), job.criteria ?? []);
 
-  const team = teamOf(reviewers);
+  const team = teamOf(reviewers, await invitedTo(ctx, job._id));
   const reads = await readsOf(ctx, reviewers);
   for (const paper of papers) {
     let votes = await votesOf(ctx, paper._id);
@@ -114,8 +114,13 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       if (vote.counted?.status !== "discarded") dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) - 1);
       if (vote.slot) freed++;
     }
-    for (const place of plan.reopened) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "waiting" });
-    for (const place of plan.closed) if (places.includes(place)) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed" });
+    // A model's place goes back in its workspace's queue as it opens, and out of it as it closes.
+    for (const place of plan.reopened) {
+      const row = place.kind === "model" ? modelRow(job, paper, byId.get(place.reviewer as Id<"screeningReviewers">)!) : { status: "waiting" as const };
+      await ctx.db.patch("screeningVotes", rowOf(place)._id, row);
+      if ("waitingWorkspace" in row) queued++;
+    }
+    for (const place of plan.closed) if (places.includes(place)) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed", ...(place.kind === "model" ? { waitingWorkspace: undefined, waitingSince: undefined } : {}) });
     const fresh: Vote[] = [];
     for (const place of plan.made) {
       const reviewer = byId.get(place.reviewer as Id<"screeningReviewers">)!;

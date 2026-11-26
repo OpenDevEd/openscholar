@@ -66,7 +66,7 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   const people = staying.filter(dealable);
   // Each person who joins, with how many people there were before them: what their even share is counted from.
   const joining = [...new Set(change.addPeople ?? [])].filter((userId) => !people.some((one) => one.userId === userId)).map((userId, at) => ({ userId, before: people.length + at }));
-  const rule = { ...job.rule!, ...(change.rule ? { each: change.rule.each === "all" ? ("all" as const) : Math.max(0, Math.floor(change.rule.each)), settle: change.rule.settle, blind: change.rule.blind, ...(change.rule.resolver ? { resolver: change.rule.resolver } : {}) } : {}) };
+  const rule = { ...job.rule!, ...(change.rule ? { each: change.rule.settle === "one" ? 1 : change.rule.each === "all" ? ("all" as const) : Math.max(0, Math.floor(change.rule.each)), settle: change.rule.settle, blind: change.rule.blind, ...(change.rule.resolver ? { resolver: change.rule.resolver } : {}) } : {}) };
   // Conflicts always have someone to settle them: when that person is taken off, they go on by the one rule (`nextResolver`).
   const resolverLeft = leaving.some(({ reviewer }) => reviewer.kind === "person" && reviewer.userId === rule.resolver) && !change.rule?.resolver;
   const settles = resolverLeft ? nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) : rule.resolver;
