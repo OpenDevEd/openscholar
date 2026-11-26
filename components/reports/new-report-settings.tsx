@@ -104,9 +104,16 @@ export function NewReportSettings({ data: { intake, uses }, minute, now }: { dat
       </ul>
 
       <div className="space-y-2.5 pt-3">
-        <div className="flex min-h-7 items-center justify-between gap-3 ps-1">
+        {/* At large text on a phone, Add limit goes under the heading and its label wraps, rather than running off the screen. */}
+        <div className="flex min-h-7 flex-wrap items-center justify-between gap-3 ps-1">
           <h3 className="text-xs font-medium text-muted-foreground">{t("limits")}</h3>
-          <Button size="sm" variant="outline" disabled={intake.limits.length >= LIMITS_MAX} onClick={add}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ms-auto max-sm:h-auto max-sm:min-h-8 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal"
+            disabled={intake.limits.length >= LIMITS_MAX}
+            onClick={add}
+          >
             <Plus /> {t("addLimit")}
           </Button>
         </div>
