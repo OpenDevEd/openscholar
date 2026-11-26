@@ -23,7 +23,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
-import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
+import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, shortOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -488,14 +488,16 @@ export function Named({ name, children }: { name: string; children: ReactNode })
  * behind the sign its answer has, a red cross for one not met and an amber dash for one left unclear. A reason that is
  * not a criterion is its own words.
  */
-export function Reason({ reason, criteria, unclear = false, className }: { reason: string; criteria: Criterion[]; unclear?: boolean; className?: string }) {
+export function Reason({ reason, criteria, unclear = false, wrap = false, className }: { reason: string; criteria: Criterion[]; unclear?: boolean; /** In a row to press, where there is room: the name runs onto a second line and is read whole. */ wrap?: boolean; className?: string }) {
   const criterion = criteria.find((one) => one.key === reason);
   if (!criterion) return <span className={cn("truncate", className)}>{reasonLabel(reason, criteria)}</span>;
   const { icon: Icon, tone } = ANSWER_SIGN[unclear ? "unclear" : "no"];
+  // A name nobody wrote is the question's own words cut short: the question is shown instead, and the room it stands in cuts it where it must, with the rest a hover away.
+  const name = criterion.short === shortOf(criterion.text) ? criterion.text.replace(/[?.]$/, "") : criterion.short;
   return (
-    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1", className)}>
-      <Icon role="img" aria-label={unclear ? "Unclear on" : "Not met,"} className={cn("size-3.5 shrink-0", TONE[tone].ink)} />
-      <span className="truncate">{criterion.short}</span>
+    <span className={cn("inline-flex min-w-0 max-w-full gap-1", wrap ? "items-start" : "items-center", className)}>
+      <Icon role="img" aria-label={unclear ? "Unclear on" : "Not met,"} className={cn("size-3.5 shrink-0", wrap && "mt-0.5", TONE[tone].ink)} />
+      <span className={wrap ? "[overflow-wrap:anywhere]" : "truncate"}>{name}</span>
     </span>
   );
 }
@@ -669,10 +671,12 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 /** One reason to exclude as a list of them names it: a must-have by its short name, with its whole question under it where `asked` and the name isn't the question, and another reason in its own words. */
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
   if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? "Another reason…" : reasonLabel(reason, criteria)}</>;
-  const question = asked ? questionOf(reason, criteria) : undefined;
+  // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
+  const named = criteria.find((criterion) => criterion.key === reason);
+  const question = asked && named && named.short !== shortOf(named.text) ? questionOf(reason, criteria) : undefined;
   return (
     <span className="min-w-0">
-      <Reason reason={reason} criteria={criteria} />
+      <Reason reason={reason} criteria={criteria} wrap />
       {question ? <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{question}</span> : null}
     </span>
   );

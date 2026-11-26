@@ -1270,7 +1270,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />Add a person</Button>
                 </AddPerson>
-                <AddModel exclude={models.map((model) => model.model!.id)} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>
+                <AddModel taken={models.map((model) => modelKey(model.model!))} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>
                   <Button variant="outline" size="sm" className="w-full"><AiIcon />Add a model</Button>
                 </AddModel>
               </div>

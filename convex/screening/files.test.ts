@@ -42,7 +42,52 @@ describe("a drop of PDFs", () => {
   });
 });
 
+describe("what a source leaves out", () => {
+  it("counts a paper the source holds twice once, and counts it again once when the source is read again", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0);
+    const bare = { ...paper(1), abstract: undefined };
+    const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
+    const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
+    const leftOut = () => made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect());
+    await made.t.mutation(internal.screening.gathering.begin, { sourceId });
+    // A Zotero library reads a paper filed in two collections twice: in one step, and again in a later one.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [bare, bare, paper(2)], read: 3, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [bare], read: 1, ended: true });
+    expect(await sourceOf()).toMatchObject({ taken: 1, left: 1, bare: 1 });
+    expect(await leftOut()).toHaveLength(1);
+
+    // The next check reads the source from its start: what it leaves out is counted afresh, and named once.
+    const next = await made.t.run(async (ctx) => {
+      await ctx.db.patch("screeningSources", sourceId, { state: "reading", read: 0, left: 0, bare: 0 });
+      return ctx.db.insert("screeningChecks", { jobId, at: 2, state: "running", beat: 2, from: 1, found: 0, added: 0 });
+    });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: next, sourceId, papers: [bare, bare], read: 2, ended: true });
+    expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
+    expect(await leftOut()).toHaveLength(1);
+  });
+});
+
 describe("a paper with its own PDF", () => {
+  it("goes to the models that take a file, and never to one that reads text only", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0);
+    const [reads, textOnly] = await made.t.run(async (ctx) => {
+      const model = { provider: "openrouter", inputPricePerMillion: 0.1, outputPricePerMillion: 0.4, costMarkup: 1, contextLength: 400_000, supportedParameters: [], isServed: true, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1 };
+      const withFiles = await ctx.db.insert("models", { ...model, modelId: "test/reads-files", name: "Reads files", inputModalities: ["text", "file"] });
+      const text = await ctx.db.insert("models", { ...model, modelId: "test/text-only", name: "Text only", inputModalities: ["text"] });
+      const on = (modelId: Id<"models">) => ctx.db.insert("screeningReviewers", { jobId, kind: "model", modelId, addedAt: 1, addedBy: made.ids.ann!, dealt: 0 });
+      return [await on(withFiles), await on(text)];
+    });
+    const file: Id<"_storage"> = (await stored(made, 1))[0]!.file;
+    const { papers } = await give(made.t, jobId, 0, [paper(1), { ...paper(2), abstract: undefined, file, pages: 12 }]);
+    const on = async (paperId: Id<"screeningResults">) => (await made.t.run((ctx) => ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paperId)).collect())).map((vote) => vote.reviewerId);
+    // The paper with an abstract is every reviewer's. The one that is only its PDF is not the text-only model's: it has nothing to fail on there.
+    expect(await on(papers[0]!._id)).toEqual(expect.arrayContaining([reads, textOnly]));
+    expect(await on(papers[1]!._id)).toContain(reads);
+    expect(await on(papers[1]!._id)).not.toContain(textOnly);
+  });
+
   it("is screened as the file where it has no abstract, and one with neither is left out", async () => {
     const made = await team(["ann"]);
     const { jobId } = await started(made, ["ann"], 0);

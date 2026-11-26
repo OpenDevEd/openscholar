@@ -276,7 +276,7 @@ export function ScreeningsIndex() {
 
 /** A group's labelled row before its first screening on the page, under the default order. */
 /** The screenings that wait for the person in another workspace. This list holds this workspace's own, so each of those is a link to where it is. */
-function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number }> }) {
+function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number }> }) {
   if (!rows.length) return null;
   return (
     <ul aria-label="Waiting for you in another workspace" className="divide-y divide-border-subtle border-b border-border-subtle">
@@ -293,6 +293,7 @@ function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: strin
             <span className="ms-auto flex flex-wrap items-center gap-1.5">
               {row.forYou ? <LinkChip elsewhere href={there(screenHref(row.id))} tone="primary" icon={ListChecks} className="shrink-0">{num(row.forYou)} for you to screen</LinkChip> : null}
               {row.conflicts ? <LinkChip elsewhere href={there(screenHref(row.id, { queue: "conflicts" }))} tone="info" icon={GitCompare} className="shrink-0">{plural(row.conflicts, "conflict", "conflicts")} to settle</LinkChip> : null}
+              {row.asked ? <LinkChip elsewhere href={there(overviewHref(row.id))} tone="primary" icon={MessagesSquare} className="shrink-0">{plural(row.asked, "question", "questions")} for you</LinkChip> : null}
             </span>
           </li>
         );

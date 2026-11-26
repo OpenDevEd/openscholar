@@ -18,7 +18,8 @@ import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { PERSON_SAYS, type Person } from "./data";
+import { toast } from "sonner";
+import { PERSON_SAYS, modelKey, type Person } from "./data";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
 export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
@@ -77,13 +78,19 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   );
 }
 
-/** Picks a model from the whole catalogue, at an effort where it takes one. The presets' own picks come first, each model once: presets that pick the same model are one choice here. */
-export function AddModel({ exclude, onPick, children }: { exclude: string[]; onPick: (model: MapModel) => void; children: ReactNode }) {
+/**
+ * Picks a model from the whole catalogue, at an effort where it takes one. The presets' own picks come first, each
+ * model once: presets that pick the same model are one choice here. A model at one effort is one reviewer, as the
+ * server has it (convex/screening/reviewers.ts): the same model at another effort can be added beside it, and the
+ * same one at the same effort can't be added twice.
+ */
+export function AddModel({ taken, onPick, children }: { /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; onPick: (model: MapModel) => void; children: ReactNode }) {
   const presetModel = usePresetModels();
-  const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !exclude.includes(model.id) ? [{ id, model }] : []; }) : undefined;
-  const presets = picks?.filter((pick, at) => picks.findIndex((one) => one.model.id === pick.model.id && one.model.effort === pick.model.effort) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => onPick({ ...model, name: stripProviderPrefix(model.name) }) }));
+  const pick = (model: MapModel) => (taken.includes(modelKey(model)) ? void toast(`${stripProviderPrefix(model.name)} is on it already${model.effort ? " at that effort" : ""}`) : onPick({ ...model, name: stripProviderPrefix(model.name) }));
+  const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !taken.includes(modelKey(model)) ? [{ id, model }] : []; }) : undefined;
+  const presets = picks?.filter((one, at) => picks.findIndex((other) => modelKey(other.model) === modelKey(one.model)) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => pick(model) }));
   return (
-    <ModelPicker current={undefined} efforts tasks={["screenAll"]} exclude={exclude} presets={presets} align="start" trigger={children} onChange={(model, effort) => onPick({ ...model, name: stripProviderPrefix(model.name), ...(effort ? { effort } : {}) })} />
+    <ModelPicker current={undefined} efforts tasks={["screenAll"]} presets={presets} align="start" trigger={children} onChange={(model, effort) => pick({ ...model, ...(effort ? { effort } : {}) })} />
   );
 }
 

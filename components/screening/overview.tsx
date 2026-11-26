@@ -26,6 +26,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
 import { HIDDEN_UNTIL_VOTE, DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
@@ -104,8 +106,11 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   const settle = conflicts > 0 && open.canResolve;
   const tone: Tone = toDo || settle ? "primary" : settledAll ? "success" : "neutral";
   const finishable = settledAll && open.canChange && !open.screening.finishedAt;
-  const to = screening.destination;
-  const extract = `/extraction/new?${to.collection ? `collection=${to.collection}` : `screening=${screening.id}`}`;
+  const workspaceId = usePageWorkspace();
+  // The extraction form opens with this screening's included papers picked: they are put among its sources as its own list would put them (components/extraction/setup-view.tsx).
+  const pickForExtraction = () => {
+    if (workspaceId) useExtractionStore.getState().setSource(workspaceId, { key: `screening:${screening.id}`, set: { kind: "screening", jobId: screening.id as Id<"screeningJobs"> }, label: screening.name, total: counts.include, first: 1, last: Math.max(1, counts.include), scope: "all" });
+  };
   const finished = Boolean(screening.finishedAt);
 
   const screen = toDo ? (
@@ -142,7 +147,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
               <>
                 <Button variant="outline" size="sm" onClick={() => onExport("papers")}><Download />Export included papers</Button>
                 {/* With every paper settled, finishing is the next step for a member. Once it is finished, extracting is. */}
-                <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href={extract}><FileSearch />Extract from the included papers</NextLink></Button>
+                {counts.include ? <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href="/extraction/new" onClick={pickForExtraction}><FileSearch />Extract from the included papers</NextLink></Button> : null}
                 {finishable ? <Button size="sm" onClick={finish}><CircleCheck />Mark as finished</Button> : null}
               </>
             ) : null}

@@ -10,7 +10,8 @@ import { personalWorkspaceOf } from "../../workspaces/personal";
 export async function checkScreeningSelection(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"screeningJobs">, revision: string) {
   const job = await ctx.db.get("screeningJobs", jobId);
   if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
-  if (job.status === "processing") throw createError("VALIDATION_ERROR", "This screening is still processing. Wait for it to finish before starting extraction.");
+  // A screening with reviewers stays open while its people vote: its included papers are extracted from as they stand. One from before reviewers is a run, read once it has ended.
+  if (job.status === "processing" && job.shape !== 2) throw createError("VALIDATION_ERROR", "This screening is still processing. Wait for it to finish before starting extraction.");
   if (revision !== await screeningRevision(ctx, job)) {
     throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
   }

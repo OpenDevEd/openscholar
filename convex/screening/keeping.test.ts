@@ -33,6 +33,18 @@ it("says how far the others are and not how they voted until the person has vote
   await settleAll(made.t);
   expect(await seenBy("ben")).toMatchObject({ others: [{ cast: 2, include: 1, exclude: 1, kept: undefined }], pairs: 1 });
 
+  // A finished screening keeps nothing either: Ben can't vote on his last paper any more, so nothing would ever open it for him.
+  const done = await started(made, ["ann", "ben"], 2);
+  await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId, jobId: done.jobId, paperId: done.papers[0]!._id, decision: "include" });
+  await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId, jobId: done.jobId, paperId: done.papers[1]!._id, decision: "include" });
+  await settleAll(made.t);
+  const before = (await made.as.ben!.query(api.screening.paperViews.paper, { workspaceId, jobId: done.jobId, paperId: done.papers[0]!._id }))!;
+  expect(before.sees).toBe(false);
+  await made.as.ann!.mutation(api.screening.screenings.finish, { workspaceId, jobId: done.jobId });
+  const closed = (await made.as.ben!.query(api.screening.view.get, { workspaceId, jobId: done.jobId }))!;
+  expect(closed.reviewers.find((one) => one.id === made.ids.ann)).toMatchObject({ cast: 2, include: 2 });
+  expect((await made.as.ben!.query(api.screening.paperViews.paper, { workspaceId, jobId: done.jobId, paperId: done.papers[0]!._id }))!.sees).toBe(true);
+
   // A screening that shows votes at any time keeps nothing, whoever has papers left.
   const open = await started(made, ["ann", "ben"], 2, { rule: { each: 2, settle: "all", blind: "always" } });
   await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId, jobId: open.jobId, paperId: open.papers[0]!._id, decision: "include" });

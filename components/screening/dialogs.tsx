@@ -26,7 +26,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { changeOpens, changeSays } from "./activity-words";
-import { PERSON_SAYS, VOTES_HIDDEN_SAYS, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
+import { modelKey, PERSON_SAYS, VOTES_HIDDEN_SAYS, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
 import { papersHref } from "./links";
 import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { perPaper, type Open } from "./store";
@@ -206,7 +206,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
             <span className="text-xs font-medium text-muted-foreground">Add people as</span>
             <Segmented label="Add people as" value={addAs} onChange={setAddAs} options={ROLES.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }))} />
             {screening.finishedAt ? null : (
-              <AddModel exclude={models.map((model) => model.model!.id)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
+              <AddModel taken={models.map((model) => modelKey(model.model!))} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
                 <Button variant="outline" size="sm" className="ms-auto h-8"><AiIcon />Add a model</Button>
               </AddModel>
             )}

@@ -166,8 +166,9 @@ describe("what a change takes out", () => {
     expect(after.reviewers.ann).toMatchObject({ dealt: 2, cast: 0 });
     expect(after.reviewers.ben).toMatchObject({ dealt: 2, cast: 0 });
     expect(await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId })).toMatchObject({ total: 2, forYou: 2, counts: { waiting: 2 } });
-    // Her vote on a paper that is gone is kept, and is in none of her lists.
+    // Her vote on a paper that is gone is kept, and is in none of her lists, looked for by its words or not.
     expect((await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "done", paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
+    expect((await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "done", text: "Paper 3", paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
     expect((await made.as.ann!.query(api.screening.paperViews.list, { workspaceId, jobId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((one) => one.title)).toEqual(["Paper 1", "Paper 2"]);
   });
 

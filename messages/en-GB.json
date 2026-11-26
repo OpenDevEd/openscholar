@@ -1670,7 +1670,7 @@
       "search": "No saved searches yet.",
       "collection": "No collections yet.",
       "saved": "No saved papers yet.",
-      "screening": "No finished screenings yet.",
+      "screening": "No screening has included a paper yet.",
       "evidenceLibrary": "No Evidence Communities yet."
     },
     "papersToScreen": "Papers to screen",
