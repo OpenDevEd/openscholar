@@ -452,13 +452,14 @@ export const pdfToChat = internalAction({
 const collectionValidator = v.object({ key: v.string(), name: v.string(), parentCollection: v.union(v.string(), v.null()), numItems: v.number(), numCollections: v.number() });
 type Collection = Infer<typeof collectionValidator>;
 
-/** One page of a person's Zotero collections, or a group's of theirs: every level, each naming the one it sits in. */
+/** One page of a person's Zotero collections, or a group's of theirs: every level, each naming the one it sits in. With `under`, one level alone: "top", or the ones inside the collection it names. */
 export const collectionsOf = internalAction({
-  args: { userId: v.id("users"), groupId: v.optional(v.string()), start: v.number() },
+  args: { userId: v.id("users"), groupId: v.optional(v.string()), start: v.number(), under: v.optional(v.string()) },
   returns: v.object({ page: v.array(collectionValidator), next: v.optional(v.number()) }),
-  handler: async (ctx, { userId, groupId, start }): Promise<ZoteroPage<Collection>> => {
+  handler: async (ctx, { userId, groupId, start, under }): Promise<ZoteroPage<Collection>> => {
     const { apiKey, prefix } = await zoteroAccess(ctx, userId, groupId);
-    const { page, next } = await zoteroPage<ZoteroCollectionResponse>(`${prefix}/collections`, apiKey, start, "collections");
+    if (under !== undefined && under !== "top") checkZoteroIds({ collectionKey: under });
+    const { page, next } = await zoteroPage<ZoteroCollectionResponse>(`${prefix}/collections${under === undefined ? "" : under === "top" ? "/top" : `/${under}/collections`}`, apiKey, start, "collections");
     const shown = page
       .filter((collection) => !isDeletedFlag(collection.data.deleted))
       .map((c) => ({ key: c.key, name: c.data.name, parentCollection: c.data.parentCollection || null, numItems: c.meta?.numItems || 0, numCollections: c.meta?.numCollections || 0 }));

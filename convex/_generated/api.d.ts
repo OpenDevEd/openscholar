@@ -480,6 +480,7 @@ import type * as screening_validators from "../screening/validators.js";
 import type * as screening_view from "../screening/view.js";
 import type * as screening_voting from "../screening/voting.js";
 import type * as screening_workpoolActions from "../screening/workpoolActions.js";
+import type * as screening_zoteroSources from "../screening/zoteroSources.js";
 import type * as sharing_access from "../sharing/access.js";
 import type * as sharing_guests from "../sharing/guests.js";
 import type * as sharing_invitations from "../sharing/invitations.js";
@@ -1025,6 +1026,7 @@ declare const fullApi: ApiFromModules<{
   "screening/view": typeof screening_view;
   "screening/voting": typeof screening_voting;
   "screening/workpoolActions": typeof screening_workpoolActions;
+  "screening/zoteroSources": typeof screening_zoteroSources;
   "sharing/access": typeof sharing_access;
   "sharing/guests": typeof sharing_guests;
   "sharing/invitations": typeof sharing_invitations;

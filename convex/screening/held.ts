@@ -16,7 +16,7 @@ import { PAGE_ORDERED_SORT, readSearchPage, readWork } from "../paperSets/openal
 import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from "../paperSets/search";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
 import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
-import { fileLookValidator, type leftOutWhyValidator } from "./validators";
+import { DOIS_MAX, doisLookValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
 import type { Infer } from "convex/values";
 
 /** Zotero's importer, which reads every reference format the databases export: the one live communities are given. */
@@ -112,6 +112,27 @@ export async function byDois(dois: string[], spend: Spend): Promise<Map<string, 
   for (const doi of odd) keep(await readWork<Work>(`https://doi.org/${encodeURIComponent(doi)}`, SCREENING_FIELDS, spend).catch(() => null));
   return found;
 }
+
+/**
+ * Looks a pasted list of DOIs up in the index and keeps the list as a file a screening can read: how many it found
+ * with an abstract, how many it found with none (left out when the screening reads them) and how many it has no
+ * record of.
+ */
+export const lookDois = workspaceAction({
+  args: { dois: v.array(v.string()) },
+  returns: doisLookValidator,
+  handler: async (ctx, { userId, workspaceId }, { dois: sent }) => {
+    const dois = [...new Set(sent.map((doi) => normalDoi(doi)).filter((doi): doi is string => doi !== null))];
+    if (!dois.length) throw createError("VALIDATION_ERROR", "Paste at least one DOI.");
+    if (dois.length > DOIS_MAX) throw createError("VALIDATION_ERROR", `Paste up to ${DOIS_MAX.toLocaleString("en-GB")} DOIs at a time.`);
+    const who: { clerkId: string } | null = await ctx.runQuery(internal.screening.held.reader, { userId, workspaceId });
+    if (!who) throw createError("NOT_FOUND", "Your account wasn't found.");
+    const found = await byDois(dois, spender(ctx, who.clerkId));
+    const bare = [...found.values()].filter((paper) => !paper.abstract?.trim()).length;
+    const file = await ctx.storage.store(new Blob([dois.join("\n")], { type: "text/plain" }));
+    return { file, found: found.size - bare, bare, missing: dois.length - found.size };
+  },
+});
 
 /** Who a source is read as, and the model that reads a PDF's own first pages, with what it costs and what the workspace has. */
 export const reader = internalQuery({

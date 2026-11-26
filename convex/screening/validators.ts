@@ -241,6 +241,15 @@ export const sourceSetValidator = v.union(
   v.object({ kind: v.literal("dois"), file: v.id("_storage") }),
 );
 
+/** One page of a person's Zotero groups, and of the collections at one level of a library, as Zotero pages them (../zotero/libraryValidators.ts `ZOTERO_LIST_PAGE`), with where the next page starts. */
+const ZOTERO_LISTED = 100;
+export const zoteroGroupsValidator = v.object({ page: capped(v.array(v.object({ id: v.string(), name: v.string(), papers: v.number() })), ZOTERO_LISTED), next: v.optional(v.number()) });
+export const zoteroCollectionsValidator = v.object({ page: capped(v.array(v.object({ key: v.string(), name: v.string(), papers: v.number(), inside: v.number() })), ZOTERO_LISTED), next: v.optional(v.number()) });
+/** What the index knows of a pasted list of DOIs, kept as a file a screening can read (./held.ts `lookDois`). */
+export const doisLookValidator = v.object({ file: v.id("_storage"), found: v.number(), bare: v.number(), missing: v.number() });
+/** The most DOIs one pasted list holds. */
+export const DOIS_MAX = 5_000;
+
 /** What a file a person is about to add holds (./held.ts `look`). */
 export const fileLookValidator = v.object({
   records: v.number(),

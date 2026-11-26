@@ -40,6 +40,8 @@ const READ_ACTION_MS = 4 * 60_000;
 /** How long a check may go without a step before its reading is set off again, and how often that is tried before it is left as failed. */
 const QUIET_MS = 15 * 60_000;
 const RESTARTS = 3;
+/** Collections read for one Zotero source that takes the ones under a collection too. ponytail: past this many, and past the first hundred inside any one collection, the rest are not read; page the walk if a tree that large is ever added whole. */
+const DEEP_COLLECTIONS = 500;
 /** How much of why a source couldn't be read is kept. */
 const FAILURE_SHOWN = 600;
 
@@ -138,6 +140,8 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       await keepLibraryKeys(ctx, (await ctx.runQuery(internal.screening.gathering.jobOf, { checkId }))!, keys, { part: source.part });
       return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, total: source.first - 1 + keys.length }));
     }
+    // With the collections under it: they are read one after another, each adding the ones inside it to those still to read. `resume` keeps them, and how far into the first the reading is.
+    if (set.kind === "zotero" && set.deep && set.collectionKey) return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, resume: JSON.stringify({ keys: [set.collectionKey], at: 0, seen: 1 }) }));
     const total: number | null = await ctx.runQuery(internal.screening.gathering.heldTotal, { ...reader, set });
     return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, ...(total === null ? {} : { total }) }));
   }
@@ -165,9 +169,20 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     return void (await give(papers, to - from + 1, to >= last));
   }
   if (set.kind === "zotero") {
+    const deep: { keys: string[]; at: number; seen: number } | null = set.deep && source.resume ? JSON.parse(source.resume) : null;
+    if (deep && !deep.keys.length) return void (await give([], 0, true));
     const through = Math.min(to, from + ZOTERO_PAGE - 1);
-    const read: { papers: Array<{ paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: source.userId, ...(set.collectionKey ? { collectionKey: set.collectionKey } : {}), ...(set.groupId ? { groupId: set.groupId } : {}), first: from, last: through });
+    // One collection is read by its papers' places in it. One with those under it is read a collection at a time, each from its own start.
+    const [first, upTo] = deep ? [deep.at + 1, deep.at + ZOTERO_PAGE] : [from, through];
+    const read: { papers: Array<{ paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: source.userId, ...(deep ? { collectionKey: deep.keys[0]! } : set.collectionKey ? { collectionKey: set.collectionKey } : {}), ...(set.groupId ? { groupId: set.groupId } : {}), first, last: upTo });
     const papers = read.papers.map(({ paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+    if (deep) {
+      // A collection read to its end hands on to the next, with the ones inside it added: one page of them, which is every one for all but the largest.
+      const inside: { page: Array<{ key: string }> } = read.ended && deep.seen < DEEP_COLLECTIONS ? await ctx.runAction(internal.zotero.actions.collectionsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), start: 0, under: deep.keys[0]! }) : { page: [] };
+      const more = inside.page.map((one) => one.key).slice(0, DEEP_COLLECTIONS - deep.seen);
+      const next = read.ended ? { keys: [...deep.keys.slice(1), ...more], at: 0, seen: deep.seen + more.length } : { ...deep, at: upTo };
+      return void (await give(papers, read.papers.length, !next.keys.length || from + read.papers.length > last, JSON.stringify(next)));
+    }
     return void (await give(papers, through - from + 1, read.ended || through >= last));
   }
   if (set.kind === "collection" || set.kind === "saved" || set.kind === "screening") {
