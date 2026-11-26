@@ -84,7 +84,8 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
           <p className="flex min-w-0 items-center gap-1.5 ps-7 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-xl:hidden">{chips}</span> : null}</p>
         ) : null}
       </div>
-      {count ? <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip> : null}
+      {/* A row that says where it sits has that for its second line: what else it has to say stands where its count would. */}
+      {count ? <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip> : trail && chips ? <span className="flex shrink-0 items-center gap-1.5 max-sm:ms-7">{chips}</span> : null}
       <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || (count && !offer.total)} onClick={onAdd}>{added ? <><Check />Added</> : count && !offer.total ? "Empty" : <><Plus />Add</>}</Button>
     </div>
   );

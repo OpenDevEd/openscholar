@@ -386,6 +386,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // Why the server wouldn't start it, said in the bar beside the button: a toast would sit over the button itself.
+  const [refused, setRefused] = useState<string | null>(null);
   const setDraft = (next: Screening | ((now: Screening) => Screening)) => {
     if (!origin) return;
     setLastSave(null);
@@ -626,6 +628,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const start = async () => {
     if (busy) return;
     setBusy(true);
+    setRefused(null);
     const name = draft.name.trim() || draft.sources[0]?.name || "Untitled screening";
     try {
       const { jobId } = await create({ ...setupOf({ ...draft, name }), ...(early ? { draft: early.jobId } : {}) });
@@ -637,7 +640,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
       router.replace(overviewHref(jobId));
     } catch (error) {
-      failed(error);
+      setRefused(getErrorMessage(error, "It couldn't be started. Try again."));
       setBusy(false);
     }
   };
@@ -1452,7 +1455,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               <span className="text-sm">{models.length ? <><span className="text-muted-foreground">Total, at most</span> <span className="font-semibold tabular-nums">{credits(cost)} credits</span></> : <span className="text-muted-foreground">People only, no credits</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-              {stop ? <Blocker block={stop} /> : null}
+              {stop ? <Blocker block={stop} /> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
               {stop && cost > wallet ? <Button asChild variant="outline"><NextLink href="/settings/billing"><Coins />Add credits</NextLink></Button> : null}
               <Button disabled={Boolean(stop)} onClick={start}><ListChecks />Start screening</Button>
             </div>

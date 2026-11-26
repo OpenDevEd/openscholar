@@ -99,6 +99,7 @@ export const PAPER_GUIDE = {
   year: "The year it was published.",
   journal: "Where it was published.",
   abstract: "Its abstract, as the reviewers read it.",
+  read_as: "What its reviewers read: Abstract, or PDF for a paper with no abstract that was screened as its own PDF.",
   source: "The source that brought it into the screening.",
   added: "When it was added: at the start, or the time of the check that found it.",
   result: "Where it stands: Included, Maybe, Excluded, In conflict or Waiting for votes.",
@@ -130,6 +131,7 @@ export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper
       year: paper.year ?? "",
       journal: paper.venue ?? "",
       abstract: paper.abstract,
+      read_as: paper.pdf ? "PDF" : "Abstract",
       source: screening.sources.find((source) => source.id === paper.source)?.name ?? "",
       added: paper.addedAt === undefined ? "At the start" : iso(paper.addedAt),
       result: RESULT_LABEL[settled.result],
@@ -326,6 +328,8 @@ export function methodsOf(out: Taken) {
   const one = (n: number) => (n === 1 ? is : are);
   // Marked finished with papers left open: nothing is claimed of every record, since not every one was done.
   const partial = open > 0 && !running;
+  // The records with no abstract that came with their own PDF, which is what their reviewers read.
+  const filed = screening.sources.reduce((sum, source) => sum + (source.read?.filed ?? 0), 0);
   // The people who joined after it began were given only what was still open then.
   const late = people.filter((person) => later(screening, person.addedAt));
   return [
@@ -333,7 +337,7 @@ export function methodsOf(out: Taken) {
     `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
     looks.later && looks.lastAt ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
-    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.`,
+    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text.` : ""}`,
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",

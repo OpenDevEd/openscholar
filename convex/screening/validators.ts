@@ -378,8 +378,8 @@ export const sourceViewValidator = v.object({
   checkedAt: v.optional(v.number()),
 });
 export const sourceViewsValidator = capped(v.array(sourceViewValidator), MAX_SOURCE_ROWS);
-/** The papers a check added, by the source that brought them. */
-export const checkSourcesValidator = capped(v.array(v.object({ id: v.id("screeningSources"), added: v.number() })), MAX_SOURCE_ROWS);
+/** The papers a later check added, by the source that brought them. */
+export const checkSourcesValidator = capped(v.optional(v.array(v.object({ id: v.id("screeningSources"), added: v.number() }))), MAX_SOURCE_ROWS);
 
 /** A vote as a page shows it. */
 export const voteViewValidator = v.object({

@@ -518,7 +518,7 @@ function Screen({ open }: { open: Open }) {
   const noDiscussion = paper && !discussion ? <DiscussionShut open={open} /> : null;
   const said = paper?.messages ?? 0;
   // What scrolls is the outside system: the discussion is brought to the top of its pane from a laptop's width, and of the page under that. The page is moved by hand, for the reason `openIt` gives.
-  const reach = (mark: "data-discussion" | "data-votes") => {
+  const reach = (mark: "data-discussion" | "data-votes" | "data-criteria") => {
     const part = [...document.querySelectorAll<HTMLElement>(`[${mark}]`)].find((one) => one.getClientRects().length);
     if (!part) return;
     if (tablet) window.scrollBy({ top: part.getBoundingClientRect().top - (article.current ? parseFloat(getComputedStyle(article.current).scrollMarginTop) : 0), behavior: "smooth" });
@@ -717,7 +717,7 @@ function Screen({ open }: { open: Open }) {
 
             {/* Your answers to the criteria: a pane of their own. Each paper has its own, so another paper's start at their top. */}
             <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
-              <div className={cn("p-5", BESIDE)}>
+              <div data-criteria className={cn("p-5", BESIDE)}>
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
@@ -860,6 +860,8 @@ function Screen({ open }: { open: Open }) {
               {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label="Now in Conflicts" className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">Now in Conflicts</span></LinkChip> : null}
               {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
+                {/* Under a laptop's width the criteria sit below the paper, a long scroll away on a phone: the way to them is beside the votes. */}
+                {criteria.length ? <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs lg:hidden" onClick={() => reach("data-criteria")}><ListChecks />Criteria</Button> : null}
                 {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />Note</Button> : null}
                 {mayDecide && queue !== "done" ? (
                   <Popover>

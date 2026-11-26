@@ -587,7 +587,8 @@ const BANDS = [
 const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
 /** The papers two reviewers both voted on, the ones they split on first. */
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
-const sameText = (pair: { same: number }) => `${Math.round(pair.same * 100)}% same`;
+/** How often two reviewers voted the same, with the papers that is of: a share with nothing to be a share of says little. */
+const sameText = (pair: { same: number; papers: number }) => `${Math.round(pair.same * 100)}% same of ${plural(pair.papers, "paper", "papers")}`;
 const KAPPA_HELP = (
   <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0.6 and up substantial</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>Below 0 worse than chance</HelpFact></>}>
     <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
@@ -602,6 +603,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
   if (reviewers.length < 3) return null;
   const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
+  // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
+  const shared = pairs.flatMap((one) => (one.pair ? [one.pair.papers] : []));
+  const sharedSays = shared.length ? (Math.min(...shared) === Math.max(...shared) ? `${plural(shared[0]!, "paper", "papers")} each` : `${num(Math.min(...shared))} to ${num(Math.max(...shared))} papers each`) : "";
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
   const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : shortName(reviewer));
@@ -629,7 +633,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
               <span className="text-sm">
                 <span className="font-medium">Mean pairwise Cohen&apos;s kappa</span>
-                <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {plural(known.length, "pair", "pairs")} of reviewers</span>
+                <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {plural(known.length, "pair", "pairs")} of reviewers, {sharedSays}</span>
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>The papers they split on most</LinkChip>
@@ -805,7 +809,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       id="new-papers"
       title="Checks for new papers"
       help={
-        <Help title="Checking for new papers" facts={<>{screening.living ? <><HelpFact icon={RefreshCw}>{EVERY_LABEL[screening.living.every]}</HelpFact><HelpFact>Next on {day(screening.living.next)}</HelpFact></> : <HelpFact>Only when asked</HelpFact>}{fixed ? <HelpFact>Skips {fixed} fixed {fixed === 1 ? "source" : "sources"}</HelpFact> : null}</>}>
+        <Help title="Checking for new papers" facts={<>{screening.living ? <><HelpFact icon={RefreshCw}>{EVERY_LABEL[screening.living.every]}</HelpFact><HelpFact>Next check {day(screening.living.next)}</HelpFact></> : <HelpFact>Only when asked</HelpFact>}{fixed ? <HelpFact>Skips {fixed} fixed {fixed === 1 ? "source" : "sources"}</HelpFact> : null}</>}>
           <p>A check runs each source&apos;s search again and adds the papers this screening doesn&apos;t have yet. Uploaded files and pasted lists never change, so checks skip them.</p>
         </Help>
       }
@@ -814,7 +818,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
           {screening.living ? (
-            <Chip icon={RefreshCw}>Checks {EVERY_LABEL[screening.living.every].toLowerCase()}, next {day(screening.living.next)}</Chip>
+            <Chip icon={RefreshCw}>Checks {EVERY_LABEL[screening.living.every].toLowerCase()}, next check {day(screening.living.next)}</Chip>
           ) : (
             <>
               <Chip>Checks only when asked</Chip>

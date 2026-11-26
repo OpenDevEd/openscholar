@@ -370,7 +370,7 @@ const checkValidator = v.object({
   // Where the papers it added stand now, for a check that added few enough to count.
   counts: v.optional(countsValidator),
   // The papers a later check added, by the source that brought them.
-  sources: v.optional(checkSourcesValidator),
+  sources: checkSourcesValidator,
 });
 /** The most papers a check may have added for where they stand to be counted with it. */
 const CHECK_COUNTED = 200;
