@@ -477,8 +477,8 @@ export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id
 }
 
 /** Starts a look in a screening's sources: every source that isn't taken out is read again from where it stands. */
-export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users"> | undefined, from: number) {
-  const checkId = await ctx.db.insert("screeningChecks", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), state: "running", from, found: 0, added: 0, beat: Date.now() });
+export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users"> | undefined, from: number, search = false) {
+  const checkId = await ctx.db.insert("screeningChecks", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), ...(search ? { search } : {}), state: "running", from, found: 0, added: 0, beat: Date.now() });
   await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });
   await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId, restarts: 0 });
   return checkId;

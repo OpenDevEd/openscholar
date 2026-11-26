@@ -232,6 +232,22 @@ describe("what a change takes out", () => {
     expect(counts.toSorted()).toEqual([0, 1]);
   });
 
+  it("counts a check for new papers as a later search, and not a save that reads a source it adds", async () => {
+    const made = await team(["ann"]);
+    const { workspaceId } = made;
+    const { jobId } = await started(made, ["ann"], 1);
+    await run(made.t);
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "saved" }, name: "Saved papers" }] } });
+    await give(made.t, jobId, 1, [paper(5)]);
+    await run(made.t);
+    const later = async () => (await made.as.ann!.query(api.screening.view.figures, { workspaceId, jobId, since: 0 }))!.checks;
+    expect(await later()).toMatchObject({ later: 0, added: 0 });
+    await made.as.ann!.mutation(api.screening.living.checkNow, { workspaceId, jobId });
+    await give(made.t, jobId, 0, [paper(6)]);
+    await run(made.t);
+    expect(await later()).toMatchObject({ later: 1, added: 1 });
+  });
+
   it("emails a colleague put on a screening, with the papers that wait for them or with none", async () => {
     const made = await team(["ann", "ben", "cat"]);
     const { workspaceId } = made;

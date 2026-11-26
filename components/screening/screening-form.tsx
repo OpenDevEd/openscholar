@@ -483,7 +483,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What a save would do to a running screening, counted by the server for the change as it stands: the lines and the moves both read it.
   const change = saved && draft ? changeOf(say, saved, draft, recheck) : null;
   const changing = change && Object.keys(change).length > 0 ? JSON.stringify(change) : null;
-  const counted = useSWR(saved && changing && workspaceId ? ["screening-preview", saved.id, changing] : null, () => previewChange({ jobId: saved!.id, change: change! }), { revalidateOnFocus: false, keepPreviousData: true });
+  const counted = useSWR(saved && changing && workspaceId ? ["screening-preview", saved.id, changing] : null, () => previewChange({ jobId: saved!.id, change: change! }), { revalidateOnFocus: false });
+  // Until the server has counted the change as it now stands, nothing it would do is known: no figure from an earlier change stands in.
+  const known = !changing || counted.data !== undefined || Boolean(counted.error);
   const preview: Preview = (changing ? counted.data : undefined) ?? NO_PREVIEW;
   // While the server counts a change, what it would do isn't known: the save waits for it.
   const counting = Boolean(changing) && (counted.isLoading || counted.isValidating) && !counted.error;
@@ -534,6 +536,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
   const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
+  // A model with nothing left to read that it can read: never while the change is counted, and never one that is given no PDF it can't read.
+  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers;
   // How much of what the models still cost is the papers they are sent as PDFs: said beside the PDFs' pages, where a price a paper times the papers falls short of the total.
   const pdfCost = models.reduce((sum, model) => sum + pdfReadingCredits(model.model!, ahead(model), pdfs), 0);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
@@ -548,8 +552,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!));
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
   const heldNow = open?.modelsNow ?? null;
-  const lines = saved && changing ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
-  const moves = saved && changing ? preview.moves : [];
+  const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
+  const moves = saved && changing && known ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
   const needsCriteria = models.length > 0 && draft.criteria.length === 0;
   const lastCheck = open?.latest ?? null;
@@ -1331,7 +1335,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {/* A paper it couldn't read shows beside what it still has to read: one never hides the other. */}
                                 {saved && unreadBy(reviewer) ? (
                                   <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id, voted: "failed" })} tone="destructive" icon={TriangleAlert}>{unreadText(unreadBy(reviewer))}</LinkChip>
-                                ) : !due(reviewer) && !fresh && papers ? <Chip icon={Check}>{t("reviewers.allRead")}</Chip> : null}
+                                ) : allRead(reviewer) ? <Chip icon={Check}>{t("reviewers.allRead")}</Chip> : null}
                               </>
                             ) : null}
                             {votes && saved ? <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id })}>{words.count("votes", votes)}</LinkChip> : null}
@@ -1454,7 +1458,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </ul>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump done={!dirty} />
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
@@ -1520,7 +1524,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <JumpLink key={model.id} to={`reviewer-${model.id}`} block="center" className="-mx-1.5 flex min-h-7 items-center gap-2 rounded-md px-1.5 py-0.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
                     <ReviewerMark reviewer={model} className="size-5" />
                     <span className="min-w-0 truncate">{model.name}</span>
-                    {!fresh && unreadBy(model) ? <StateChip tone="destructive" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model))}</StateChip> : !due(model) && !fresh ? <Chip icon={Check} className="h-5 px-1.5">{t("reviewers.allRead")}</Chip> : null}
+                    {!fresh && unreadBy(model) ? <StateChip tone="destructive" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model))}</StateChip> : allRead(model) ? <Chip icon={Check} className="h-5 px-1.5">{t("reviewers.allRead")}</Chip> : null}
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? t("cost.credits", { credits: words.credits(due(model)) }) : fresh ? <span className="text-muted-foreground">{t("cost.noPapers")}</span> : null}</span>
                   </JumpLink>
                 ))}

@@ -1794,6 +1794,8 @@ export default defineSchema({
     at: v.number(),
     by: v.optional(v.id("users")),
     state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+    // A look for papers its sources gained, by hand or on its schedule (convex/screening/living.ts). A look a save asks for, to read a source it adds or widens, is none.
+    search: v.optional(v.boolean()),
     // The place its first paper takes, and what it has brought so far.
     from: v.number(),
     found: v.number(),

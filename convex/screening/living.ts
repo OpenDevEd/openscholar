@@ -27,7 +27,7 @@ export async function check(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<
   if (!sources.length) return false;
   // Read again from its start, as it stands now: what it had merged and left out is counted again as it is read.
   for (const source of sources) await ctx.db.patch("screeningSources", source._id, readAgain(source));
-  await startCheck(ctx, job, by, job.totalPapers);
+  await startCheck(ctx, job, by, job.totalPapers, true);
   return true;
 }
 

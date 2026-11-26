@@ -491,7 +491,8 @@ export const figuresAction = defineUserQuery({
     const idOf = new Map(reviewers.map((one) => [one._id, viewId(one)]));
     const people = reviewers.filter((one) => one.kind === "person" && one.left === undefined && one.userId);
     const recent = await Promise.all(people.map(async (one) => [viewId(one), (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", one._id).eq("status", "cast").gte("at", since)).take(RECENT_VOTES)).length] as const));
-    const later = checks.filter((check) => check.from > 0 && check.state === "done");
+    // The searches for papers its sources gained. A save that read a source it added or widened searched nothing again.
+    const later = checks.filter((check) => check.search && check.state === "done");
     return {
       reasons: progress?.reasons ?? {},
       included: progress?.included ?? {},

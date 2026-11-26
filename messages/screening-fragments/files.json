@@ -41,7 +41,7 @@
   },
   "votes": {
     "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
-    "help": "One row for each reviewer on each paper: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper.",
+    "help": "One row for each paper a reviewer was given: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
     "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
     "whose": "Whose votes",
     "everyone": "Everyone",
@@ -61,6 +61,7 @@
     "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
     "emptyWhy": {
       "yet": "reviewers who have yet to vote",
+      "finished": "reviewers who had not voted when the screening was marked finished",
       "none": "papers settled without a reviewer's vote",
       "failed": "papers a model couldn't read"
     },
@@ -85,7 +86,7 @@
       },
       "withoutVote": {
         "name": "Without a vote",
-        "what": "Why each reviewer has no vote on a paper"
+        "what": "Why a reviewer given a paper has no vote on it"
       },
       "criteria": {
         "name": "Criteria",
@@ -119,7 +120,7 @@
   },
   "hint": {
     "papers": "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.",
-    "votes": "One row for each reviewer on each paper. Opens in Excel, Google Sheets or R.",
+    "votes": "One row for each paper a reviewer was given. Opens in Excel, Google Sheets or R.",
     "flow": "PNG goes into a document. SVG can be edited.",
     "record": "For keeping, and for code. Opens in any text editor.",
     "methods": "Written from the screening as it stands now. Copy it when it describes the results you want to report."

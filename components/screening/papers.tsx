@@ -514,7 +514,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               <span className="px-1 text-sm font-medium tabular-nums">{t("selection.selected", { count: chosen.length })}</span>
               {/* Every paper on the page is selected and the table has more pages: the rest are one press away. */}
               {allShown && listed.hasPages && (total === undefined || chosen.length < total) ? <Button variant="outline" size="sm" className="h-7" disabled={takingAll} onClick={selectAll}>{takingAll ? <Spinner className="size-3.5" /> : null}{total === undefined ? t("selection.everyPage") : t("selection.all", { count: total })}</Button> : null}
-              {conflictsPicked.length && open.canResolve ? (
+              {conflictsPicked.length && open.canResolve && !screening.finishedAt ? (
                 <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
                   <span className="text-xs text-muted-foreground">{t("selection.settleAs", { count: conflictsPicked.length })}</span>
                   {DECISIONS.map((decision) =>
@@ -876,8 +876,11 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const t = useTranslations("screening.papers");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
+  const screen = useTranslations("screening.screen");
   const { screening } = open;
   const id = screening.id;
+  // A finished screening takes no vote and settles nothing until it is reopened: the panel says so where its buttons were.
+  const finished = screening.finishedAt !== undefined;
   const narrow = useNarrow(id, open.me);
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // What is being decided in the panel: your own vote, or the paper's result. Excluding asks for the reason first.
@@ -943,15 +946,17 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (
-        mine && deciding !== "vote" ? (
+        mine && (deciding !== "vote" || finished) ? (
           <section className="space-y-2">
             <h3 className="text-sm font-medium">{t("panel.yourVote")}</h3>
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}</span>
-              <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>{t("panel.changeIt")}</Button>
+              {finished ? null : <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
+        ) : finished ? (
+          <ShutNote by="reviewer">{screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
             <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
@@ -961,7 +966,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       ) : null}
 
       {/* A conflict that is the person looking's to settle stands here, over the votes it settles: it is what the paper needs from them, and under the votes and the discussion it was a screen away. */}
-      {!state.resolvedBy && open.canResolve && state.result === "conflict" ? (
+      {!finished && !state.resolvedBy && open.canResolve && state.result === "conflict" ? (
         <Panel tone="info" className="space-y-2 p-3 ring-1 ring-info/25">
           <h3 className="text-sm font-medium">{t("panel.settleConflict")}</h3>
           {buttons("result")}
@@ -1007,10 +1012,10 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <IdentityAvatar name={words.nameOn(open.screening, state.resolvedBy)} imageUrl={personIn(screening, state.resolvedBy)?.imageUrl} className="size-5" />
           <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}{state.reason ? <ReasonChip reason={state.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}{state.note ? <span className="text-muted-foreground">{words.quoted(state.note)}</span> : null}</span>
-          {open.canResolve ? <Button variant="ghost" size="xs" onClick={() => void open.resolve(paper.id, null).catch((error) => notSaved(t, error))}><Undo2 />{t("panel.reopen")}</Button> : null}
+          {open.canResolve && !finished ? <Button variant="ghost" size="xs" onClick={() => void open.resolve(paper.id, null).catch((error) => notSaved(t, error))}><Undo2 />{t("panel.reopen")}</Button> : null}
         </div>
-      ) : !open.canResolve ? (
-        state.result === "conflict" ? (
+      ) : !open.canResolve || finished ? (
+        state.result === "conflict" && !finished ? (
           <Panel tone="info" className="flex flex-wrap items-center gap-2 p-3 text-sm">
             <IdentityAvatar name={words.nameOn(open.screening, screening.rule.resolver)} imageUrl={personIn(screening, screening.rule.resolver)?.imageUrl} className="size-6" />
             <span className="min-w-0 flex-1">{t("panel.waitingToSettle", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</span>

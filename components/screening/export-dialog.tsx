@@ -268,7 +268,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <p className="text-xs text-muted-foreground">
                   {sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
                   {blind && state.toDo ? `${t("votes.hiddenRows")} ` : ""}
-                  {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
+                  {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [screening.finishedAt ? t("votes.emptyWhy.finished") : t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <NextLink href={papersHref(id)} onClick={onClose}>{t("votes.seeEvery")}<ArrowRight /></NextLink>
