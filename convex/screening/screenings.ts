@@ -7,19 +7,19 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { noteActivity } from "../activity/notes";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { MAX_QUESTIONS, MAX_STARS } from "../lib/listCaps";
-import { defineUserAction, defineUserMutation, userAction, userMutation, type Acting } from "../lib/userActions";
+import { defineUserAction, defineUserMutation, userAction, userMutation } from "../lib/userActions";
 import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { MAX_REVIEWERS } from "./dealing";
+import { MAX_REVIEWERS, MAX_SOURCE_ROWS, reviewersOf, sourcesOf } from "./dealing";
 import { startCheck } from "./gathering";
+import { logChange } from "./log";
 import { destination } from "./mutations";
 import { NO_RESULTS } from "./settling";
 import { everyValidator, libraryDestinationValidator, MAX_TERMS, prunable, saveToValidator, SCREENING_TEXT, sourceSetValidator } from "./validators";
@@ -159,7 +159,7 @@ export const open = internalMutation({
     for (const person of people) await ctx.db.insert("screeningReviewers", { jobId, kind: "person", userId: person, addedAt: now, addedBy: userId, dealt: 0 });
     for (const { model, effort } of picked) await ctx.db.insert("screeningReviewers", { jobId, kind: "model", modelId: model._id, ...(effort ? { effort } : {}), addedAt: now, addedBy: userId, dealt: 0 });
     await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
-    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "screening", id: jobId, happened: "created", detail: title });
+    await logChange(ctx, { userId, author }, { _id: jobId, workspaceId }, "started", { detail: title, more: [{ code: "sources", count: sources.length }, ...(people.length ? [{ code: "people", count: people.length }] : []), ...(picked.length ? [{ code: "models", count: picked.length }] : [])] });
     return { jobId };
   },
 });
@@ -168,6 +168,7 @@ export const open = internalMutation({
 export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, userId: Id<"users">, { set, name, detail, first, last }: Infer<typeof sourceInput>, now: number) {
   if (first !== undefined && (!Number.isSafeInteger(first) || first < 1)) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (last !== undefined && (!Number.isSafeInteger(last) || last < (first ?? 1))) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+  if ((await sourcesOf(ctx, jobId)).length >= MAX_SOURCE_ROWS) throw createError("VALIDATION_ERROR", "This screening has had as many sources as one can have. Start another screening for more.");
   return await ctx.db.insert("screeningSources", { jobId, set, name: name.trim().slice(0, SCREENING_TEXT.name) || "Papers", ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
 }
 
@@ -194,9 +195,6 @@ export const createAction = defineUserAction({
 });
 export const create = userAction(createAction);
 
-const noted = async (ctx: MutationCtx, actor: Acting, job: Doc<"screeningJobs">, happened: "paused" | "resumed" | "stopped" | "edited", detail?: string) =>
-  noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "screening", id: job._id, happened, ...(detail ? { detail } : {}) });
-
 const byId = { jobId: v.id("screeningJobs") };
 const quiet = { spendsCredits: false, outsideEffect: false, undoable: false } as const;
 
@@ -211,7 +209,7 @@ export const pauseAction = defineUserMutation({
     if (job.paused || job.finishedAt !== undefined) return null;
     await ctx.db.patch("screeningJobs", jobId, { paused: true, updatedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId, cursor: null });
-    await noted(ctx, actor, job, "paused");
+    await logChange(ctx, actor, job, "paused");
     return null;
   },
 });
@@ -228,7 +226,7 @@ export const resumeAction = defineUserMutation({
     if ((!job.paused && !job.outOfCredits) || job.finishedAt !== undefined) return null;
     await ctx.db.patch("screeningJobs", jobId, { paused: undefined, outOfCredits: undefined, updatedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
-    await noted(ctx, actor, job, "resumed");
+    await logChange(ctx, actor, job, "resumed");
     return null;
   },
 });
@@ -246,7 +244,10 @@ export const finishAction = defineUserMutation({
     const now = Date.now();
     await ctx.db.patch("screeningJobs", jobId, { finishedAt: now, status: "completed", completedAt: now, updatedAt: now });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId, cursor: null });
-    await noted(ctx, actor, job, "stopped");
+    // What it leaves open is said with it: the papers nobody settled, and a living screening's checks.
+    const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
+    const settled = (progress?.counts?.include ?? 0) + (progress?.counts?.maybe ?? 0) + (progress?.counts?.exclude ?? 0);
+    await logChange(ctx, actor, job, "finished", { more: [...(job.totalPapers > settled ? [{ code: "unsettled", count: job.totalPapers - settled }] : []), ...(job.living ? [{ code: "checksStopped" }] : [])] });
     return null;
   },
 });
@@ -264,7 +265,7 @@ export const reopenAction = defineUserMutation({
     const now = Date.now();
     await ctx.db.patch("screeningJobs", jobId, { finishedAt: undefined, status: "processing", completedAt: undefined, updatedAt: now, ...(job.living ? { living: { ...job.living, next: now + EVERY_MS[job.living.every] } } : {}) });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
-    await noted(ctx, actor, job, "resumed", "Reopened");
+    await logChange(ctx, actor, job, "reopened");
     return null;
   },
 });
@@ -283,7 +284,7 @@ export const renameAction = defineUserMutation({
     if (title !== job.name) await ctx.db.patch("screeningJobs", jobId, { name: title, updatedAt: Date.now() });
     return null;
   },
-  activity: ({ jobId, name }) => ({ kind: "screening", id: jobId, happened: "renamed", detail: name.trim() }),
+  activity: ({ jobId, name }) => ({ kind: "screening", id: jobId, happened: "renamed", code: "renamed", detail: name.trim() }),
 });
 export const rename = userMutation(renameAction);
 
@@ -321,9 +322,16 @@ export const erase = internalMutation({
     const papers = votes.length || messages.length || left.length ? [] : await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const paper of papers) await ctx.db.delete("screeningResults", paper._id);
     if (votes.length || messages.length || left.length || papers.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
-    for (const table of ["screeningReviewers", "screeningSources", "screeningChecks"] as const) for (const row of await ctx.db.query(table).withIndex("by_job", (q) => q.eq("jobId", jobId)).take(500)) await ctx.db.delete(table, row._id);
-    for (const row of await ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", jobId)).take(5000)) await ctx.db.delete("screeningAgreement", row._id);
-    for (const row of await ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId)).take(1000)) await ctx.db.delete("screeningNotices", row._id);
+    // The small tables go the same way: a step of each, and the screening itself once none is left.
+    const pairs = await ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    for (const row of pairs) await ctx.db.delete("screeningAgreement", row._id);
+    const notices = await ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    for (const row of notices) await ctx.db.delete("screeningNotices", row._id);
+    const checks = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    for (const row of checks) await ctx.db.delete("screeningChecks", row._id);
+    if (pairs.length || notices.length || checks.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
+    for (const row of await reviewersOf(ctx, jobId)) await ctx.db.delete("screeningReviewers", row._id);
+    for (const row of await sourcesOf(ctx, jobId)) await ctx.db.delete("screeningSources", row._id);
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
     if (progress) await ctx.db.delete("screeningJobProgress", progress._id);
     await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: jobId });

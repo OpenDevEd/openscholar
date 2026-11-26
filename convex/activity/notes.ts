@@ -4,7 +4,7 @@
 
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { DETAIL_MAX, itemKey, type Note } from "./validators";
+import { DETAIL_MAX, MORE_MAX, itemKey, type Note } from "./validators";
 
 /** Writes the rows for what a change did, as `by` in `workspaceId`. */
 export async function noteActivity(ctx: Pick<MutationCtx, "db">, who: { workspaceId: Id<"workspaces">; by: Id<"users">; viaAssistant: boolean }, notes: Note | Note[] | null | undefined) {
@@ -18,6 +18,8 @@ export async function noteActivity(ctx: Pick<MutationCtx, "db">, who: { workspac
       // Whole characters: an emoji cut in two is no character at all.
       ...(note.detail ? { detail: [...note.detail].slice(0, DETAIL_MAX).join("") } : {}),
       ...(who.viaAssistant ? { viaAssistant: true as const } : {}),
+      ...(note.code ? { code: note.code } : {}),
+      ...(note.more?.length ? { more: note.more.slice(0, MORE_MAX).map((line) => ({ ...line, ...(line.detail ? { detail: [...line.detail].slice(0, DETAIL_MAX).join("") } : {}) })) } : {}),
     });
   }
 }

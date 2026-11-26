@@ -10,7 +10,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
-import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
+import type { ScreeningReadData } from "../../lib/ai/core/batch-types";
 import { answerOf } from "../../lib/screening/setup";
 import { screeningPaperCredits } from "../../lib/pricing";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
@@ -35,7 +35,7 @@ export const readPaper = internalAction({
     const pricing = { input: context.model.input, output: context.model.output };
     const questions = context.criteria.map(asked);
     try {
-      const { result, credits } = await withUserCredits<ScreeningResultData>(
+      const { result, credits } = await withUserCredits<ScreeningReadData>(
         ctx,
         { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: screeningPaperCredits(pricing), hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
         pricing,

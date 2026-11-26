@@ -14,7 +14,8 @@ import type { MutationCtx } from "../_generated/server";
 import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, settle, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
-import { countDealt, dealOpen, reviewersOf } from "./dealing";
+import { project, type Place } from "../../lib/screening/project";
+import { countDealt, dealable, modelRow, personRow, readingModel, reviewersOf, votesOf } from "./dealing";
 import type { Infer } from "convex/values";
 import type { reviewerCountsValidator } from "./validators";
 
@@ -27,6 +28,9 @@ type Counted = NonNullable<Vote["counted"]>;
 const ACTIVE_EVERY_MS = 60_000;
 const NO_COUNTS: Counts = { cast: 0, include: 0, maybe: 0, exclude: 0, failed: 0, closed: 0, spent: 0 };
 export const NO_RESULTS = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
+
+/** A vote's row as the rules read a place (lib/screening/project.ts). */
+export const placeOf = (vote: Vote, reviewer: Reviewer | undefined): Place => ({ reviewer: vote.reviewerId, kind: reviewer?.kind ?? "person", status: vote.status, ...(vote.decision ? { decision: vote.decision } : {}), ...(vote.reason ? { reason: vote.reason } : {}), ...(vote.at === undefined ? {} : { at: vote.at }), ...(vote.answers ? { answers: vote.answers as Record<string, Answer> } : {}) });
 
 /** A vote as the rule reads it. A model's decision follows its answers under the criteria as they are now; a person's is the one they gave. */
 export function ballotOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): Ballot & { decision?: Decision } {
@@ -73,30 +77,38 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   let freed = 0;
   let queued = 0;
 
+  const team = { people: reviewers.filter(dealable).map((one) => one._id as string), models: reviewers.filter(readingModel).map((one) => one._id as string) };
   for (const paper of papers) {
-    let votes = await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paper._id)).take(500);
+    let votes = await votesOf(ctx, paper._id);
     const ballots = () => votes.map((vote) => ballotOf(job, vote, byId.get(vote.reviewerId)));
     const was: Result = paper.result ?? "waiting";
     // Held through a change of settings: settled by then, and nobody has voted on it or asked for it to be checked again since.
     const held = isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
-    let now: Result = paper.resolved ? paper.resolved.decision : held ? was : settle(job.rule!.settle, ballots());
-    if (!held && !isFinal(now) && !paper.resolved) {
-      // Still open: its places follow the people and the rule as they are now, which can settle it or open it further.
-      const { made, gone } = await dealOpen(ctx, job, paper, votes, reviewers, { models: paper.reopen === "recheck" });
-      if (made.length || gone.length || votes.some((vote) => vote.status === "closed")) {
-        for (const vote of gone) add(countsOf(vote.reviewerId), vote.counted, -1);
-        for (const [vote, sign] of [...made.map((one) => [one, 1] as const), ...gone.map((one) => [one, -1] as const)]) dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) + sign);
-        votes = [...votes.filter((vote) => !gone.includes(vote)).map((vote) => (vote.status === "closed" ? { ...vote, status: "waiting" as const } : vote)), ...made];
-        queued += made.filter((vote) => vote.waitingWorkspace !== undefined).length;
-        now = settle(job.rule!.settle, ballots());
-      }
+    // Where it stands and who is on it is one sum, the same one a change's preview runs (lib/screening/project.ts): this applies it to the rows.
+    const places = votes.map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
+    const plan = project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" });
+    const now = plan.result;
+    const rowOf = (place: Place) => votes[places.indexOf(place)]!;
+    for (const place of plan.gone) {
+      const vote = rowOf(place);
+      await ctx.db.delete("screeningVotes", vote._id);
+      add(countsOf(vote.reviewerId), vote.counted, -1);
+      dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) - 1);
     }
-    // Settled: the places nobody voted from are closed, and their people's queues let go of the paper.
-    if (isFinal(now)) {
-      const closing = votes.filter((vote) => vote.status === "waiting" && byId.get(vote.reviewerId)?.kind === "person");
-      for (const vote of closing) await ctx.db.patch("screeningVotes", vote._id, { status: "closed" });
-      votes = votes.map((vote) => (closing.includes(vote) ? { ...vote, status: "closed" as const } : vote));
+    for (const place of plan.reopened) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "waiting" });
+    for (const place of plan.closed) if (places.includes(place)) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed" });
+    const fresh: Vote[] = [];
+    for (const place of plan.made) {
+      const reviewer = byId.get(place.reviewer as Id<"screeningReviewers">)!;
+      // A place given and closed in one pass, on a paper another vote settled meanwhile, is made closed.
+      const row = { ...(place.kind === "model" ? modelRow(job, paper, reviewer) : personRow(job, paper, reviewer)), ...(plan.closed.includes(place) ? { status: "closed" as const } : {}) };
+      fresh.push((await ctx.db.get("screeningVotes", await ctx.db.insert("screeningVotes", row)))!);
+      dealt.set(reviewer._id, (dealt.get(reviewer._id) ?? 0) + 1);
+      if (place.kind === "model" && "waitingWorkspace" in row) queued++;
     }
+    const gone = new Set(plan.gone.map(rowOf));
+    const status = new Map([...plan.reopened.map((place) => [rowOf(place)._id, "waiting"] as const), ...plan.closed.filter((place) => places.includes(place)).map((place) => [rowOf(place)._id, "closed"] as const)]);
+    votes = [...votes.filter((vote) => !gone.has(vote)).map((vote) => (status.has(vote._id) ? { ...vote, status: status.get(vote._id)! } : vote)), ...fresh];
 
     // Each vote adds what it now is to its reviewer's counts, and each pair of votes to their agreement.
     const before = votes.flatMap((vote) => (vote.counted?.status === "cast" && vote.counted.decision ? [{ id: vote.reviewerId, decision: vote.counted.decision }] : []));

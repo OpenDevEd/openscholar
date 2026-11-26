@@ -12,7 +12,7 @@ import type { InWorkspace } from "../workspaces/actor";
 import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt } from "./dealing";
+import { countDealt, votesOf } from "./dealing";
 import { decisionValidator, SCREENING_TEXT, voteAnswersValidator } from "./validators";
 
 /** A paper of a screening, by its ID there. */
@@ -42,7 +42,7 @@ async function cast(ctx: MutationCtx, actor: InWorkspace, { jobId, paperId, deci
   requireReason(job, reason);
   if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
-  const mine = (await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paperId)).take(500)).find((vote) => vote.reviewerId === reviewer._id);
+  const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (decision === null) {
     // Taken back: the place is theirs again to vote from.
     if (mine?.status !== "cast") return;

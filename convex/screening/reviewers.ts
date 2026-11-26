@@ -11,18 +11,18 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { noteActivity } from "../activity/notes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { personName } from "../lib/people";
-import { defineUserMutation, defineUserQuery, userMutation, userQuery, type Acting } from "../lib/userActions";
+import { defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
 import { readersFor, takesOver } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, dealable, MAX_REVIEWERS, modelRow, readingModel, reviewersOf } from "./dealing";
+import { logChange } from "./log";
+import { countDealt, dealable, MAX_REVIEWERS, modelRow, readingModel, reviewersOf, votesOf } from "./dealing";
 import { modelFor, modelInput, MODELS_A_SCREENING } from "./screenings";
 import { startWaitingVotes } from "./slots";
 
@@ -30,9 +30,6 @@ type Reviewer = Doc<"screeningReviewers">;
 
 /** Papers one step of a change to the reviewers looks at. */
 const STEP = 100;
-
-const noted = (ctx: MutationCtx, actor: Pick<Acting, "userId" | "author">, job: Doc<"screeningJobs">, happened: "added" | "removed" | "retried" | "moved" | "edited", detail: string, count?: number) =>
-  noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "screening", id: job._id, happened, detail, ...(count === undefined ? {} : { count }) });
 
 const nameOf = async (ctx: Pick<MutationCtx, "db">, reviewer: Reviewer) => {
   if (reviewer.kind === "model") return (reviewer.modelId ? (await ctx.db.get("models", reviewer.modelId))?.name : undefined) ?? "A model";
@@ -75,11 +72,12 @@ export const join = internalMutation({
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const people = new Map((await reviewersOf(ctx, jobId)).map((one) => [one._id, one]));
     for (const paper of page.page) {
-      const votes = await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paper._id)).take(500);
+      const votes = await votesOf(ctx, paper._id);
       const persons = votes.filter((vote) => people.get(vote.reviewerId)?.kind === "person");
       if (persons.some((vote) => vote.reviewerId === reviewerId)) continue;
       const waiting = persons.filter((vote) => vote.status === "waiting");
-      const place = !everyone && result === "waiting" ? takesOver(paper._id, reviewerId, before, waiting.length) : null;
+      // By their account, which names them before their row exists: a change's preview takes the same places (lib/screening/project.ts `withJoined`).
+      const place = !everyone && result === "waiting" ? takesOver(paper._id, reviewer.userId ?? reviewerId, before, waiting.length) : null;
       if (place !== null) {
         const taken = waiting[place]!;
         await ctx.db.patch("screeningVotes", taken._id, { reviewerId });
@@ -156,7 +154,7 @@ export const enlist = internalMutation({
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: STEP });
     let made = 0;
     for (const paper of page.page) {
-      const votes = await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paper._id)).take(500);
+      const votes = await votesOf(ctx, paper._id);
       const mine = votes.find((vote) => vote.reviewerId === reviewerId);
       // Back after its votes were thrown out, it reads the paper again.
       if (mine?.status === "discarded") await ctx.db.patch("screeningVotes", mine._id, { ...modelRow(job, paper, reviewer), decision: undefined, answers: undefined, confidences: undefined, passages: undefined, reason: undefined, at: undefined });
@@ -195,7 +193,7 @@ export const addAction = defineUserMutation({
       const person = await ctx.db.get("users", personId);
       if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
       await addPerson(ctx, job, personId, actor.userId);
-      await noted(ctx, actor, job, "added", personName(person) || person.email);
+      await logChange(ctx, actor, job, "reviewerAdded", { detail: personName(person) || person.email });
       return null;
     }
     const picked = await modelFor(ctx, model!.model);
@@ -208,7 +206,7 @@ export const addAction = defineUserMutation({
     // One that comes back with its votes kept goes on from the papers it hadn't read.
     if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, addedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId, reviewerId, cursor: null, result: "waiting" });
-    await noted(ctx, actor, job, "added", picked.name);
+    await logChange(ctx, actor, job, "reviewerAdded", { detail: picked.name });
     return null;
   },
 });
@@ -232,7 +230,7 @@ export const removeAction = defineUserMutation({
     const grant = reviewer.userId ? await grantOf(ctx, jobId, reviewer.userId) : null;
     if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
     await takeOff(ctx, job, reviewer, discard === true);
-    await noted(ctx, actor, job, "removed", await nameOf(ctx, reviewer));
+    await logChange(ctx, actor, job, grant?.role === "editor" ? "madeViewer" : "reviewerRemoved", { detail: await nameOf(ctx, reviewer), more: discard ? [{ code: "votesDiscarded" }] : [] });
     return null;
   },
 });
@@ -251,7 +249,7 @@ export const joinAction = defineUserMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to join.");
     await addPerson(ctx, job, actor.userId, actor.userId);
     const me = await ctx.db.get("users", actor.userId);
-    await noted(ctx, actor, job, "added", me ? personName(me) || me.email : "A reviewer");
+    await logChange(ctx, actor, job, "reviewerJoined", { detail: me ? personName(me) || me.email : "" });
     return null;
   },
 });
@@ -291,11 +289,11 @@ export const moveAction = defineUserMutation({
     if (!giver || !taker || giver.jobId !== jobId || taker.jobId !== jobId || !dealable(giver) || !dealable(taker) || from === to) throw createError("VALIDATION_ERROR", "Pick two people who are on this screening.");
     const most = Math.min(Math.max(0, Math.floor(papers)), MOVE_MAX);
     // From the far end of their queue, passing the ones the other person is on already.
-    const waiting = stream(ctx.db, schema).query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc");
+    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_LOOKED);
     let moved = 0;
-    for await (const vote of waiting) {
+    for (const vote of waiting) {
       if (moved >= most) break;
-      const others = await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", vote.resultId)).take(500);
+      const others = await votesOf(ctx, vote.resultId);
       if (others.some((one) => one.reviewerId === to)) continue;
       await ctx.db.patch("screeningVotes", vote._id, { reviewerId: to });
       // It goes back to them only where nobody else is left to take it.
@@ -304,26 +302,28 @@ export const moveAction = defineUserMutation({
       moved++;
     }
     await countDealt(ctx, new Map([[from, -moved], [to, moved]]));
-    if (moved) await noted(ctx, actor, job, "moved", `${await nameOf(ctx, giver)} to ${await nameOf(ctx, taker)}`, moved);
+    if (moved) await logChange(ctx, actor, job, "papersMoved", { count: moved, detail: await nameOf(ctx, giver), more: [{ code: "to", detail: await nameOf(ctx, taker) }] });
     return { moved };
   },
 });
 export const move = userMutation(moveAction);
-/** The most papers one call moves between two people. */
-const MOVE_MAX = 500;
+/** The most papers one call moves between two people, and how far down a queue it looks for them. */
+const MOVE_MAX = 200;
+const MOVE_LOOKED = 400;
 
 export const movableAction = defineUserQuery({
   path: "screening/reviewers:movable",
-  description: "Counts the papers one person on a screening hasn't voted on yet that another person on it doesn't have: what can be moved from the first to the second, counted up to 500.",
+  description: "Counts the papers one person on a screening hasn't voted on yet that another person on it doesn't have: what can be moved from the first to the second, counted up to 200.",
   args: { jobId: v.id("screeningJobs"), from: v.id("screeningReviewers"), to: v.id("screeningReviewers") },
   returns: v.number(),
   run: async (ctx, actor, { jobId, from, to }) => {
     await requireMember(ctx, actor, jobId);
     const [giver, taker] = await Promise.all([ctx.db.get("screeningReviewers", from), ctx.db.get("screeningReviewers", to)]);
     if (giver?.jobId !== jobId || taker?.jobId !== jobId) return 0;
-    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).take(MOVE_MAX);
-    const theirs = new Set((await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", to)).take(MOVE_MAX * 4)).map((vote) => vote.resultId));
-    return waiting.filter((vote) => !theirs.has(vote.resultId)).length;
+    // The far end of the first person's queue, each paper looked at for the second person's place on it.
+    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_MAX);
+    const free = await Promise.all(waiting.map(async (vote) => !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === to)));
+    return free.filter(Boolean).length;
   },
 });
 export const movable = userQuery(movableAction);
@@ -344,7 +344,7 @@ export const remindAction = defineUserMutation({
     if (reviewer.reminded && Date.now() - reviewer.reminded < 86_400_000) throw createError("CONFLICT", "They were reminded less than a day ago.");
     await ctx.db.patch("screeningReviewers", reviewerId, { reminded: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId, userId: reviewer.userId!, about: "reminder", by: actor.userId });
-    await noted(ctx, actor, job, "edited", `Reminded ${await nameOf(ctx, reviewer)}`);
+    await logChange(ctx, actor, job, "reminded", { detail: await nameOf(ctx, reviewer) });
     return null;
   },
 });
@@ -364,7 +364,8 @@ export const retryAction = defineUserMutation({
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (reviewer?.jobId !== jobId || !readingModel(reviewer)) throw createError("NOT_FOUND", "That model isn't on this screening.");
     await ctx.scheduler.runAfter(0, internal.screening.reviewers.reread, { jobId, reviewerId });
-    await noted(ctx, actor, job, "retried", await nameOf(ctx, reviewer));
+    const failed = (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())?.reviewers?.[reviewerId]?.failed;
+    await logChange(ctx, actor, job, "retried", { detail: await nameOf(ctx, reviewer), ...(failed ? { count: failed } : {}) });
     return null;
   },
 });

@@ -21,7 +21,8 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { ZOTERO_PAGE } from "../zotero/libraryValidators";
-import { countDealt, dealNew, reviewersOf } from "./dealing";
+import { countDealt, dealNew, reviewersOf, sourcesOf } from "./dealing";
+import { checked } from "./living";
 import { papersIn } from "./estimate";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
@@ -54,7 +55,7 @@ export const next = internalQuery({
     const check = await ctx.db.get("screeningChecks", checkId);
     const job = check?.state === "running" ? await ctx.db.get("screeningJobs", check.jobId) : null;
     if (!job) return null;
-    const sources = await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(200);
+    const sources = await sourcesOf(ctx, job._id);
     const part = sources.findIndex((source) => source.removedAt === undefined && (source.state === "waiting" || source.state === "reading"));
     const source = sources[part];
     if (!source) return null;
@@ -173,6 +174,8 @@ export const jobOf = internalQuery({
 });
 
 type PaperInput = Infer<typeof screeningPaperInputValidator>;
+/** Papers of one title and year looked at for the one a record is: versions of a paper share them, and seldom more than a few do. */
+const SAME_TITLE = 5;
 
 /** The paper of a screening that a record is, if it has it already: by its key, then its DOI, then its title and year where one of the two has no DOI. */
 async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, paper: { paperKey: string; doiKey?: string; titleKey: string }) {
@@ -182,7 +185,7 @@ async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, 
   const byDoi = doiKey ? await ctx.db.query("screeningResults").withIndex("by_job_and_doiKey", (q) => q.eq("jobId", jobId).eq("doiKey", doiKey)).first() : null;
   if (byDoi) return byDoi;
   // Two records with different DOIs are never merged on their title: a preprint and its article share one.
-  const titled = await ctx.db.query("screeningResults").withIndex("by_job_and_titleKey", (q) => q.eq("jobId", jobId).eq("titleKey", paper.titleKey)).take(5);
+  const titled = await ctx.db.query("screeningResults").withIndex("by_job_and_titleKey", (q) => q.eq("jobId", jobId).eq("titleKey", paper.titleKey)).take(SAME_TITLE);
   return titled.find((one) => !doiKey || !one.doiKey) ?? null;
 }
 
@@ -205,10 +208,10 @@ export const fill = internalMutation({
     const now = Date.now();
     let [taken, duplicates, left] = [0, 0, 0];
     const leave = async (name: string, why: Why, paperKey?: string) => {
-      // A check that reads a source again finds what it left out before: named once.
+      left++;
+      // A check that reads a source again finds what it left out before: counted again, and named once.
       if (paperKey && (await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first())) return;
       await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
-      left++;
     };
     for (const sent of papers) {
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
@@ -268,8 +271,10 @@ export const end = internalMutation({
     if (check?.state !== "running") return null;
     const job = await ctx.db.get("screeningJobs", check.jobId);
     await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
-    if (job) await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, updatedAt: Date.now() });
-    if (job) await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
+    if (!job) return null;
+    await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, updatedAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
+    await checked(ctx, job, check);
     return null;
   },
 });

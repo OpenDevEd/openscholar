@@ -1,6 +1,7 @@
 // The shape of activity rows (#656), kept apart from the functions so the schema can read it.
 
 import { v, type Infer } from "convex/values";
+import { capped } from "../lib/listCaps";
 
 /** The kinds of item that keep activity. */
 export const itemKinds = ["collection", "search", "screening", "extraction", "author"] as const;
@@ -11,6 +12,16 @@ export type ItemKind = Infer<typeof itemKindValidator>;
 export const activityKinds = ["created", "renamed", "edited", "added", "removed", "rated", "answered", "screened", "extracted", "paused", "resumed", "retried", "stopped", "moved", "shared"] as const;
 export const activityKindValidator = v.union(...activityKinds.map((kind) => v.literal(kind)));
 
+/**
+ * What happened, more exactly than its kind, for an item whose own page words its changes (a screening's): a code the
+ * page has a sentence for, and under it what the change did, a line each (`more`). The count and the word about it
+ * fill the sentence.
+ */
+const lineValidator = v.object({ code: v.string(), count: v.optional(v.number()), detail: v.optional(v.string()) });
+export const MORE_MAX = 12;
+export const moreValidator = capped(v.optional(v.array(lineValidator)), MORE_MAX);
+const exactly = { code: v.optional(v.string()), more: moreValidator };
+
 /** One change an entry declares: to which item, what happened, how many papers it took in, and a word about it (a name, a query). */
 export const noteValidator = v.object({
   kind: itemKindValidator,
@@ -18,6 +29,7 @@ export const noteValidator = v.object({
   happened: activityKindValidator,
   count: v.optional(v.number()),
   detail: v.optional(v.string()),
+  ...exactly,
 });
 export type Note = Infer<typeof noteValidator>;
 
@@ -36,4 +48,5 @@ export const activityFields = {
   detail: v.optional(v.string()),
   // The assistant made it for `by`.
   viaAssistant: v.optional(v.literal(true)),
+  ...exactly,
 };

@@ -33,7 +33,10 @@ export interface ScreeningResultData {
   confidences: Record<string, number>
   /** The mean of `confidences`. */
   confidence: number
-  /** The sentence of the abstract each response relied on, counted from 0, where the model was asked for one and named one. */
+}
+
+/** A screening that also names, for each response, the sentence of the abstract it relied on, counted from 0: asked for by a screening with reviewers (convex/screening/reading.ts), and null where the model named none. */
+export interface ScreeningReadData extends ScreeningResultData {
   passages?: Record<string, number | null>
 }
 

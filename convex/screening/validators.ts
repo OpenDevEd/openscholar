@@ -4,6 +4,7 @@ import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
 import { librarySourceValidator } from "../evidenceLibraries/validators";
+import { effortValidator } from "../aiModelConfig/validators";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -234,7 +235,8 @@ export const sourceSetValidator = v.union(
   v.object({ kind: v.literal("evidenceLibrary"), libraryId: v.id("evidenceLibraries"), source: librarySourceValidator }),
   // `deep`: with the collections under the one it names.
   v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), deep: v.optional(v.boolean()) }),
-  v.object({ kind: v.literal("upload"), file: v.id("_storage"), columns: v.optional(v.record(v.string(), v.string())) }),
+  // `columns`: which of a table's columns is the title, the abstract and so on, where its headings didn't say.
+  v.object({ kind: v.literal("upload"), file: v.id("_storage"), columns: capped(v.optional(v.record(v.string(), v.string())), 20) }),
   v.object({ kind: v.literal("pdf"), files: capped(v.array(v.object({ file: v.id("_storage"), name: v.string() })), 200) }),
   v.object({ kind: v.literal("dois"), file: v.id("_storage") }),
 );
@@ -244,3 +246,108 @@ export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("tit
 
 /** What a reviewer's votes come to, kept by the bookkeeping worker alone. */
 export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.number(), maybe: v.number(), exclude: v.number(), failed: v.number(), closed: v.number(), spent: v.number() });
+
+// ── What the pages read (./view.ts, ./paperViews.ts) ─────────────────────────────────────────────
+// Each list here is one its writes keep within a cap: a screening's reviewers and sources, and a paper's votes.
+
+/** The most reviewers a screening has, people who left it included, and the most sources it has ever had. */
+export const MAX_REVIEWERS = 200;
+export const MAX_SOURCE_ROWS = 100;
+
+export const starsValidator = capped(v.optional(v.array(v.number())), MAX_STARS);
+export const voteConfidencesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
+export const optionalPassagesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
+
+const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean() });
+
+/**
+ * A reviewer as every page shows them. `id` is what a vote, a rule or a link names them by: a person's account, and
+ * a model's own row. `row` is their row, which changes to them take.
+ */
+export const reviewerViewValidator = v.object({
+  row: v.id("screeningReviewers"),
+  id: v.string(),
+  kind: v.union(v.literal("person"), v.literal("model")),
+  name: v.string(),
+  imageUrl: v.optional(v.string()),
+  model: v.optional(modelViewValidator),
+  // From outside the screening's workspace: they vote as a guest of it.
+  guest: v.optional(v.literal(true)),
+  addedAt: v.number(),
+  left: v.optional(v.number()),
+  discarded: v.optional(v.number()),
+  reminded: v.optional(v.number()),
+  // Papers given to them, the ones they voted on by how, the ones a model couldn't read, the ones that still wait for them, and what a model has cost.
+  dealt: v.number(),
+  cast: v.number(),
+  include: v.number(),
+  maybe: v.number(),
+  exclude: v.number(),
+  failed: v.number(),
+  waiting: v.number(),
+  spent: v.number(),
+});
+export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
+
+export const sourceViewValidator = v.object({
+  id: v.id("screeningSources"),
+  set: sourceSetValidator,
+  name: v.string(),
+  detail: v.optional(v.string()),
+  first: v.optional(v.number()),
+  last: v.optional(v.number()),
+  addedAt: v.number(),
+  removedAt: v.optional(v.number()),
+  state: v.union(v.literal("waiting"), v.literal("reading"), v.literal("done"), v.literal("failed")),
+  failure: v.optional(v.string()),
+  // What it holds, how many of its papers were read, and of those the ones taken, merged with another source's and left out.
+  total: v.optional(v.number()),
+  read: v.number(),
+  taken: v.number(),
+  duplicates: v.number(),
+  left: v.number(),
+  checkedAt: v.optional(v.number()),
+});
+export const sourceViewsValidator = capped(v.array(sourceViewValidator), MAX_SOURCE_ROWS);
+
+/** A vote as a page shows it. */
+export const voteViewValidator = v.object({
+  decision: decisionValidator,
+  answers: voteAnswersValidator,
+  reason: v.optional(v.string()),
+  note: v.optional(v.string()),
+  at: v.number(),
+  flagged: v.optional(v.boolean()),
+  confidences: voteConfidencesValidator,
+  passages: optionalPassagesValidator,
+});
+/** One reviewer's place on a paper: their vote where the person looking may see it, that a model couldn't read the paper, or only that they are on it. */
+const castViewValidator = v.object({ reviewer: v.string(), vote: v.optional(voteViewValidator), failed: v.optional(v.boolean()), hidden: v.optional(v.boolean()) });
+
+/** A paper with the votes the person looking may see (./paperViews.ts `shown`). */
+export const paperViewValidator = v.object({
+  id: v.id("screeningResults"),
+  key: v.string(),
+  title: v.string(),
+  authors: screeningAuthorsValidator,
+  year: v.optional(v.number()),
+  venue: v.optional(v.string()),
+  cited: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  abstract: v.string(),
+  source: v.optional(v.id("screeningSources")),
+  batch: v.optional(v.id("screeningChecks")),
+  place: v.number(),
+  result: paperResultValidator,
+  reason: v.optional(v.string()),
+  points: v.optional(v.number()),
+  stars: v.optional(v.number()),
+  // A person settled it, whatever its votes say.
+  resolved: v.optional(v.object({ by: v.id("users"), note: v.optional(v.string()), reason: v.optional(v.string()), at: v.number() })),
+  // Whether the person looking sees the other votes on it, and what was written about it.
+  sees: v.boolean(),
+  cast: capped(v.array(castViewValidator), MAX_REVIEWERS),
+  // Whether the paper is theirs to vote on.
+  mine: v.boolean(),
+  messages: v.number(),
+});

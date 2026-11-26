@@ -13,8 +13,8 @@ import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { decide, isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { reviewersOf } from "./dealing";
-import { decisionValidator, paperResultValidator, screeningAuthorsValidator, voteAnswersValidator, votePassagesValidator } from "./validators";
+import { reviewersOf, votesOf } from "./dealing";
+import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;
@@ -23,47 +23,9 @@ type Reviewer = Doc<"screeningReviewers">;
 /** What a reviewer is named by on a page: a person's account, a model's own row. */
 const viewId = (reviewer: Reviewer) => (reviewer.kind === "person" && reviewer.userId ? reviewer.userId : reviewer._id);
 
-const voteValidator = v.object({
-  decision: decisionValidator,
-  answers: voteAnswersValidator,
-  reason: v.optional(v.string()),
-  note: v.optional(v.string()),
-  at: v.number(),
-  flagged: v.optional(v.boolean()),
-  confidences: v.optional(v.record(v.string(), v.number())),
-  passages: v.optional(votePassagesValidator),
-});
-
-/** One reviewer's place on a paper: their vote where the person looking may see it, that a model couldn't read the paper, or only that they are on it. */
-const castValidator = v.object({ reviewer: v.string(), vote: v.optional(voteValidator), failed: v.optional(v.boolean()), hidden: v.optional(v.boolean()) });
-
-const paperValidator = v.object({
-  id: v.id("screeningResults"),
-  key: v.string(),
-  title: v.string(),
-  authors: screeningAuthorsValidator,
-  year: v.optional(v.number()),
-  venue: v.optional(v.string()),
-  cited: v.optional(v.number()),
-  doi: v.optional(v.string()),
-  abstract: v.string(),
-  source: v.optional(v.id("screeningSources")),
-  batch: v.optional(v.id("screeningChecks")),
-  place: v.number(),
-  result: paperResultValidator,
-  reason: v.optional(v.string()),
-  points: v.optional(v.number()),
-  stars: v.optional(v.number()),
-  // A person settled it, whatever its votes say.
-  resolved: v.optional(v.object({ by: v.id("users"), note: v.optional(v.string()), reason: v.optional(v.string()), at: v.number() })),
-  // Whether the person looking sees the other votes on it, and what was written about it.
-  sees: v.boolean(),
-  cast: v.array(castValidator),
-  // Whether the paper is theirs to vote on, and their own vote.
-  mine: v.boolean(),
-  messages: v.number(),
-});
-export type PaperView = Infer<typeof paperValidator>;
+type VoteView = Infer<typeof voteViewValidator>;
+const paperValidator = paperViewValidator;
+export type PaperView = Infer<typeof paperViewValidator>;
 
 /** A screening as the paper reads need it: who is on it, and what the person looking is to it. */
 type Looking = Standing & { reviewers: Map<Id<"screeningReviewers">, Reviewer>; first: Id<"screeningChecks"> | undefined };
@@ -75,7 +37,7 @@ async function lookingAt(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: I
 }
 
 /** A vote as a page shows it. A model's decision follows its answers under the criteria as they are now, as the rule reads it. */
-function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): Infer<typeof voteValidator> | undefined {
+function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): VoteView | undefined {
   if (vote.status !== "cast" || !vote.decision) return undefined;
   const answers = (vote.answers ?? {}) as Record<string, Answer>;
   const read = reviewer?.kind === "model" ? decide(answers, job.criteria ?? []) : { decision: vote.decision, reason: vote.reason };
@@ -125,7 +87,7 @@ export function shown({ job, reviewer, reviewers, first }: Looking, paper: Paper
   };
 }
 
-const votesOn = (ctx: Pick<QueryCtx, "db">, paperId: Id<"screeningResults">) => ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", paperId)).take(500);
+const votesOn = votesOf;
 const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOn(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
 const byJob = { jobId: v.id("screeningJobs") };

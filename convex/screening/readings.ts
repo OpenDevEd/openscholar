@@ -14,7 +14,7 @@ import { screeningPool } from "../workpool";
 import { effortValidator } from "../aiModelConfig/validators";
 import { bookkeepLater } from "./bookkeeping";
 import { decide, type Answer } from "../../lib/screening/rules";
-import { modelsFree } from "./dealing";
+import { modelsFree, reviewersOf } from "./dealing";
 import { startWaitingVotes } from "./slots";
 import { criteriaValidator, voteAnswersValidator, votePassagesValidator } from "./validators";
 
@@ -103,7 +103,7 @@ export const done = screeningPool.defineOnComplete({
 const SWEEP = 200;
 
 async function modelReviewers(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">) {
-  return (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(200)).filter((one) => one.kind === "model");
+  return (await reviewersOf(ctx, jobId)).filter((one) => one.kind === "model");
 }
 
 /**

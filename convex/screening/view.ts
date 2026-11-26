@@ -9,18 +9,20 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { effortValidator } from "../aiModelConfig/validators";
+import { itemKey, moreValidator } from "../activity/validators";
 import { availableCredits } from "../billing/accounts";
 import { countOf, screeningsOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import { grantOf } from "../sharing/items";
+import { grantOf, itemGuestsOf } from "../sharing/items";
+import { isFinal } from "../../lib/screening/rules";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { reviewersOf } from "./dealing";
+import { reviewersOf, sourcesOf } from "./dealing";
 import { NO_RESULTS } from "./settling";
-import { criteriaValidator, everyValidator, leftOutWhyValidator, sourceSetValidator } from "./validators";
+import { criteriaValidator, everyValidator, leftOutWhyValidator, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -29,37 +31,7 @@ const personOf = (user: Doc<"users">): Person => ({ id: user._id, name: personNa
 /** Someone whose account is gone still has a name where their votes are. */
 const SOMEONE = "Someone who left";
 
-const modelValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean() });
-
-/**
- * A reviewer as every page shows them. `id` is what a vote, a rule or a link names them by: a person's account, an
- * address not joined yet as `invite:<address>`, and a model's own row. `row` is their row, which changes to them take.
- */
-const reviewerValidator = v.object({
-  row: v.id("screeningReviewers"),
-  id: v.string(),
-  kind: v.union(v.literal("person"), v.literal("model")),
-  name: v.string(),
-  imageUrl: v.optional(v.string()),
-  email: v.optional(v.string()),
-  model: v.optional(modelValidator),
-  // From outside the screening's workspace: they vote as a guest of it.
-  guest: v.optional(v.literal(true)),
-  addedAt: v.number(),
-  left: v.optional(v.number()),
-  discarded: v.optional(v.number()),
-  reminded: v.optional(v.number()),
-  // Papers given to them, the ones they voted on by how, the ones a model couldn't read, the ones that still wait for them, and what a model has cost.
-  dealt: v.number(),
-  cast: v.number(),
-  include: v.number(),
-  maybe: v.number(),
-  exclude: v.number(),
-  failed: v.number(),
-  waiting: v.number(),
-  spent: v.number(),
-});
-export type ReviewerView = Infer<typeof reviewerValidator>;
+export type ReviewerView = Infer<typeof reviewerViewValidator>;
 
 const countsValidator = v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number(), waiting: v.number() });
 /** What a screening's models are doing, or null where none has a paper left to read. */
@@ -77,6 +49,9 @@ async function workspaceOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspace
   const owner = workspace ? await ctx.db.get("users", workspace.userId) : null;
   return { id: workspaceId, kind: "personal", name: owner ? personName(owner) || owner.email : "A workspace", ...(owner?.avatarUrl ? { imageUrl: owner.avatarUrl } : {}) };
 }
+
+/** Questions put to one person on one screening that its pages count and open: the first of them. */
+const ASKED_SHOWN = 50;
 
 /** What a list's row and a screening's frame both say of it. */
 const summaryFields = {
@@ -96,16 +71,18 @@ const summaryFields = {
   member: v.boolean(),
   isReviewer: v.boolean(),
   canResolve: v.boolean(),
-  reviewers: v.array(reviewerValidator),
+  reviewers: reviewerViewsValidator,
   total: v.number(),
   counts: countsValidator,
   // What waits for the person looking: papers to vote on, conflicts to settle, and the papers a reviewer asked them about.
   forYou: v.number(),
   conflicts: v.number(),
-  asked: v.array(v.id("screeningResults")),
+  // How many, counted up to a few dozen, and the first of them, which a link to "your questions" opens.
+  asked: v.number(),
+  askedFirst: v.optional(v.id("screeningResults")),
   models: modelsStateValidator,
   // The screening whose models read before this one's, while its own wait for the workspace's slots.
-  ahead: v.optional(v.object({ id: v.id("screeningJobs"), name: v.string() })),
+  ahead: v.optional(v.object({ id: v.id("screeningJobs"), name: v.string(), done: v.number(), of: v.number() })),
   // Its papers are still being fetched from its sources: how many have arrived.
   gathering: v.optional(v.object({ done: v.number(), by: v.optional(v.id("users")), first: v.boolean() })),
   activeAt: v.number(),
@@ -123,7 +100,7 @@ async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
     return { ...base, id: reviewer._id, kind: "model", name: model?.name ?? "A model", ...(model ? { model: { _id: model._id, modelId: model.modelId, name: model.name, inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden } } : {}) };
   }
   const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
-  if (!user) return { ...base, id: reviewer.email ? `invite:${reviewer.email}` : reviewer._id, kind: "person", name: reviewer.email ?? SOMEONE, ...(reviewer.email ? { email: reviewer.email } : {}) };
+  if (!user) return { ...base, id: reviewer._id, kind: "person", name: SOMEONE };
   if (!members.has(user._id)) members.set(user._id, (await actorIn(ctx, user, job.workspaceId)) !== null);
   return { ...base, ...personOf(user), kind: "person", ...(members.get(user._id) ? {} : { guest: true as const }) };
 }
@@ -141,14 +118,19 @@ async function modelsNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, r
     // None of its papers is being read: the workspace's slots are taken by a screening that started before it.
     const head = await ctx.db.query("screeningVotes").withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", job.workspaceId).gte("waitingSince", 0)).first();
     const ahead = head && head.jobId !== job._id ? await ctx.db.get("screeningJobs", head.jobId) : null;
-    if (ahead) return { state: "waiting" as const, ahead: { id: ahead._id, name: ahead.name ?? "Another screening" } };
+    if (ahead) {
+      // How far that one's models have read: the place of the slowest of them.
+      const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
+      const read = theirs.filter((one) => one.kind === "model" && one.left === undefined).map((one) => (counted?.reviewers?.[one._id]?.cast ?? 0) + (counted?.reviewers?.[one._id]?.failed ?? 0));
+      return { state: "waiting" as const, ahead: { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: ahead.totalPapers } };
+    }
   }
   return { state: "reading" as const };
 }
 
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
 async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
-  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(50);
+  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
   return [...new Set(open.map((message) => message.resultId))];
 }
 
@@ -165,13 +147,14 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   const reviewers = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members)));
   const settled = { ...NO_RESULTS, ...progress?.counts };
   // What has arrived so far: the sources' own counts while they are read, since the screening's total is written when the reading ends.
-  const sources = check ? await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(200) : [];
+  const sources = check ? await sourcesOf(ctx, job._id) : [];
   const total = check ? sources.reduce((sum, source) => sum + (source.removedAt === undefined ? source.taken : 0), 0) : job.totalPapers;
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
   const mine = reviewer ? reviewers.find((one) => one.row === reviewer._id) : undefined;
   const canResolve = job.rule?.resolver === actor.userId;
   const open = job.finishedAt === undefined;
   const { state, ahead } = await modelsNow(ctx, job, reviewers, progress, check);
+  const asked = await askedOf(ctx, job._id, actor.userId);
   return {
     id: job._id,
     name: job.name ?? "Screening",
@@ -192,7 +175,8 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     counts,
     forYou: open ? (mine?.waiting ?? 0) : 0,
     conflicts: open && canResolve ? counts.conflict : 0,
-    asked: await askedOf(ctx, job._id, actor.userId),
+    asked: asked.length,
+    ...(asked[0] ? { askedFirst: asked[0] } : {}),
     models: state,
     ...(ahead ? { ahead } : {}),
     ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check.from === 0 } } : {}),
@@ -235,9 +219,9 @@ const MINE_MAX = 100;
 
 export const mineAction = defineUserQuery({
   path: "screening/view:mine",
-  description: "Lists the screenings that wait for the person in the workspace they act in, and in their own workspace the ones shared with them from elsewhere: `needs` are the open ones with papers for them to vote on, conflicts for them to settle or questions put to them, and `shared` the ones from other workspaces.",
+  description: "Lists, in one page, the screenings that wait for the person in the workspace they act in (papers for them to vote on, conflicts for them to settle or questions put to them), and in their own workspace the ones shared with them from elsewhere, which say they aren't its member.",
   args: {},
-  returns: v.object({ needs: v.array(summaryValidator), shared: v.array(summaryValidator) }),
+  returns: paginationResultValidator(summaryValidator),
   run: async (ctx, actor) => {
     const { userId, workspaceId } = actor;
     const own = await inOwnWorkspace(ctx, actor);
@@ -253,8 +237,8 @@ export const mineAction = defineUserQuery({
     // Conflicts go to one person, who may not be among the reviewers: the workspace's open screenings they settle are looked at too.
     const settles = (await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(MINE_MAX)).filter((job) => job.shape === 2 && job.rule?.resolver === userId && !ids.includes(job._id));
     const settled = await Promise.all(settles.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
-    const all = [...seen, ...settled];
-    return { needs: all.filter((one) => one.member && one.forYou + one.conflicts + one.asked.length > 0), shared: all.filter((one) => !one.member) };
+    // What waits for them, and what is shared with them whether or not anything waits.
+    return { page: [...seen, ...settled].filter((one) => !one.member || one.forYou + one.conflicts + one.asked > 0), isDone: true, continueCursor: "" };
   },
 });
 export const mine = userQuery(mineAction);
@@ -268,30 +252,15 @@ export const tallyAction = defineUserQuery({
 });
 export const tally = userQuery(tallyAction);
 
-const sourceValidator = v.object({
-  id: v.id("screeningSources"),
-  set: sourceSetValidator,
-  name: v.string(),
-  detail: v.optional(v.string()),
-  first: v.optional(v.number()),
-  last: v.optional(v.number()),
-  addedAt: v.number(),
-  removedAt: v.optional(v.number()),
-  state: v.union(v.literal("waiting"), v.literal("reading"), v.literal("done"), v.literal("failed")),
-  failure: v.optional(v.string()),
-  // What it holds, how many of its papers were read, and of those the ones taken, merged with another source's and left out.
-  total: v.optional(v.number()),
-  read: v.number(),
-  taken: v.number(),
-  duplicates: v.number(),
-  left: v.number(),
-  checkedAt: v.optional(v.number()),
-});
+const checkValidator = v.object({ id: v.id("screeningChecks"), at: v.number(), by: v.optional(personValidator), state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")), first: v.boolean(), found: v.number(), added: v.number() });
 
-const checkValidator = v.object({ id: v.id("screeningChecks"), at: v.number(), by: v.optional(personValidator), state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")), found: v.number(), added: v.number() });
-
-/** Checks of its sources a screening's page lists: the latest. */
-const CHECKS_SHOWN = 50;
+/** Checks one page of a screening's checks holds at most, and the latest of them looked through for the last that brought papers. */
+const CHECKS_PAGE = 50;
+const CHECKS_LOOKED = 20;
+/** Votes that ask for a new one, counted for their reviewer's tab: past it the tab says so many and more. */
+const FLAGGED_COUNTED = 500;
+/** Papers of its last check counted for what is still open among them. */
+const LATEST_COUNTED = 500;
 
 export const getAction = defineUserQuery({
   path: "screening/view:get",
@@ -305,13 +274,12 @@ export const getAction = defineUserQuery({
       ...summaryFields,
       question: v.optional(v.string()),
       criteria: criteriaValidator,
-      stars: v.array(v.number()),
+      stars: starsValidator,
       each: v.union(v.number(), v.literal("all")),
       blind: v.union(v.literal("after"), v.literal("always")),
-      sources: v.array(sourceValidator),
+      sources: sourceViewsValidator,
       // Where its included papers go.
       destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), prune: v.boolean() }),
-      checks: v.array(checkValidator),
       // Whether its workspace is out of credits for its models, and what the workspace has, for someone who may see that.
       outOfCredits: v.boolean(),
       credits: v.optional(v.number()),
@@ -319,6 +287,12 @@ export const getAction = defineUserQuery({
       guest: v.optional(v.union(v.literal("viewer"), v.literal("editor"))),
       // How many votes of theirs were cast before a criterion became a must-have, and ask for a new one.
       flagged: v.number(),
+      // The people it is shared with from outside its workspace, invitations still waiting included.
+      guests: v.number(),
+      // The last check of its sources that brought papers: how many, how many of them still wait for votes, and how many wait for the person's own.
+      latest: v.optional(v.object({ id: v.id("screeningChecks"), at: v.number(), added: v.number(), open: v.number(), mine: v.number() })),
+      // The last check there was, whatever it found, and how many checks it has had since it started.
+      lastCheck: v.optional(v.object({ at: v.number(), found: v.number(), added: v.number() })),
     }),
   ),
   run: async (ctx, actor, { jobId }) => {
@@ -326,16 +300,18 @@ export const getAction = defineUserQuery({
     if (!standing || standing.job.shape !== 2 || !standing.job.rule) return null;
     const { job, member, reviewer } = standing;
     const rule = standing.job.rule;
-    const [summary, sources, checks, collection] = await Promise.all([
+    const [summary, sources, collection] = await Promise.all([
       summaryOf(ctx, actor, standing),
-      ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(200),
-      ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_SHOWN),
+      sourcesOf(ctx, jobId),
       job.targetCollectionId ? ctx.db.get("collections", job.targetCollectionId) : null,
     ]);
-    const checkers = new Map<Id<"users">, Person>();
-    for (const check of checks) if (check.by && !checkers.has(check.by)) { const user = await ctx.db.get("users", check.by); checkers.set(check.by, user ? personOf(user) : { id: check.by, name: SOMEONE }); }
-    const flagged = reviewer ? (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).take(1000)).length : 0;
+    const flagged = reviewer ? (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).take(FLAGGED_COUNTED)).length : 0;
     const guest = member ? null : ((await grantOf(ctx, jobId, actor.userId))?.role ?? null);
+    // The first look in its sources is the screening starting: only a later one "brought new papers".
+    const lately = (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)).filter((check) => check.state === "done" && check.from > 0);
+    const last = lately.find((check) => check.added > 0);
+    const brought = last ? await ctx.db.query("screeningResults").withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", last._id)).take(LATEST_COUNTED) : [];
+    const theirs = last && reviewer ? await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting").gte("place", last.from)).take(LATEST_COUNTED) : [];
     return {
       ...summary,
       ...(job.question ? { question: job.question } : {}),
@@ -351,12 +327,14 @@ export const getAction = defineUserQuery({
           : collection
             ? { kind: "collection" as const, name: collection.name, collectionId: collection._id, prune: job.prune === true }
             : { kind: "none" as const, prune: job.prune === true },
-      checks: checks.map((check) => ({ id: check._id, at: check.at, ...(check.by ? { by: checkers.get(check.by)! } : {}), state: check.state, found: check.found, added: check.added })),
       outOfCredits: job.outOfCredits === true,
       // The workspace's credits are its members' to see.
       ...(member ? { credits: await availableCredits(ctx, job.workspaceId) } : {}),
       ...(guest ? { guest } : {}),
       flagged,
+      guests: await countOf(ctx, itemGuestsOf(jobId)),
+      ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
+      ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !isFinal(paper.result)).length, mine: theirs.filter((vote) => vote.place < last.from + last.added).length } } : {}),
     };
   },
 });
@@ -377,3 +355,37 @@ export const leftOutAction = defineUserQuery({
   },
 });
 export const leftOut = userQuery(leftOutAction);
+
+/** Changes one page of a screening's activity holds at most. */
+const ACTIVITY_PAGE = 50;
+
+export const activityAction = defineUserQuery({
+  path: "screening/view:activity",
+  description: "Lists what has happened in a screening the person may see, newest first, a page at a time: each change with who made it, when, its code (such as `reviewerAdded`, `checked`, `settings`), the name or count it is about, and under it what the change did, a line each.",
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ id: v.id("activity"), at: v.number(), by: personValidator, happened: v.string(), code: v.optional(v.string()), count: v.optional(v.number()), detail: v.optional(v.string()), more: moreValidator })),
+  run: async (ctx, actor, { jobId, paginationOpts }) => {
+    const standing = await standingOn(ctx, actor, jobId);
+    if (!standing) return { page: [], isDone: true, continueCursor: "" };
+    const read = await ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", standing.job.workspaceId).eq("item", itemKey("screening", jobId))).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, ACTIVITY_PAGE) });
+    const people = new Map<Id<"users">, Person>();
+    for (const row of read.page) if (!people.has(row.by)) { const user = await ctx.db.get("users", row.by); people.set(row.by, user ? personOf(user) : { id: row.by, name: SOMEONE }); }
+    return { ...read, page: read.page.map((row) => ({ id: row._id, at: row._creationTime, by: people.get(row.by)!, happened: row.happened, ...(row.code ? { code: row.code } : {}), ...(row.count === undefined ? {} : { count: row.count }), ...(row.detail ? { detail: row.detail } : {}), ...(row.more ? { more: row.more } : {}) })) };
+  },
+});
+export const activity = userQuery(activityAction);
+
+export const checksAction = defineUserQuery({
+  path: "screening/view:checks",
+  description: "Lists each look in a screening's sources, a page at a time, the latest first: the one it started with, then each check for new papers, by hand or on its schedule (no `by`), with how many papers it found and how many of those were new to the screening.",
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(checkValidator),
+  run: async (ctx, actor, { jobId, paginationOpts }) => {
+    if (!(await standingOn(ctx, actor, jobId))) return { page: [], isDone: true, continueCursor: "" };
+    const read = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) });
+    const people = new Map<Id<"users">, Person>();
+    for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, user ? personOf(user) : { id: check.by, name: SOMEONE }); }
+    return { ...read, page: read.page.map((check) => ({ id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added })) };
+  },
+});
+export const checks = userQuery(checksAction);

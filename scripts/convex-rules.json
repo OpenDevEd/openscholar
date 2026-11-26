@@ -51,7 +51,9 @@
       "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord",
       "MAX_RELEASES": "convex/evidenceLibraries/validators.ts",
       "MAX_APPS": "convex/developerApps/apps.ts:insert",
-      "MAX_WORKSPACE_REPORTS": "convex/reports/flow.ts:sign"
+      "MAX_WORKSPACE_REPORTS": "convex/reports/flow.ts:sign",
+      "MAX_REVIEWERS": "convex/screening/screenings.ts:open",
+      "MAX_SOURCE_ROWS": "convex/screening/screenings.ts:addSource"
     },
     "refused": {
       "MAX_ROLLOUT_COMMUNITIES": "reads one past it and refuses to list or update communities, naming why",
@@ -105,7 +107,15 @@
       "ADMINS_WRITTEN": "the admins of an organisation emailed that a member's report waits for one to activate it; past it the first twenty are written to",
       "RECENT": "the workspace's reports last changed, looked through for a DOI its signer reserved and did nothing with; one older than those is found in Your reports, and signing then starts another",
       "ALIKE": "the live reports whose titles are closest to a report being checked, which Already published compares it with first; the search gives the best matches, and the rest of the series is searched through OpenAlex and our index",
-      "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced"
+      "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced",
+      "ASKED_SHOWN": "questions put to one person on one screening, counted for its list's row and its frame; past it the count says that many, and each is still found from its paper",
+      "MINE_MAX": "the screenings one person reviews or is given, newest first, looked through for the ones that wait for them; the workspace's own list pages through every one",
+      "CHECKS_LOOKED": "a screening's latest checks of its sources, looked through for the last one that brought papers; its checks are listed a page at a time",
+      "FLAGGED_COUNTED": "a reviewer's votes cast before a criterion became a must-have, counted for their tab; their queue pages through every one",
+      "LATEST_COUNTED": "the papers a screening's last check brought, counted for the ones still open; its Papers page lists every one",
+      "SAME_TITLE": "papers of one title and year in a screening, looked at for the one a new record is; versions of a paper share them and seldom more than a few do",
+      "MOVE_LOOKED": "the far end of one person's queue, looked through for papers another person isn't on; a second move goes on from there",
+      "ANSWERED": "the questions that wait for one person on one screening, looked through for the ones on the paper they just wrote on"
     },
     "batches": {
       "REMOVED_AT_ONCE": "submissions of one paper marked removed in one write; past it the mutation schedules itself for the rest",
@@ -142,7 +152,10 @@
       "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
       "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left",
       "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two",
-      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next"
+      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next",
+      "DUE": "living screenings whose check is due, started in one run of the schedule; past it the run schedules itself for the rest",
+      "MOVE_MAX": "papers moved from one person to another in one write; a second move takes more",
+      "STEP": "papers one step of a change to a screening's reviewers looks at; it reschedules itself until every open paper has been"
     }
   }
 }
