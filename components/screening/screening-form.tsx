@@ -1375,7 +1375,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           >
             <div className={cn(LIST, "bg-card")}>
               <RuleRow name={t("decided.each")} help={<Help title={t("decided.each")} facts={<><HelpFact>{t("decided.factModels")}</HelpFact><HelpFact>{t("decided.factEveryone")}</HelpFact></>}>{t("decided.eachHelp")}</Help>} detail={shareSays}>
-                {draft.rule.settle === "one" ? (
+                {draft.rule.settle === "one" && readers ? (
                   // The first vote settles a paper: a second person on it would read it for nothing, or at the same moment.
                   <span className="text-sm text-muted-foreground">{t("decided.onePerson")}</span>
                 ) : readers ? (
