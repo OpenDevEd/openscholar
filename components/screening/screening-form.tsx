@@ -1097,8 +1097,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
                       </div>
-                      </AutoHeight>
                       {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length }} /> : null}
+                      </AutoHeight>
                     </div>
                     )}
                   </TabsContent>
@@ -1413,9 +1413,12 @@ export function ScreeningForm({ id }: { id?: string }) {
             aside={communities.libraries.length || there ? <Segmented label={t("part.goesTo")} value={there ? "community" : "openscholar"} onChange={(next) => (next === "openscholar" ? toOwn() : community ? toCommunity(community.libraryId) : undefined)} options={[{ id: "openscholar" as const, label: t("goes.yourLibrary") }, { id: "community" as const, label: t("goes.aCommunity") }]} /> : undefined}
           >
             {there && community ? <LibrarySelect libraries={communities.libraries} value={community.libraryId} onChange={(libraryId) => toCommunity(libraryId)} /> : null}
+            {/* The collections arrive after the page: the list slides to its length instead of pushing what is under it. */}
+            <AutoHeight>
             <div className={cn(LIST, "bg-card")} role="radiogroup" aria-label={t("part.goesTo")}>
               {there ? (communities.loaded ? communityPlaces : <ListLoading compact label={t("goes.readingCommunity")} />) : places}
             </div>
+            </AutoHeight>
             {fromCollection ? (
               <label className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
                 <span className="min-w-0 flex-1 space-y-1.5">

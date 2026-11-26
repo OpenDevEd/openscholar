@@ -2,6 +2,7 @@
 
 // The list of a workspace's screenings, as a table: the ones waiting on you first.
 
+import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -100,7 +101,8 @@ export function ScreeningsIndex() {
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
   const none = searched ? t("noneCalled", { show, name: words.quoted(searched) }) : t("none", { show });
-  const count = (value: number | undefined, tone?: "primary" | "success") => (value === undefined ? <span className="tabular-nums text-muted-foreground">&nbsp;</span> : <TabCount value={value} tone={tone} />);
+  // A count still being read holds a digit's room, so the tabs keep their place when it arrives.
+  const count = (value: number | undefined, tone?: "primary" | "success") => (value === undefined ? <span aria-hidden className="invisible tabular-nums">0</span> : <TabCount value={value} tone={tone} />);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -183,6 +185,8 @@ export function ScreeningsIndex() {
                   <span className="whitespace-nowrap">{t("column.lastActivity")}</span>
                   <span />
                 </div>
+                {/* The rows and what stands in for them while they are read are different heights: the frame around them slides from one to the other. */}
+                <AutoHeight>
                 {loading && !rows.length ? (
                   <ListLoading label={t("loadingScreenings")} />
                 ) : (
@@ -268,6 +272,7 @@ export function ScreeningsIndex() {
                   ) : null}
                 </ul>
                 )}
+                </AutoHeight>
                 {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, total: searched || runBy.by || !tally ? undefined : show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished }} /> : null}
               </>
             )}

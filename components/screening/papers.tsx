@@ -1,5 +1,6 @@
 "use client";
 
+import { AutoHeight } from "@/components/ui/auto-height";
 import dynamic from "next/dynamic";
 
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
@@ -546,6 +547,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       <div className="grid border-t border-border-subtle">
         <div ref={list} className="@container/table min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
+          {/* While the page is read it keeps a page's height; a shorter one slides to its own instead of jumping. */}
+          <AutoHeight>
           <Wide fits={fits} style={{ minHeight: listed.isLoading || listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
             {listed.isLoading ? <ListLoading label={t("table.loading")} /> : shown.length ? (
               <>
@@ -726,6 +729,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               </ListEmpty>
             )}
           </Wide>
+          </AutoHeight>
           {listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("table.pageItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total, ...(total === undefined ? {} : { pageCount: Math.ceil(total / PAGE) }) }} /> : null}
         </div>
 

@@ -4,6 +4,7 @@
 // to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
 // section asks for.
 
+import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
@@ -1041,6 +1042,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       }
       aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />{t("flow.download")}</Button>}
     >
+      {/* The excluded papers by reason arrive with the figures, after the page: the boxes slide to their height. */}
+      <AutoHeight>
       <div className="grid grid-cols-1 divide-y divide-border-subtle rounded-2xl border border-border-subtle @3xl/overview:grid-cols-4 @3xl/overview:divide-x @3xl/overview:divide-y-0">
         {steps.map((step, i) => (
           <div key={step.title} className="relative min-w-0 space-y-3 p-4">
@@ -1078,6 +1081,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
           </div>
         ))}
       </div>
+      </AutoHeight>
     </Section>
   );
 }
