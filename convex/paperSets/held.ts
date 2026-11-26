@@ -42,6 +42,8 @@ const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
 const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
   ...sourceMetadata(paper),
   paper: paper.paperKey, ...(paper.crossRefs ? { crossRefs: paper.crossRefs } : {}), title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
+  // A paper that is only its PDF goes on as that PDF: with no abstract, the file is what it is screened on.
+  ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }) } : {}),
 });
 
 /** Papers the workspace's library holds, by key, as a set reads them; a key it doesn't hold is left out. A step reads `SAVED_A_READ` at most. */

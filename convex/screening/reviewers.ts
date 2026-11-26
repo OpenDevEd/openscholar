@@ -75,7 +75,14 @@ export const join = internalMutation({
     for (const paper of page.page) {
       const votes = await votesOf(ctx, paper._id);
       const persons = votes.filter((vote) => people.get(vote.reviewerId)?.kind === "person");
-      if (persons.some((vote) => vote.reviewerId === reviewerId)) continue;
+      const mine = persons.find((vote) => vote.reviewerId === reviewerId);
+      // Back after their votes were thrown out: the place they had is theirs again, without the vote, as a model's is (`enlist`). The worker counts it and settles the paper again.
+      if (mine?.status === "discarded") {
+        await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, confidences: undefined, passages: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined, lean: undefined });
+        await stamp(ctx, paper._id, "vote");
+        continue;
+      }
+      if (mine) continue;
       const waiting = persons.filter((vote) => vote.status === "waiting");
       // By their account, which names them before their row exists: a change's preview takes the same places (lib/screening/project.ts `withJoined`).
       const place = !everyone && result === "waiting" ? takesOver(paper._id, reviewer.userId ?? reviewerId, before, waiting.length) : null;

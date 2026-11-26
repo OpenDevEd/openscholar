@@ -327,3 +327,60 @@ describe("the queue every screening's papers are settled from", () => {
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("couldn't be bookkept"), expect.objectContaining({ jobId: broken.jobId }));
   });
 });
+
+describe("a reviewer taken off with their votes thrown out", () => {
+  it("counts nothing of a model's reading that comes back after it was taken off", async () => {
+    const made = await team(["ann"]);
+    const { workspaceId } = made;
+    const { jobId, papers } = await started(made, ["ann"], 1, { rule: { each: 1, settle: "one", blind: "after" } });
+    const paperId = papers[0]!._id;
+    const modelId = await made.t.run(async (ctx) => {
+      const reviewerId = await ctx.db.insert("screeningReviewers", { jobId, kind: "model", addedAt: 1, addedBy: made.ids.ann!, dealt: 1 });
+      await ctx.db.insert("screeningVotes", { jobId, resultId: paperId, reviewerId, place: 0, status: "waiting", workId: "late reading" });
+      return reviewerId;
+    });
+    await made.as.ann!.mutation(api.screening.reviewers.remove, { workspaceId, jobId, reviewerId: modelId, discard: true });
+    await runAll(made.t, vi.runAllTimers);
+    // The reading in the pool comes back with answers: under "the first vote decides" a counted vote would settle the paper.
+    await made.t.mutation(internal.screening.readings.done, { workId: "late reading", context: {}, result: { kind: "success", returnValue: { read: true, answers: {}, confidences: {}, credits: 3 } } } as never);
+    await settleAll(made.t);
+    const row = await made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", modelId)).collect())[0]!);
+    expect(row).toMatchObject({ status: "discarded", credits: 3 });
+    expect((await standingOf(made.t, jobId)).papers.map((one) => one.result)).toEqual(["waiting"]);
+  });
+
+  it("gives a person put back the places they had on the papers still open, without their old votes", async () => {
+    const made = await team(["ann", "ben"]);
+    const { workspaceId } = made;
+    const { jobId, papers } = await started(made, ["ann", "ben"], 1, { rule: { each: "all", settle: "all", blind: "after" } });
+    const paperId = papers[0]!._id;
+    await voter(made, jobId)("ben", paperId, "include");
+    await settleAll(made.t);
+    const ben = await made.t.run(async (ctx) => (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.userId === made.ids.ben)!._id);
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { remove: [{ reviewerId: ben, discard: true }] } });
+    await runAll(made.t, vi.runAllTimers);
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addPeople: [made.ids.ben!] } });
+    await runAll(made.t, vi.runAllTimers);
+    const row = await made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", ben)).collect())[0]!);
+    expect(row).toMatchObject({ status: "waiting" });
+    expect(row.decision).toBeUndefined();
+    // Ann's include alone doesn't settle it: it waits for Ben again.
+    await voter(made, jobId)("ann", paperId, "include");
+    await settleAll(made.t);
+    expect((await standingOf(made.t, jobId)).papers.map((one) => one.result)).toEqual(["waiting"]);
+  });
+});
+
+describe("another screening's included papers as a source", () => {
+  it("hands on a paper that is only its PDF with the PDF", async () => {
+    const made = await team(["ann"]);
+    const { jobId, papers } = await started(made, ["ann"], 1);
+    const file = await made.t.run(async (ctx) => {
+      const stored = await ctx.storage.store(new Blob(["%PDF-1.4"]));
+      await ctx.db.patch("screeningResults", papers[0]!._id, { abstract: undefined, file: stored, pages: 3, outcome: "included" });
+      return stored;
+    });
+    const read = await made.t.query(internal.paperSets.held.page, { userId: made.ids.ann!, workspaceId: made.workspaceId, set: { kind: "screening", jobId }, cursor: null, numItems: 10 });
+    expect(read.page).toMatchObject([{ file, pages: 3 }]);
+  });
+});

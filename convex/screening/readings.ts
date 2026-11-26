@@ -85,7 +85,12 @@ export const done = screeningPool.defineOnComplete({
     if (!vote) return;
     const job = (await ctx.db.get("screeningJobs", vote.jobId)) as Doc<"screeningJobs"> | null;
     const reading = result.kind === "success" ? (result.returnValue as typeof readingValidator.type) : null;
-    if (reading?.read && vote.status === "waiting") {
+    const reviewer = (await ctx.db.get("screeningReviewers", vote.reviewerId)) as Doc<"screeningReviewers"> | null;
+    // A model taken off with its votes thrown out while this reading ran: the reading is paid for, and counts for nothing.
+    const thrown = reviewer?.left !== undefined && reviewer?.discarded !== undefined;
+    if (reading?.read && vote.status === "waiting" && thrown) {
+      await ctx.db.patch("screeningVotes", vote._id, { status: "discarded", at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+    } else if (reading?.read && vote.status === "waiting") {
       // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
       await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
     } else if ((result.kind === "failed" || (reading && !reading.read && reading.why === "unreadable")) && vote.status === "waiting") {
