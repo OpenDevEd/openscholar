@@ -499,24 +499,36 @@ export function Reason({ reason, criteria, unclear = false, className }: { reaso
   );
 }
 
-/** A screening's papers as one bar, split by where they stand. */
-export function ResultBar({ counts, className }: { counts: Record<Result, number>; className?: string }) {
+/** Waiting is hatched wherever it is drawn, so papers still to be voted on never read as excluded ones. */
+export const HATCH = "bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
+
+/** A screening's papers as one bar, split by where they stand. With `hrefOf`, each part opens its papers and says its own count. */
+export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string }) {
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
-  const label = RESULTS.filter((result) => counts[result]).map((result) => `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`).join(", ") || "No papers yet";
+  const says = (result: Result) => `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`;
+  const part = (result: Result) => cn("h-full min-w-1.5 basis-0 duration-500 ease-out motion-reduce:transition-none", RESULT_STYLE[result].bar, result === "waiting" && HATCH);
+  const none = total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null;
+  if (hrefOf) {
+    return (
+      <span className={cn("flex h-2.5 w-full gap-px rounded-full", className)}>
+        {none}
+        {RESULTS.map((result) =>
+          counts[result] ? (
+            <TooltipHint key={result} label={says(result)}>
+              {/* The part's hit area runs above and below the thin bar. */}
+              <NextLink href={hrefOf(result)} aria-label={says(result)} className={cn(part(result), "relative outline-none transition-[flex-grow,filter] first:rounded-s-full last:rounded-e-full after:absolute after:inset-x-0 after:-inset-y-2 hover:brightness-90 focus-visible:ring-2 focus-visible:ring-ring/50")} style={{ flexGrow: counts[result] }} />
+            </TooltipHint>
+          ) : null,
+        )}
+      </span>
+    );
+  }
+  const label = RESULTS.filter((result) => counts[result]).map(says).join(", ") || "No papers yet";
   return (
     <TooltipHint label={label}>
       <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
-        {total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null}
-        {RESULTS.map((result) =>
-          counts[result] ? (
-            <span
-              key={result}
-              className={cn("h-full min-w-1.5 basis-0 transition-[flex-grow] duration-500 ease-out motion-reduce:transition-none", RESULT_STYLE[result].bar)}
-              // Waiting is hatched, so papers still to be voted on never read as excluded ones.
-              style={{ flexGrow: counts[result], ...(result === "waiting" ? { backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 3px, color-mix(in oklab, var(--foreground) 14%, transparent) 3px 5px)" } : {}) }}
-            />
-          ) : null,
-        )}
+        {none}
+        {RESULTS.map((result) => (counts[result] ? <span key={result} className={cn(part(result), "transition-[flex-grow]")} style={{ flexGrow: counts[result] }} /> : null))}
       </div>
     </TooltipHint>
   );

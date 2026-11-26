@@ -30,10 +30,10 @@ import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, type Result, lookerLabel, inQuotes } from "./data";
+import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, lookerLabel, inQuotes } from "./data";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
-import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, RESULT_STYLE, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
+import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
 import { toReviewer, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -222,7 +222,7 @@ export function ScreeningsIndex() {
                             <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @5xl:row-span-2 @5xl:[grid-area:when]"><span className="@5xl:hidden">Last activity </span>{ago(row.activeAt)}</span>
                           </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
-                            <Bar id={id} counts={stands} />
+                            <ResultBar counts={stands} hrefOf={(result) => papersHref(id, { result })} />
                             <NextLink href={row.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, FIGURE_LINK, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground")}>
                               {row.finishedAt ? `${num(stands.include)} included of ${num(total)}` : `${num(settled)} of ${num(total)} settled`}
                             </NextLink>
@@ -317,32 +317,6 @@ function Group({ label, note, count, children }: { label: string | null; /** Wha
 }
 
 /** Its reviewers' faces and marks, each opening the papers that reviewer voted on. */
-/** A screening's papers as one bar, split by where they stand: each part opens those papers. */
-function Bar({ id, counts }: { id: string; counts: Record<Result, number> }) {
-  const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
-  return (
-    <span className="flex h-2.5 w-full gap-px rounded-full">
-      {total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null}
-      {RESULTS.map((result) => {
-        if (!counts[result]) return null;
-        const label = `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`;
-        return (
-          <TooltipHint key={result} label={label}>
-            <NextLink
-              href={papersHref(id, { result })}
-              aria-label={label}
-              // The part's hit area runs above and below the thin bar.
-              className={cn("relative h-full min-w-1.5 basis-0 outline-none transition-[flex-grow,filter] duration-500 ease-out first:rounded-s-full last:rounded-e-full after:absolute after:inset-x-0 after:-inset-y-2 hover:brightness-90 focus-visible:ring-2 focus-visible:ring-ring/50 motion-reduce:transition-none", RESULT_STYLE[result].bar)}
-              // Waiting is hatched, so papers still to be voted on never read as excluded ones.
-              style={{ flexGrow: counts[result], ...(result === "waiting" ? { backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 3px, color-mix(in oklab, var(--foreground) 14%, transparent) 3px 5px)" } : {}) }}
-            />
-          </TooltipHint>
-        );
-      })}
-    </span>
-  );
-}
-
 /** The row's menu: what the open screening's menu offers, under the same names and in the same order, after Settings, Export and Share. */
 function RowMenu({ id, name, onOpen }: { id: string; name: string; onOpen: (what: What) => void }) {
   return (

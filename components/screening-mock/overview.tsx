@@ -31,7 +31,7 @@ import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName,
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { votesBy, TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
+import { votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
 import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -44,7 +44,6 @@ const PLACE = {
 };
 
 /** Papers still to be voted on, hatched wherever a bar shows them, so they never read as excluded ones. */
-const HATCH = "bg-foreground/10 bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
 /** A row or a count that opens its papers. */
 const ROW_LINK = "rounded-lg outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50";
 const notSaved = (error: unknown) => showStyledToast("error", getErrorMessage(error, "That didn't work. Try again."));
@@ -907,9 +906,9 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
         ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
         { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar, tone: "maybe" },
         { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" },
-        { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: HATCH },
+        { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: `bg-foreground/10 ${HATCH}` },
         // Papers still on their way from its sources have nowhere to open yet.
-        ...(open.gathering ? [{ key: "arriving", label: "Still arriving", value: arriving, fill: HATCH }] : []),
+        ...(open.gathering ? [{ key: "arriving", label: "Still arriving", value: arriving, fill: `bg-foreground/10 ${HATCH}` }] : []),
       ],
     },
     {
