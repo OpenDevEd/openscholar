@@ -36,6 +36,11 @@ Agreed by the user between 23 and 26 November 2026.
 10. Sources: a search, the library or a collection, another screening's included papers, a
     community, Zotero (a library or group, all of it or a collection, with or without its
     sub-collections, a range), reference files and tables, PDFs, pasted DOIs. Several a screening.
+    A Zotero library of any size works: its collections are kept as rows the form pages and searches,
+    and nothing is limited to a first page. A DOI neither index holds is asked of Crossref, then
+    DataCite. A paper our own index holds with no abstract takes OpenAlex's.
+    The form has the server read a new screening's sources before it starts, so it says what each
+    holds, what another already brought and what is left out, as counted by what takes the papers.
 11. Duplicates across sources: the same index ID, then the same DOI, then title and year only where
     one side has no DOI. The first source added keeps the paper.
 12. A record no index knows is saved to the library when it is included, with what its source gave.
@@ -97,7 +102,9 @@ addresses all name it. `screeningResults` stays one row a paper.
 
 New on `screeningJobs`: the research question, criteria fields (short name, must-have, guidance,
 marked words, when added), the rule, the living schedule, finished and paused marks, and a shape
-version. New on `screeningResults`: its place, its source, the check that brought it, its result
+version. A status `draft`: the screening the form's sources are read into before it starts, seen by
+its maker alone. Starting it gives its papers to the reviewers by the sum that deals a paper as it
+arrives. One never started goes after a week. New on `screeningResults`: its place, its source, the check that brought it, its result
 (include, maybe, exclude, conflict, waiting), who settled it, points and stars.
 
 New tables:
@@ -108,6 +115,12 @@ New tables:
 - `screeningSources`: each place papers come from, its range, what it held, took, merged and left
   out, and where a living check last stood.
 - `screeningLeftOut`: what a source held and the screening doesn't take, with why.
+- `screeningFiles`: each PDF handed to a screening, with what its first reading found.
+- `screeningCards`: the few facts of a paper its lists are narrowed by, a small row beside it, kept
+  by a trigger: counts under a filter are read from these, since a few thousand whole papers are
+  more than one read holds.
+- `zoteroTrees` and `zoteroCollections`: a person's Zotero collections as last read, with what each
+  holds with everything under it.
 - `screeningChecks`: each check of the sources, what it found and added.
 - `screeningAgreement`: for each pair of reviewers, how their votes fell against each other.
 - `screeningMessages` and `screeningThreadReads`: a paper's discussion, and what each person has read.
