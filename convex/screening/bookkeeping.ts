@@ -85,7 +85,7 @@ function tally(results: Doc<"screeningResults">[]): Counts {
   return counts;
 }
 
-export async function progressRow(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">) {
+export async function progressRow(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) {
   return await ctx.db
     .query("screeningJobProgress")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))

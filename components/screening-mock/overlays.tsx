@@ -19,7 +19,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { collectionName, growing, modelsOf, num, plural, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
+import { collectionName, growing, modelsOf, num, peopleOf, plural, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
@@ -106,7 +106,28 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
       {/* Its files are read only once it is opened. */}
       {over === "export" ? <ExportDialog open onClose={close} state={state} tab={exportTab} onTab={setExportTab} /> : null}
       <PeopleDialog open={over === "people"} onClose={close} state={state} onAdd={(reviewer) => { setOver(null); setAdding(reviewer); }} onRemove={(reviewer) => { setOver(null); setLeaving(reviewer); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
-      <MoveDialog open={over === "move"} onOpenChange={(next) => !next && close()} kind="screening" id={id} name={screening.name} />
+      <MoveDialog
+        open={over === "move"}
+        onOpenChange={(next) => !next && close()}
+        kind="screening"
+        id={id}
+        name={screening.name}
+        effects={(to, from) => {
+          // Someone's own workspace is called by their name, which reads as a person here: it is said as theirs.
+          const own = to.kind === "personal";
+          return (
+            <EffectList
+              lines={[
+                ...(modelsOf(screening).length ? [`Its ${modelsOf(screening).length === 1 ? "model is" : "models are"} paid from ${own ? "your own" : `${to.name}'s`} credits from now on`] : []),
+                ...(peopleOf(screening).some((one) => one.id !== state.me) ? [own ? "Its other reviewers keep it, as its guests" : `Its other reviewers keep it, as its guests where they aren't in ${to.name}`] : []),
+                ...(collection && screening.destination.kind !== "community" ? [`Papers it has saved stay where they are, and the ones it includes from now on are saved in ${own ? "your own" : `${to.name}'s`} library`] : []),
+                ...(from?.kind === "organization" ? [`Members of ${from.name} who aren't its reviewers no longer see it`] : []),
+              ]}
+              none="Nothing else changes"
+            />
+          );
+        }}
+      />
       <ConfirmChange open={over === "finish"} title="Mark this screening as finished?" confirm="Mark as finished" onClose={close} onConfirm={() => void state.finish().catch(failed)}>
         <EffectList
           lines={[

@@ -4957,7 +4957,8 @@
         "editors": "Editors",
         "address": "Address",
         "settings": "Settings",
-        "peopleWithRoles": "People with a role"
+        "peopleWithRoles": "People with a role",
+        "votes": "Votes"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
@@ -4974,7 +4975,9 @@
         "communitiesFull": "Has as many communities as a workspace can",
         "profilesOff": "Author profiles aren't on here",
         "noProfiles": "You can't make author profiles here"
-      }
+      },
+      "whatElseChanges": "What else changes",
+      "pickToSee": "Pick a workspace to see what moving does."
     },
     "share": {
       "share": "Share",

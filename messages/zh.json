@@ -4957,7 +4957,8 @@
         "editors": "编辑",
         "address": "地址",
         "settings": "设置",
-        "peopleWithRoles": "有角色的成员"
+        "peopleWithRoles": "有角色的成员",
+        "votes": "投票"
       },
       "moveTo": "移到 {workspace}",
       "move": "移动",
@@ -4974,7 +4975,9 @@
         "communitiesFull": "文献社区数量已达工作区上限",
         "profilesOff": "这里未开启作者资料",
         "noProfiles": "你不能在这里创建作者资料"
-      }
+      },
+      "whatElseChanges": "其他变化",
+      "pickToSee": "选择一个工作区，查看移动会带来什么变化。"
     },
     "share": {
       "share": "共享",

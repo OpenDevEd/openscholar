@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { ensureWorkspace } from "./create";
 import { personalWorkspaceOf } from "./personal";
+import { newCollection } from "../library/collections";
 import { paperOf } from "../lib/paperRef.test-support";
 import { grantLibraryRole } from "../evidenceLibraries/team.test-support";
 
@@ -294,4 +295,38 @@ it("leaves a community where it is for an organization's member, for a workspace
   expect(await alice.query(api.workspaces.move.held, { workspaceId: labId, kind: "community", id: libraryId })).toMatch(/change running/);
   await expect(alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: aliceOwn })).rejects.toThrow(/change running/);
   expect((await t.run((ctx) => ctx.db.get("evidenceLibraries", libraryId)))?.workspaceId).toBe(labId);
+});
+
+it("moves a screening with reviewers while it runs, once no model is reading: a reviewer outside the new workspace keeps it as a guest, and what it includes next is saved there", async () => {
+  const { t, alice, bob, users, lab: labId, aliceOwn, bobOwn } = await lab();
+  const { job, vote } = await t.run(async (ctx) => {
+    const screeningId = await ctx.db.insert("screenings", { workspaceId: labId, version: 0, createdAt: 1 });
+    const kept = await newCollection(ctx, { userId: users.alice, workspaceId: labId }, "Kept");
+    const job = await ctx.db.insert("screeningJobs", { workspaceId: labId, createdBy: users.alice, screeningId, status: "processing", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1, shape: 2, name: "Tutoring", rule: { each: 2, settle: "all", resolver: users.bob, blind: "after" }, targetCollectionId: kept });
+    for (const userId of [users.alice, users.bob]) await ctx.db.insert("screeningReviewers", { jobId: job, kind: "person", userId, addedAt: 1, addedBy: users.alice, dealt: 0 });
+    const model = await ctx.db.insert("screeningReviewers", { jobId: job, kind: "model", addedAt: 1, addedBy: users.alice, dealt: 1 });
+    const paper = await ctx.db.insert("screeningResults", { jobId: job, ...paperOf("https://openalex.org/W1"), title: "W1", authors: [], citedByCount: 0, status: "processing", createdAt: 1 });
+    // A reading under way: it holds one of the lab's slots.
+    return { job, vote: await ctx.db.insert("screeningVotes", { jobId: job, resultId: paper, reviewerId: model, place: 0, status: "waiting", slot: true, workId: "in the pool" }) };
+  });
+  const move = () => alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "screening", id: job, to: aliceOwn });
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: labId, kind: "screening", id: job })).toEqual(expect.any(String));
+  await expect(move()).rejects.toThrow();
+
+  // The reading ended and was counted, and the models were paused with papers still to read.
+  await t.run(async (ctx) => {
+    await ctx.db.patch("screeningVotes", vote, { status: "cast", decision: "include", slot: undefined, workId: undefined });
+    await ctx.db.patch("screeningJobs", job, { paused: true });
+  });
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: labId, kind: "screening", id: job })).toBeNull();
+  await move();
+  await t.finishAllScheduledFunctions(() => {});
+
+  const moved = (await t.run((ctx) => ctx.db.get("screeningJobs", job)))!;
+  expect(moved).toMatchObject({ workspaceId: aliceOwn, status: "processing", newCollection: "Kept" });
+  expect(moved.targetCollectionId).toBeUndefined();
+  // Bob settled its conflicts and still does: he is on it, as its guest now.
+  expect(moved.rule?.resolver).toBe(users.bob);
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", job).eq("userId", users.bob)).unique())).toMatchObject({ kind: "screening", role: "editor" });
+  expect(await bob.query(api.screening.view.get, { workspaceId: bobOwn, jobId: job })).toMatchObject({ name: "Tutoring" });
 });

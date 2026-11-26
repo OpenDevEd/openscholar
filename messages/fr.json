@@ -4957,7 +4957,8 @@
         "editors": "Éditeurs",
         "address": "Adresse",
         "settings": "Paramètres",
-        "peopleWithRoles": "Personnes ayant un rôle"
+        "peopleWithRoles": "Personnes ayant un rôle",
+        "votes": "Votes"
       },
       "moveTo": "Déplacer vers {workspace}",
       "move": "Déplacer",
@@ -4974,7 +4975,9 @@
         "communitiesFull": "A autant de communautés qu’un espace de travail peut en avoir",
         "profilesOff": "Les profils d’auteur ne sont pas activés ici",
         "noProfiles": "Vous ne pouvez pas créer de profils d’auteur ici"
-      }
+      },
+      "whatElseChanges": "Ce qui change aussi",
+      "pickToSee": "Choisissez un espace de travail pour voir ce que le déplacement change."
     },
     "share": {
       "share": "Partager",

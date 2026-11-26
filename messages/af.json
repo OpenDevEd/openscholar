@@ -4958,7 +4958,8 @@
         "editors": "Redigeerders",
         "address": "Adres",
         "settings": "Instellings",
-        "peopleWithRoles": "Mense met ’n rol"
+        "peopleWithRoles": "Mense met ’n rol",
+        "votes": "Stemme"
       },
       "moveTo": "Skuif na {workspace}",
       "move": "Skuif",
@@ -4975,7 +4976,9 @@
         "communitiesFull": "Het soveel gemeenskappe as wat ’n werkruimte kan hê",
         "profilesOff": "Outeursprofiele is nie hier aan nie",
         "noProfiles": "Jy kan nie hier outeursprofiele maak nie"
-      }
+      },
+      "whatElseChanges": "Wat nog verander",
+      "pickToSee": "Kies 'n werkruimte om te sien wat die skuif doen."
     },
     "share": {
       "share": "Deel",

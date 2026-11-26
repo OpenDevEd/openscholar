@@ -4958,7 +4958,8 @@
         "editors": "Editores",
         "address": "Endereço",
         "settings": "Definições",
-        "peopleWithRoles": "Pessoas com uma função"
+        "peopleWithRoles": "Pessoas com uma função",
+        "votes": "Votos"
       },
       "moveTo": "Mover para {workspace}",
       "move": "Mover",
@@ -4975,7 +4976,9 @@
         "communitiesFull": "Tem tantas comunidades quanto um espaço de trabalho pode ter",
         "profilesOff": "Os perfis de autor não estão ativos aqui",
         "noProfiles": "Aqui não pode criar perfis de autor"
-      }
+      },
+      "whatElseChanges": "O que mais muda",
+      "pickToSee": "Escolha um espaço de trabalho para ver o que a mudança faz."
     },
     "share": {
       "share": "Partilhar",

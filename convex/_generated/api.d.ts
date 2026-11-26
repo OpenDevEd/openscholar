@@ -461,6 +461,7 @@ import type * as screening_heldPdfs from "../screening/heldPdfs.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_living from "../screening/living.js";
 import type * as screening_log from "../screening/log.js";
+import type * as screening_moving from "../screening/moving.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_noticeMail from "../screening/noticeMail.js";
 import type * as screening_notices from "../screening/notices.js";
@@ -1008,6 +1009,7 @@ declare const fullApi: ApiFromModules<{
   "screening/lifecycle": typeof screening_lifecycle;
   "screening/living": typeof screening_living;
   "screening/log": typeof screening_log;
+  "screening/moving": typeof screening_moving;
   "screening/mutations": typeof screening_mutations;
   "screening/noticeMail": typeof screening_noticeMail;
   "screening/notices": typeof screening_notices;

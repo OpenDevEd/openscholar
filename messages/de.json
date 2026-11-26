@@ -4958,7 +4958,8 @@
         "editors": "Redakteure",
         "address": "Adresse",
         "settings": "Einstellungen",
-        "peopleWithRoles": "Personen mit einer Rolle"
+        "peopleWithRoles": "Personen mit einer Rolle",
+        "votes": "Stimmen"
       },
       "moveTo": "Nach {workspace} verschieben",
       "move": "Verschieben",
@@ -4975,7 +4976,9 @@
         "communitiesFull": "Hat so viele Communities, wie ein Arbeitsbereich haben kann",
         "profilesOff": "Autorenprofile sind hier nicht aktiviert",
         "noProfiles": "Hier können Sie keine Autorenprofile anlegen"
-      }
+      },
+      "whatElseChanges": "Was sich sonst ändert",
+      "pickToSee": "Wählen Sie einen Arbeitsbereich, um zu sehen, was das Verschieben bewirkt."
     },
     "share": {
       "share": "Teilen",

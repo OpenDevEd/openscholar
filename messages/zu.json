@@ -4957,7 +4957,8 @@
         "editors": "Abahleli",
         "address": "Ikheli",
         "settings": "Izilungiselelo",
-        "peopleWithRoles": "Abantu abanendima"
+        "peopleWithRoles": "Abantu abanendima",
+        "votes": "Amavoti"
       },
       "moveTo": "Hambisela ku-{workspace}",
       "move": "Hambisa",
@@ -4974,7 +4975,9 @@
         "communitiesFull": "Inemiphakathi eminingi njengoba isikhala sokusebenzela singaba nayo",
         "profilesOff": "Amaphrofayela ababhali awavuliwe lapha",
         "noProfiles": "Awukwazi ukwenza amaphrofayela ababhali lapha"
-      }
+      },
+      "whatElseChanges": "Yini enye eshintshayo",
+      "pickToSee": "Khetha indawo yokusebenza ukuze ubone ukuthi ukuhambisa kwenzani."
     },
     "share": {
       "share": "Yabelana",

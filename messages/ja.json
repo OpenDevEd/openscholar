@@ -4957,7 +4957,8 @@
         "editors": "編集者",
         "address": "アドレス",
         "settings": "設定",
-        "peopleWithRoles": "ロールを持つメンバー"
+        "peopleWithRoles": "ロールを持つメンバー",
+        "votes": "投票"
       },
       "moveTo": "{workspace} に移動",
       "move": "移動",
@@ -4974,7 +4975,9 @@
         "communitiesFull": "ワークスペースに作成できる上限までコミュニティがあります",
         "profilesOff": "ここでは著者プロフィールが有効になっていません",
         "noProfiles": "ここでは著者プロフィールを作成できません"
-      }
+      },
+      "whatElseChanges": "ほかに変わること",
+      "pickToSee": "ワークスペースを選ぶと、移動で何が変わるかが表示されます。"
     },
     "share": {
       "share": "共有",

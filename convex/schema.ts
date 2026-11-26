@@ -1619,6 +1619,8 @@ export default defineSchema({
     .index("by_reviewer_and_status_and_decision_and_at", ["reviewerId", "status", "decision", "at"])
     .index("by_reviewer_and_flagged_and_place", ["reviewerId", "flagged", "place"])
     .index("by_workId", ["workId"])
+    // The readings of a screening under way: it stays in its workspace until there are none (./screening/moving.ts).
+    .index("by_job_and_slot", ["jobId", "slot"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"]),
 
   // Where a screening's papers come from, each read a step at a time: what it held, took, merged with another

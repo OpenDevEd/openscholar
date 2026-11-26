@@ -4958,7 +4958,8 @@
         "editors": "Wahariri",
         "address": "Anwani",
         "settings": "Mipangilio",
-        "peopleWithRoles": "Watu wenye jukumu"
+        "peopleWithRoles": "Watu wenye jukumu",
+        "votes": "Kura"
       },
       "moveTo": "Hamia {workspace}",
       "move": "Hamisha",
@@ -4975,7 +4976,9 @@
         "communitiesFull": "Ina jumuiya nyingi kadiri nafasi kazi inavyoweza",
         "profilesOff": "Wasifu wa waandishi haujawashwa hapa",
         "noProfiles": "Huwezi kuunda wasifu wa waandishi hapa"
-      }
+      },
+      "whatElseChanges": "Nini kingine kinabadilika",
+      "pickToSee": "Chagua eneo la kazi ili kuona kuhamisha kunafanya nini."
     },
     "share": {
       "share": "Shiriki",

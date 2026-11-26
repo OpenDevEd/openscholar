@@ -44,7 +44,7 @@ export function changeSays(row: Logged): { what: string; effect?: string } {
     case "settings": return { what: `Changed ${listed((row.more ?? []).flatMap((one) => (one.code === "part" && one.detail && SETTING[one.detail] ? [SETTING[one.detail]!] : []))) || "its settings"}`, effect: effects(EFFECT) };
   }
   // A change from before changes carried a code, or one another page made: said by its kind.
-  const KIND: Record<string, string> = { created: "Started the screening", renamed: `Renamed it ${inQuotes(detail)}`, edited: detail || "Changed it", added: detail ? `Added ${detail}` : "Added papers", removed: detail ? `Took ${detail} off` : "Removed papers", screened: `Screened ${plural(count, "paper", "papers")}`, paused: "Paused the models", resumed: "Resumed the models", retried: "Read some papers again", stopped: "Stopped the screening", moved: "Moved it to another workspace", shared: `Shared it with ${detail || "someone"}` };
+  const KIND: Record<string, string> = { created: "Started the screening", renamed: `Renamed it ${inQuotes(detail)}`, edited: detail || "Changed it", added: detail ? `Added ${detail}` : "Added papers", removed: detail ? `Took ${detail} off` : "Removed papers", screened: `Screened ${plural(count, "paper", "papers")}`, paused: "Paused the models", resumed: "Resumed the models", retried: "Read some papers again", stopped: "Stopped the screening", moved: detail ? `Moved it from ${detail}` : "Moved it to another workspace", shared: `Shared it with ${detail || "someone"}` };
   return { what: KIND[row.happened] ?? (detail || "Changed it") };
 }
 
