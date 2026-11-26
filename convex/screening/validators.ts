@@ -178,3 +178,69 @@ export const startFactsValidator = v.object({
   // Jobs with no spending limit among the papers a pass could start: the pass reads no row of theirs.
   uncapped: v.array(v.id("screeningJobs")),
 });
+
+// ── Screening with reviewers (plans/screening-reviewers) ─────────────────────────────────────────
+
+/** A reviewer's answer to one criterion, and their vote on a paper. */
+export const answerValidator = v.union(v.literal("yes"), v.literal("no"), v.literal("unclear"));
+export const decisionValidator = v.union(v.literal("include"), v.literal("maybe"), v.literal("exclude"));
+/** Where a paper stands: settled one way, split between its reviewers, or still short of votes. */
+export const paperResultValidator = v.union(v.literal("include"), v.literal("maybe"), v.literal("exclude"), v.literal("conflict"), v.literal("waiting"));
+
+/** Words an organiser marks on one criterion, and how long each is. */
+export const MAX_TERMS = 20;
+const TEXT = { name: 200, question: 2_000, criterion: 500, short: 40, note: 2_000, term: 80, voteNote: 2_000, message: 4_000 } as const;
+export const SCREENING_TEXT = TEXT;
+
+/** One criterion: the question, its short name, whether a paper must meet it, guidance, marked words, and what each answer is worth. */
+export const criterionValidator = v.object({
+  key: v.string(),
+  text: v.string(),
+  short: v.string(),
+  must: v.boolean(),
+  note: v.optional(v.string()),
+  terms: capped(v.array(v.string()), MAX_TERMS),
+  addedAt: v.number(),
+  points: v.object({ yes: v.number(), no: v.number(), unclear: v.number() }),
+});
+export const criteriaValidator = capped(v.array(criterionValidator), MAX_QUESTIONS);
+
+/** How papers are shared out and settled (lib/screening/rules.ts). */
+export const ruleValidator = v.object({
+  each: v.union(v.number(), v.literal("all")),
+  settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")),
+  resolver: v.id("users"),
+  blind: v.union(v.literal("after"), v.literal("always")),
+});
+
+export const everyValidator = v.union(v.literal("day"), v.literal("week"), v.literal("month"));
+
+/** A vote's answers, a model's confidence in each, and the sentence of the abstract it relied on for each, counted from 0. */
+export const voteAnswersValidator = capped(v.record(v.string(), answerValidator), MAX_QUESTIONS);
+export const votePassagesValidator = capped(v.record(v.string(), v.number()), MAX_QUESTIONS);
+
+/** A reviewer's place on a paper (lib/screening/rules.ts `Ballot`). */
+export const voteStatusValidator = v.union(v.literal("waiting"), v.literal("cast"), v.literal("failed"), v.literal("closed"), v.literal("discarded"));
+
+/**
+ * Where a source's papers come from: one of the sets a job reads (`paperSetValidator`), a file of references or a
+ * table kept in storage, PDFs kept in storage, or a pasted list of DOIs kept there too.
+ */
+export const sourceSetValidator = v.union(
+  v.object({ kind: v.literal("search"), searchId: v.string() }),
+  v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
+  v.object({ kind: v.literal("saved") }),
+  v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
+  v.object({ kind: v.literal("evidenceLibrary"), libraryId: v.id("evidenceLibraries"), source: librarySourceValidator }),
+  // `deep`: with the collections under the one it names.
+  v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), deep: v.optional(v.boolean()) }),
+  v.object({ kind: v.literal("upload"), file: v.id("_storage"), columns: v.optional(v.record(v.string(), v.string())) }),
+  v.object({ kind: v.literal("pdf"), files: capped(v.array(v.object({ file: v.id("_storage"), name: v.string() })), 200) }),
+  v.object({ kind: v.literal("dois"), file: v.id("_storage") }),
+);
+
+/** Why something a source held isn't screened. */
+export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("scan"), v.literal("broken"), v.literal("wrong"));
+
+/** What a reviewer's votes come to, kept by the bookkeeping worker alone. */
+export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.number(), maybe: v.number(), exclude: v.number(), failed: v.number(), closed: v.number(), spent: v.number() });

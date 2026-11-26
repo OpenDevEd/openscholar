@@ -33,6 +33,8 @@ export interface ScreeningResultData {
   confidences: Record<string, number>
   /** The mean of `confidences`. */
   confidence: number
+  /** The sentence of the abstract each response relied on, counted from 0, where the model was asked for one and named one. */
+  passages?: Record<string, number | null>
 }
 
 export type BatchScreeningResult = BatchResult<ScreeningResultData>

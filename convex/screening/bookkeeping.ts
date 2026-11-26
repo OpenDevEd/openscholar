@@ -23,7 +23,8 @@ import { findItem } from "../library/find";
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
-import { readStartFacts, startWaitingPapers } from "./slots";
+import { readStartFacts, startWaitingPapers, startWaitingVotes } from "./slots";
+import { settlePapers } from "./settling";
 import { startFactsValidator } from "./validators";
 import { captureLater } from "../lib/analyticsEvents";
 import { noteActivity } from "../activity/notes";
@@ -156,7 +157,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
  * left out (excluded, or failed) leaves that collection, and comes back if a changed answer
  * includes it after all; an unclear one stays.
  */
-export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move) {
+export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, set: Doc<"screeningJobs">["set"] = job.set) {
   const moved = { saved: 0, removed: 0 };
   if (becameIncluded && !job.unsaved) {
     moved.saved = result.savedToLibrary ? 0 : 1;
@@ -166,9 +167,9 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   if (becameIncluded && job.libraryDestination) await queueLibraryWrite(ctx, job, result, "add", job.libraryDestination);
   if (job.libraryDestination) await forgetMissing(ctx, job, result);
   if (!job.prune || !(becameIncluded || left)) return moved;
-  if (job.set?.kind === "evidenceLibrary") return await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved);
-  if (job.set?.kind !== "collection") return moved;
-  const collectionId = job.set.collectionId;
+  if (set?.kind === "evidenceLibrary") return await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved, set);
+  if (set?.kind !== "collection") return moved;
+  const collectionId = set.collectionId;
   const workspaceId = job.workspaceId;
   // A screening moved to another workspace (#654) leaves the collection it read alone.
   if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) return moved;
@@ -195,8 +196,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
  * `shelve` for a job that prunes the reader's library collection it read: a paper that comes to be left out leaves it,
  * and comes back if a changed answer includes it. The job counts it removed once the library confirms it (`written`).
  */
-async function pruneLibraryCollection(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, moved: { saved: number; removed: number }) {
-  const set = job.set;
+async function pruneLibraryCollection(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, moved: { saved: number; removed: number }, set: Doc<"screeningJobs">["set"]) {
   if (set?.kind !== "evidenceLibrary" || !("readerCollection" in set.source) || !set.source.readerCollection || "search" in set.source) return moved;
   const from = { libraryId: set.libraryId, collection: set.source.readerCollection };
   if (left && !result.pruned) {
@@ -276,9 +276,14 @@ export const bookkeep = internalMutation({
     // Papers of each workspace's that stopped running. A paper skipped before it started held no slot, but its
     // workspace is still listed: with it out of the queue, the papers that waited behind it can start.
     const freed = new Map<Id<"workspaces">, number>();
+    const freedVotes = new Map<Id<"workspaces">, number>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
-      if (job) {
+      if (job?.shape === 2) {
+        // A screening with reviewers: its papers are settled on their votes (./settling.ts).
+        const { freed: slots, queued } = await settlePapers(ctx, job, jobResults);
+        if (slots || queued) freedVotes.set(job.workspaceId, (freedVotes.get(job.workspaceId) ?? 0) + slots);
+      } else if (job) {
         // Answers move to the job's screening first: a paper is scored on its answers as they
         // stand there, where a person's or the assistant's answer outranks the model's.
         for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
@@ -311,6 +316,7 @@ export const bookkeep = internalMutation({
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
     for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);
+    for (const [workspaceId, finished] of freedVotes) await startWaitingVotes(ctx, workspaceId, finished, facts);
     return null;
   },
 });
