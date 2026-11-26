@@ -34,12 +34,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder, standsTo, startedSays } from "./data";
+import { PDF_HOW, PDF_LEFT, paperAt, pdfAdded, pdfStands, type PdfFile, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder, standsTo, startedSays } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
-import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, UPLOAD_ACCEPT, UPLOAD_FORMATS, WRITTEN, type CommunityRow, type Offer } from "./form-data";
+import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, TABLE_FILES, UPLOAD_ACCEPT, UPLOAD_FORMATS, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
+import { ColumnMatch, DoiTab, OfferRow, SourceItems, WrongPaper, ZoteroTab, type ItemRow, type PendingTable, type ZoteroPick } from "./sources";
+import { NOT_A_DOI, doiOutcome, pdfOutcome, readReferences, readTable, tableCounts, type ColumnKey } from "./upload-read";
 import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
 import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper, settingsOf, modelsState } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
@@ -54,10 +56,34 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = 
   { id: "collection", label: "Library", icon: SOURCE_ICON.saved, find: "Find a collection" },
   { id: "screening", label: "Screening", icon: SOURCE_ICON.screening },
   { id: "evidenceLibrary", label: "Community", icon: SOURCE_ICON.evidenceLibrary },
-  { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero, find: "Find a Zotero collection" },
+  { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero },
   { id: "dois", label: "DOIs", icon: Hash },
 ];
 const OFFER_PAGE = 5;
+/** Why a file became no source: not a kind it reads, nothing in it to read, or a PDF that can't be screened. */
+type Refusal = "type" | "empty" | "twice" | keyof typeof PDF_LEFT;
+const REFUSALS: Refusal[] = ["type", "empty", "twice", "abstract", "scan", "broken"];
+/** A batch of PDFs with the ones another source already holds marked: the last so many of those taken, as the count of duplicates is made up. */
+const twinned = (files: PdfFile[], count: number) => { let left = count; return [...files].reverse().map((file) => (left > 0 && pdfAdded(file) ? (left--, { ...file, twin: true }) : file)).reverse(); };
+function refusalSays(why: Refusal, names: string[]) {
+  const many = names.length > 1;
+  const files = listed(names);
+  if (why === "type") return `Couldn't read ${files}. It reads ${UPLOAD_FORMATS} files.`;
+  if (why === "empty") return `Found no references in ${files}.`;
+  if (why === "twice") return `${files} ${many ? "are" : "is"} already in this screening.`;
+  if (why === "abstract") return `${files} ${many ? "have" : "has"} no abstract, in the file or in any index, and ${many ? "were" : "was"} left out.`;
+  if (why === "scan") return `${files} ${many ? "are scans" : "is a scan"} with no text to read, and ${many ? "were" : "was"} left out.`;
+  return `${files} ${many ? "aren't PDFs that open" : "isn't a PDF that opens"}.`;
+}
+/** What a reference file's records give the screening, with the lookups made up in the shares measured: nine in ten records with a DOI are in the index, a third of the others, and a lookup fills a fifth of the missing abstracts. */
+function recordFacts({ records, untitled, noAbstract, withDoi }: { records: number; untitled: number[]; noAbstract: number; withDoi: number }) {
+  const matched = Math.min(records, Math.round(withDoi * 0.93 + (records - withDoi) * 0.35));
+  const bare = Math.round(noAbstract * 0.8);
+  return {
+    facts: [...(matched ? [`${num(matched)} found in Openscholar's index`] : []), ...(records - matched ? [`${num(records - matched)} not in the index`] : []), ...(bare ? [`${num(bare)} without an abstract`] : [])],
+    left: untitled.map((place) => ({ name: `Record ${num(place)} of the file`, why: "No title" })),
+  };
+}
 /**
  * What happened on a running screening while its settings were open, which a save keeps: the votes, how far each
  * model has read, what was settled, the results held and let go, the papers moved between reviewers, the places of
@@ -243,10 +269,19 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [kind, setKind] = useState<Kind>("search");
   const [find, setFind] = useState("");
   const [offerPage, setOfferPage] = useState(1);
-  const [openSource, setOpenSource] = useState<string | null>(null);
+  // The source whose row is open, and on which part: the papers taken from it, or what it held and left out.
+  const [openSource, setOpenSource] = useState<{ id: string; part: "papers" | "left" } | null>(null);
   const [reading, setReading] = useState<string[]>([]);
-  const [rejected, setRejected] = useState<string[]>([]);
-  const [dois, setDois] = useState("");
+  // Files that became no source, each with why.
+  const [rejected, setRejected] = useState<Array<{ name: string; why: Refusal }>>([]);
+  // Tables whose columns someone has to name before they are added.
+  const [pending, setPending] = useState<PendingTable[]>([]);
+  // Counts up each time the form's changes are thrown away, so a file that was still being read then is dropped.
+  const epoch = useRef(0);
+  // Zotero sources just added, while their papers' abstracts are counted.
+  const [counting, setCounting] = useState<string[]>([]);
+  // Sources of pasted DOIs while the DOIs are looked up: the row is there at once, and its counts follow.
+  const [looking, setLooking] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   // The Community tab: which community, which of its collections, and ones brought in by their address.
   const [community, setCommunity] = useState(COMMUNITIES[0]!.id);
@@ -335,7 +370,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const owed = saved ? reread : cost;
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
   const lacking: Block | null = unasked ?? (needsCriteria ? { text: models.length > 1 ? "Add a criterion for the models" : "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : owed > wallet ? { text: `${credits(owed - wallet)} credits short` } : null);
-  const holdUp = saved ? lacking : null;
+  // A table that waits for its columns isn't counted yet: starting or saving now would leave it out.
+  const waiting: Block | null = pending.length ? { text: "Name the table's columns, or remove it", section: "papers" } : null;
+  const holdUp = saved ? (waiting ?? lacking) : null;
   // How many votes each reviewer has cast, and which papers each check added: what a row's chips open.
   const savedState = saved ? standing(saved) : null;
   const votesOf = (reviewer: Reviewer) => (savedState ? savedState.papers.reduce((sum, paper) => sum + (savedState.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && one.vote) ? 1 : 0), 0) : 0);
@@ -344,43 +381,111 @@ export function ScreeningForm({ id }: { id?: string }) {
   const unreadBy = (reviewer: Reviewer) => (savedState ? savedState.papers.filter((paper) => savedState.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && one.failed)) : []);
   const unreadText = (count: number) => `${num(count)} couldn't be read`;
   // Why it can't start yet: it needs papers and a reviewer first.
-  const stop: Block | null = !papers
+  const stop: Block | null = waiting
+    ? waiting
+    : !papers
     ? { text: "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
       : lacking;
 
-  const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[]) =>
+  const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[], more?: Partial<Source>) =>
     setDraft((d) => {
-      if (d.sources.some((source) => source.kind === kind && source.name === name)) return d;
+      // Two Zotero collections can share a name, and so can two files: what a source reads tells them apart where it says.
+      if (d.sources.some((source) => (more?.ref ? source.ref === more.ref : source.kind === kind && source.name === name))) return d;
       const duplicates = d.sources.length && total > 3 ? Math.min(total - 1, Math.round(total * 0.07) + (hash(name) % 4)) : 0;
       const slot = nextSlot(d.sources);
-      return { ...d, sources: [...d.sources, { id: sourceId(d.sources, name), slot, kind, name, detail, total, scope: "all", range: [1, Math.max(1, total)], duplicates, addedAt: Date.now(), ...(facts ? { facts } : {}) }] };
+      return { ...d, sources: [...d.sources, { id: sourceId(d.sources, name), slot, kind, name, detail, total, scope: "all", range: [1, Math.max(1, total)], duplicates, addedAt: Date.now(), ...(facts ? { facts } : {}), ...more, ...(more?.files ? { files: twinned(more.files, duplicates) } : {}) }] };
     });
   // A source picked from a list opens to which of its papers are taken, as picking one does on the page this replaces.
-  const openAdded = (name: string, total: number) => { if (total > 1) setOpenSource(sourceId(draft.sources, name)); };
+  const openAdded = (name: string, total: number) => { if (total > 1) setOpenSource({ id: sourceId(draft.sources, name), part: "papers" }); };
   const patchSource = (id: string, patch: Partial<Source> | ((source: Source) => Partial<Source>)) =>
     setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.id === id ? { ...source, ...(typeof patch === "function" ? patch(source) : patch) } : source)) }));
-  // Files are read one at a time: a reference file becomes a source of its own, PDFs join one source between them.
-  const take = (list: FileList | File[]) => {
+  const refuse = (names: string[], why: Refusal) => setRejected((now) => [...now.filter((one) => !names.includes(one.name)), ...names.map((name) => ({ name, why }))]);
+  // A file's records as a source: how many the index knows, how many have no abstract, and the ones with no title, which are left out.
+  const addRecords = (name: string, detail: string, counts: Parameters<typeof recordFacts>[0], ref: string) => {
+    if (!counts.records) return refuse([name], "empty");
+    const { facts, left } = recordFacts(counts);
+    addSource("upload", name, detail, counts.records, facts, { ref, ...(left.length ? { left } : {}) });
+  };
+  // What a file holds is counted from the file itself. A reference file becomes a source of its own, a table waits for its columns where it can't name them, and PDFs join one source between them. The same file a second time is turned away.
+  const take = async (list: FileList | File[]) => {
     const all = [...list];
-    const bad = all.filter((file) => !REFERENCE_FILES.test(file.name) && !PDF_FILES.test(file.name)).map((file) => file.name);
-    if (bad.length) setRejected((names) => [...new Set([...names, ...bad])]);
-    const references = all.filter((file) => REFERENCE_FILES.test(file.name));
-    const pdfs = all.filter((file) => PDF_FILES.test(file.name));
-    const names = [...references.map((file) => file.name), ...(pdfs.length ? [`${plural(pdfs.length, "PDF", "PDFs")}`] : [])];
+    const held = (ref: string) => draft.sources.some((source) => source.ref === ref) || pending.some((one) => one.ref === ref);
+    const refOf = (file: File) => `file:${file.name}:${file.size}`;
+    const references = all.filter((file) => REFERENCE_FILES.test(file.name) && !held(refOf(file)));
+    const pdfs = all.filter((file) => PDF_FILES.test(file.name)).map((file) => file.name);
+    const pdfRef = `pdfs:${hash(pdfs.join("|"))}`;
+    const other = all.filter((file) => !REFERENCE_FILES.test(file.name) && !PDF_FILES.test(file.name)).map((file) => file.name);
+    if (other.length) refuse(other, "type");
+    const twice = [...all.filter((file) => REFERENCE_FILES.test(file.name) && held(refOf(file))).map((file) => file.name), ...(pdfs.length && held(pdfRef) ? pdfs : [])];
+    if (twice.length) refuse(twice, "twice");
+    const batch = pdfs.length && !held(pdfRef) ? pdfs : [];
+    const names = [...references.map((file) => file.name), ...(batch.length ? [plural(batch.length, "PDF", "PDFs")] : [])];
     if (!names.length) return;
     setReading((now) => [...now, ...names]);
-    setTimeout(() => {
-      for (const file of references) {
-        const total = 12 + (hash(file.name) % 140);
-        const matched = total - 2 - (hash(file.name) % 5);
-        addSource("upload", file.name, "Reference file", total, [`${matched} found in Openscholar's index`, `${total - matched} not in the index`, `${1 + (hash(file.name) % 4)} without an abstract`]);
+    const from = epoch.current;
+    // The pause stands in for the time a real read takes.
+    const [texts] = await Promise.all([Promise.all(references.map((file) => file.text())), new Promise((done) => setTimeout(done, 1100))]);
+    setReading((now) => now.filter((name) => !names.includes(name)));
+    // The form's changes were thrown away while the files were read: what they held goes with them.
+    if (from !== epoch.current) return;
+    references.forEach((file, at) => {
+      if (!TABLE_FILES.test(file.name)) {
+        const read = readReferences(texts[at]!);
+        return read ? addRecords(file.name, `${read.format} file`, read, refOf(file)) : refuse([file.name], "empty");
       }
-      if (pdfs.length) addSource("pdf", `${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, pdfs.length === 1 ? "A PDF, read from the file" : "PDFs, read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
-      setReading((now) => now.filter((name) => !names.includes(name)));
-    }, 1100);
+      const table = readTable(texts[at]!);
+      if (!table) return refuse([file.name], "empty");
+      if (table.ask) return setPending((now) => [...now, { name: file.name, ref: refOf(file), table, picked: table.picked }]);
+      addRecords(file.name, "Table", tableCounts(table, table.picked), refOf(file));
+    });
+    if (batch.length) {
+      const read = batch.map((name, place) => pdfOutcome(name, place));
+      const taken = read.filter(pdfAdded).length;
+      // A batch none of which can be screened is no source: each file is named with why.
+      if (taken) addSource("pdf", `${batch[0]}${batch.length > 1 ? ` and ${num(batch.length - 1)} more` : ""}`, batch.length === 1 ? "A PDF" : "PDFs", taken, undefined, { ref: pdfRef, files: read });
+      else for (const why of ["abstract", "scan", "broken"] as const) { const files = read.filter((file) => file.how === why).map((file) => file.name); if (files.length) refuse(files, why); }
+    }
   };
+  // Pasted DOIs are looked up: the ones found are the source, and the rest are listed on its row with why. The source holds what the lookup gives from the start, and its row shows "Looking up" over it for as long as a lookup takes, so nothing arrives later that removing the source or throwing the changes away could miss. When none is found there is no source: what comes back says how many don't exist and how many have no record.
+  const lookUp = (dois: string[]) => {
+    const outcomes = dois.map((doi) => ({ doi, ...doiOutcome(doi) }));
+    const found = outcomes.flatMap((one) => (one.found ? [one] : []));
+    const left = outcomes.flatMap((one) => (one.found ? [] : [{ name: one.doi, why: one.why }]));
+    if (!found.length) return { none: left.filter((one) => one.why === NOT_A_DOI).length, bare: left.filter((one) => one.why !== NOT_A_DOI).length };
+    const name = `${found[0]!.doi}${found.length > 1 ? ` and ${num(found.length - 1)} more` : ""}`;
+    const id = sourceId(draft.sources, name);
+    const bare = found.filter((one) => !one.abstract).length;
+    addSource("dois", name, "Pasted DOIs", found.length, bare ? [`${num(bare)} without an abstract`] : [], { ref: `dois:${hash(dois.join())}`, ...(left.length ? { left } : {}) });
+    setLooking((now) => [...now, id]);
+    setTimeout(() => setLooking((now) => now.filter((one) => one !== id)), 1100);
+    return null;
+  };
+  // A library or a collection of Zotero's is added at once. How many of its papers lack an abstract is known once they are read: the row shows "Counting abstracts" over the count for that long. A made-up fifth of the missing ones is filled by a lookup.
+  const addZotero = (pick: ZoteroPick) => {
+    const id = sourceId(draft.sources, pick.name);
+    const bare = Math.round(pick.total * (1 - pick.abstracts / 100) * 0.8);
+    openAdded(pick.name, pick.total);
+    addSource("zotero", pick.name, pick.detail, pick.total, [bare ? `${num(bare)} without an abstract` : "Every paper has an abstract"], { ref: pick.ref, filters: pick.filters });
+    setCounting((now) => [...now, id]);
+    setTimeout(() => setCounting((now) => now.filter((one) => one !== id)), 1400);
+  };
+  const pickColumn = (name: string, key: ColumnKey, head: string | undefined) => setPending((now) => now.map((one) => (one.name === name ? { ...one, picked: { ...one.picked, [key]: head }, untitled: false } : one)));
+  const addTable = (table: PendingTable) => {
+    if (!table.picked.title) return setPending((now) => now.map((one) => (one.ref === table.ref ? { ...one, untitled: true } : one)));
+    addRecords(table.name, "Table", tableCounts(table.table, table.picked), table.ref);
+    setPending((now) => now.filter((one) => one.ref !== table.ref));
+  };
+  // A PDF whose match is the wrong paper is read from its own first page, or left out where that page has no abstract. The source's counts follow its files, and a range that reached past them is drawn in.
+  const setWrong = (id: string, name: string) =>
+    patchSource(id, (now) => {
+      const files = now.files!.map((file) => (file.name === name ? { ...file, wrong: !file.wrong } : file));
+      const total = files.filter(pdfAdded).length;
+      const end = Math.min(now.range[1], total);
+      const ranged = now.scope === "range" && now.range[0] <= end;
+      return { files, total, duplicates: files.filter((file) => pdfAdded(file) && file.twin).length, scope: ranged ? "range" : "all", range: ranged ? [now.range[0], end] : [1, Math.max(1, total)] };
+    });
 
   // A criterion decides unless it is marked as nice to have: an inclusion criterion that excludes nothing is a surprise.
   const addCriterion = (words: string, short?: string) =>
@@ -458,7 +563,15 @@ export function ScreeningForm({ id }: { id?: string }) {
   const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
   const reviewerRows = draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left) }));
 
+  // A file still being read isn't in the screening yet: the click says so and goes to it.
+  const stillReading = () => {
+    if (!reading.length) return false;
+    toast(`Still reading ${listed(reading)}`);
+    document.getElementById("papers")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    return true;
+  };
   const start = () => {
+    if (stillReading()) return;
     const at = Date.now();
     const newId = `s${at}`;
     const name = draft.name.trim() || draft.sources[0]?.name || "Untitled screening";
@@ -486,7 +599,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     router.replace(overviewHref(newId));
   };
   const save = () => {
-    if (!saved || !id) return;
+    if (!saved || !id || stillReading()) return;
     // What the models read at once is paid for at once.
     const again = models.map((model) => ({ id: model.id, cost: atOnce(model) })).filter((one) => one.cost);
     const reopens = lines.some((line) => line.kind === "reopen");
@@ -517,6 +630,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   };
   const discard = () => {
     const was = store.drafts[key];
+    epoch.current += 1;
+    setPending([]);
+    setRejected([]);
     store.draft(key, () => undefined);
     toast("Changes discarded", { action: { label: "Undo", onClick: () => store.draft(key, () => was) } });
   };
@@ -539,7 +655,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   };
   // Another screening's included papers are a source: the screenings are the ones this person can open, with what each has included so far and whether it is still running.
   const screeningOffers: Offer[] = kind !== "screening" ? [] : store.screenings.filter((one) => one.id !== draft.id && accessOf(one, store.viewer)).map((one) => ({ name: includedIn(one.name), detail: one.finishedAt ? "Finished screening" : "Running screening", total: standing(one).counts.include })).filter((offer) => offer.total > 0);
-  const offered = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" ? [] : kind === "screening" ? screeningOffers : OFFERS[kind];
+  const offered = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" || kind === "zotero" ? [] : kind === "screening" ? screeningOffers : OFFERS[kind];
   const offers = offered.filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
   const offerPager = pagerOf(offers.length, OFFER_PAGE, offerPage, setOfferPage);
   const importable = draft.sources.flatMap((source) => (source.kind === "search" ? (OFFERS.search.find((offer) => offer.name === source.name)?.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })) : []));
@@ -573,9 +689,27 @@ export function ScreeningForm({ id }: { id?: string }) {
     <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere" facts={<Chip>Kept in the screening</Chip>} />,
   ];
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
-  // The lookup is made up: about one pasted DOI in eight isn't in the index, and the source says how many were left out.
-  const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
-  const doiMissing = Math.floor(doiCount / 8);
+  // What a source held and left out, or a PDF source's files, as the list in its row shows them.
+  const itemsOf = (source: Source, fixed: boolean): ItemRow[] =>
+    source.files
+      ? source.files.map((file) => {
+          const stands = pdfStands(file);
+          const taken = pdfAdded(file);
+          const matched = file.how === "doi" || file.how === "title";
+          return {
+            key: file.name,
+            name: file.name,
+            kind: taken ? "taken" : "left",
+            // The paper it was matched to, to check the match against the file's name.
+            detail: matched && !file.wrong ? paperAt(draft.seed, source.slot, file.paper, draft.theme ?? "edtech").title : undefined,
+            chip: { ...PDF_HOW, ...PDF_LEFT }[stands],
+            tone: taken ? ("neutral" as const) : ("warning" as const),
+            icon: taken ? Check : FileX,
+            // Once a screening has started with the file, its paper may hold votes: the match is changed there, on the paper.
+            action: matched && !fixed ? <WrongPaper wrong={Boolean(file.wrong)} name={file.name} onToggle={() => setWrong(source.id, file.name)} /> : undefined,
+          };
+        })
+      : (source.left ?? []).map((one, at) => ({ key: `${at}:${one.name}`, name: one.name, kind: one.why === NOT_A_DOI ? "none" : "bare", chip: one.why, tone: "warning" as const, icon: FileX }));
 
   // The summary beside the form: one line for each part, which opens it.
   const resolver = joined.find((person) => person.id === draft.rule.resolver) ?? joined[0];
@@ -642,7 +776,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="papers"
             title="Papers"
-            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A paper from a file that is found in Openscholar&apos;s index takes its abstract and details from there. One that is not in the index is screened as the file has it.</p></Help>{changed("papers")}</>}
+            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A record that Openscholar&apos;s index knows takes its abstract and details from there. One with a title and no abstract is still screened, on its title.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a PDF with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
             aside={
               <>
                 <Chip><AnimatedNumber value={found} /> found</Chip>
@@ -661,12 +795,16 @@ export function ScreeningForm({ id }: { id?: string }) {
               <div className="min-w-0 space-y-3">
                 {/* The list and what stands in for it when it is empty are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
-                {sourceRows.length || reading.length ? (
+                {sourceRows.length || reading.length || pending.length ? (
                   <div className={cn(LIST, "bg-card")}>
                     <AnimatePresence initial={false}>
                       {sourceRows.map(({ source, gone }) => {
                         const Icon = kindIcon(source.kind);
-                        const isOpen = openSource === source.id && !gone;
+                        const open = openSource?.id === source.id && !gone ? openSource.part : null;
+                        const isOpen = open === "papers";
+                        // What it held and doesn't take: a PDF source's files that can't be screened, a file's records with no title, the DOIs that weren't found.
+                        const leftOut = source.files ? source.files.filter((file) => !pdfAdded(file)).length : (source.left?.length ?? 0);
+                        const itemsLabel = source.files ? (leftOut ? `${num(leftOut)} of ${plural(source.files.length, "file", "files")} left out` : plural(source.files.length, "file", "files")) : leftOut ? `${num(leftOut)} left out` : null;
                         const link = sourceLink(source, store.screenings);
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own another source already had.
                         const grew = grown(source);
@@ -702,15 +840,23 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {gone ? <StateChip tone="warning" icon={Trash2}>Removed when you save</StateChip> : null}
-                                  <Chip>{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
-                                  {doubled > 0 && taken(source) ? <Chip>{num(doubled)} already in another source</Chip> : null}
+                                  {/* Until a lookup is back the row says only that: what the source holds isn't known yet, and its counts take this chip's place. */}
+                                  {looking.includes(source.id) ? <Chip key="looking"><Spinner className="size-3" />Looking up {plural(source.total + (source.left?.length ?? 0), "DOI", "DOIs")}</Chip> : <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>}
+                                  {doubled > 0 && taken(source) && !looking.includes(source.id) ? <Chip>{num(doubled)} already in another source</Chip> : null}
                                   {grew > 0 && own && !gone ? (
                                     <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
                                   ) : grew > 0 ? (
                                     <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
                                   ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Checked {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
                                   {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
-                                  {source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : /not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                  {/* What a lookup or a count will say stays under its chip until it is back: the count then takes the place the chip holds, so the row keeps its height. */}
+                                  {counting.includes(source.id) ? <Chip key="counting"><Spinner className="size-3" />Counting abstracts</Chip> : looking.includes(source.id) ? null : source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : /not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                  {/* What it left out opens from the chip that counts it: the list says why for each. */}
+                                  {itemsLabel && !gone && !looking.includes(source.id) ? (
+                                    <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className="flex rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
+                                      <StateChip tone={leftOut ? "warning" : "neutral"} icon={leftOut ? FileX : undefined}>{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} /></StateChip>
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
                               {gone ? (
@@ -718,7 +864,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                               ) : (
                                 <>
                                   {baseTotal(source) > 1 ? (
-                                    <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : source.id)}>
+                                    <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })}>
                                       {source.scope === "range" ? `Papers ${num(source.range[0])} to ${num(source.range[1])}` : "Choose papers"}<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
                                     </Button>
                                   ) : null}
@@ -729,8 +875,35 @@ export function ScreeningForm({ id }: { id?: string }) {
                               )}
                             </div>
                             <AnimatePresence initial={false}>
-                              {isOpen ? (
+                              {open ? (
                                 <motion.div key="scope" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                                  {/* The row's two parts are different heights: going from one to the other slides. */}
+                                  <AutoHeight>
+                                  {open === "left" ? (
+                                    <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
+                                      {source.files ? (
+                                        <SourceItems
+                                          key={source.id}
+                                          rows={itemsOf(source, Boolean(own))}
+                                          label="files"
+                                          kinds={[{ id: "taken", label: "Taken" }, { id: "left", label: "Left out" }]}
+                                          start={leftOut ? "left" : "all"}
+                                          help={<Help title="Files left out" facts={<HelpFact>A wrong match can be set aside before the screening starts</HelpFact>}>A screening reads a title and an abstract. A PDF is taken when its paper is found by the DOI in the file or by its title, or when its first page prints an abstract. It is left out when no abstract is found, when it is a scan with no text, or when it doesn&apos;t open.</Help>}
+                                        />
+                                      ) : source.kind === "dois" ? (
+                                        <SourceItems
+                                          key={source.id}
+                                          rows={itemsOf(source, true)}
+                                          label="DOIs"
+                                          kinds={new Set(source.left?.map((one) => one.why)).size > 1 ? [{ id: "none", label: "No such DOI" }, { id: "bare", label: "No record" }] : undefined}
+                                          copied={["DOI", "DOIs"]}
+                                          help={<Help title="DOIs left out">A DOI is left out when no DOI by that name exists, which is nearly always a typing slip, or when it exists and neither Openscholar&apos;s index nor the registry that issued it holds a title for it.</Help>}
+                                        />
+                                      ) : (
+                                        <SourceItems key={source.id} rows={itemsOf(source, true)} label="records" />
+                                      )}
+                                    </div>
+                                  ) : (
                                   <div className="space-y-4 pb-4 ps-16 pe-4 max-sm:ps-4">
                                     <PaperScope
                                       search={source.kind === "search"}
@@ -760,7 +933,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         </li>
                                       ) : null}
                                     </ul>
+                                    {/* A range of a Zotero source is counted in the order its papers were added there, which holds from one read to the next. */}
+                                    {source.kind === "zotero" && source.scope === "range" ? <Chip icon={Clock}>Oldest added to Zotero first</Chip> : null}
                                   </div>
+                                  )}
+                                  </AutoHeight>
                                 </motion.div>
                               ) : null}
                             </AnimatePresence>
@@ -776,6 +953,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </div>
                         </motion.div>
                       ))}
+                      {pending.map((table) => (
+                        <motion.div key={`pending:${table.ref}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
+                          <ColumnMatch pending={table} onPick={(key, head) => pickColumn(table.name, key, head)} onAdd={() => addTable(table)} onRemove={() => setPending((now) => now.filter((one) => one.ref !== table.ref))} />
+                        </motion.div>
+                      ))}
                     </AnimatePresence>
                   </div>
                 ) : (
@@ -785,7 +967,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {rejected.length ? (
                   <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
                     <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
-                    <p className="min-w-0 flex-1">Couldn&apos;t read {listed(rejected)}. It reads {UPLOAD_FORMATS} files.</p>
+                    {/* One line for each reason, with the files it is about. */}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {REFUSALS.flatMap((why) => { const names = rejected.filter((one) => one.why === why).map((one) => one.name); return names.length ? [<p key={why}>{refusalSays(why, names)}</p>] : []; })}
+                    </div>
                     <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRejected([])}><X /></Button></TooltipHint>
                   </div>
                 ) : null}
@@ -818,17 +1003,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => files.current?.click()}><Upload />Choose files</Button>
                       </div>
                     ) : kind === "dois" ? (
-                      <div className="space-y-2">
-                        <span className="flex items-center gap-1">
-                          <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-                          <Help title="Pasted DOIs" facts={<HelpFact>One a line, or separated by commas</HelpFact>}>Openscholar looks up each DOI in its index and takes the title and abstract from there. The source&apos;s row then says how many it couldn&apos;t find.</Help>
-                        </span>
-                        <Textarea id="dois" value={dois} onChange={(event) => setDois(event.target.value)} rows={4} placeholder="Paste DOIs, one a line or separated by commas" className="bg-card text-sm" />
-                        <div className="flex min-h-8 items-center justify-between gap-3">
-                          <p className="text-xs text-muted-foreground">{doiCount ? `${plural(doiCount, "DOI", "DOIs")} in what you pasted` : null}</p>
-                          <Button variant="outline" size="sm" disabled={!doiCount} onClick={() => { addSource("dois", `${plural(doiCount, "pasted DOI", "pasted DOIs")}`, "Looked up in Openscholar's index", doiCount - doiMissing, [`${num(doiCount - doiMissing)} found in Openscholar's index`, ...(doiMissing ? [`${num(doiMissing)} not found, and left out`] : [])]); setDois(""); }}><Plus />Look up {doiCount ? plural(doiCount, "DOI", "DOIs") : "DOIs"}</Button>
-                        </div>
-                      </div>
+                      <DoiTab onLookUp={lookUp} />
+                    ) : kind === "zotero" ? (
+                      <ZoteroTab connected={store.zotero !== false} account={store.me.name.toLowerCase().replace(/\s+/g, ".")} onConnect={() => store.set({ zotero: true })} sources={draft.sources} onAdd={addZotero} />
                     ) : kind === "evidenceLibrary" ? (
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-start gap-2">
@@ -1402,20 +1579,6 @@ function Blocker({ block }: { block: Block }) {
   const says = <><TriangleAlert aria-hidden className="size-4 shrink-0" />{block.text}</>;
   if (!block.section) return <span className="flex items-center gap-1.5 text-sm font-medium ink-warning">{says}</span>;
   return <JumpLink to={block.section} find={() => (block.focus ? document.querySelector<HTMLElement>(block.focus) : null)} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{says}</JumpLink>;
-}
-
-function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; icon: AppIcon; /** What else tells this row from the others, after its detail. */ chips?: ReactNode; added: boolean; onAdd: () => void }) {
-  return (
-    <div className="flex min-h-14 items-center gap-x-3 gap-y-1.5 px-1 py-2.5 max-sm:flex-wrap">
-      <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
-      <div className="min-w-0 flex-1 max-sm:basis-[calc(100%-1.75rem)]">
-        <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{offer.name}</p>
-        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-xl:hidden">{chips}</span> : null}</p>
-      </div>
-      <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip>
-      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
-    </div>
-  );
 }
 
 /** A reviewer on the screening, a person or a model, as the same row: what they are to it, what they cost, and the way to take them off. The summary's cost lines open a model's row. */

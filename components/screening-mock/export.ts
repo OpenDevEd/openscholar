@@ -39,6 +39,9 @@ import {
   type Paper,
   type Screening,
   type Standing,
+  PDF_LEFT,
+  pdfAdded,
+  pdfStands,
 } from "./data";
 import { collectionName } from "./form-data";
 
@@ -383,7 +386,7 @@ export function recordOf(out: Taken, at: number) {
       return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
-    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, facts: source.facts ?? [], filters: source.filters ?? [], added_at: since(source.addedAt), found: taken(source), after_duplicates: keptOf(source), checks: (source.updates ?? []).map((update) => ({ at: iso(update.at), found: update.added, duplicates: update.duplicates })) })),
+    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, facts: source.facts ?? [], filters: source.filters ?? [], left_out: source.files ? source.files.filter((file) => !pdfAdded(file)).map((file) => ({ name: file.name, why: PDF_LEFT[pdfStands(file) as keyof typeof PDF_LEFT] })) : (source.left ?? []), added_at: since(source.addedAt), found: taken(source), after_duplicates: keptOf(source), checks: (source.updates ?? []).map((update) => ({ at: iso(update.at), found: update.added, duplicates: update.duplicates })) })),
     papers: paperRows(out, state.papers).map((row, i) => ({ ...row, source_id: state.papers[i]!.source })),
     // The votes that were cast and show, each with what a model read for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

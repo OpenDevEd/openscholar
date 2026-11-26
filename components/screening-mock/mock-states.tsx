@@ -71,6 +71,11 @@ export function MockStates() {
           {option(!store.firstTime, "Has screenings", "Eight, in every state", () => store.set({ firstTime: false, screenings: seeded(), drafts: {} }))}
           {option(store.firstTime, "First time", "Starts with nothing screened", () => store.set({ firstTime: true, screenings: [], drafts: {} }))}
         </div>
+        <div role="radiogroup" aria-label="Zotero" className="space-y-0.5">
+          <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">Zotero</p>
+          {option(store.zotero !== false, "Connected", "Fourteen libraries and groups", () => store.set({ zotero: true }))}
+          {option(store.zotero === false, "Not connected", "The Zotero source asks to connect", () => store.set({ zotero: false }))}
+        </div>
         <Button variant="ghost" size="sm" className="w-full" onClick={() => { window.sessionStorage.removeItem(KEPT); window.location.reload(); }}><RotateCcw />Start the mock again</Button>
       </PopoverContent>
     </Popover>

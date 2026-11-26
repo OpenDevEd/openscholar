@@ -23,6 +23,8 @@ type State = {
   away?: Record<string, number>;
   /** A workspace that started with nothing screened, to see the first-time pages. */
   firstTime: boolean;
+  /** False for someone who hasn't connected a Zotero account, to see what the Zotero source asks for first. */
+  zotero?: boolean;
   /** Changes to a screening's settings that aren't saved yet, and a new screening being filled in, by where they are made. */
   drafts: Record<string, Screening>;
   /** The queue's pane on Screen is folded away, to give the paper its width. Kept with the tab, so it holds from page to page. */

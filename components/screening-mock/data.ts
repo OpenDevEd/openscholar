@@ -124,7 +124,18 @@ export const shortOf = (text: string) => {
 
 export type SourceKind = "search" | "collection" | "saved" | "screening" | "evidenceLibrary" | "zotero" | "upload" | "pdf" | "dois";
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
-export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number };
+export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number; /** The thing it reads, where two can share a name: a Zotero library or one of its collections, a pasted list. */ ref?: string; /** What it held and the screening doesn't take, each with why. */ left?: LeftOut[]; /** A PDF source's files, each as it was told or why it can't be screened. `total` counts the ones taken. */ files?: PdfFile[] };
+/** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
+export type LeftOut = { name: string; why: string };
+/** How a PDF's paper was told. */
+export const PDF_HOW = { doi: "By the DOI in the file", title: "By its title", file: "Read from the file" } as const;
+/** Why a PDF isn't screened: a screening reads a title and an abstract, and these files give none. */
+export const PDF_LEFT = { abstract: "No abstract found", scan: "A scan with no text", broken: "Doesn't open" } as const;
+/** One uploaded PDF. `paper` is its place in the source's run of made-up papers, which it keeps whatever happens to the files around it. */
+export type PdfFile = { name: string; how: keyof typeof PDF_HOW | keyof typeof PDF_LEFT; paper: number; /** Whether the file prints an abstract of its own: what it falls back to when its match is the wrong paper. */ own: boolean; /** Someone said the paper it was matched to isn't this one. */ wrong?: boolean; /** Another source already holds its paper: it is counted with the source's duplicates, and its paper is screened from there. */ twin?: boolean };
+/** Where a file stands once a wrong match is set aside: screened from its own abstract, or left out for having none. */
+export const pdfStands = (file: PdfFile): PdfFile["how"] => (file.wrong ? (file.own ? "file" : "abstract") : file.how);
+export const pdfAdded = (file: PdfFile) => pdfStands(file) in PDF_HOW;
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
@@ -579,7 +590,7 @@ const DESIGNS = [
 const SURNAMES = ["Mwangi", "Asante", "Okafor", "Banda", "Tembo", "Diallo", "Kamau", "Piper", "Evans", "Muralidharan", "Ochieng", "Mensah", "Habimana", "Jukes", "Abebe", "Ndlovu"];
 const VENUES = ["Journal of Development Economics", "Comparative Education Review", "International Journal of Educational Development", "World Development", "Computers & Education", "Journal of Research on Educational Effectiveness"];
 
-function paperAt(seed: number, slot: number, i: number, themeId: ThemeId): Omit<Paper, "source"> {
+export function paperAt(seed: number, slot: number, i: number, themeId: ThemeId): Omit<Paper, "source"> {
   const theme: Theme = THEMES[themeId];
   const n = slot * 337 + i;
   const rand = seeded(seed * 7919 + n * 104729 + 11);
@@ -623,14 +634,16 @@ const papersCache = new Map<string, Paper[]>();
 export function papersOf(screening: Pick<Screening, "seed" | "sources" | "theme"> & { createdAt?: number }): Paper[] {
   const theme = screening.theme ?? "edtech";
   const since = screening.createdAt ?? Infinity;
-  const key = `${theme}:${screening.seed}:${since}:${screening.sources.map((source) => `${source.slot}@${source.addedAt}=${source.scope === "all" ? 1 : source.range[0]}+${keptOf(source)}/${(source.updates ?? []).map((update) => `${update.at}+${update.added}-${update.duplicates}`).join("|")}`).join(",")}`;
+  const key = `${theme}:${screening.seed}:${since}:${screening.sources.map((source) => `${source.slot}@${source.addedAt}=${source.scope === "all" ? 1 : source.range[0]}+${keptOf(source)}${source.files ? `[${source.files.filter((file) => pdfAdded(file) && !file.twin).map((file) => file.paper).join(".")}]` : ""}/${(source.updates ?? []).map((update) => `${update.at}+${update.added}-${update.duplicates}`).join("|")}`).join(",")}`;
   const kept = papersCache.get(key);
   if (kept) return kept;
   const first: Paper[] = [];
   const later: Array<{ at: number; papers: Paper[] }> = [];
   for (const source of screening.sources) {
     const start = source.scope === "all" ? 0 : source.range[0] - 1;
-    const base = Array.from({ length: Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) }, (_, i) => ({ ...paperAt(screening.seed, source.slot, start + i, theme), source: source.id }));
+    // A PDF source's papers are its taken files' own, less the ones another source already holds: a file set aside takes its paper with it, and no other moves. A range counts along the files as they stand.
+    const places = source.files?.filter((file) => pdfAdded(file) && !file.twin).map((file) => file.paper);
+    const base = Array.from({ length: Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) }, (_, i) => ({ ...paperAt(screening.seed, source.slot, places?.[start + i] ?? start + i, theme), source: source.id }));
     if (source.addedAt <= since) first.push(...base);
     else later.push({ at: source.addedAt, papers: base.map((paper) => ({ ...paper, batch: source.addedAt })) });
     // What a check found sits after everything the source held before it, so no earlier paper changes.
@@ -1190,8 +1203,22 @@ export function startingScreenings(): Screening[] {
       // This morning's weekly check found nine papers in the two searches, two of which the screening had already.
       { ...source("s1", "search", "tablet OR software AND literacy AND primary school", "Openscholar search", 81, 0), updates: [{ at: THIS_MORNING, added: 6, duplicates: 1 }] },
       { ...source("s2", "search", "EdTech numeracy sub-Saharan Africa", "Openscholar search", 41, 6), updates: [{ at: THIS_MORNING, added: 3, duplicates: 1 }] },
-      source("s3", "upload", "pubmed-export-2026-11.ris", "Reference file", 25, 5, ["22 found in Openscholar's index", "2 without an abstract"]),
-      source("s4", "pdf", "7 PDFs from the team drive", "Read from the files", 7, 2, ["Titles and abstracts read from the files"]),
+      { ...source("s3", "upload", "pubmed-export-2026-11.ris", "RIS file", 25, 5, ["22 found in Openscholar's index", "3 not in the index", "2 without an abstract"]), left: [{ name: "Record 14 of the file", why: "No title" }] },
+      // Nine files were uploaded: seven are screened, each from its own place in the run of papers, and two could not be.
+      {
+        ...source("s4", "pdf", "tarl-botswana-brief.pdf and 8 more", "PDFs", 7, 2),
+        files: [
+          { name: "tarl-botswana-brief.pdf", how: "doi", paper: 0, own: true },
+          { name: "early-grade-reading-trial-2023.pdf", how: "doi", paper: 1, own: false },
+          { name: "ED605229.pdf", how: "file", paper: 2, own: true },
+          { name: "rapid-review-messaging.pdf", how: "title", paper: 3, own: true },
+          { name: "numeracy-tablets-kenya.pdf", how: "doi", paper: 4, own: true },
+          { name: "structured-pedagogy-guide.pdf", how: "file", paper: 5, own: true, twin: true },
+          { name: "working-paper-9412.pdf", how: "title", paper: 6, own: false, twin: true },
+          { name: "annual-report-2024.pdf", how: "abstract", paper: 7, own: false },
+          { name: "scan0007.pdf", how: "scan", paper: 8, own: false },
+        ],
+      },
     ],
     ["amina", "jonas", "thandiwe"],
     3,
@@ -1235,7 +1262,7 @@ export function startingScreenings(): Screening[] {
   return [
     edtech,
     tvet,
-    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group collection", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
+    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
     // In another workspace, shared with the person the mock starts as: they vote, and its settings are that workspace's.
     made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab" }),
     made("teachers", "Teacher professional development", "teachers", 4, [source("d1", "search", "teacher professional development AND learning outcomes", "Openscholar search", 640, 0)], [], 3, { model: 1 }, { createdBy: "kwame", createdAt: NOW - 15 * DAY, rule: { each: "1", settle: "all", resolver: "kwame", blind: "after" } }),
