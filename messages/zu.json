@@ -374,7 +374,7 @@
     "accountConnectedAs": "Kuxhunyiwe: {name}",
     "docidHint": "Isihlonzi se-Africa PID Alliance, i-Handle ngaphansi kuka-20.500.14351.",
     "enableDocid": "Sebenzisa i-DOCiD",
-    "docidPermanent": "I-DOCiD ayinayo insizakalo yokuhlola. I-DOCiD ngayinye iyi-Handle yangempela engeke isuswe, ihoxiswe kuphela.",
+    "docidPermanent": "I-DOCiD ngayinye iyi-Handle yangempela engeke isuswe, ihoxiswe kuphela.",
     "docidEmail": "I-imeyili ye-akhawunti",
     "docidCredential": "Iphasiwedi",
     "docidNoResourceTypes": "I-DOCiD ayikayivumeli le akhawunti ukufaka imibiko njenge-Manuscripts, ngakho ayikwazi ukuyifaka. Cela i-Africa PID Alliance ivumele i-Manuscripts, bese uqinisekisa futhi ulondoloza futhi."
@@ -6504,8 +6504,7 @@
       "seriesSaved": "Igama lochungechunge lilondoloziwe",
       "seriesName": "Igama lochungechunge",
       "issn": "ISSN",
-      "issnHint": "Shiya kungenalutho kuze kube uchungechunge luthola i-ISSN. Kuze kube yileso sikhathi, umugqa womnikazi uthi ISSN {pending}.",
-      "issnPending": "kusalindiwe",
+      "issnHint": "Shiya kungenalutho kuze kube uchungechunge luthola i-ISSN. Kuze kube yileso sikhathi, umugqa womnikazi awusho i-ISSN.",
       "issnSaved": "I-ISSN ilondoloziwe",
       "enterSeriesName": "Thayipha igama lochungechunge.",
       "enterByline": "Thayipha umugqa womnikazi.",
@@ -6876,7 +6875,6 @@
       "yourTitle": "Isihloko sakho",
       "noDoi": "Ayikho i-DOI okwamanje",
       "issn": "ISSN {issn}",
-      "issnPending": "I-ISSN isalindiwe",
       "live": "Kushicilelwe",
       "seePlans": "Bona izinhlelo",
       "activation": {
@@ -7601,7 +7599,7 @@
         },
         "byline": {
           "title": "Umugqa wochungechunge",
-          "about": "Umugqa wonke umbiko kulolu chungechunge owuphrintayo, onegama lochungechunge, i-ISSN yalo ne-DOI yombiko.",
+          "about": "Umugqa wonke umbiko kulolu chungechunge owuphrintayo, onegama lochungechunge ne-DOI yombiko.",
           "note": "Kumele ube umbhalo ku-PDF, hhayi isithombe, ngoba ukuhlola kuyawufuna. Khetha u-Ngengezeleni wona, i-Openscholar yengeza ikhasi lokugcina elinomugqa."
         },
         "checks": {
@@ -7611,8 +7609,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "Inombolo ehlonza uchungechunge, njengeyejenali.",
-          "note": "Ilindile kuze kube uchungechunge selubhalisiwe. I-DOI yombiko wakho iyasebenza ngaphandle kwayo."
+          "about": "Inombolo ehlonza uchungechunge, njengeyejenali."
         },
         "activation": {
           "title": "Ukwenza kusebenze",

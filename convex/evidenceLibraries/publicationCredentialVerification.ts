@@ -167,10 +167,10 @@ function sandboxValue(name: string) {
  * when none is typed. Throws, saving nothing, when a provider refuses.
  */
 /** The own accounts kept so far: as stored, or, from before they were kept apart, the ones in use if they were custom. */
-/** DOCiD's production API: it has no test service, so every account is a real one. */
-const DOCID_ENDPOINT = "https://docid.africapidalliance.org";
+/** DOCiD's API: production, unless the deployment names another, such as its demo (https://docid-demo.africapidalliance.org) on shared dev. */
+const docidEndpoint = () => process.env.DOCID_ENDPOINT?.trim() || "https://docid.africapidalliance.org";
 export const docidClient = () =>
-  new DocidApiClient({ endpoint: DOCID_ENDPOINT, fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
+  new DocidApiClient({ endpoint: docidEndpoint(), fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
 
 
 /**
@@ -178,9 +178,13 @@ export const docidClient = () =>
  * may use: DOCiD filters them by its category, and an account it hasn't allowed any gets none.
  */
 export async function docidLists(email: string, password: string) {
-  const { token } = await docidClient().signIn({ email, password });
+  return readDocidLists((await docidClient().signIn({ email, password })).token);
+}
+
+/** The lists `docidLists` reads, for an account already signed in. */
+export async function readDocidLists(token: string) {
   const read = async (list: string, name: string) => {
-    const response = await fetch(`${DOCID_ENDPOINT}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
+    const response = await fetch(`${docidEndpoint()}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`DOCiD answered ${response.status} when asked for its ${list.replaceAll("-", " ")}.`);
     const rows = (await response.json()) as Array<Record<string, unknown>>;
     return rows.flatMap((row) => (typeof row.id === "number" && typeof row[name] === "string" ? [{ id: row.id, name: (row[name] as string).trim() }] : [])).slice(0, DOCID_OPTIONS_MAX);

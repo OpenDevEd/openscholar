@@ -47,8 +47,10 @@ export function questionsOf({ questions, scoringConfig }: Pick<Job, "questions" 
  * How a job reads on the page. A processing job whose papers haven't come from its search yet is
  * getting them. One with no paper being read waits while another of the person's jobs has the slots.
  */
-export type Phase = "running" | "waiting" | "reading" | JobRow["status"];
+// A screening not started yet (status "draft", plans/screening-reviewers) is one whose sources are being read.
+export type Phase = "running" | "waiting" | "reading" | Exclude<JobRow["status"], "draft">;
 export function phaseOf(job: Pick<JobRow, "_id" | "status" | "running" | "reading">, active: Array<Pick<JobRow, "_id" | "running">>): Exclude<Phase, "processing"> {
+  if (job.status === "draft") return "reading";
   if (job.status !== "processing") return job.status;
   if (job.reading) return "reading";
   return job.running === 0 && active.some((other) => other._id !== job._id && other.running > 0) ? "waiting" : "running";

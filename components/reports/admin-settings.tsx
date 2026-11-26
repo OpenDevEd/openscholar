@@ -20,7 +20,7 @@ import { Field } from "@/components/evidence-libraries/configuration/section-car
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { IdentifierSettings } from "@/components/reports/identifier-settings";
 import { NewReportSettings, useIntakeAdmin } from "@/components/reports/new-report-settings";
-import { connectedOf } from "@/lib/reports/identifiers";
+import { chosenOf, connectedOf, routeOf, withAccounts, type ServiceId } from "@/lib/reports/identifiers";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -175,8 +175,8 @@ function SettingsView({ settings, autumn, intake }: { settings: Settings; /** Au
           <Row label={t("series")}>
             <SavedInput value={settings.series.name} onSave={(name) => series({ name }, t("seriesSaved"))} className="w-64" ariaLabel={t("seriesName")} />
           </Row>
-          <Row label={t("issn")} hint={t("issnHint", { pending: "{pending}" })}>
-            <SavedInput value={settings.series.issn} placeholder={t("issnPending")} onSave={(issn) => series({ issn }, t("issnSaved"))} className="w-40 font-mono" ariaLabel={t("issn")} />
+          <Row label={t("issn")} hint={t("issnHint")}>
+            <SavedInput value={settings.series.issn} onSave={(issn) => series({ issn }, t("issnSaved"))} className="w-40 font-mono" ariaLabel={t("issn")} />
           </Row>
           <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}", licence: "{licence}" })} wide>
             <SavedInput value={settings.series.byline} onSave={(byline) => series({ byline }, t("bylineSaved"))} className="w-full" ariaLabel={t("byline")} />
@@ -272,7 +272,7 @@ function SettingsView({ settings, autumn, intake }: { settings: Settings; /** Au
       </Zone>
 
       <CheckDialog check={editing} onClose={() => up("check")} />
-      <AgreementDialog open={nav.agreement} agreement={settings.agreement} series={settings.series} onClose={() => up("agreement")} />
+      <AgreementDialog open={nav.agreement} agreement={settings.agreement} series={settings.series} services={chosenOf(routeOf(withAccounts(settings.identifiers, settings.publication), [], false))} onClose={() => up("agreement")} />
     </div>
   );
 }
@@ -322,7 +322,7 @@ function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string
 }
 
 /** An input that saves when it loses focus or Enter is pressed. */
-function SavedInput({ value, onSave, className, placeholder, ariaLabel }: { value: string; /** Resolves false when the value was refused: the box then shows what is saved. */ onSave: (v: string) => Promise<boolean>; className?: string; placeholder?: string; ariaLabel?: string }) {
+function SavedInput({ value, onSave, className, ariaLabel }: { value: string; /** Resolves false when the value was refused: the box then shows what is saved. */ onSave: (v: string) => Promise<boolean>; className?: string; ariaLabel?: string }) {
   const [draft, setDraft] = useState(value);
   const [was, setWas] = useState(value);
   if (value !== was) {
@@ -338,7 +338,6 @@ function SavedInput({ value, onSave, className, placeholder, ariaLabel }: { valu
   return (
     <Input
       value={draft}
-      placeholder={placeholder}
       aria-label={ariaLabel}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -485,7 +484,7 @@ function CheckDialog({ check, onClose }: { check: CheckRow | "new" | null; onClo
   );
 }
 
-function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; agreement: Settings["agreement"]; series: Settings["series"]; onClose: () => void }) {
+function AgreementDialog({ open, agreement, series, services, onClose }: { open: boolean; agreement: Settings["agreement"]; series: Settings["series"]; /** What a report gets before the author picks anything, which the preview names. */ services: ServiceId[]; onClose: () => void }) {
   const setAgreement = useMutation(api.reports.settings.setAgreement);
   const { user } = useUser();
   const [today] = useState(() => new Date());
@@ -526,7 +525,7 @@ function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; 
           {preview ? (
             <div className="h-full overflow-y-auto rounded-xl border border-border-subtle px-5 py-4">
               {/* Filled the way the sign step fills it, with the admin as the signer. */}
-              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "https://doi.org/…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE })} />
+              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "https://doi.org/…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE, services, ownArchive: false })} />
             </div>
           ) : (
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label={t("agreementLabel")} onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />

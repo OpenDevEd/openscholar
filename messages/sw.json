@@ -374,7 +374,7 @@
     "accountConnectedAs": "Imeunganishwa: {name}",
     "docidHint": "Kitambulisho cha Africa PID Alliance, Handle chini ya 20.500.14351.",
     "enableDocid": "Tumia DOCiD",
-    "docidPermanent": "DOCiD haina huduma ya majaribio. Kila DOCiD ni Handle halisi lisiloweza kufutwa, bali kuondolewa tu.",
+    "docidPermanent": "Kila DOCiD ni Handle halisi lisiloweza kufutwa, bali kuondolewa tu.",
     "docidEmail": "Barua pepe ya akaunti",
     "docidCredential": "Nenosiri",
     "docidNoResourceTypes": "DOCiD bado haijaruhusu akaunti hii kuweka ripoti kama Manuscripts, kwa hiyo haiwezi kuziweka. Iombe Africa PID Alliance iruhusu Manuscripts, kisha thibitisha na uhifadhi tena."
@@ -6505,8 +6505,7 @@
       "seriesSaved": "Jina la mfululizo limehifadhiwa",
       "seriesName": "Jina la mfululizo",
       "issn": "ISSN",
-      "issnHint": "Acha tupu hadi mfululizo upate ISSN. Hadi hapo, mstari wa utambulisho unasema ISSN {pending}.",
-      "issnPending": "inasubiri",
+      "issnHint": "Acha tupu hadi mfululizo upate ISSN. Hadi hapo, mstari wa utambulisho hautaji ISSN.",
       "issnSaved": "ISSN imehifadhiwa",
       "enterSeriesName": "Andika jina la mfululizo.",
       "enterByline": "Andika mstari wa utambulisho.",
@@ -6877,7 +6876,6 @@
       "yourTitle": "Kichwa chako",
       "noDoi": "Bado hakuna DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN inasubiri",
       "live": "Imechapishwa",
       "seePlans": "Tazama mipango",
       "activation": {
@@ -7602,7 +7600,7 @@
         },
         "byline": {
           "title": "Mstari wa mfululizo",
-          "about": "Mstari ambao kila ripoti ya mfululizo huu huchapisha, wenye jina la mfululizo, ISSN yake na DOI ya ripoti.",
+          "about": "Mstari ambao kila ripoti ya mfululizo huu huchapisha, wenye jina la mfululizo na DOI ya ripoti.",
           "note": "Lazima uwe maandishi kwenye PDF, si picha, kwa sababu ukaguzi huutafuta. Chagua Niongezeeni na Openscholar huongeza ukurasa wa mwisho wenye mstari huo."
         },
         "checks": {
@@ -7612,8 +7610,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "Namba inayotambulisha mfululizo, kama ya jarida.",
-          "note": "Inasubiri hadi mfululizo usajiliwe. DOI ya ripoti yako hufanya kazi bila hiyo."
+          "about": "Namba inayotambulisha mfululizo, kama ya jarida."
         },
         "activation": {
           "title": "Kuwezesha",

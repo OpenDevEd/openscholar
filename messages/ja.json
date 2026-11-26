@@ -374,7 +374,7 @@
     "accountConnectedAs": "接続済み: {name}",
     "docidHint": "Africa PID Alliance の識別子で、20.500.14351 配下の Handle です。",
     "enableDocid": "DOCiD を使う",
-    "docidPermanent": "DOCiD にはテスト環境がありません。発行される DOCiD はすべて本物の Handle で、削除はできず、取り下げのみできます。",
+    "docidPermanent": "発行される DOCiD はすべて本物の Handle で、削除はできず、取り下げのみできます。",
     "docidEmail": "アカウントのメール",
     "docidCredential": "パスワード",
     "docidNoResourceTypes": "DOCiD はこのアカウントにまだレポートを Manuscripts として登録することを許可していないため、登録できません。Africa PID Alliance に Manuscripts の許可を依頼し、もう一度確認して保存してください。"
@@ -6504,8 +6504,7 @@
       "seriesSaved": "シリーズ名を保存しました",
       "seriesName": "シリーズ名",
       "issn": "ISSN",
-      "issnHint": "シリーズに ISSN が付くまで空のままにしてください。それまではクレジット行に ISSN {pending} と表示されます。",
-      "issnPending": "未定",
+      "issnHint": "シリーズに ISSN が付くまで空のままにしてください。それまではクレジット行に ISSN は入りません。",
       "issnSaved": "ISSN を保存しました",
       "enterSeriesName": "シリーズ名を入力してください。",
       "enterByline": "クレジット行を入力してください。",
@@ -6876,7 +6875,6 @@
       "yourTitle": "あなたのタイトル",
       "noDoi": "DOI はまだありません",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN 未定",
       "live": "公開中",
       "seePlans": "プランを見る",
       "activation": {
@@ -7601,7 +7599,7 @@
         },
         "byline": {
           "title": "シリーズ行",
-          "about": "このシリーズのすべての報告書に印刷する行。シリーズ名、ISSN、報告書の DOI が入ります。",
+          "about": "このシリーズのすべての報告書に印刷する行。シリーズ名と報告書の DOI が入ります。",
           "note": "チェックで探すため、画像ではなく PDF 内の文字である必要があります。「追加を任せる」を選ぶと、Openscholar がこの行を載せた最終ページを加えます。"
         },
         "checks": {
@@ -7611,8 +7609,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "雑誌の番号と同じように、シリーズを識別する番号。",
-          "note": "シリーズが登録されるまでは保留中です。報告書の DOI はなくても機能します。"
+          "about": "雑誌の番号と同じように、シリーズを識別する番号。"
         },
         "activation": {
           "title": "有効化",

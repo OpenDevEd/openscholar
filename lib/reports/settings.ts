@@ -146,14 +146,23 @@ export const startWords = (perDay: number, kind: WorkspaceKind) => {
  * identifier to print in its byline (lib/reports/identifiers.ts). A Crossref DOI, or a DOCiD minted at signing.
  */
 export const canRegister = (publication: PublicationSettings, identifiers: Identifiers = DEFAULT_IDENTIFIERS) => settingsProblem(withAccounts(identifiers, publication)) === null;
-/**
- * The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. Until the series has an ISSN the
- * byline says so in braces, "{pending}", as it is printed.
- */
 /** The series a report is published in: the name it was signed under, which its byline prints, and the ISSN as the series has it now. */
 export const seriesOf = (report: { seriesName?: string }, series: Pick<Series, "name" | "issn">) => ({ name: report.seriesName ?? series.name, issn: series.issn });
-/** The byline with its parts filled in: `printed` is the address of the identifier the report prints, its DOI's or its DOCiD's. */
-export const bylineOf = (series: Series, printed: string, licence: Licence) => series.byline.replace("{doi}", printed).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name).replace("{licence}", licenceInByline(licence));
+/**
+ * The byline as the series words it, less its ISSN, for a series that has none: "ISSN {issn}" goes with the brackets
+ * it filled and one of the separators around it, so no "()", "ISSN:" or ",," is left. The rest of the line stays.
+ */
+const GAP = "\u0000";
+const withoutIssn = (byline: string) =>
+  byline
+    .replace(/(?:\bISSN\b\s*:?\s*)?\{issn\}/i, GAP)
+    .replace(/\s*[([]\s*\u0000\s*[)\]]/, GAP)
+    .replace(/\s*[,;]\s*\u0000(?=\s*[,;:)\]]|\s*$)/, "")
+    .replace(/(^|[([])\s*\u0000\s*[,;:]\s*/, "$1")
+    .replace(/\s*\u0000/, "");
+/** The byline a report's PDF must carry, its parts filled in: `printed` is the address of the identifier the report prints, its DOI's or its DOCiD's. */
+export const bylineOf = (series: Series, printed: string, licence: Licence) =>
+  (series.issn ? series.byline.replace("{issn}", series.issn) : withoutIssn(series.byline)).replace("{doi}", printed).replace("{series}", series.name).replace("{licence}", licenceInByline(licence));
 /** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 

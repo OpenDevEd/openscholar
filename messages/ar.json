@@ -374,7 +374,7 @@
     "accountConnectedAs": "متصل: {name}",
     "docidHint": "معرّف تحالف Africa PID Alliance، وهو Handle تحت 20.500.14351.",
     "enableDocid": "استخدام DOCiD",
-    "docidPermanent": "لا توجد لدى DOCiD خدمة تجريبية. كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
+    "docidPermanent": "كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
     "docidEmail": "بريد الحساب",
     "docidCredential": "كلمة المرور",
     "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بعد بتسجيل التقارير بنوع Manuscripts، لذا لا يمكنه إيداعها. اطلب من Africa PID Alliance السماح بـ Manuscripts، ثم تحقّق واحفظ مرة أخرى."
@@ -6505,8 +6505,7 @@
       "seriesSaved": "تم حفظ اسم السلسلة",
       "seriesName": "اسم السلسلة",
       "issn": "ISSN",
-      "issnHint": "اتركه فارغًا حتى تحصل السلسلة على ISSN. حتى ذلك الحين يقول سطر الإسناد ISSN {pending}.",
-      "issnPending": "قيد الانتظار",
+      "issnHint": "اتركه فارغًا حتى تحصل السلسلة على ISSN. حتى ذلك الحين لا يذكر سطر الإسناد رقم ISSN.",
       "issnSaved": "تم حفظ ISSN",
       "enterSeriesName": "أدخل اسم السلسلة.",
       "enterByline": "أدخل سطر الإسناد.",
@@ -6877,7 +6876,6 @@
       "yourTitle": "عنوانك",
       "noDoi": "لا يوجد DOI بعد",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN قيد الانتظار",
       "live": "منشور",
       "seePlans": "عرض الخطط",
       "activation": {
@@ -7602,7 +7600,7 @@
         },
         "byline": {
           "title": "سطر السلسلة",
-          "about": "السطر الذي يطبعه كل تقرير في هذه السلسلة، ويذكر اسم السلسلة ورقم ISSN الخاص بها ومعرّف DOI للتقرير.",
+          "about": "السطر الذي يطبعه كل تقرير في هذه السلسلة، ويذكر اسم السلسلة ومعرّف DOI للتقرير.",
           "note": "يجب أن يكون نصًا في ملف PDF لا صورة، لأن الفحوص تبحث عنه. اختر «أضيفوه عني» فتضيف Openscholar صفحة أخيرة فيها السطر."
         },
         "checks": {
@@ -7612,8 +7610,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "الرقم الذي يعرّف السلسلة، كما يعرّف رقم المجلة المجلة.",
-          "note": "معلّق إلى أن تُسجّل السلسلة. ومعرّف DOI لتقريرك يعمل من دونه."
+          "about": "الرقم الذي يعرّف السلسلة، كما يعرّف رقم المجلة المجلة."
         },
         "activation": {
           "title": "التفعيل",

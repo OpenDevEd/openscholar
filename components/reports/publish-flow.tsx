@@ -63,7 +63,7 @@ import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { ANOTHER, LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
 import { ArchiveChoice, OwnArchiveRefused } from "@/components/reports/archive-choice";
 import { IdentifierChoice, addOnLines, firstPick, showsIdentifiers } from "@/components/reports/identifier-choice";
-import { SERVICES, SERVICE_IDS, pickProblem, routeOf } from "@/lib/reports/identifiers";
+import { SERVICES, SERVICE_IDS, chosenOf, pickProblem, routeOf } from "@/lib/reports/identifiers";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { FileAccessChange, FileAccessChoice, embargoProblem } from "@/components/reports/file-access-choice";
@@ -1179,7 +1179,9 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // with the archive. Each that costs more is a line of the bill.
   const ids = basics.identifiers;
   const [pickedIds, setPickedIds] = useQueryState("ids", parseAsArrayOf(parseAsStringLiteral(SERVICE_IDS)));
-  const picks = pickedIds ?? firstPick(ids);
+  // Only services the series still offers as optional, as signing keeps them: an address kept from before a service
+  // was turned off never prices it or names it in the agreement.
+  const picks = (pickedIds ?? firstPick(ids)).filter((id, i, all) => ids.services[id].mode === "optional" && all.indexOf(id) === i);
   // An own Zenodo account keeps a copy under the report's Crossref DOI (#1237): offered only while it gets one.
   const crossrefChosen = routeOf(ids, picks, false).crossref;
   const archive = crossrefChosen ? archivePicked : "openscholar";
@@ -1337,7 +1339,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       <h3 className={SECTION}>{t("payment.sign")}</h3>
       {/* In the page, not a box of its own: scrolling down to sign caught in it, and people looked for the signature inside. */}
       <div lang="en" dir="ltr" className="rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "https://doi.org/…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "https://doi.org/…", named), licence: named, services: chosenOf(routeOf(ids, picks, archive === "own")), ownArchive: archive === "own" })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <div>
@@ -2963,10 +2965,12 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         <TooltipHint label={report ? (printedOf(report)?.short ?? "") : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report && printedOf(report) ? "text-foreground" : "text-muted-foreground")}>{(report && printedOf(report)?.short) || t("noDoi")}</p>
         </TooltipHint>
-        <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
-          {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
-          <FieldHelp field="issn" />
-        </p>
+        {basics.series.issn ? (
+          <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+            {t("issn", { issn: basics.series.issn })}
+            <FieldHelp field="issn" />
+          </p>
+        ) : null}
         {facts.length > 0 ? (
           <dl className="mt-4 space-y-1.5 border-t border-border-subtle pt-3 text-sm">
             {facts.map((fact) => (

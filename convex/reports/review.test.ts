@@ -160,7 +160,7 @@ describe("changes to a live report", () => {
     const world = await setup();
     const report = await live(world);
     const signed = (await row(world.t, report.key)).byline;
-    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}, under CC BY 4.0`);
+    expect(signed).toBe(`Published in Openscholar Reports, https://doi.org/${(await row(world.t, report.key)).doi}, under CC BY 4.0`);
     // Since then the series got its ISSN and a new wording, and a check was dropped.
     await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi} ({licence})" } });
     await world.reviewer.mutation(api.reports.settings.removeCheck, { id: "harm" });
