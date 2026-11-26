@@ -143,7 +143,8 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
       pdfUrl: result.pdfUrl,
     },
     result.stars ?? 0,
-    { preserveRating: true, keepUnpublishedReport: true },
+    // A screening with reviewers includes records it read from a file, which no index knows: they are saved with what the file gave.
+    { preserveRating: true, keepUnpublishedReport: true, fromFile: job.shape === 2 },
   );
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   if (collection) await addCollectionMembership(ctx, { collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
@@ -263,6 +264,56 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   }
 }
 
+/**
+ * One screening's share of a batch, in a transaction of its own inside the batch's: where it throws, nothing it wrote
+ * stays, and the batch goes on with the other screenings' papers (`bookkeep`).
+ */
+export const bookkeepJob = internalMutation({
+  args: { jobId: v.id("screeningJobs"), results: v.array(v.id("screeningResults")) },
+  returns: v.object({ papers: v.optional(v.number()), votes: v.optional(v.number()) }),
+  handler: async (ctx, { jobId, results: ids }) => {
+    const jobResults = (await Promise.all(ids.map((id) => ctx.db.get("screeningResults", id)))).filter((result): result is Doc<"screeningResults"> => result !== null && result.doneAt !== undefined);
+    const job = await ctx.db.get("screeningJobs", jobId);
+    let freed: { papers?: number; votes?: number } = {};
+    if (job?.shape === 2) {
+      // A screening with reviewers: its papers are settled on their votes (./settling.ts).
+      const { freed: slots, queued } = await settlePapers(ctx, job, jobResults);
+      if (slots || queued) freed = { votes: slots };
+    } else if (job) {
+      // Answers move to the job's screening first: a paper is scored on its answers as they
+      // stand there, where a person's or the assistant's answer outranks the model's.
+      for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
+      const current = (await ctx.db.get("screeningJobs", jobId))!;
+      const deltas: Delta[] = [];
+      const moved = { saved: 0, removed: 0 };
+      const shelved = (to: { saved: number; removed: number }) => {
+        moved.saved += to.saved;
+        moved.removed += to.removed;
+      };
+      for (const result of jobResults) {
+        if (result.status === "failed") {
+          await ctx.db.patch("screeningResults", result._id, FAILED);
+          // A paper that failed because its job had ended, as the one that finds the credits
+          // spent does, was never screened: it stays where it is.
+          if (current.status === "processing") shelved(await shelve(ctx, current, result, { becameIncluded: false, left: true }));
+        }
+        if (result.status !== "completed") continue;
+        const settled = (await ctx.db.get("screeningResults", result._id))!;
+        const { patch, delta, move } = account(current, settled, await standing(ctx, current, settled));
+        await ctx.db.patch("screeningResults", result._id, patch);
+        deltas.push(delta);
+        shelved(await shelve(ctx, current, { ...settled, ...patch }, move));
+      }
+      await countFinished(ctx, current, jobResults, deltas, moved);
+      await finishIfDone(ctx, jobId);
+      freed = { papers: jobResults.filter((result) => result.workId !== undefined).length };
+    }
+    // Bookkept, or its job is gone: out of the queue.
+    for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
+    return freed;
+  },
+});
+
 /** One batch of finished papers: counts, answers, library saves, and finishing their jobs. */
 export const bookkeep = internalMutation({
   args: vMutationArgs,
@@ -278,42 +329,18 @@ export const bookkeep = internalMutation({
     const freed = new Map<Id<"workspaces">, number>();
     const freedVotes = new Map<Id<"workspaces">, number>();
     for (const [jobId, jobResults] of byJob) {
-      const job = await ctx.db.get("screeningJobs", jobId);
-      if (job?.shape === 2) {
-        // A screening with reviewers: its papers are settled on their votes (./settling.ts).
-        const { freed: slots, queued } = await settlePapers(ctx, job, jobResults);
-        if (slots || queued) freedVotes.set(job.workspaceId, (freedVotes.get(job.workspaceId) ?? 0) + slots);
-      } else if (job) {
-        // Answers move to the job's screening first: a paper is scored on its answers as they
-        // stand there, where a person's or the assistant's answer outranks the model's.
-        for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
-        const current = (await ctx.db.get("screeningJobs", jobId))!;
-        const deltas: Delta[] = [];
-        const moved = { saved: 0, removed: 0 };
-        const shelved = (to: { saved: number; removed: number }) => {
-          moved.saved += to.saved;
-          moved.removed += to.removed;
-        };
-        for (const result of jobResults) {
-          if (result.status === "failed") {
-            await ctx.db.patch("screeningResults", result._id, FAILED);
-            // A paper that failed because its job had ended, as the one that finds the credits
-            // spent does, was never screened: it stays where it is.
-            if (current.status === "processing") shelved(await shelve(ctx, current, result, { becameIncluded: false, left: true }));
-          }
-          if (result.status !== "completed") continue;
-          const settled = (await ctx.db.get("screeningResults", result._id))!;
-          const { patch, delta, move } = account(current, settled, await standing(ctx, current, settled));
-          await ctx.db.patch("screeningResults", result._id, patch);
-          deltas.push(delta);
-          shelved(await shelve(ctx, current, { ...settled, ...patch }, move));
-        }
-        await countFinished(ctx, current, jobResults, deltas, moved);
-        await finishIfDone(ctx, jobId);
-        freed.set(job.workspaceId, (freed.get(job.workspaceId) ?? 0) + jobResults.filter((result) => result.workId !== undefined).length);
+      const workspaceId = (await ctx.db.get("screeningJobs", jobId))?.workspaceId;
+      try {
+        const done: { papers?: number; votes?: number } = await ctx.runMutation(internal.screening.bookkeeping.bookkeepJob, { jobId, results: jobResults.map((result) => result._id) });
+        if (workspaceId && done.papers !== undefined) freed.set(workspaceId, (freed.get(workspaceId) ?? 0) + done.papers);
+        if (workspaceId && done.votes !== undefined) freedVotes.set(workspaceId, (freedVotes.get(workspaceId) ?? 0) + done.votes);
+      } catch (error) {
+        // Every screening of the deployment waits behind this queue: one whose papers can't be bookkept must not hold the
+        // others up. Its papers leave the queue as they stood, to be tried again when one of them next changes, and what
+        // went wrong is logged with the screening it happened in.
+        console.error("[screening] A screening's papers couldn't be bookkept", { jobId, papers: jobResults.length, error: String(error instanceof Error ? (error.stack ?? error.message) : error).slice(0, 1500) });
+        for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
       }
-      // Bookkept, or its job is gone: out of the queue.
-      for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
     for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);
     for (const [workspaceId, finished] of freedVotes) await startWaitingVotes(ctx, workspaceId, finished, facts);

@@ -241,3 +241,34 @@ describe("papers from several sources", () => {
     expect(rows.papers).toEqual(["Paper 1", "Paper 3", "Paper 4"]);
   });
 });
+
+describe("a record a screening read from a file", () => {
+  it("is saved to the screening's collection when it is included, with what the file gave", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0, { rule: { each: 1, settle: "all", blind: "after" }, saveTo: { kind: "new", name: "Included in Tutoring" } });
+    // A record of an uploaded export, which no index knows: its key is its place in the file.
+    const { papers } = await give(made.t, jobId, 0, [{ paper: "upload:export.0", title: "A report no index knows", abstract: "What the report found." }]);
+    await voter(made, jobId)("ann", papers[0]!._id, "include");
+    await runAll(made.t, vi.runAllTimers);
+    expect((await standingOf(made.t, jobId)).papers[0]).toMatchObject({ result: "include" });
+    expect(await made.t.run((ctx) => ctx.db.query("libraryItems").collect())).toMatchObject([{ title: "A report no index knows", abstract: "What the report found." }]);
+  });
+});
+
+describe("the queue every screening's papers are settled from", () => {
+  it("goes on with the other screenings when one screening's papers can't be settled", async () => {
+    const made = await team(["ann"]);
+    const [broken, sound] = [await started(made, ["ann"], 1, { rule: { each: 1, settle: "all", blind: "after" } }), await started(made, ["ann"], 1, { rule: { each: 1, settle: "all", blind: "after" } })];
+    // A screening whose row of counts is gone can't be settled: its papers fail every time they are tried.
+    await made.t.run(async (ctx) => ctx.db.delete("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", broken.jobId)).unique())!._id));
+    await voter(made, broken.jobId)("ann", broken.papers[0]!._id, "include");
+    await voter(made, sound.jobId)("ann", sound.papers[0]!._id, "include");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await runAll(made.t, vi.runAllTimers);
+    // The other screening's paper is settled, and the broken one's is out of the queue as it stood.
+    expect((await standingOf(made.t, sound.jobId)).papers[0]).toMatchObject({ result: "include" });
+    expect(await made.t.run((ctx) => ctx.db.get("screeningResults", broken.papers[0]!._id))).toMatchObject({ result: "waiting" });
+    expect((await made.t.run((ctx) => ctx.db.get("screeningResults", broken.papers[0]!._id)))!.doneAt).toBeUndefined();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("couldn't be bookkept"), expect.objectContaining({ jobId: broken.jobId }));
+  });
+});

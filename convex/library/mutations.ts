@@ -69,11 +69,12 @@ export async function upsertLibraryItem(
   writer: InWorkspace,
   paper: Infer<typeof libraryPaper>,
   rating?: number,
-  options: { preserveRating?: boolean; keepUnpublishedReport?: boolean } = {},
+  /** `fromFile`: a record a screening took from a file someone handed it, saved with what the file gave (plans/screening-reviewers, decision 12). Its details are saved, never its file. */
+  options: { preserveRating?: boolean; keepUnpublishedReport?: boolean; fromFile?: boolean } = {},
 ): Promise<Id<"libraryItems">> {
   const { userId, workspaceId } = writer;
   const key = requirePaperKey(paper.paper);
-  if (!saveablePaper(key)) throw createError("VALIDATION_ERROR", "An uploaded PDF stays with the job it was uploaded to: it can't be saved to a library.");
+  if (!options.fromFile && !saveablePaper(key)) throw createError("VALIDATION_ERROR", "An uploaded PDF stays with the job it was uploaded to: it can't be saved to a library.");
   // A report published on Openscholar is saved as the report has it, whatever was sent (../reports/saved.ts): from its
   // page, a search result or by its key, it is the same item with the same details. One that never went live has no
   // details anyone may copy, so a save names it only to move a copy kept already (`keepUnpublishedReport`).
