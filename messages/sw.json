@@ -1236,7 +1236,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "mfano: ifanye iwe mahususi zaidi kuhusu majaribio ya kiafya...",
       "screeningQuestion": "Ongeza swali la uchujaji..."
-    }
+    },
+    "translateCost": "Ukichagua lugha, maneno yako yatatafsiriwa kwa krediti {credits}"
   },
   "confirmations": {
     "cancelJob": "Ughairi kazi hii?",
@@ -8703,7 +8704,8 @@
         "onItsWay": "PDF iko njiani",
         "cantShow": "PDF hii haiwezi kuonyeshwa hapa. Ifungue kwenye kichupo kipya."
       },
-      "perPaper": "krediti {credits} kwa kila makala"
+      "perPaper": "krediti {credits} kwa kila makala",
+      "pickerCost": "Krediti kwa kila makala"
     },
     "overview": {
       "notSaved": "Hilo halikufanikiwa. Jaribu tena.",

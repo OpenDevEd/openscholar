@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "ex. rendez-le plus spécifique sur les essais cliniques...",
       "screeningQuestion": "Ajouter une question de sélection..."
-    }
+    },
+    "translateCost": "Choisir une langue traduit vos mots, pour {credits} crédits"
   },
   "confirmations": {
     "cancelJob": "Annuler cette tâche ?",
@@ -8702,7 +8703,8 @@
         "onItsWay": "Le PDF arrive",
         "cantShow": "Ce PDF ne peut pas s'afficher ici. Ouvrez-le dans un nouvel onglet."
       },
-      "perPaper": "{credits} crédits par article"
+      "perPaper": "{credits} crédits par article",
+      "pickerCost": "Crédits par article"
     },
     "overview": {
       "notSaved": "Cela n'a pas marché. Réessayez.",

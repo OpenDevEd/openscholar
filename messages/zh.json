@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "例如，使其更具体地关于临床试验...",
       "screeningQuestion": "添加筛选问题..."
-    }
+    },
+    "translateCost": "选择一种语言会翻译你的搜索词，需 {credits} 积分"
   },
   "confirmations": {
     "cancelJob": "取消此任务？",
@@ -8702,7 +8703,8 @@
         "onItsWay": "PDF 正在路上",
         "cantShow": "此 PDF 无法在这里显示。请在新标签页中打开。"
       },
-      "perPaper": "每篇论文 {credits} 积分"
+      "perPaper": "每篇论文 {credits} 积分",
+      "pickerCost": "每篇论文积分"
     },
     "overview": {
       "notSaved": "操作失败，请重试。",

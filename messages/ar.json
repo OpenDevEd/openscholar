@@ -1236,7 +1236,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "مثال: اجعله أكثر تحديدًا بخصوص التجارب السريرية...",
       "screeningQuestion": "أضف سؤال فرز…"
-    }
+    },
+    "translateCost": "اختيار لغة يترجم كلماتك مقابل {credits} رصيد"
   },
   "confirmations": {
     "cancelJob": "هل تريد إلغاء هذه المهمة؟",
@@ -8703,7 +8704,8 @@
         "onItsWay": "ملف PDF في الطريق",
         "cantShow": "لا يمكن عرض ملف PDF هذا هنا. افتحه في علامة تبويب جديدة."
       },
-      "perPaper": "{credits} رصيد لكل ورقة"
+      "perPaper": "{credits} رصيد لكل ورقة",
+      "pickerCost": "الرصيد لكل ورقة"
     },
     "overview": {
       "notSaved": "لم ينجح ذلك. حاول مرة أخرى.",

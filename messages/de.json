@@ -1236,7 +1236,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "z. B.: genauer auf klinische Studien eingehen...",
       "screeningQuestion": "Screening-Frage hinzufügen..."
-    }
+    },
+    "translateCost": "Die Wahl einer Sprache übersetzt Ihre Suchbegriffe, für {credits} Credits"
   },
   "confirmations": {
     "cancelJob": "Diesen Auftrag abbrechen?",
@@ -8703,7 +8704,8 @@
         "onItsWay": "Das PDF ist unterwegs",
         "cantShow": "Dieses PDF kann hier nicht angezeigt werden. Öffnen Sie es in einem neuen Tab."
       },
-      "perPaper": "{credits} Credits pro Artikel"
+      "perPaper": "{credits} Credits pro Artikel",
+      "pickerCost": "Credits pro Artikel"
     },
     "overview": {
       "notSaved": "Das hat nicht geklappt. Versuchen Sie es erneut.",

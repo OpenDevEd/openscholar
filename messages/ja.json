@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "例：臨床試験についてより具体的に...",
       "screeningQuestion": "スクリーニング質問を追加..."
-    }
+    },
+    "translateCost": "言語を選ぶと検索語が翻訳されます（{credits} クレジット）"
   },
   "confirmations": {
     "cancelJob": "このジョブをキャンセルしますか？",
@@ -8702,7 +8703,8 @@
         "onItsWay": "PDF を取得中です",
         "cantShow": "この PDF はここに表示できません。新しいタブで開いてください。"
       },
-      "perPaper": "論文 1 件あたり {credits} クレジット"
+      "perPaper": "論文 1 件あたり {credits} クレジット",
+      "pickerCost": "論文 1 件あたりのクレジット"
     },
     "overview": {
       "notSaved": "うまくいきませんでした。もう一度お試しください。",

@@ -1236,7 +1236,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "bv. maak dit meer spesifiek oor kliniese proewe...",
       "screeningQuestion": "Voeg ’n siftingsvraag by..."
-    }
+    },
+    "translateCost": "As jy ’n taal kies, word jou woorde vertaal, vir {credits} krediete"
   },
   "confirmations": {
     "cancelJob": "Kanselleer hierdie taak?",
@@ -8703,7 +8704,8 @@
         "onItsWay": "Die PDF is op pad",
         "cantShow": "Hierdie PDF kan nie hier gewys word nie. Maak dit in ’n nuwe oortjie oop."
       },
-      "perPaper": "{credits} krediete per artikel"
+      "perPaper": "{credits} krediete per artikel",
+      "pickerCost": "Krediete per artikel"
     },
     "overview": {
       "notSaved": "Dit het nie gewerk nie. Probeer weer.",

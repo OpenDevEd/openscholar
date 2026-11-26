@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "जैसे, क्लिनिकल ट्रायल्स के बारे में अधिक विशिष्ट बनाएं...",
       "screeningQuestion": "एक स्क्रीनिंग प्रश्न जोड़ें..."
-    }
+    },
+    "translateCost": "भाषा चुनने पर आपके शब्दों का अनुवाद होता है, {credits} क्रेडिट में"
   },
   "confirmations": {
     "cancelJob": "यह जॉब रद्द करें?",
@@ -8702,7 +8703,8 @@
         "onItsWay": "PDF आ रही है",
         "cantShow": "यह PDF यहाँ नहीं दिखाई जा सकती। इसे नए टैब में खोलें।"
       },
-      "perPaper": "प्रति लेख {credits} क्रेडिट"
+      "perPaper": "प्रति लेख {credits} क्रेडिट",
+      "pickerCost": "प्रति लेख क्रेडिट"
     },
     "overview": {
       "notSaved": "यह नहीं हो सका। फिर कोशिश करें।",

@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "isibonelo: yenza ibe cacile ngezivivinyo zomtholampilo...",
       "screeningQuestion": "Engeza umbuzo wokuskrini..."
-    }
+    },
+    "translateCost": "Ukukhetha ulimi kuhumusha amagama akho, ngamakhredithi angu-{credits}"
   },
   "confirmations": {
     "cancelJob": "Khansela lo msebenzi?",
@@ -8702,7 +8703,8 @@
         "onItsWay": "I-PDF isendleleni",
         "cantShow": "Le PDF ayikwazi ukuboniswa lapha. Yivule kuthebhu entsha."
       },
-      "perPaper": "{credits} amakhredithi ngephepha"
+      "perPaper": "{credits} amakhredithi ngephepha",
+      "pickerCost": "Amakhredithi ngephepha"
     },
     "overview": {
       "notSaved": "Lokho akuphumelelanga. Zama futhi.",
