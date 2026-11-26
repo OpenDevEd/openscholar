@@ -7772,7 +7772,7 @@
   "screening": {
     "effects": {
       "criterionUnwritten": "das Kriterium, das noch keine Frage hat",
-      "reopens": "Das Screening wird für {count, plural, one {# Artikel} other {# Artikel}} wieder geöffnet",
+      "reopens": "{count, plural, one {# Artikel ist wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist} other {# Artikel sind wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist}}",
       "model": {
         "startsLater": "{name} startet, sobald die Artikel da sind",
         "nothingToRead": "{name} hat keine Artikel mehr zu lesen",
@@ -7787,13 +7787,13 @@
       "votesStay": "Bereits abgegebene Stimmen bleiben, wie sie sind",
       "conflict": {
         "all": "Sobald alle Stimmen zu einem Artikel da sind, bringen abweichende Stimmen ihn in Konflikt",
-        "most": "Sobald alle Stimmen zu einem Artikel da sind, bringt ein Gleichstand ihn in Konflikt"
+        "most": "Sobald alle Stimmen zu einem Artikel da sind, ist ein Artikel ohne Mehrheit im Konflikt"
       },
       "leaving": {
         "noVote": "{you, select, true {Sie haben keine Stimme abgegeben} other {{name} hat keine Stimme abgegeben}}",
         "votesStop": "{you, select, true {{count, plural, one {Ihre # Stimme bleibt gespeichert und zählt} other {Ihre # Stimmen bleiben gespeichert und zählen}}} other {{count, plural, one {Die # Stimme von {name} bleibt gespeichert und zählt} other {Die # Stimmen von {name} bleiben gespeichert und zählen}}}} nicht mehr",
         "votesKept": "{you, select, true {{count, plural, one {Ihre # Stimme zählt} other {Ihre # Stimmen zählen}}} other {{count, plural, one {Die # Stimme von {name} zählt} other {Die # Stimmen von {name} zählen}}}} weiter",
-        "papersGo": "{count, plural, one {# Artikel geht} other {# Artikel gehen}} an {takers}: {unvoted, plural, =0 {} other {# ohne Stimme von {you, select, true {Ihnen} other {{name}}} und }}{voted, number} mit einer Stimme von {you, select, true {Ihnen} other {{name}}}, die dort {thrown, select, true {nicht mehr zählt} other {weiter zählt}}",
+        "papersGo": "{count, plural, one {# Artikel geht} other {# Artikel gehen}} an {takers}: {unvoted, plural, =0 {} other {# ohne Stimme von {you, select, true {Ihnen} other {{name}}} und }}{voted, number} mit einer Stimme von {you, select, true {Ihnen} other {{name}}}, {voted, plural, one {die dort {thrown, select, true {nicht mehr zählt} other {weiter zählt}}} other {die dort {thrown, select, true {nicht mehr zählen} other {weiter zählen}}}}",
         "unvotedGo": "{count, plural, one {Der # Artikel} other {Die # Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {geht} other {gehen}} an {takers}",
         "settled": "{count, plural, one {# Artikel} other {# Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {wird} other {werden}} nach den anderen Stimmen entschieden",
         "waiting": "{count, plural, one {# Artikel} other {# Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {wartet} other {warten}} auf die Stimmen der anderen"
@@ -7834,7 +7834,7 @@
         "modelsRead": "Jeder neue Artikel geht an seine Reviewer{people, select, true {, und die Personen darunter erhalten eine E-Mail} other {}}. Die Modelle lesen ihn, sobald sie können{pdfs, select, true {. Ein Lesevorgang als PDF kostet mehr} other {}}",
         "peopleGetEmail": "Jeder neue Artikel geht an seine Reviewer, die eine E-Mail erhalten",
         "waitsForReviewer": "Jeder neue Artikel kommt ins Screening und wartet dort auf einen Reviewer",
-        "reopens": "Das Screening ist wieder offen und bleibt offen für neue Artikel",
+        "reopens": "Eine erste Abfrage läuft, sobald dies gespeichert ist. Findet sie neue Artikel, ist das Screening wieder offen. Sonst bleibt es abgeschlossen und wird nicht abgefragt, bis es wieder geöffnet ist",
         "stops": "Das Screening fragt keine neuen Artikel mehr ab. Die vorhandenen bleiben",
         "every": "Das Screening fragt ab jetzt {every, select, day {jeden Tag} week {jede Woche} other {jeden Monat}} neue Artikel ab"
       },
@@ -7960,7 +7960,7 @@
       },
       "votes": {
         "title": "{votes, plural, one {# Stimme} other {# Stimmen}} von {voters, plural, one {# Reviewer} other {# Reviewern}}",
-        "help": "Eine Zeile pro Reviewer und Artikel: die Stimme mit Grund, Notiz und der Antwort auf jedes Kriterium, und wo der Artikel jetzt steht. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte.",
+        "help": "Eine Zeile für jeden Artikel, den ein Reviewer bekommen hat: die Stimme mit Grund, Notiz und der Antwort auf jedes Kriterium, und wo der Artikel jetzt steht. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte. Ein Modell bekommt keinen Artikel, der nur aus einem PDF besteht, das es nicht lesen kann, und ein später hinzugefügter Reviewer bekommt keine Artikel, die vor seinem Beitritt entschieden waren.",
         "leftOut": "Jede Stimme der anderen zu {count, plural, one {dem # Artikel, über den} other {den # Artikeln, über die}} Sie noch abstimmen, ist ausgenommen, damit sie Ihre Stimme nicht beeinflusst.",
         "whose": "Wessen Stimmen",
         "everyone": "Alle",
@@ -7980,6 +7980,7 @@
         "emptyRows": "Die Datei hat außerdem {count, plural, one {# Zeile} other {# Zeilen}} ohne Stimme: {why}.",
         "emptyWhy": {
           "yet": "Reviewer, die noch nicht abgestimmt haben",
+          "finished": "Reviewer, die nicht abgestimmt hatten, als das Screening als abgeschlossen markiert wurde",
           "none": "Artikel, die ohne die Stimme eines Reviewers entschieden wurden",
           "failed": "Artikel, die ein Modell nicht lesen konnte"
         },
@@ -8004,7 +8005,7 @@
           },
           "withoutVote": {
             "name": "Ohne Stimme",
-            "what": "Warum ein Reviewer zu einem Artikel keine Stimme hat"
+            "what": "Warum ein Reviewer zu einem Artikel, den er bekommen hat, keine Stimme hat"
           },
           "criteria": {
             "name": "Kriterien",
@@ -8038,7 +8039,7 @@
       },
       "hint": {
         "papers": "BibTeX und RIS für ein Literaturverwaltungsprogramm. CSV ergänzt Ergebnis, Grund und Stimmen jedes Artikels.",
-        "votes": "Eine Zeile pro Reviewer und Artikel. Öffnet sich in Excel, Google Sheets oder R.",
+        "votes": "Eine Zeile für jeden Artikel, den ein Reviewer bekommen hat. Öffnet sich in Excel, Google Sheets oder R.",
         "flow": "PNG für ein Dokument. SVG lässt sich bearbeiten.",
         "record": "Zur Aufbewahrung und für Code. Öffnet sich in jedem Texteditor.",
         "methods": "Aus dem aktuellen Stand des Screenings geschrieben. Kopieren Sie ihn, wenn er die Ergebnisse beschreibt, über die Sie berichten wollen."
@@ -8118,7 +8119,7 @@
       "block": {
         "emptyCriterion": "Schreiben Sie eine Frage für das leere Kriterium",
         "needsCriterion": "{many, select, true {Fügen Sie ein Kriterium für die Modelle hinzu} other {Fügen Sie ein Kriterium für das Modell hinzu}}",
-        "overPapers": "{count, plural, one {Ihr Tarif prüft # Artikel auf einmal} other {Ihr Tarif prüft bis zu # Artikel auf einmal}}",
+        "overPapers": "{personal, select, true {{count, plural, one {Ihr Tarif prüft # Artikel auf einmal} other {Ihr Tarif prüft bis zu # Artikel auf einmal}}} other {{count, plural, one {Der Tarif von {workspace} prüft # Artikel auf einmal} other {Der Tarif von {workspace} prüft bis zu # Artikel auf einmal}}}}",
         "overModels": "{count, plural, one {Ein Screening nutzt # Modell} other {Ein Screening nutzt bis zu # Modelle}}",
         "orphaned": "{many, select, true {{count, plural, one {# Artikel ist nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu}}} other {{count, plural, one {# Artikel ist nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu}}}}",
         "creditsShort": "{credits} Credits zu wenig",
@@ -8250,7 +8251,7 @@
         "factFixed": "Hochgeladene Dateien und eingefügte DOIs bekommen nie neue Artikel",
         "factEmail": "Reviewer werden per E-Mail benachrichtigt",
         "factCharge": "Modelle berechnen jeden neuen Artikel",
-        "help": "Openscholar fragt die Suchen, Sammlungen und Communities des Screenings nach dem von Ihnen gewählten Zeitplan nach neuen Artikeln ab. Nur neue Artikel werden hinzugefügt und gehen an die Reviewer.",
+        "help": "Openscholar fragt nach dem von Ihnen gewählten Zeitplan die Quellen des Screenings nach neuen Artikeln ab: seine Suchen, Sammlungen, Communities, Zotero-Bibliotheken und anderen Screenings. Nur neue Artikel werden hinzugefügt und gehen an die Reviewer.",
         "check": "Neue Artikel abfragen",
         "off": "Aus",
         "checksAll": "{count, plural, one {Fragt seine Quelle ab} other {Fragt seine # Quellen ab}}",
@@ -8259,8 +8260,8 @@
         "firstCheck": "Erste Abfrage {day}",
         "firstOnSave": "Erste Abfrage, sobald dies gespeichert ist",
         "perNew": "{credits} Credits pro neuem Artikel{pdf, select, true {, mehr pro Lesevorgang als PDF} other {}}{last, select, true {, {spent} für die letzten {count}} other {}}",
-        "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung oder eine Community zum Abfragen hinzu.",
-        "addToCheck": "Fügen Sie eine Suche, eine Sammlung oder eine Community zum Abfragen hinzu."
+        "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
+        "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu."
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
@@ -8365,6 +8366,7 @@
         "savedNow": "Gerade gespeichert",
         "activity": "Aktivität",
         "willDo": "Was das Speichern bewirkt",
+        "counting": "Es wird ermittelt, was das Speichern bewirkt",
         "did": "Was das Speichern bewirkt hat",
         "recheck": "Entschiedene Artikel erneut prüfen",
         "recheckOn": "Jeder entschiedene Artikel wird mit den neuen Einstellungen erneut geprüft. Die oben aufgeführten erhalten ein anderes Ergebnis.",
@@ -8382,7 +8384,7 @@
         "helpTitle": "Modelle und Credits",
         "factPeople": "Personen sind kostenlos",
         "factAtOnce": "{count, plural, one {# Artikel gleichzeitig} other {# Artikel gleichzeitig}}",
-        "help": "Die Kosten eines Modells sind seine Credits für einen Artikel mal die zu prüfenden Artikel. Ein Artikel ohne Abstract wird als PDF gelesen, jede Seite davon, und kostet nach Seiten. Der Tarif des Arbeitsbereichs lässt Modelle {atOnce, select, none {so viele} other {{atOnce}}} Artikel gleichzeitig lesen, daher wartet ein Screening, das gestartet wird, während die Modelle eines anderen lesen, bis es an der Reihe ist. Personen können von Anfang an abstimmen.",
+        "help": "Die Kosten eines Modells sind seine Credits für einen Artikel mal die zu prüfenden Artikel. Ein Artikel, der mit seinem PDF kam und kein Abstract hat, wird aus dem PDF gelesen, jede Seite davon, und kostet nach Seiten. {atOnce, select, none {} other {Der Tarif des Arbeitsbereichs lässt Modelle {atOnce} Artikel gleichzeitig lesen, daher wartet ein Screening, das gestartet wird, während die Modelle eines anderen lesen, bis es an der Reihe ist. }}Personen können von Anfang an abstimmen.",
         "helpLiving": "Ein fortlaufendes Screening bezahlt außerdem für jeden neuen Artikel, den eine Abfrage findet.",
         "people": "Personen",
         "free": "Kostenlos",
@@ -8468,7 +8470,7 @@
         "visibleFinished": "Stimmen sichtbar, seit es abgeschlossen ist",
         "conflictsGoTo": "Konflikte gehen an {who}",
         "checks": "{every, select, day {Fragt jeden Tag neue Artikel ab} week {Fragt jede Woche neue Artikel ab} other {Fragt jeden Monat neue Artikel ab}}",
-        "chips": "Jeder Artikel erhält die Stimmen, die diese Chips nennen, und ist entschieden, sobald sie da sind.",
+        "chips": "Diese Chips sagen, wer über jeden Artikel abstimmt, was ihn entscheidet und wer die anderen Stimmen sieht.",
         "conflictOpen": "{you, select, true {Ein Artikel im Konflikt bleibt offen, bis Sie ihn entscheiden.} other {Ein Artikel im Konflikt bleibt offen, bis {name} ihn entscheidet.}}",
         "living": "Ein fortlaufendes Screening fragt seine Quellen nach Zeitplan nach neuen Artikeln ab und prüft, was neu ist. Hochgeladene Dateien und eingefügte Listen bekommen nie neue Artikel.",
         "livingChip": "{every, select, day {Fortlaufend<more>, jeden Tag neue Artikel</more>} week {Fortlaufend<more>, jede Woche neue Artikel</more>} other {Fortlaufend<more>, jeden Monat neue Artikel</more>}}"
@@ -8542,7 +8544,7 @@
         "confirm": "Verlassen",
         "votesCount": "{count, plural, one {Ihre # Stimme zählt weiter} other {Ihre # Stimmen zählen weiter}}",
         "noVotes": "Sie haben keine Stimme abgegeben",
-        "papersGo": "{count, plural, one {Der # Artikel ohne Ihre Stimme geht an die anderen Reviewer} other {Die # Artikel ohne Ihre Stimme gehen an die anderen Reviewer}}",
+        "papersGo": "{count, plural, one {Der # Artikel ohne Ihre Stimme geht an einen anderen Reviewer oder wird mit den Stimmen entschieden, die er schon hat} other {Die # Artikel ohne Ihre Stimme gehen an andere Reviewer oder werden mit den Stimmen entschieden, die sie schon haben}}",
         "fromList": "Es verschwindet aus Ihrer Liste, und Sie können es erst wieder öffnen, wenn es erneut mit Ihnen geteilt wird"
       },
       "add": {
@@ -8581,7 +8583,7 @@
         "modelToo": "{you, select, true {Auch ein Modell ist ein Reviewer: Es liest jeden offenen Artikel und stimmt ab, bezahlt aus Ihren Credits.} other {Auch ein Modell ist ein Reviewer: Es liest jeden offenen Artikel und stimmt ab, bezahlt aus den Credits von {workspace}.}}",
         "close": "Schließen",
         "addAs": "Personen hinzufügen als",
-        "finishedAdds": "Dieses Screening ist abgeschlossen: Jetzt hinzugefügte Personen können es ansehen. Öffnen Sie es wieder, um Reviewer hinzuzufügen.",
+        "finishedAdds": "Dieses Screening ist abgeschlossen: Hier hinzugefügte Personen können es ansehen. Um einen Reviewer hinzuzufügen, öffnen Sie es wieder oder fügen Sie ihn unter Einstellungen hinzu, wo er abstimmt, sobald es wieder geöffnet ist.",
         "addModel": "Modell hinzufügen",
         "membersAdd": "Mitglieder von {workspace} fügen Personen hinzu und ändern, was jede tun darf.",
         "full": "Der Tarif von {workspace} erlaubt, ein Screening mit {count, plural, one {# Person} other {# Personen}} außerhalb zu teilen. Entfernen Sie jemanden, um eine weitere Person hinzuzufügen.",
@@ -8725,7 +8727,7 @@
         "finish": "Als abgeschlossen markieren",
         "settledOf": "{total, plural, one {von # Artikel entschieden} other {von # Artikeln entschieden}}",
         "leftOut": "{bare, select, true {{count, number} ausgelassen: kein Abstract} other {{count, number} ausgelassen}}",
-        "capped": "Am Artikel-Limit Ihres Tarifs gestoppt",
+        "capped": "{personal, select, true {Am Artikel-Limit Ihres Tarifs gestoppt} other {Am Artikel-Limit des Tarifs von {workspace} gestoppt}}",
         "pdfsUnread": "{count, plural, one {Kein Reviewer liest # PDF} other {Kein Reviewer liest # PDFs}}",
         "merged": "{count, plural, one {# Duplikat zusammengeführt} other {# Duplikate zusammengeführt}}"
       },
@@ -8790,7 +8792,7 @@
         "idle": "Seit 3 Tagen keine Stimmen",
         "unreadLabel": "{count, plural, one {# Artikel, den es nicht lesen konnte} other {# Artikel, die es nicht lesen konnte}}",
         "unread": "{count, number} nicht lesbar",
-        "unreadSays": "{count, plural, one {Es konnte diesen Artikel nicht lesen und hat darüber nicht mitzureden. Die anderen Reviewer entscheiden ihn.} other {Es konnte diese # Artikel nicht lesen und hat darüber nicht mitzureden. Die anderen Reviewer entscheiden sie.}}",
+        "unreadSays": "{count, plural, one {Es konnte diesen Artikel nicht lesen und hat darüber nicht mitzureden.} other {Es konnte diese # Artikel nicht lesen und hat darüber nicht mitzureden.}}",
         "notGivenText": "{count, plural, one {Nicht beim PDF: Es liest nur Text} other {Nicht bei den # PDFs: Es liest nur Text}}",
         "notGivenLong": "{count, plural, one {Nicht bei # PDF: länger, als es auf einmal liest} other {Nicht bei # PDFs: länger, als es auf einmal liest}}",
         "voted": "{decision, select, include {{count, number} für Einschließen gestimmt} maybe {{count, number} für Vielleicht gestimmt} other {{count, number} für Ausschließen gestimmt}}",
@@ -8870,7 +8872,7 @@
       },
       "checks": {
         "title": "Abfragen neuer Artikel",
-        "shut": "{change, select, true {Eine Abfrage sucht in einer Suche, einer Sammlung oder einer Community nach Artikeln, die dieses Screening noch nicht hat. Eine hochgeladene Datei oder eine eingefügte Liste enthält, was sie enthielt, daher gibt es nichts abzufragen. Fügen Sie eine Suche, eine Sammlung oder eine Community als Quelle hinzu, um neue Artikel zu bekommen.} other {Eine Abfrage sucht in einer Suche, einer Sammlung oder einer Community nach Artikeln, die dieses Screening noch nicht hat. Eine hochgeladene Datei oder eine eingefügte Liste enthält, was sie enthielt, daher gibt es nichts abzufragen. Es wird nichts abgefragt, bis eine Suche, eine Sammlung oder eine Community als Quelle hinzugefügt ist.}}",
+        "shut": "{change, select, true {Eine Abfrage sucht in einer Suche, einer Sammlung, einer Community, einer Zotero-Bibliothek oder einem anderen Screening nach Artikeln, die dieses Screening noch nicht hat. Eine hochgeladene Datei oder eine eingefügte Liste enthält, was sie enthielt, daher gibt es nichts abzufragen. Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening als Quelle hinzu, um neue Artikel zu bekommen.} other {Eine Abfrage sucht in einer Suche, einer Sammlung, einer Community, einer Zotero-Bibliothek oder einem anderen Screening nach Artikeln, die dieses Screening noch nicht hat. Eine hochgeladene Datei oder eine eingefügte Liste enthält, was sie enthielt, daher gibt es nichts abzufragen. Es wird nichts abgefragt, bis eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening als Quelle hinzugefügt ist.}}",
         "helpTitle": "Neue Artikel abfragen",
         "next": "Nächste Abfrage {day}",
         "onlyAsked": "Nur auf Anfrage",
@@ -8894,7 +8896,8 @@
         "later": "Spätere",
         "earlier": "Frühere",
         "atStart": "Beim Start",
-        "startedWith": "{known, select, true {{papers, plural, one {# Artikel} other {# Artikel}}} other {Artikel}} aus {sources, plural, one {# Quelle} other {# Quellen}}"
+        "startedWith": "{known, select, true {{papers, plural, one {# Artikel} other {# Artikel}}} other {Artikel}} aus {sources, plural, one {# Quelle} other {# Quellen}}",
+        "finished": "{every, select, day {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Tag abfragt} week {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jede Woche abfragt} other {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Monat abfragt}}"
       },
       "flow": {
         "title": "PRISMA-Fluss",
@@ -9397,7 +9400,7 @@
         "fileLimit": "Literaturdateien bis {mb, number} MB",
         "pdfLimit": "PDFs bis je {mb, number} MB",
         "aboutFiles": "Eine Literaturdatei ist das, was eine Datenbank oder ein Literaturverwaltungsprogramm exportiert. Jeder ihrer Einträge mit Titel und Abstract ist ein Artikel.",
-        "aboutPdfs": "Ein PDF wird gelesen, sobald es hinzugefügt ist, um Titel und DOI zu finden. Enthält der Index von Openscholar diese DOI, erscheint der Artikel mit Titel und Abstract aus dem Index. Sonst ist der Artikel das PDF: Eine Person, die ihn prüft, liest die Datei, und ebenso jeder KI-Reviewer, jede Seite davon. Ein Scan wird genauso gelesen. Eine Datei, die sich nicht öffnen lässt, wird ausgelassen.",
+        "aboutPdfs": "Ein PDF wird gelesen, sobald es hinzugefügt ist, um Titel und DOI zu finden. Enthält der Index von Openscholar diese DOI, erscheint der Artikel mit Titel und Abstract aus dem Index. Sonst ist der Artikel das PDF: Eine Person, die ihn prüft, liest die Datei, und ebenso jedes KI-Modell, das PDFs liest, jede Seite davon. Ein Modell, das nur Text liest oder ein so langes PDF nicht aufnehmen kann, hat dazu keine Stimme. Ein Scan wird genauso gelesen. Eine Datei, die sich nicht öffnen lässt, wird ausgelassen.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF oder eine Textdatei mit DOIs, beliebig viele auf einmal",
         "pdfCost": "Ein Modell liest die ersten Seiten jedes PDFs, um Titel und DOI zu finden: bis zu {credits} Credits pro PDF, bezahlt beim Hinzufügen",
         "filesLabel": "Hochzuladende Dateien",

@@ -7771,7 +7771,7 @@
   "screening": {
     "effects": {
       "criterionUnwritten": "le critère encore sans question",
-      "reopens": "Le criblage rouvre pour {count, plural, one {# article} other {# articles}}",
+      "reopens": "{count, plural, one {# article redevient ouvert. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert} other {# articles redeviennent ouverts. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert}}",
       "model": {
         "startsLater": "{name} démarre une fois les articles arrivés",
         "nothingToRead": "{name} n'a plus d'articles à lire",
@@ -7786,13 +7786,13 @@
       "votesStay": "Les votes déjà émis restent tels quels",
       "conflict": {
         "all": "Une fois tous les votes sur un article reçus, des votes différents le mettent en désaccord",
-        "most": "Une fois tous les votes sur un article reçus, un partage égal le met en désaccord"
+        "most": "Une fois tous les votes sur un article reçus, un article sans majorité est en désaccord"
       },
       "leaving": {
         "noVote": "{you, select, true {Vous n'avez émis aucun vote} other {{name} n'a émis aucun vote}}",
         "votesStop": "{you, select, true {{count, plural, one {Votre vote reste consigné et ne compte plus} other {Vos # votes restent consignés et ne comptent plus}}} other {{count, plural, one {Le vote de {name} reste consigné et ne compte plus} other {Les # votes de {name} restent consignés et ne comptent plus}}}}",
         "votesKept": "{you, select, true {{count, plural, one {Votre vote continue de compter} other {Vos # votes continuent de compter}}} other {{count, plural, one {Le vote de {name} continue de compter} other {Les # votes de {name} continuent de compter}}}}",
-        "papersGo": "{count, plural, one {# article va} other {# articles vont}} à {takers} : {unvoted, plural, =0 {} one {# sur lequel {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}}, et } other {# sur lesquels {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}}, et }}{voted, number} sur {voted, plural, one {lequel} other {lesquels}} {you, select, true {vous avez voté} other {{name} a voté}}, où ce vote {thrown, select, true {ne compte plus} other {continue de compter}}",
+        "papersGo": "{count, plural, one {# article va} other {# articles vont}} à {takers} : {unvoted, plural, =0 {} one {# sur lequel {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}}, et } other {# sur lesquels {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}}, et }}{voted, number} sur {voted, plural, one {lequel} other {lesquels}} {you, select, true {vous avez voté} other {{name} a voté}}, où {voted, plural, one {ce vote {thrown, select, true {ne compte plus} other {continue de compter}}} other {ces votes {thrown, select, true {ne comptent plus} other {continuent de compter}}}}",
         "unvotedGo": "{count, plural, one {L'article sur lequel} other {Les # articles sur lesquels}} {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}} {count, plural, one {va} other {vont}} à {takers}",
         "settled": "{count, plural, one {# article sur lequel} other {# articles sur lesquels}} {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}} {count, plural, one {est tranché} other {sont tranchés}} d'après les autres votes",
         "waiting": "{count, plural, one {# article sur lequel} other {# articles sur lesquels}} {you, select, true {vous n'aviez pas voté} other {{name} n'avait pas voté}} {count, plural, one {attend} other {attendent}} les votes des autres"
@@ -7833,7 +7833,7 @@
         "modelsRead": "Chaque nouvel article va à ses évaluateurs{people, select, true {, et les personnes parmi eux reçoivent un e-mail} other {}}. Les modèles le lisent dès qu'ils le peuvent{pdfs, select, true {. Un article lu depuis son PDF coûte plus cher} other {}}",
         "peopleGetEmail": "Chaque nouvel article va à ses évaluateurs, qui reçoivent un e-mail",
         "waitsForReviewer": "Chaque nouvel article rejoint le criblage, où il attend un évaluateur",
-        "reopens": "Le criblage rouvre et reste ouvert aux nouveaux articles",
+        "reopens": "Une première vérification a lieu dès l'enregistrement. Si elle trouve de nouveaux articles, le criblage rouvre. Sinon, il reste terminé et n'est pas vérifié tant qu'il n'est pas rouvert",
         "stops": "Le criblage ne cherche plus de nouveaux articles. Ceux qu'il a restent",
         "every": "Le criblage cherche désormais de nouveaux articles {every, select, day {chaque jour} week {chaque semaine} other {chaque mois}}"
       },
@@ -7959,7 +7959,7 @@
       },
       "votes": {
         "title": "{votes, plural, one {# vote} other {# votes}} de {voters, plural, one {# évaluateur} other {# évaluateurs}}",
-        "help": "Une ligne par évaluateur et par article : son vote avec son motif, sa remarque et la réponse à chaque critère, et où en est l'article maintenant. Un évaluateur qui n'a pas encore voté a aussi une ligne, tout comme un modèle qui n'a pas pu lire l'article.",
+        "help": "Une ligne pour chaque article qu'un évaluateur a reçu : son vote avec son motif, sa remarque et la réponse à chaque critère, et où en est l'article maintenant. Un évaluateur qui n'a pas encore voté a aussi une ligne, tout comme un modèle qui n'a pas pu lire l'article. Un modèle ne reçoit pas un article qui n'est qu'un PDF qu'il ne sait pas lire, et un évaluateur ajouté plus tard ne reçoit pas les articles tranchés avant son arrivée.",
         "leftOut": "Tout vote des autres sur {count, plural, one {l'article} other {les # articles}} où vous n'avez pas encore voté est écarté, pour ne pas influencer le vôtre.",
         "whose": "Quels votes",
         "everyone": "Tout le monde",
@@ -7979,6 +7979,7 @@
         "emptyRows": "Le fichier contient aussi {count, plural, one {# ligne} other {# lignes}} sans vote à afficher : {why}.",
         "emptyWhy": {
           "yet": "des évaluateurs qui n'ont pas encore voté",
+          "finished": "des évaluateurs qui n'avaient pas voté quand le criblage a été marqué comme terminé",
           "none": "des articles tranchés sans le vote d'un évaluateur",
           "failed": "des articles qu'un modèle n'a pas pu lire"
         },
@@ -8003,7 +8004,7 @@
           },
           "withoutVote": {
             "name": "Sans vote",
-            "what": "Pourquoi un évaluateur n'a pas de vote sur un article"
+            "what": "Pourquoi un évaluateur qui a reçu un article n'a pas de vote dessus"
           },
           "criteria": {
             "name": "Critères",
@@ -8037,7 +8038,7 @@
       },
       "hint": {
         "papers": "BibTeX et RIS s'importent dans un gestionnaire de références. Le CSV ajoute le résultat, le motif et les votes de chaque article.",
-        "votes": "Une ligne par évaluateur et par article. S'ouvre dans Excel, Google Sheets ou R.",
+        "votes": "Une ligne pour chaque article qu'un évaluateur a reçu. S'ouvre dans Excel, Google Sheets ou R.",
         "flow": "Le PNG s'insère dans un document. Le SVG se modifie.",
         "record": "Pour l'archivage et pour le code. S'ouvre dans n'importe quel éditeur de texte.",
         "methods": "Rédigé à partir du criblage dans son état actuel. Copiez-le s'il décrit les résultats que vous voulez rapporter."
@@ -8117,7 +8118,7 @@
       "block": {
         "emptyCriterion": "Écrivez une question pour le critère vide",
         "needsCriterion": "{many, select, true {Ajoutez un critère pour les modèles} other {Ajoutez un critère pour le modèle}}",
-        "overPapers": "{count, plural, one {Votre forfait crible # article à la fois} other {Votre forfait crible jusqu'à # articles à la fois}}",
+        "overPapers": "{personal, select, true {{count, plural, one {Votre forfait crible # article à la fois} other {Votre forfait crible jusqu'à # articles à la fois}}} other {{count, plural, one {Le forfait de {workspace} crible # article à la fois} other {Le forfait de {workspace} crible jusqu'à # articles à la fois}}}}",
         "overModels": "{count, plural, one {Un criblage utilise # modèle} other {Un criblage utilise jusqu'à # modèles}}",
         "orphaned": "{many, select, true {{count, plural, one {# article n'est qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne}}} other {{count, plural, one {# article n'est qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne}}}}",
         "creditsShort": "Il manque {credits} crédits",
@@ -8249,7 +8250,7 @@
         "factFixed": "Les fichiers importés et les DOI collés ne reçoivent jamais de nouveaux articles",
         "factEmail": "Les évaluateurs sont prévenus par e-mail",
         "factCharge": "Les modèles facturent chaque nouvel article",
-        "help": "Openscholar cherche de nouveaux articles dans les recherches, collections et communautés du criblage selon le calendrier que vous choisissez. Seuls les articles nouveaux sont ajoutés et vont aux évaluateurs.",
+        "help": "Selon le calendrier que vous choisissez, Openscholar cherche de nouveaux articles dans les recherches, collections, communautés, bibliothèques Zotero et autres criblages qui alimentent ce criblage. Seuls les articles nouveaux sont ajoutés et vont aux évaluateurs.",
         "check": "Chercher de nouveaux articles",
         "off": "Désactivé",
         "checksAll": "{count, plural, one {Vérifie sa source} other {Vérifie ses # sources}}",
@@ -8258,8 +8259,8 @@
         "firstCheck": "Première vérification {day}",
         "firstOnSave": "Première vérification dès l'enregistrement",
         "perNew": "{credits} crédits par nouvel article{pdf, select, true {, plus pour un article lu depuis son PDF} other {}}{last, select, true {, {spent} pour les {count} derniers} other {}}",
-        "noneGrow": "Aucune de ces sources ne reçoit de nouveaux articles. Ajoutez une recherche, une collection ou une communauté à vérifier.",
-        "addToCheck": "Ajoutez une recherche, une collection ou une communauté à vérifier."
+        "noneGrow": "Aucune de ces sources ne reçoit de nouveaux articles. Ajoutez une recherche, une collection, une communauté, une bibliothèque Zotero ou un autre criblage à vérifier.",
+        "addToCheck": "Ajoutez une recherche, une collection, une communauté, une bibliothèque Zotero ou un autre criblage à vérifier."
       },
       "criteria": {
         "helpTitle": "Indispensable et souhaitable",
@@ -8364,6 +8365,7 @@
         "savedNow": "Enregistré à l'instant",
         "activity": "Activité",
         "willDo": "Ce que fait l'enregistrement",
+        "counting": "Calcul de ce que fait l'enregistrement",
         "did": "Ce qu'a fait l'enregistrement",
         "recheck": "Revérifier les articles tranchés",
         "recheckOn": "Chaque article tranché est revérifié avec les nouveaux paramètres. Ceux listés ci-dessus obtiennent un autre résultat.",
@@ -8381,7 +8383,7 @@
         "helpTitle": "Modèles et crédits",
         "factPeople": "Gratuit pour les personnes",
         "factAtOnce": "{count, plural, one {# article à la fois} other {# articles à la fois}}",
-        "help": "Le coût de chaque modèle est son prix en crédits pour un article multiplié par le nombre d'articles à cribler. Un article sans résumé est lu depuis son PDF, en entier, et coûte à la page. Le forfait de l'espace de travail permet aux modèles de lire {atOnce, select, none {seulement quelques} other {{atOnce}}} articles à la fois : un criblage démarré pendant que les modèles d'un autre lisent attend donc son tour. Les personnes peuvent voter dès le départ.",
+        "help": "Le coût de chaque modèle est son prix en crédits pour un article multiplié par le nombre d'articles à cribler. Un article fourni avec son PDF et sans résumé est lu depuis le PDF, en entier, et coûte à la page. {atOnce, select, none {} other {Le forfait de l'espace de travail permet aux modèles de lire {atOnce} articles à la fois : un criblage démarré pendant que les modèles d'un autre lisent attend donc son tour. }}Les personnes peuvent voter dès le départ.",
         "helpLiving": "Un criblage vivant paie aussi chaque nouvel article trouvé par une vérification.",
         "people": "Personnes",
         "free": "Gratuit",
@@ -8467,7 +8469,7 @@
         "visibleFinished": "Votes visibles maintenant qu'il est terminé",
         "conflictsGoTo": "Désaccords confiés à {who}",
         "checks": "{every, select, day {Cherche de nouveaux articles chaque jour} week {Cherche de nouveaux articles chaque semaine} other {Cherche de nouveaux articles chaque mois}}",
-        "chips": "Chaque article reçoit les votes nommés dans ces pastilles, et il est tranché une fois qu'ils sont tous là.",
+        "chips": "Ces pastilles indiquent qui vote sur chaque article, ce qui le tranche et qui voit les autres votes.",
         "conflictOpen": "{you, select, true {Un article en désaccord reste ouvert jusqu'à ce que vous le tranchiez.} other {Un article en désaccord reste ouvert jusqu'à ce que {name} le tranche.}}",
         "living": "Un criblage vivant cherche de nouveaux articles dans ses sources selon un calendrier et crible ce qui est nouveau. Les fichiers importés et les listes collées ne reçoivent jamais de nouveaux articles.",
         "livingChip": "{every, select, day {Vivant<more>, nouveaux articles chaque jour</more>} week {Vivant<more>, nouveaux articles chaque semaine</more>} other {Vivant<more>, nouveaux articles chaque mois</more>}}"
@@ -8541,7 +8543,7 @@
         "confirm": "Quitter",
         "votesCount": "{count, plural, one {Votre vote continue de compter} other {Vos # votes continuent de compter}}",
         "noVotes": "Vous n'avez émis aucun vote",
-        "papersGo": "{count, plural, one {L'article sur lequel vous n'aviez pas voté va aux autres évaluateurs} other {Les # articles sur lesquels vous n'aviez pas voté vont aux autres évaluateurs}}",
+        "papersGo": "{count, plural, one {L'article sur lequel vous n'aviez pas voté va à un autre évaluateur, ou est tranché avec les votes qu'il a déjà} other {Les # articles sur lesquels vous n'aviez pas voté vont à d'autres évaluateurs, ou sont tranchés avec les votes qu'ils ont déjà}}",
         "fromList": "Il quitte votre liste, et vous ne pourrez le rouvrir que s'il est de nouveau partagé avec vous"
       },
       "add": {
@@ -8580,7 +8582,7 @@
         "modelToo": "{you, select, true {Un modèle est aussi un évaluateur : il lit chaque article ouvert et vote, payé sur vos crédits.} other {Un modèle est aussi un évaluateur : il lit chaque article ouvert et vote, payé sur les crédits de {workspace}.}}",
         "close": "Fermer",
         "addAs": "Ajouter des personnes comme",
-        "finishedAdds": "Ce criblage est terminé : les personnes ajoutées maintenant peuvent le consulter. Rouvrez-le pour ajouter des évaluateurs.",
+        "finishedAdds": "Ce criblage est terminé : les personnes ajoutées ici peuvent le consulter. Pour ajouter un évaluateur, rouvrez-le, ou ajoutez-le dans Paramètres, où il votera une fois le criblage rouvert.",
         "addModel": "Ajouter un modèle",
         "membersAdd": "Les membres de {workspace} ajoutent des personnes et changent ce que chacune peut faire.",
         "full": "Le forfait de {workspace} permet de partager un criblage avec {count, plural, one {# personne extérieure} other {# personnes extérieures}}. Retirez-en une pour en ajouter une autre.",
@@ -8724,7 +8726,7 @@
         "finish": "Marquer comme terminé",
         "settledOf": "{total, plural, one {sur # article tranché} other {sur # articles tranchés}}",
         "leftOut": "{bare, select, true {{count, number} écartés : pas de résumé} other {{count, number} écartés}}",
-        "capped": "Arrêté à la limite d'articles de votre forfait",
+        "capped": "{personal, select, true {Arrêté à la limite d'articles de votre forfait} other {Arrêté à la limite d'articles du forfait de {workspace}}}",
         "pdfsUnread": "{count, plural, one {# PDF n'a aucun évaluateur qui le lise} other {# PDF n'ont aucun évaluateur qui les lise}}",
         "merged": "{count, plural, one {# doublon fusionné} other {# doublons fusionnés}}"
       },
@@ -8789,7 +8791,7 @@
         "idle": "Aucun vote depuis 3 jours",
         "unreadLabel": "{count, plural, one {# article qu'il n'a pas pu lire} other {# articles qu'il n'a pas pu lire}}",
         "unread": "{count, number} illisibles",
-        "unreadSays": "{count, plural, one {Il n'a pas pu lire cet article, il ne compte donc pas dans sa décision. Les autres évaluateurs le tranchent.} other {Il n'a pas pu lire ces # articles, il ne compte donc pas dans leur décision. Les autres évaluateurs les tranchent.}}",
+        "unreadSays": "{count, plural, one {Il n'a pas pu lire cet article, il ne compte donc pas dans sa décision.} other {Il n'a pas pu lire ces # articles, il ne compte donc pas dans leur décision.}}",
         "notGivenText": "{count, plural, one {Pas sur le PDF : il ne lit que du texte} other {Pas sur les # PDF : il ne lit que du texte}}",
         "notGivenLong": "{count, plural, one {Pas sur # PDF : trop long pour une seule lecture} other {Pas sur # PDF : trop longs pour une seule lecture}}",
         "voted": "{decision, select, include {{count, number} votés Inclure} maybe {{count, number} votés Peut-être} other {{count, number} votés Exclure}}",
@@ -8869,7 +8871,7 @@
       },
       "checks": {
         "title": "Vérifications de nouveaux articles",
-        "shut": "{change, select, true {Une vérification cherche dans une recherche, une collection ou une communauté des articles que ce criblage n'a pas encore. Un fichier importé ou une liste collée garde ce qu'il contenait, il n'y a donc rien à vérifier. Ajoutez une recherche, une collection ou une communauté comme source pour recevoir de nouveaux articles.} other {Une vérification cherche dans une recherche, une collection ou une communauté des articles que ce criblage n'a pas encore. Un fichier importé ou une liste collée garde ce qu'il contenait, il n'y a donc rien à vérifier. Rien n'est vérifié tant qu'aucune recherche, collection ou communauté n'est ajoutée comme source.}}",
+        "shut": "{change, select, true {Une vérification cherche dans une recherche, une collection, une communauté, une bibliothèque Zotero ou un autre criblage des articles que ce criblage n'a pas encore. Un fichier importé ou une liste collée garde ce qu'il contenait, il n'y a donc rien à vérifier. Ajoutez une recherche, une collection, une communauté, une bibliothèque Zotero ou un autre criblage comme source pour recevoir de nouveaux articles.} other {Une vérification cherche dans une recherche, une collection, une communauté, une bibliothèque Zotero ou un autre criblage des articles que ce criblage n'a pas encore. Un fichier importé ou une liste collée garde ce qu'il contenait, il n'y a donc rien à vérifier. Rien n'est vérifié tant qu'aucune recherche, collection, communauté, bibliothèque Zotero ou autre criblage n'est ajouté comme source.}}",
         "helpTitle": "Recherche de nouveaux articles",
         "next": "Prochaine vérification {day}",
         "onlyAsked": "Seulement à la demande",
@@ -8893,7 +8895,8 @@
         "later": "Plus récentes",
         "earlier": "Plus anciennes",
         "atStart": "Au départ",
-        "startedWith": "{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}"
+        "startedWith": "{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}",
+        "finished": "{every, select, day {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque jour} week {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque semaine} other {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque mois}}"
       },
       "flow": {
         "title": "Flux PRISMA",
@@ -9396,7 +9399,7 @@
         "fileLimit": "Fichiers de références jusqu'à {mb, number} Mo",
         "pdfLimit": "PDF jusqu'à {mb, number} Mo chacun",
         "aboutFiles": "Un fichier de références est ce qu'exporte une base de données ou un gestionnaire de références. Chacune de ses notices qui a un titre et un résumé est un article.",
-        "aboutPdfs": "Un PDF est lu dès qu'il est ajouté, pour son titre et son DOI. Si l'index d'Openscholar contient ce DOI, l'article s'affiche avec le titre et le résumé de l'index. Sinon, l'article est le PDF : une personne qui le crible lit le fichier, et chaque évaluateur IA aussi, en entier. Un document scanné est lu de la même façon. Un fichier qui ne s'ouvre pas est écarté.",
+        "aboutPdfs": "Un PDF est lu dès qu'il est ajouté, pour son titre et son DOI. Si l'index d'Openscholar contient ce DOI, l'article s'affiche avec le titre et le résumé de l'index. Sinon, l'article est le PDF : une personne qui le crible lit le fichier, et chaque modèle d'IA qui lit les PDF aussi, en entier. Un modèle qui ne lit que du texte, ou qui ne peut pas prendre un PDF aussi long, n'a pas de vote dessus. Un document scanné est lu de la même façon. Un fichier qui ne s'ouvre pas est écarté.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF ou un fichier texte de DOI, autant que vous voulez à la fois",
         "pdfCost": "Un modèle lit les premières pages de chaque PDF pour trouver son titre et son DOI : jusqu'à {credits} crédits par PDF, payés à l'ajout",
         "filesLabel": "Fichiers à importer",

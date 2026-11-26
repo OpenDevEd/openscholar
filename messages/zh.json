@@ -7771,7 +7771,7 @@
   "screening": {
     "effects": {
       "criterionUnwritten": "尚未写问题的标准",
-      "reopens": "筛选会为 {count, plural, other {# 篇论文}}重新打开",
+      "reopens": "{count, plural, other {# 篇论文重新变为未定。筛选仍保持已完成，因此在重新打开之前，没有人会对其投票}}",
       "model": {
         "startsLater": "{name} 会在论文到达后开始",
         "nothingToRead": "{name} 没有剩余要读的论文",
@@ -7786,7 +7786,7 @@
       "votesStay": "已投的票保持不变",
       "conflict": {
         "all": "一篇论文的所有投票都到齐后，只要投票不一致就会产生冲突",
-        "most": "一篇论文的所有投票都到齐后，如果票数相当就会产生冲突"
+        "most": "一篇论文的所有投票都到齐后，没有多数票的论文就会产生冲突"
       },
       "leaving": {
         "noVote": "{you, select, true {你还没有投票} other {{name} 还没有投票}}",
@@ -7833,7 +7833,7 @@
         "modelsRead": "每篇新论文都会分配给审核人{people, select, true {，其中的人员会收到邮件} other {}}。模型会在可以时阅读它{pdfs, select, true {。按 PDF 读取的论文费用更高} other {}}",
         "peopleGetEmail": "每篇新论文都会分配给审核人，他们会收到邮件",
         "waitsForReviewer": "每篇新论文都会加入筛选，等待审核人",
-        "reopens": "筛选重新打开，并继续接收新论文",
+        "reopens": "保存后会立即进行首次检查。如果找到新论文，筛选会重新打开。否则它仍保持已完成，在重新打开之前不会再检查",
         "stops": "筛选停止检查新论文。已有的论文保留",
         "every": "从现在起，筛选{every, select, day {每天} week {每周} other {每月}}检查新论文"
       },
@@ -7959,7 +7959,7 @@
       },
       "votes": {
         "title": "{voters, plural, other {# 名审核人}}的 {votes, plural, other {# 票}}",
-        "help": "每位审核人在每篇论文上占一行：其投票及原因、备注、对每条标准的答案，以及论文当前的状态。还没投票的审核人也有一行，无法读取论文的模型也有。",
+        "help": "审核人分到的每篇论文占一行：其投票及原因、备注、对每条标准的答案，以及论文当前的状态。还没投票的审核人也有一行，无法读取论文的模型也有。如果论文只有模型无法读取的 PDF，就不会分配给该模型；之后加入的审核人也不会分到在其加入前已定案的论文。",
         "leftOut": "对于你还没投票的 {count, plural, other {# 篇论文}}，其他人投出的任何票都不包含在内，以免影响你的判断。",
         "whose": "谁的投票",
         "everyone": "所有人",
@@ -7979,6 +7979,7 @@
         "emptyRows": "文件中还有 {count, plural, other {# 行}}没有可显示的投票：{why}。",
         "emptyWhy": {
           "yet": "还没投票的审核人",
+          "finished": "筛选被标记为已完成时还没投票的审核人",
           "none": "未等某位审核人投票就已定案的论文",
           "failed": "模型无法读取的论文"
         },
@@ -8003,7 +8004,7 @@
           },
           "withoutVote": {
             "name": "未投票",
-            "what": "每位审核人为何没有对某篇论文投票"
+            "what": "分到论文的审核人为何没有对其投票"
           },
           "criteria": {
             "name": "标准",
@@ -8037,7 +8038,7 @@
       },
       "hint": {
         "papers": "BibTeX 和 RIS 可导入文献管理工具。CSV 还包括每篇论文的结果、原因和投票。",
-        "votes": "每位审核人在每篇论文上占一行。可在 Excel、Google 表格或 R 中打开。",
+        "votes": "审核人分到的每篇论文占一行。可在 Excel、Google 表格或 R 中打开。",
         "flow": "PNG 可插入文档。SVG 可编辑。",
         "record": "用于存档和编程。可在任何文本编辑器中打开。",
         "methods": "根据筛选的当前状态撰写。当它描述的是你要报告的结果时再复制。"
@@ -8117,7 +8118,7 @@
       "block": {
         "emptyCriterion": "为空白标准写一个问题",
         "needsCriterion": "{many, select, true {为模型添加一条标准} other {为模型添加一条标准}}",
-        "overPapers": "{count, plural, other {你的套餐一次最多筛选 # 篇论文}}",
+        "overPapers": "{personal, select, true {{count, plural, other {你的套餐一次最多筛选 # 篇论文}}} other {{count, plural, other {{workspace} 的套餐一次最多筛选 # 篇论文}}}}",
         "overModels": "{count, plural, other {一个筛选最多运行 # 个模型}}",
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
         "creditsShort": "还差 {credits} 积分",
@@ -8249,7 +8250,7 @@
         "factFixed": "上传的文件和粘贴的 DOI 不会增加论文",
         "factEmail": "审核人会收到邮件通知",
         "factCharge": "模型对每篇新论文收费",
-        "help": "Openscholar 会按你选择的频率检查筛选的搜索、合集和社区中是否有新论文。只有新论文才会加入并分配给审核人。",
+        "help": "Openscholar 会按你选择的频率检查筛选的搜索、合集、社区、Zotero 文库和其他筛选中是否有新论文。只有新论文才会加入并分配给审核人。",
         "check": "检查新论文",
         "off": "关闭",
         "checksAll": "{count, plural, =1 {检查其来源} other {检查其 # 个来源}}",
@@ -8258,8 +8259,8 @@
         "firstCheck": "首次检查：{day}",
         "firstOnSave": "保存后立即进行首次检查",
         "perNew": "每篇新论文 {credits} 积分{pdf, select, true {，按 PDF 读取的更多} other {}}{last, select, true {，最近 {count} 篇用了 {spent}} other {}}",
-        "noneGrow": "这些来源都不会增加论文。添加搜索、合集或社区以供检查。",
-        "addToCheck": "添加搜索、合集或社区以供检查。"
+        "noneGrow": "这些来源都不会增加论文。添加搜索、合集、社区、Zotero 文库或其他筛选以供检查。",
+        "addToCheck": "添加搜索、合集、社区、Zotero 文库或其他筛选以供检查。"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
@@ -8364,6 +8365,7 @@
         "savedNow": "刚刚保存",
         "activity": "动态",
         "willDo": "保存后的影响",
+        "counting": "正在计算保存后的影响",
         "did": "此次保存的结果",
         "recheck": "重新检查已定案的论文",
         "recheckOn": "每篇已定案的论文都会按新设置重新检查。上面列出的论文会得到另一个结果。",
@@ -8381,7 +8383,7 @@
         "helpTitle": "模型和积分",
         "factPeople": "人员免费",
         "factAtOnce": "{count, plural, other {每次 # 篇论文}}",
-        "help": "每个模型的费用等于一篇论文所需积分乘以待筛选的论文数。没有摘要的论文按 PDF 读取全部页面，按页计费。工作区的套餐允许模型同时读取{atOnce, select, none {一定数量的} other { {atOnce} 篇}}论文，因此在另一个筛选的模型正在阅读时开始的筛选需要排队。人员从一开始就可以投票。",
+        "help": "每个模型的费用等于一篇论文所需积分乘以待筛选的论文数。附带 PDF 且没有摘要的论文会从 PDF 读取全部页面，按页计费。{atOnce, select, none {} other {工作区的套餐允许模型同时读取 {atOnce} 篇论文，因此在另一个筛选的模型正在阅读时开始的筛选需要排队。}}人员从一开始就可以投票。",
         "helpLiving": "持续更新的筛选还要为每次检查找到的新论文付费。",
         "people": "人员",
         "free": "免费",
@@ -8467,7 +8469,7 @@
         "visibleFinished": "已完成，投票现在可见",
         "conflictsGoTo": "冲突交由 {who} 裁决",
         "checks": "{every, select, day {每天检查新论文} week {每周检查新论文} other {每月检查新论文}}",
-        "chips": "每篇论文会获得这些标签中列出的投票，投票齐全后即定案。",
+        "chips": "这些标签说明谁对每篇论文投票、什么使其定案，以及谁能看到其他投票。",
         "conflictOpen": "{you, select, true {有冲突的论文在你裁决之前保持未定案。} other {有冲突的论文在 {name} 裁决之前保持未定案。}}",
         "living": "持续更新的筛选会定期检查来源中的新论文并筛选新加入的论文。上传的文件和粘贴的列表不会增加论文。",
         "livingChip": "{every, select, day {持续更新<more>，每天加入新论文</more>} week {持续更新<more>，每周加入新论文</more>} other {持续更新<more>，每月加入新论文</more>}}"
@@ -8541,7 +8543,7 @@
         "confirm": "退出",
         "votesCount": "{count, plural, other {你的 # 票仍然有效}}",
         "noVotes": "你还没有投票",
-        "papersGo": "{count, plural, other {你未投票的 # 篇论文会交给其他审核人}}",
+        "papersGo": "{count, plural, other {你未投票的 # 篇论文会交给其他审核人，或按已有的投票定案}}",
         "fromList": "它会从你的列表中移除，只有再次共享给你后你才能打开它"
       },
       "add": {
@@ -8580,7 +8582,7 @@
         "modelToo": "{you, select, true {模型也是审核人：它阅读每篇未定案的论文并投票，用你的积分付费。} other {模型也是审核人：它阅读每篇未定案的论文并投票，用 {workspace} 的积分付费。}}",
         "close": "关闭",
         "addAs": "添加人员为",
-        "finishedAdds": "此筛选已完成：现在添加的人可以查看它。重新打开它才能添加审核人。",
+        "finishedAdds": "此筛选已完成：在这里添加的人可以查看它。要添加审核人，请重新打开它，或在设置中添加，他们会在筛选重新打开后投票。",
         "addModel": "添加模型",
         "membersAdd": "{workspace} 的成员可以添加人员并更改每个人的权限。",
         "full": "{workspace} 的套餐可将一个筛选共享给 {count, plural, other {# 名}}外部人员。移出一人才能再添加。",
@@ -8724,7 +8726,7 @@
         "finish": "标记为已完成",
         "settledOf": "{total, plural, other {/ # 篇论文已定案}}",
         "leftOut": "{bare, select, true {{count, number} 篇被排除在外：无摘要} other {{count, number} 篇被排除在外}}",
-        "capped": "已在你套餐的论文上限处停止",
+        "capped": "{personal, select, true {已在你套餐的论文上限处停止} other {已在 {workspace} 套餐的论文上限处停止}}",
         "pdfsUnread": "{count, plural, other {# 个 PDF 没有能读取它的审核人}}",
         "merged": "{count, plural, other {已合并 # 个重复项}}"
       },
@@ -8789,7 +8791,7 @@
         "idle": "3 天内没有投票",
         "unreadLabel": "{count, plural, other {# 篇它无法读取的论文}}",
         "unread": "{count, number} 篇无法读取",
-        "unreadSays": "{count, plural, other {它无法读取这 # 篇论文，因此对其没有发言权。由其他审核人定案。}}",
+        "unreadSays": "{count, plural, other {它无法读取这 # 篇论文，因此对其没有发言权。}}",
         "notGivenText": "{count, plural, other {未分配 # 个 PDF：它只读取文本}}",
         "notGivenLong": "{count, plural, other {未分配 # 个 PDF：超出它一次能读取的长度}}",
         "voted": "{decision, select, include {投了入选：{count, number}} maybe {投了待定：{count, number}} other {投了排除：{count, number}}}",
@@ -8869,7 +8871,7 @@
       },
       "checks": {
         "title": "检查新论文",
-        "shut": "{change, select, true {检查会在搜索、合集或社区中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。添加搜索、合集或社区作为来源即可获得新论文。} other {检查会在搜索、合集或社区中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。在添加搜索、合集或社区作为来源之前不会进行检查。}}",
+        "shut": "{change, select, true {检查会在搜索、合集、社区、Zotero 文库或其他筛选中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。添加搜索、合集、社区、Zotero 文库或其他筛选作为来源即可获得新论文。} other {检查会在搜索、合集、社区、Zotero 文库或其他筛选中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。在添加搜索、合集、社区、Zotero 文库或其他筛选作为来源之前不会进行检查。}}",
         "helpTitle": "检查新论文",
         "next": "下次检查：{day}",
         "onlyAsked": "仅在手动时",
@@ -8893,7 +8895,8 @@
         "later": "较新的",
         "earlier": "较早的",
         "atStart": "开始时",
-        "startedWith": "{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}"
+        "startedWith": "{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}",
+        "finished": "{every, select, day {已完成期间不检查。重新打开即可恢复每天检查} week {已完成期间不检查。重新打开即可恢复每周检查} other {已完成期间不检查。重新打开即可恢复每月检查}}"
       },
       "flow": {
         "title": "PRISMA 流程",
@@ -9396,7 +9399,7 @@
         "fileLimit": "文献文件最大 {mb, number} MB",
         "pdfLimit": "每个 PDF 最大 {mb, number} MB",
         "aboutFiles": "文献文件是数据库或文献管理工具导出的文件。其中每条有标题和摘要的记录就是一篇论文。",
-        "aboutPdfs": "PDF 添加后会立即读取其标题和 DOI。如果 Openscholar 的索引中有该 DOI，论文会显示索引中的标题和摘要。否则论文就是这个 PDF：筛选它的人阅读该文件，每位 AI 审核人也会阅读它的每一页。扫描件也按同样方式读取。无法打开的文件会被排除在外。",
+        "aboutPdfs": "PDF 添加后会立即读取其标题和 DOI。如果 Openscholar 的索引中有该 DOI，论文会显示索引中的标题和摘要。否则论文就是这个 PDF：筛选它的人阅读该文件，每个能读取 PDF 的 AI 模型也会阅读它的每一页。只读取文本的模型，或无法处理这么长 PDF 的模型，不会对它投票。扫描件也按同样方式读取。无法打开的文件会被排除在外。",
         "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV、PDF 或列有 DOI 的文本文件，可一次添加任意数量",
         "pdfCost": "模型会读取每个 PDF 的前几页以获取标题和 DOI：每个 PDF 最多 {credits} 积分，添加时扣除",
         "filesLabel": "要上传的文件",
