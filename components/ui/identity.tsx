@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck, UserRound } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { IdentityAvatar } from "./identity-avatar";
+import { TooltipHint } from "./tooltip";
 
 /** One tint per person, picked from their ID, so someone keeps their colour in every chat and list. */
 const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
@@ -48,7 +49,8 @@ export function YouTag({ className }: { className?: string }) {
 export function PersonName({ name, you = false, className }: { name: string; you?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      <span className="min-w-0 truncate">{name}</span>
+      {/* A name cut short for room, an address most of all, is read whole under the pointer. */}
+      <TooltipHint label={name} onlyWhenClipped><span className="min-w-0 truncate">{name}</span></TooltipHint>
       {you ? <YouTag /> : null}
     </span>
   );
@@ -81,7 +83,7 @@ export function IdentityRow({ avatar, name, you = false, detail, className, chil
       <span className="flex shrink-0 self-start">{avatar}</span>
       <div className="min-w-0 flex-1">
         <PersonName name={name} you={you} className="text-sm font-medium" />
-        {detail ? <p className="truncate text-xs text-muted-foreground">{detail}</p> : null}
+        {detail ? (typeof detail === "string" ? <TooltipHint label={detail} onlyWhenClipped><p className="truncate text-xs text-muted-foreground">{detail}</p></TooltipHint> : <p className="truncate text-xs text-muted-foreground">{detail}</p>) : null}
       </div>
       {children}
     </div>

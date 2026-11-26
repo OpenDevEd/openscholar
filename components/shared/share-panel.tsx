@@ -88,7 +88,8 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                 if (!e.currentTarget.contains(e.relatedTarget) && !suggestions.current?.contains(e.relatedTarget)) setOpen(false);
               }}
             >
-              <Popover open={open && adding.candidates !== undefined && !adding.full} onOpenChange={setOpen} modal={false}>
+              {/* With nothing typed and nobody to suggest there is nothing to show: "nobody matches" answers a search, not an empty box. */}
+              <Popover open={open && adding.candidates !== undefined && !adding.full && (choices > 0 || typed !== "" || adding.more !== undefined)} onOpenChange={setOpen} modal={false}>
                 <PopoverAnchor asChild>
                   <label ref={field} className={cn("flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40", adding.full && "opacity-60")}>
                     <UserPlus className="size-4 shrink-0 text-muted-foreground" />

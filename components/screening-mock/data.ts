@@ -318,6 +318,17 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
   return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length) };
 };
+/**
+ * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever started the screening,
+ * or failing that the first person still on it, as the server gives them (convex/screening/reviewers.ts `takeOff`).
+ * With nobody else on it they stay theirs.
+ */
+export function withoutReviewer(screening: Screening, reviewer: Reviewer, discard: boolean, now: number): Screening {
+  const reviewers = screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: now, ...(discard ? { discarded: now } : {}) } : one));
+  const people = readersOf({ ...screening, reviewers }).people;
+  const next = screening.rule.resolver === reviewer.id ? (people.find((one) => one.id === screening.createdBy) ?? people[0])?.id : undefined;
+  return { ...screening, reviewers, ...(next ? { rule: { ...screening.rule, resolver: next } } : {}) };
+}
 /** Reviewers in the one order every list, row of faces and table shows them: the person looking, then the other people, then the models. Within each, the order they were added in. */
 export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[], me: string) => {
   const rank = (one: T) => (one.id === me ? 0 : one.kind === "person" ? 1 : 2);

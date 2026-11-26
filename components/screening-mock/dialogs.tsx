@@ -182,9 +182,18 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
             <DialogTitle className="flex items-center gap-1 text-base">
               People
               <Help title="Who is on a screening">
-                <p>Members of {workspace.name} see this screening and can change it. The ones who are its reviewers get papers and vote on them.</p>
-                <p>Someone outside {workspace.name} has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.</p>
-                {models.length ? <p>A model is a reviewer too: it reads every open paper and votes, paid from {workspace.name}&apos;s credits.</p> : null}
+                {workspace.kind === "personal" ? (
+                  <>
+                    <p>This screening is in {state.canChange ? "your own workspace: you see it and can change it" : `${workspace.name}'s own workspace, and they can change it`}.</p>
+                    <p>Anyone else has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Members of {workspace.name} see this screening and can change it. The ones who are its reviewers get papers and vote on them.</p>
+                    <p>Someone outside {workspace.name} has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.</p>
+                  </>
+                )}
+                {models.length ? <p>A model is a reviewer too: it reads every open paper and votes, paid from {workspace.kind === "personal" && state.canChange ? "your" : `${workspace.name}'s`} credits.</p> : null}
                 {screening.rule.blind === "after" ? <p>{VOTES_HIDDEN_SAYS}</p> : null}
               </Help>
             </DialogTitle>
@@ -223,7 +232,8 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               : undefined
           }
           entries={[
-            { key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace)} size="row" />, name: workspace.name, detail: workspace.kind === "personal" ? "Its own workspace" : "Every member", role: { kind: "member", label: "Can see and change it" } },
+            // An organization's members all have it. A person's own workspace has one member, who is listed below where they review it: a row for the workspace would name them twice.
+            ...(workspace.kind === "personal" && people.some((one) => one.id === screening.createdBy) ? [] : [{ key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace)} size="row" />, name: workspace.name, detail: workspace.kind === "personal" ? "It is in their own workspace" : "Every member", role: { kind: "member" as const, label: "Can see and change it" } }]),
             ...people.map((one) => ({
               key: one.id,
               avatar: <ReviewerMark reviewer={one} className="size-9" />,

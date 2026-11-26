@@ -170,8 +170,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const workspace = screening.workspace;
   // On Screen a row that came and went would move the paper being read.
   const banner = bannerKind(open, view === "screen");
-  // Everyone on it: its workspace's people who review it, its models, and whoever it is shared with from outside, to vote or to look.
-  const on = open.guests + activeReviewers(screening).filter((one) => !one.guest).length;
+  // The people on it: its workspace's people who review it, and whoever it is shared with from outside, to vote or to look. Its models are not people, and are counted with the reviewers on the Overview.
+  const on = open.guests + activeReviewers(screening).filter((one) => !one.guest && one.kind === "person").length;
   // A member who isn't one of its reviewers can join it.
   const canJoin = !open.isReviewer && open.canChange && !screening.finishedAt;
   const resume = () => void open.resume();

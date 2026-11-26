@@ -5,7 +5,6 @@
 // section asks for.
 
 import { useState } from "react";
-import useSWR from "swr";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -20,18 +19,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { Switch } from "@/components/ui/switch";
 import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
+import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
-import { EffectList, NO_PREVIEW, effectLines } from "./effects";
+import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { votesBy, TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
 import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
@@ -223,8 +221,6 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const { screening, counts } = open;
   const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
-  // Taking someone off keeps their votes counting. Throwing the votes out is asked for, in the same dialog.
-  const [discard, setDiscard] = useState(false);
   // The person some papers are being moved from, while that is being set up.
   const [moving, setMoving] = useState<string | null>(null);
   const reviewers = inOrder(activeReviewers(screening), open.me);
@@ -272,17 +268,9 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const people = readers.length;
   // Where every person reads every paper, everyone already has the papers there are to move.
   const givers = open.canChange && !screening.finishedAt && each < people ? takers.filter((row) => row.left > 0) : [];
-  const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: now, ...(discard ? { discarded: now } : {}) } : one)) });
-  const leavingVotes = leaving?.tally?.cast ?? 0;
-  // What taking them off would do, counted by the server for that change before it is made.
-  const previewChange = useWorkspaceAction(api.screening.effects.preview);
-  const leavingRow = leaving?.row;
-  const counted = useSWR(leavingRow ? ["screening-leave", screening.id, leavingRow, discard] : null, () => previewChange({ jobId: screening.id, change: { remove: [{ reviewerId: leavingRow!, ...(discard ? { discard: true } : {}) }] } }), { revalidateOnFocus: false, keepPreviousData: true });
-  const preview = counted.data ?? NO_PREVIEW;
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
   const [a, b] = reviewers;
   const pair = reviewers.length === 2 ? pairOf(figures, b!.id, a!.id) : null;
-  const leavingMe = leaving?.id === open.me;
 
   // A column the table can be ordered by: highest first, and a second press puts the table back as it was.
   const sortable = (id: "voted" | "agrees", label: string) => (
@@ -365,26 +353,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       ) : (
         <EmptyNote>Nobody votes on these papers yet.{open.canChange ? " Add a person or a model from People, at the top of the page." : ""}</EmptyNote>
       )}
-      <ConfirmChange
-        open={leaving !== null}
-        title={leavingMe ? "Leave this screening?" : leaving ? `Take ${leaving.name} off this screening?` : ""}
-        confirm={leavingMe ? "Leave" : "Take off"}
-        onClose={() => { setLeaving(null); setDiscard(false); }}
-        disabled={counted.isLoading}
-        onConfirm={() => void (leaving && open.takeOff(leaving, discard).catch(notSaved))}
-      >
-        {leaving ? <EffectList lines={effectLines(screening, without(leaving), preview, { me: open.me })} moves={preview.moves} screening={screening.id} /> : null}
-        {/* Their work stands unless whoever takes them off says otherwise: the votes go only where that is asked for, and what it undoes shows above before it is done. */}
-        {leaving && leavingVotes ? (
-          <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
-            <span className="min-w-0 flex-1">
-              <span className="font-medium">Stop counting {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
-              <span className="block text-xs text-muted-foreground">{discard ? `${leavingMe ? "Your" : "Their"} votes stay on record and stop counting.` : `${leavingMe ? "Your" : "Their"} votes keep counting.`}</span>
-            </span>
-            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Stop counting ${leavingMe ? "your" : "their"} votes`} />
-          </label>
-        ) : null}
-      </ConfirmChange>
+      <TakeOff open={open} reviewer={leaving} onConfirm={(reviewer, discard) => open.takeOff(reviewer, discard)} onClose={() => setLeaving(null)} />
       {/* Made anew for each move, so it starts from the person it was opened for. */}
       {moving ? <MovePapers key={moving} open={open} people={takers} from={moving} onClose={() => setMoving(null)} /> : null}
     </Section>
