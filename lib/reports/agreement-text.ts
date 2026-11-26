@@ -8,7 +8,7 @@ export const DEFAULT_AGREEMENT = `# Publishing agreement: single work (Openschol
 This agreement is made on [date] between:
 
 1. [Name of author(s) or organisation] (the “Author”). Where there are several authors, one of them signs on behalf of all and confirms that they have the others’ agreement; and
-2. eKitabu, LLC, a limited liability company of the United States, of Rainbow Tower, 5th floor, Nairobi, Kenya, which runs Openscholar (“Openscholar”).
+2. Openscholar, a service run by eKitabu, LLC, which incubates it in Kenya, of Rainbow Tower, 5th floor, Nairobi, Kenya (“Openscholar”).
 
 ## 1. The Work
 
