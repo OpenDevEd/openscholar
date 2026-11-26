@@ -8644,7 +8644,7 @@
       },
       "loadingScreenings": "Laai sifterings",
       "needsYouNote": "Artikels om te sif, konflikte om te beslis en vrae aan jou",
-      "startedBy": "<person>{who}</person> <at>het dit {when} begin</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {het dit {when} begin} other {het dit {when} begin}}</at>",
       "everyReviewer": "Elke beoordelaar",
       "lastActivity": "<label>Laaste aktiwiteit </label>{when}",
       "includedOf": "{included} van {total} ingesluit",

@@ -8644,7 +8644,7 @@
       },
       "loadingScreenings": "Inapakia uchujaji",
       "needsYouNote": "Makala za kuchuja, migongano ya kuamua na maswali uliyoulizwa",
-      "startedBy": "<person>{who}</person> <at>aliuanzisha {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {uliuanzisha {when}} other {aliuanzisha {when}}}</at>",
       "everyReviewer": "Kila mkaguzi",
       "lastActivity": "<label>Shughuli ya mwisho </label>{when}",
       "includedOf": "{included} zimejumuishwa kati ya {total}",

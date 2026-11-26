@@ -8082,7 +8082,7 @@
         "addedSources": "{count, plural, =1 {{names} を追加} =2 {{names} を追加} other {取得元 # 件を追加}}",
         "removedSources": "{count, plural, =1 {{names} を削除} =2 {{names} を削除} other {取得元 # 件を削除}}",
         "rangedSources": "{count, plural, =1 {{names} から取り込む論文を変更} =2 {{names} から取り込む論文を変更} other {取得元 # 件から取り込む論文を変更}}",
-        "madeLiving": "リビングのスクリーニングに変更",
+        "madeLiving": "継続スクリーニングに変更",
         "stoppedLiving": "新しい論文の確認を停止",
         "livingEvery": "新しい論文を確認する頻度を変更",
         "addedCriteria": "{count, plural, =1 {{names} を追加} =2 {{names} を追加} other {基準 # 件を追加}}",
@@ -8247,7 +8247,7 @@
         "andMore": "{count, plural, other {ほか # 件}}"
       },
       "living": {
-        "title": "リビングのスクリーニング",
+        "title": "継続スクリーニング",
         "factFixed": "アップロードしたファイルや貼り付けた DOI に論文は増えません",
         "factEmail": "レビュアーにメールで知らせます",
         "factCharge": "新しい論文ごとにモデルの費用がかかります",
@@ -8385,7 +8385,7 @@
         "factPeople": "人は無料",
         "factAtOnce": "{count, plural, other {同時に # 件}}",
         "help": "各モデルの費用は、論文 1 件あたりのクレジットにスクリーニングする論文の数を掛けたものです。PDF 付きで届いた要約のない論文は PDF のすべてのページを読み、ページ数に応じて費用がかかります。{atOnce, select, none {} other {ワークスペースのプランでは、モデルが同時に読める論文は {atOnce} 件のため、別のスクリーニングのモデルが読み取り中に開始したスクリーニングは順番を待ちます。}}人は最初から投票できます。",
-        "helpLiving": "リビングのスクリーニングでは、確認で見つかった新しい論文ごとにも費用がかかります。",
+        "helpLiving": "継続スクリーニングでは、確認で見つかった新しい論文ごとにも費用がかかります。",
         "people": "人",
         "free": "無料",
         "credits": "{credits} クレジット",
@@ -8472,8 +8472,8 @@
         "checks": "{every, select, day {毎日新しい論文を確認} week {毎週新しい論文を確認} other {毎月新しい論文を確認}}",
         "chips": "これらのチップは、各論文に誰が投票するか、何で結果が確定するか、ほかの投票を誰が見られるかを示します。",
         "conflictOpen": "{you, select, true {不一致の論文は、あなたが判定するまで未確定のままです。} other {不一致の論文は、{name} が判定するまで未確定のままです。}}",
-        "living": "リビングのスクリーニングは、決まった間隔で取得元に新しい論文がないか確認し、新しい論文をスクリーニングします。アップロードしたファイルや貼り付けたリストに論文が増えることはありません。",
-        "livingChip": "{every, select, day {リビング<more>、毎日新しい論文</more>} week {リビング<more>、毎週新しい論文</more>} other {リビング<more>、毎月新しい論文</more>}}"
+        "living": "継続スクリーニングは、決まった間隔で取得元に新しい論文がないか確認し、新しい論文をスクリーニングします。アップロードしたファイルや貼り付けたリストに論文が増えることはありません。",
+        "livingChip": "{every, select, day {継続<more>、毎日新しい論文</more>} week {継続<more>、毎週新しい論文</more>} other {継続<more>、毎月新しい論文</more>}}"
       },
       "role": {
         "member": "{finished, select, true {すべての論文とすべての投票を見られます。あなたはレビュアーではないため、投票する論文は割り当てられません。} other {すべての論文とすべての投票を見られます。あなたはレビュアーではないため、投票する論文は割り当てられません。割り当てを受けるには、レビュアーとして参加してください。}}",
@@ -8643,7 +8643,7 @@
       },
       "loadingScreenings": "スクリーニングを読み込み中",
       "needsYouNote": "スクリーニングする論文、判定する不一致、あなたへの質問",
-      "startedBy": "<person>{who}</person> <at>が{when}に開始</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {が{when}に開始} other {が{when}に開始}}</at>",
       "everyReviewer": "すべてのレビュアー",
       "lastActivity": "<label>最終アクティビティ </label>{when}",
       "includedOf": "{total} 件中 {included} 件を採用",
@@ -9565,7 +9565,7 @@
         "week": "毎週",
         "month": "毎月"
       },
-      "living": "{every, select, day {リビング、毎日新しい論文} week {リビング、毎週新しい論文} other {リビング、毎月新しい論文}}",
+      "living": "{every, select, day {継続、毎日新しい論文} week {継続、毎週新しい論文} other {継続、毎月新しい論文}}",
       "settle": {
         "label": {
           "all": "全員一致",

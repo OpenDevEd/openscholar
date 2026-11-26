@@ -716,7 +716,7 @@ function Screen({ open }: { open: Open }) {
                           <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute end-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">{words.decision("exclude")}</motion.span>
                         </>
                       ) : null}
-                      <h2 className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
+                      <h2 dir="auto" className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
                       <Byline paper={paper} />
                       <div className="flex flex-wrap items-center gap-1.5">
                         <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: t("paper.fromSource", { count: fromSource, source: source.name }) } : undefined} added={paper.batch !== undefined && paper.addedAt !== undefined ? { at: paper.addedAt, href: papersHref(id, { added: paper.batch }) } : undefined} />
@@ -728,7 +728,7 @@ function Screen({ open }: { open: Open }) {
                       <div className="space-y-3">
                         {/* A paper with no abstract is read as the PDF it is. */}
                         {paper.pdf ? <PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /> : (
-                        <p className="text-[0.95rem] leading-7">
+                        <p dir="auto" className="text-[0.95rem] leading-7">
                           {sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} lit={current?.terms ?? []} />)}
                         </p>
                         )}

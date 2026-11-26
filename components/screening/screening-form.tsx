@@ -877,7 +877,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 <label htmlFor="research-question" className="text-xs font-medium text-muted-foreground">{t.rich("name.question", { optional: (chunks) => <span className="font-normal">{chunks}</span> })}</label>
                 <Help title={t("name.questionTitle")} facts={<HelpFact>{t("name.optional")}</HelpFact>}>{t("name.questionHelp")}</Help>
               </span>
-              <Textarea id="research-question" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
+              <Textarea id="research-question" dir="auto" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
             </div>
           </section>
 

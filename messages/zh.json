@@ -8643,7 +8643,7 @@
       },
       "loadingScreenings": "正在加载筛选",
       "needsYouNote": "待你筛选的论文、待你裁决的冲突和问你的问题",
-      "startedBy": "<person>{who}</person> <at>{when}开始</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {{when}开始} other {{when}开始}}</at>",
       "everyReviewer": "所有审核人",
       "lastActivity": "<label>最近活动 </label>{when}",
       "includedOf": "{total} 篇中 {included} 篇入选",

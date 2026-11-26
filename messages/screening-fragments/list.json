@@ -39,7 +39,7 @@
   },
   "loadingScreenings": "Loading screenings",
   "needsYouNote": "Papers to screen, conflicts to settle and questions put to you",
-  "startedBy": "<person>{who}</person> <at>started it {when}</at>",
+  "startedBy": "<person>{who}</person> <at>{you, select, true {started it {when}} other {started it {when}}}</at>",
   "everyReviewer": "Every reviewer",
   "lastActivity": "<label>Last activity </label>{when}",
   "includedOf": "{included} included of {total}",

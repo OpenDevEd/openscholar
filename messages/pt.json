@@ -8644,7 +8644,7 @@
       },
       "loadingScreenings": "A carregar as triagens",
       "needsYouNote": "Artigos a triar, conflitos a resolver e perguntas feitas a si",
-      "startedBy": "<person>{who}</person> <at>iniciou-a {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {iniciou-a {when}} other {iniciou-a {when}}}</at>",
       "everyReviewer": "Todos os revisores",
       "lastActivity": "<label>Última atividade </label>{when}",
       "includedOf": "{included} incluídos de {total}",

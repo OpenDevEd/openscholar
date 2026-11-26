@@ -8643,7 +8643,7 @@
       },
       "loadingScreenings": "Kulayishwa izinkuskrini",
       "needsYouNote": "Amaphepha okuskrinwa, ukungqubuzana okuxazululwayo nemibuzo obuzwe yona",
-      "startedBy": "<person>{who}</person> <at>ukuqale {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {ukuqale {when}} other {ukuqale {when}}}</at>",
       "everyReviewer": "Wonke umbuyekezi",
       "lastActivity": "<label>Umsebenzi wokugcina </label>{when}",
       "includedOf": "{included} afakiwe kwa-{total}",

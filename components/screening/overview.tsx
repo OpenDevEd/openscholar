@@ -241,7 +241,7 @@ function SettingsChip({ open, part, ...chip }: { open: Open; part: "papers" | "r
  * whichever language: "Include" and "Agrees with people" are longer words in most. A name the wider headings
  * leave less room for runs onto a second line.
  */
-const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,minmax(3.25rem,max-content))_fit-content(10.5rem)_2rem]";
+const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(8rem,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,minmax(3.25rem,auto))_fit-content(10.5rem)_2rem]";
 /** A part of the table that spans it: a group of rows, or a line that isn't cut into the columns. */
 const ACROSS = "@2xl/reviewers:col-span-full";
 const SHARED = "@2xl/reviewers:col-span-full @2xl/reviewers:grid @2xl/reviewers:grid-cols-subgrid";
@@ -348,7 +348,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
             <span role="columnheader">{t("reviewers.reviewer")}</span>
             <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", t("reviewers.votedOn"))}</span>
-            {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex justify-end">{/* A word may reach a little into the space before its column, as "Include" does: a longer one widens the column. */}<span className="-ms-2 flex items-center gap-1"><Icon className="size-3.5 shrink-0" />{words.decision(decision)}</span></span>; })}
+            {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex justify-end">{/* A word may reach a little into the space before its column, as "Include" does: a longer one widens the column while there is room, and breaks onto a second line where there isn't, so the names keep theirs. */}<span className="-ms-2 flex items-center gap-1 whitespace-normal hyphens-auto text-end"><Icon className="size-3.5 shrink-0" />{words.decision(decision)}</span></span>; })}
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", t("reviewers.agrees"))}
               <Help title={t("reviewers.agrees")} side="bottom" facts={<><HelpFact>{t("reviewers.agreesPerson")}</HelpFact><HelpFact>{t("reviewers.agreesModel")}</HelpFact></>}>

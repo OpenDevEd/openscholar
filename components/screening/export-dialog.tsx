@@ -303,7 +303,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ul>
               </div>
             ) : (
-              <p className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
+              <p dir="ltr" lang="en" className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
             )}
           </Section>
         </div>

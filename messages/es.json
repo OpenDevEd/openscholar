@@ -8644,7 +8644,7 @@
       },
       "loadingScreenings": "Cargando cribados",
       "needsYouNote": "Artículos que cribar, conflictos que resolver y preguntas que le han hecho",
-      "startedBy": "<person>{who}</person> <at>lo empezó {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {lo empezó {when}} other {lo empezó {when}}}</at>",
       "everyReviewer": "Todos los revisores",
       "lastActivity": "<label>Última actividad </label>{when}",
       "includedOf": "{included} incluidos de {total}",

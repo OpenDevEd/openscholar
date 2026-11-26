@@ -8643,7 +8643,7 @@
       },
       "loadingScreenings": "स्क्रीनिंग लोड हो रही हैं",
       "needsYouNote": "स्क्रीन करने को लेख, सुलझाने को मतभेद और आपसे पूछे गए प्रश्न",
-      "startedBy": "<person>{who}</person> <at>ने इसे {when} शुरू किया</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {ने इसे {when} शुरू किया} other {ने इसे {when} शुरू किया}}</at>",
       "everyReviewer": "हर समीक्षक",
       "lastActivity": "<label>पिछली गतिविधि </label>{when}",
       "includedOf": "{total} में से {included} शामिल",

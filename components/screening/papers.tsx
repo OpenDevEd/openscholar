@@ -933,7 +933,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         <TooltipHint label={<span className="flex items-center gap-2">{t("panel.close")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label={t("panel.close")} aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
       </div>
       <div className="space-y-2">
-        <h2 className="text-base font-semibold leading-snug">{paper.title}</h2>
+        <h2 dir="auto" className="text-base font-semibold leading-snug">{paper.title}</h2>
         <Byline paper={paper} />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -941,7 +941,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PaperPdf id={open.screening.id} paper={paper} terms={[]} /> : <p className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PaperPdf id={open.screening.id} paper={paper} terms={[]} /> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

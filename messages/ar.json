@@ -8644,7 +8644,7 @@
       },
       "loadingScreenings": "جارٍ تحميل عمليات الفرز",
       "needsYouNote": "أوراق لتفرزها، وتعارضات لتحسمها، وأسئلة موجهة إليك",
-      "startedBy": "<person>{who}</person> <at>بدأه {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {بدأته {when}} other {بدأه {when}}}</at>",
       "everyReviewer": "كل مراجع",
       "lastActivity": "<label>آخر نشاط </label>{when}",
       "includedOf": "{included} مُدرَجة من أصل {total}",

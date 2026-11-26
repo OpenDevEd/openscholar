@@ -8643,7 +8643,7 @@
       },
       "loadingScreenings": "Chargement des criblages",
       "needsYouNote": "Articles à cribler, désaccords à trancher et questions qui vous sont posées",
-      "startedBy": "<person>{who}</person> <at>l'a démarré {when}</at>",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {l'avez démarré {when}} other {l'a démarré {when}}}</at>",
       "everyReviewer": "Tous les évaluateurs",
       "lastActivity": "<label>Dernière activité </label>{when}",
       "includedOf": "{included} inclus sur {total}",

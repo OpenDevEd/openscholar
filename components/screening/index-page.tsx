@@ -180,7 +180,7 @@ export function ScreeningsIndex() {
                     </Help>
                   </span>
                   <span>{t("column.status")}</span>
-                  <span>{t("column.lastActivity")}</span>
+                  <span className="whitespace-nowrap">{t("column.lastActivity")}</span>
                   <span />
                 </div>
                 {loading && !rows.length ? (
@@ -207,6 +207,8 @@ export function ScreeningsIndex() {
                           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 self-start text-xs text-muted-foreground [grid-area:meta]">
                             {t.rich("startedBy", {
                               who: words.youOr(row.createdBy, me),
+                              // Whether it names the reader: some languages say "you started it" with another form of the verb.
+                              you: String(row.createdBy.id === me),
                               when: words.ago(row.createdAt),
                               person: (chunks) => (
                                 <span className="flex min-w-0 items-center gap-1.5">

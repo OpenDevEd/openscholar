@@ -592,9 +592,10 @@ export function Kbd({ children, className }: { children: ReactNode; className?: 
 
 /** A criterion's words, with the must-have mark kept on the line of its last word. */
 export function CriterionText({ text, must }: { text: string; must: boolean }) {
-  if (!must) return <>{text}</>;
+  // Written in whatever language its author wrote it in: it keeps its own direction on a page read right to left.
+  if (!must) return <bdi>{text}</bdi>;
   const at = text.lastIndexOf(" ");
-  return <>{text.slice(0, at + 1)}<span className="whitespace-nowrap">{text.slice(at + 1)}<RequiredMark /></span></>;
+  return <bdi>{text.slice(0, at + 1)}<span className="whitespace-nowrap">{text.slice(at + 1)}<RequiredMark /></span></bdi>;
 }
 
 /**
