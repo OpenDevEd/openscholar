@@ -7788,6 +7788,10 @@
         "joinsWithNone": "{name} sluit aan en kry ’n e-pos wat dit sê. Elke oop artikel het reeds sy beoordelaars, so nog geeneen gaan na hulle nie"
       },
       "votesStay": "Stemme wat reeds uitgebring is, bly soos hulle is",
+      "modelVotes": {
+        "advice": "Op die artikels wat nog oop is, beslis die mense se stemme elkeen wat ’n persoon het, met die modelle se stemme as advies",
+        "vote": "’n Model se stem tel soos een beoordelaar s’n op die artikels wat nog oop is"
+      },
       "conflict": {
         "all": "Sodra elke stem op ’n artikel in is, plaas stemme wat verskil dit in konflik",
         "most": "Sodra elke stem op ’n artikel in is, is ’n artikel sonder ’n meerderheid in konflik"
@@ -7959,6 +7963,7 @@
         "votedInclude": "Jy het Sluit in gestem",
         "yourOwn": "Jou eie",
         "seeAll": "Sien al {count} in Artikels",
+        "loading": "Laai artikels",
         "noneMine": "Jy het nog op geen artikel Sluit in gestem nie."
       },
       "votes": {
@@ -8222,6 +8227,10 @@
         "rangeHeld": "Artikels {first} tot {last} is reeds in hierdie siftering en bly daarin, dus kan die reeks net groter word. Om hulle uit te haal, verwyder die bron.",
         "checkedEvery": "{every, select, day {Elke dag gekontroleer} week {Elke week gekontroleer} other {Elke maand gekontroleer}}",
         "couldntBeRead": "Kon nie gelees word nie",
+        "stoppedAfter": "{read, plural, other {Gestop ná # van {total}}}",
+        "notSaved": "Openscholar het ’n fout gekry met die lees van hierdie bron.",
+        "readAgain": "Probeer weer",
+        "loadingList": "Laai die lys",
         "keep": "Hou",
         "range": "Artikels {first} tot {last}",
         "choose": "Kies artikels",
@@ -8334,16 +8343,25 @@
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",
         "votesSplit": "Stemme verdeel",
-        "help": "Elke stem op ’n artikel gaan in hierdie reël. Wanneer die stemme ooreenstem soos die reël vra, is die artikel beslis. Wanneer nie, is dit in konflik, en een persoon beslis dit.",
+        "help": "’n Artikel is beslis wanneer sy stemme ooreenstem soos die reël vra. Wanneer nie, is dit in konflik, en een persoon beslis dit.",
         "each": "Mense op elke artikel",
         "factModels": "Modelle lees elke oop artikel",
         "factEveryone": "Almal sluit in wie ook al later aansluit",
         "eachHelp": "Elke model lees elke artikel wat oop is wanneer dit aansluit. Dit stel hoeveel mense op elkeen stem. Die artikels word verdeel sodat elke persoon omtrent dieselfde aantal lees. ’n Vaste getal bly dieselfde wanneer die span groei. Almal beteken elke persoon op die siftering, nou en later.",
         "everyone": "Almal",
+        "onePerson": "Een persoon, want die eerste stem beslis",
+        "modelVotes": "Modelle se stemme",
+        "countAsVote": "Tel soos ’n persoon s’n",
+        "adviceOnly": "Net advies",
+        "modelVotesVote": "Wanneer dit soos ’n persoon s’n tel, is elke model se stem een beoordelaar s’n, en ’n artikel word op die mense en die modelle se stemme saam beslis. Waar die modelle alleen elke persoon op die artikel sou uitstem, is die artikel eerder in konflik.",
+        "modelVotesAdvice": "As advies word ’n artikel wat ’n persoon het, net op die mense se stemme beslis, en die modelle se stemme wys langs hulle s’n.",
+        "modelVotesNever": "Hoe ook al, ’n artikel wat geen persoon kry nie, word op die modelle se stemme beslis.",
+        "addModel": "Voeg ’n model by om te kies",
+        "modelsUnderOne": "Advies op artikels wat ’n persoon het",
         "addPerson": "Voeg ’n persoon by om te kies",
         "settledWhen": "’n Artikel is beslis wanneer",
         "settlingTitle": "Hoe ’n artikel beslis word",
-        "oneVote": "Elke beoordelaar wat ’n artikel kry, het een stem, ’n model net soveel as ’n persoon.",
+        "oneVote": "Elke beoordelaar wat ’n artikel kry, het een stem.",
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Konflikte word beslis deur",
         "conflictsTitle": "Konflikte",
@@ -8652,6 +8670,7 @@
         "text": "Elke balk verdeel ’n siftering se artikels volgens waar hulle nou staan. Druk ’n deel van die balk om daardie artikels te sien."
       },
       "loadingScreenings": "Laai sifterings",
+      "loadingMenu": "Laai die kieslys",
       "needsYouNote": "Artikels om te sif, konflikte om te beslis en vrae aan jou",
       "startedBy": "<person>{who}</person> <at>{you, select, true {het dit {when} begin} other {het dit {when} begin}}</at>",
       "everyReviewer": "Elke beoordelaar",
@@ -9423,7 +9442,8 @@
         "knownNoAbstract": "In die indeks, geen opsomming nie",
         "fileWithPages": "As sy PDF gelees, {count, plural, one {# bladsy} other {# bladsye}}",
         "list": "Die PDF’e van hierdie bron",
-        "pager": "PDF’e"
+        "pager": "PDF’e",
+        "loading": "Laai die PDF’e"
       },
       "dois": {
         "fromFile": "DOI’s in ’n lêer",
@@ -9444,6 +9464,7 @@
       "zotero": {
         "myLibrary": "My biblioteek",
         "loading": "Laai Zotero",
+        "loadingCollections": "Laai die versamelings",
         "notConnected": "Zotero is nie gekoppel nie",
         "connectWhy": "Koppel dit om uit jou biblioteek en die groepe waarin jy is, te kies.",
         "connect": "Koppel Zotero",

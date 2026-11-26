@@ -7788,6 +7788,10 @@
         "joinsWithNone": "{name} tritt bei und erhält eine E-Mail dazu. Alle offenen Artikel haben schon ihre Reviewer, daher geht vorerst keiner an diese Person"
       },
       "votesStay": "Bereits abgegebene Stimmen bleiben, wie sie sind",
+      "modelVotes": {
+        "advice": "Bei den noch offenen Artikeln entscheiden die Stimmen der Personen jeden, den eine Person hat, und die Stimmen der Modelle gelten als Empfehlung",
+        "vote": "Die Stimme eines Modells zählt bei den noch offenen Artikeln wie die eines Reviewers"
+      },
       "conflict": {
         "all": "Sobald alle Stimmen zu einem Artikel da sind, bringen abweichende Stimmen ihn in Konflikt",
         "most": "Sobald alle Stimmen zu einem Artikel da sind, ist ein Artikel ohne Mehrheit im Konflikt"
@@ -7959,6 +7963,7 @@
         "votedInclude": "Sie haben für Einschließen gestimmt",
         "yourOwn": "Ihre eigenen",
         "seeAll": "Alle {count} unter Artikel ansehen",
+        "loading": "Artikel werden geladen",
         "noneMine": "Sie haben noch bei keinem Artikel für Einschließen gestimmt."
       },
       "votes": {
@@ -8222,6 +8227,10 @@
         "rangeHeld": "Die Artikel {first} bis {last} sind bereits in diesem Screening und bleiben darin, der Bereich kann also nur größer werden. Um sie herauszunehmen, entfernen Sie die Quelle.",
         "checkedEvery": "{every, select, day {Jeden Tag abgefragt} week {Jede Woche abgefragt} other {Jeden Monat abgefragt}}",
         "couldntBeRead": "Nicht lesbar",
+        "stoppedAfter": "{read, plural, other {Nach # von {total} gestoppt}}",
+        "notSaved": "Beim Lesen dieser Quelle ist in Openscholar ein Fehler aufgetreten.",
+        "readAgain": "Erneut versuchen",
+        "loadingList": "Liste wird geladen",
         "keep": "Behalten",
         "range": "Artikel {first} bis {last}",
         "choose": "Artikel wählen",
@@ -8334,16 +8343,25 @@
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",
-        "help": "Jede Stimme zu einem Artikel geht in diese Regel ein. Sind die Stimmen so einig, wie die Regel verlangt, ist der Artikel entschieden. Wenn nicht, ist er im Konflikt, und eine Person entscheidet ihn.",
+        "help": "Ein Artikel ist entschieden, wenn seine Stimmen so einig sind, wie die Regel verlangt. Wenn nicht, ist er im Konflikt, und eine Person entscheidet ihn.",
         "each": "Personen pro Artikel",
         "factModels": "Modelle lesen jeden offenen Artikel",
         "factEveryone": "Alle schließt später Hinzukommende ein",
         "eachHelp": "Jedes Modell liest jeden Artikel, der beim Hinzukommen offen ist. Dies legt fest, wie viele Personen über jeden abstimmen. Die Artikel werden so verteilt, dass jede Person etwa gleich viele liest. Eine feste Zahl bleibt gleich, wenn das Team wächst. Alle heißt jede Person im Screening, jetzt und später.",
         "everyone": "Alle",
+        "onePerson": "Eine Person, da die erste Stimme entscheidet",
+        "modelVotes": "Stimmen der Modelle",
+        "countAsVote": "Wie eine Person zählen",
+        "adviceOnly": "Nur Empfehlung",
+        "modelVotesVote": "Zählen sie wie die einer Person, ist die Stimme jedes Modells die eines Reviewers, und ein Artikel wird aus den Stimmen der Personen und der Modelle zusammen entschieden. Würden die Modelle allein jede Person an diesem Artikel überstimmen, ist der Artikel stattdessen im Konflikt.",
+        "modelVotesAdvice": "Als Empfehlung wird ein Artikel, den eine Person hat, allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle stehen neben ihren.",
+        "modelVotesNever": "So oder so wird ein Artikel, den keine Person bekommt, aus den Stimmen der Modelle entschieden.",
+        "addModel": "Fügen Sie ein Modell hinzu, um zu wählen",
+        "modelsUnderOne": "Empfehlung bei Artikeln, die eine Person hat",
         "addPerson": "Fügen Sie eine Person hinzu, um zu wählen",
         "settledWhen": "Ein Artikel ist entschieden, wenn",
         "settlingTitle": "Einen Artikel entscheiden",
-        "oneVote": "Jeder Reviewer, dem ein Artikel zugewiesen ist, hat eine Stimme, ein Modell ebenso wie eine Person.",
+        "oneVote": "Jeder Reviewer, dem ein Artikel zugewiesen ist, hat eine Stimme.",
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Konflikte entscheidet",
         "conflictsTitle": "Konflikte",
@@ -8652,6 +8670,7 @@
         "text": "Jeder Balken teilt die Artikel eines Screenings danach auf, wo sie gerade stehen. Klicken Sie auf einen Teil des Balkens, um diese Artikel zu sehen."
       },
       "loadingScreenings": "Screenings werden geladen",
+      "loadingMenu": "Menü wird geladen",
       "needsYouNote": "Zu prüfende Artikel, zu entscheidende Konflikte und Fragen an Sie",
       "startedBy": "<person>{who}</person> <at>{you, select, true {haben es {when} gestartet} other {hat es {when} gestartet}}</at>",
       "everyReviewer": "Alle Reviewer",
@@ -9423,7 +9442,8 @@
         "knownNoAbstract": "Im Index, kein Abstract",
         "fileWithPages": "Als PDF gelesen, {count, plural, one {# Seite} other {# Seiten}}",
         "list": "Die PDFs dieser Quelle",
-        "pager": "PDFs"
+        "pager": "PDFs",
+        "loading": "PDFs werden geladen"
       },
       "dois": {
         "fromFile": "DOIs in einer Datei",
@@ -9444,6 +9464,7 @@
       "zotero": {
         "myLibrary": "Meine Bibliothek",
         "loading": "Zotero wird geladen",
+        "loadingCollections": "Sammlungen werden geladen",
         "notConnected": "Zotero ist nicht verbunden",
         "connectWhy": "Verbinden Sie es, um aus Ihrer Bibliothek und Ihren Gruppen zu wählen.",
         "connect": "Zotero verbinden",

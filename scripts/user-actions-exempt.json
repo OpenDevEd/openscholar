@@ -123,6 +123,7 @@
     "screening/screenings:remove": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/notices:setEmails": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/living:checkNow": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
+    "screening/living:readSourceAgain": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/discussion:say": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/settings:save": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/sampling:sample": "The screening form's preview of the first papers a source's range takes. The assistant starts no screening, and reads a source's papers with the tools for searches, collections and Zotero.",

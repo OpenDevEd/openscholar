@@ -7788,6 +7788,10 @@
         "joinsWithNone": "{name} se une y recibe un correo que lo avisa. Todos los artículos abiertos ya tienen sus revisores, así que todavía no recibe ninguno"
       },
       "votesStay": "Los votos ya emitidos se quedan como están",
+      "modelVotes": {
+        "advice": "En los artículos aún abiertos, los votos de las personas resuelven cada uno que tiene una persona, con los votos de los modelos como consejo",
+        "vote": "El voto de un modelo cuenta como el de un revisor en los artículos aún abiertos"
+      },
       "conflict": {
         "all": "Cuando están todos los votos de un artículo, si difieren queda en conflicto",
         "most": "Cuando están todos los votos de un artículo, un artículo sin mayoría queda en conflicto"
@@ -7959,6 +7963,7 @@
         "votedInclude": "Usted votó Incluir",
         "yourOwn": "Los suyos",
         "seeAll": "Ver los {count} en Artículos",
+        "loading": "Cargando artículos",
         "noneMine": "Todavía no ha votado Incluir en ningún artículo."
       },
       "votes": {
@@ -8222,6 +8227,10 @@
         "rangeHeld": "Los artículos {first} a {last} ya están en este cribado y se quedan en él, así que el rango solo puede ampliarse. Para sacarlos, quite la fuente.",
         "checkedEvery": "{every, select, day {Se comprueba cada día} week {Se comprueba cada semana} other {Se comprueba cada mes}}",
         "couldntBeRead": "No se pudo leer",
+        "stoppedAfter": "{read, plural, other {Se detuvo tras # de {total}}}",
+        "notSaved": "Openscholar encontró un error al leer esta fuente.",
+        "readAgain": "Reintentar",
+        "loadingList": "Cargando la lista",
         "keep": "Conservar",
         "range": "Artículos {first} a {last}",
         "choose": "Elegir artículos",
@@ -8334,16 +8343,25 @@
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",
         "votesSplit": "Los votos se dividen",
-        "help": "Todos los votos de un artículo entran en esta regla. Cuando los votos coinciden como pide la regla, el artículo queda resuelto. Cuando no, queda en conflicto, y una persona lo resuelve.",
+        "help": "Un artículo queda resuelto cuando sus votos coinciden como pide la regla. Cuando no, queda en conflicto, y una persona lo resuelve.",
         "each": "Personas por artículo",
         "factModels": "Los modelos leen todos los artículos abiertos",
         "factEveryone": "Todos incluye a quien se una después",
         "eachHelp": "Cada modelo lee todos los artículos abiertos cuando se une. Esto fija cuántas personas votan cada uno. Los artículos se reparten para que cada persona lea más o menos el mismo número. Un número fijo se mantiene aunque crezca el equipo. Todos significa todas las personas del cribado, ahora y después.",
         "everyone": "Todos",
+        "onePerson": "Una persona, ya que decide el primer voto",
+        "modelVotes": "Votos de los modelos",
+        "countAsVote": "Contar como el de una persona",
+        "adviceOnly": "Solo consejo",
+        "modelVotesVote": "Contados como los de una persona, el voto de cada modelo vale lo que el de un revisor, y un artículo queda resuelto con los votos de las personas y de los modelos juntos. Cuando los modelos por sí solos superarían en votos a todas las personas del artículo, el artículo queda en conflicto.",
+        "modelVotesAdvice": "Como consejo, un artículo que tiene una persona queda resuelto solo con los votos de las personas, y los votos de los modelos aparecen junto a los suyos.",
+        "modelVotesNever": "En cualquier caso, un artículo que no recibe ninguna persona queda resuelto con los votos de los modelos.",
+        "addModel": "Añada un modelo para elegir",
+        "modelsUnderOne": "Consejo en los artículos que tiene una persona",
         "addPerson": "Añada una persona para elegir",
         "settledWhen": "Un artículo queda resuelto cuando",
         "settlingTitle": "Resolver un artículo",
-        "oneVote": "Cada revisor asignado a un artículo tiene un voto, tanto un modelo como una persona.",
+        "oneVote": "Cada revisor asignado a un artículo tiene un voto.",
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Los conflictos los resuelve",
         "conflictsTitle": "Conflictos",
@@ -8652,6 +8670,7 @@
         "text": "Cada barra reparte los artículos de un cribado según su estado actual. Pulse una parte de la barra para ver esos artículos."
       },
       "loadingScreenings": "Cargando cribados",
+      "loadingMenu": "Cargando el menú",
       "needsYouNote": "Artículos que cribar, conflictos que resolver y preguntas que le han hecho",
       "startedBy": "<person>{who}</person> <at>{you, select, true {lo empezó {when}} other {lo empezó {when}}}</at>",
       "everyReviewer": "Todos los revisores",
@@ -9423,7 +9442,8 @@
         "knownNoAbstract": "En el índice, sin resumen",
         "fileWithPages": "Leído como su PDF, {count, plural, one {# página} other {# páginas}}",
         "list": "Los PDF de esta fuente",
-        "pager": "PDF"
+        "pager": "PDF",
+        "loading": "Cargando los PDF"
       },
       "dois": {
         "fromFile": "DOI de un archivo",
@@ -9444,6 +9464,7 @@
       "zotero": {
         "myLibrary": "Mi biblioteca",
         "loading": "Cargando Zotero",
+        "loadingCollections": "Cargando las colecciones",
         "notConnected": "Zotero no está conectado",
         "connectWhy": "Conéctelo para elegir de su biblioteca y de los grupos en los que está.",
         "connect": "Conectar Zotero",

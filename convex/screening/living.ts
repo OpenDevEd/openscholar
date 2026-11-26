@@ -59,9 +59,11 @@ export const readSourceAgain = workspaceMutation({
     if (!source || source.removedAt !== undefined) throw createError("NOT_FOUND", "This source isn't in the screening any more.");
     const job = await requireMember(ctx, actor, source.jobId);
     if (source.state !== "failed") return null;
-    // One that failed before its reading began begins again; one that failed part way goes on from its place.
-    await ctx.db.patch("screeningSources", sourceId, { state: source.snapshot || source.total !== undefined || source.read ? "reading" : "waiting", failure: undefined });
-    if (job.reading) return null;
+    // One that failed before its reading began begins again; one that failed part way goes on from its place. A community's records are listed again first: the list a look keeps is dropped when it ends.
+    const begun = source.set.kind !== "evidenceLibrary" && (source.snapshot || source.total !== undefined || source.read);
+    await ctx.db.patch("screeningSources", sourceId, { state: begun ? "reading" : "waiting", failure: undefined });
+    // A look under way reads it in its turn: never a second one beside it.
+    if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
     const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
     if (last && last.from === 0) await readOn(ctx, job, actor.userId);
     else await startCheck(ctx, job, actor.userId, job.totalPapers);

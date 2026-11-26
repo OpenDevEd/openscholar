@@ -7787,6 +7787,10 @@
         "joinsWithNone": "{name} rejoint le criblage et reçoit un e-mail qui le lui annonce. Chaque article ouvert a déjà ses évaluateurs, aucun ne lui est donc confié pour l'instant"
       },
       "votesStay": "Les votes déjà émis restent tels quels",
+      "modelVotes": {
+        "advice": "Sur les articles encore ouverts, les votes des personnes tranchent chaque article confié à une personne, et les votes des modèles servent d'avis",
+        "vote": "Le vote d'un modèle compte comme celui d'un évaluateur sur les articles encore ouverts"
+      },
       "conflict": {
         "all": "Une fois tous les votes sur un article reçus, des votes différents le mettent en désaccord",
         "most": "Une fois tous les votes sur un article reçus, un article sans majorité est en désaccord"
@@ -7958,6 +7962,7 @@
         "votedInclude": "Vous avez voté Inclure",
         "yourOwn": "Les vôtres",
         "seeAll": "Voir les {count} dans Articles",
+        "loading": "Chargement des articles",
         "noneMine": "Vous n'avez encore voté Inclure sur aucun article."
       },
       "votes": {
@@ -8221,6 +8226,10 @@
         "rangeHeld": "Les articles {first} à {last} sont déjà dans ce criblage et y restent : la plage ne peut que s'élargir. Pour les retirer, retirez la source.",
         "checkedEvery": "{every, select, day {Vérifié chaque jour} week {Vérifié chaque semaine} other {Vérifié chaque mois}}",
         "couldntBeRead": "Illisible",
+        "stoppedAfter": "{read, plural, other {Arrêté après # sur {total}}}",
+        "notSaved": "Openscholar a rencontré une erreur en lisant cette source.",
+        "readAgain": "Réessayer",
+        "loadingList": "Chargement de la liste",
         "keep": "Garder",
         "range": "Articles {first} à {last}",
         "choose": "Choisir des articles",
@@ -8333,16 +8342,25 @@
         "votesAgree": "Votes concordants",
         "settled": "Tranché",
         "votesSplit": "Votes partagés",
-        "help": "Cette règle prend en compte chaque vote sur un article. Quand les votes concordent comme la règle le demande, l'article est tranché. Sinon, il est en désaccord, et une personne le tranche.",
+        "help": "Un article est tranché quand ses votes concordent comme la règle le demande. Sinon, il est en désaccord, et une personne le tranche.",
         "each": "Personnes par article",
         "factModels": "Les modèles lisent chaque article ouvert",
         "factEveryone": "Tout le monde inclut les personnes qui rejoignent plus tard",
         "eachHelp": "Chaque modèle lit chaque article ouvert au moment où il arrive. Ce réglage fixe combien de personnes votent sur chacun. Les articles sont répartis pour que chaque personne en lise à peu près autant. Un nombre fixé reste le même quand l'équipe grandit. Tout le monde désigne chaque personne du criblage, maintenant et plus tard.",
         "everyone": "Tout le monde",
+        "onePerson": "Une personne, puisque le premier vote décide",
+        "modelVotes": "Votes des modèles",
+        "countAsVote": "Compter comme une personne",
+        "adviceOnly": "Avis seulement",
+        "modelVotesVote": "Compté comme celui d'une personne, le vote de chaque modèle vaut celui d'un évaluateur, et un article est tranché sur les votes des personnes et des modèles ensemble. Si les modèles l'emportaient à eux seuls sur chaque personne à qui l'article est confié, il est en désaccord à la place.",
+        "modelVotesAdvice": "Comme avis, un article confié à une personne est tranché sur les seuls votes des personnes, et les votes des modèles s'affichent à côté des leurs.",
+        "modelVotesNever": "Dans les deux cas, un article qui n'est confié à aucune personne est tranché sur les votes des modèles.",
+        "addModel": "Ajoutez un modèle pour choisir",
+        "modelsUnderOne": "Avis sur les articles confiés à une personne",
         "addPerson": "Ajoutez une personne pour choisir",
         "settledWhen": "Un article est tranché quand",
         "settlingTitle": "Trancher un article",
-        "oneVote": "Chaque évaluateur qui reçoit un article a une voix, un modèle autant qu'une personne.",
+        "oneVote": "Chaque évaluateur qui reçoit un article a une voix.",
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Les désaccords sont tranchés par",
         "conflictsTitle": "Désaccords",
@@ -8651,6 +8669,7 @@
         "text": "Chaque barre répartit les articles d'un criblage selon où ils en sont. Appuyez sur une partie de la barre pour voir ces articles."
       },
       "loadingScreenings": "Chargement des criblages",
+      "loadingMenu": "Chargement du menu",
       "needsYouNote": "Articles à cribler, désaccords à trancher et questions qui vous sont posées",
       "startedBy": "<person>{who}</person> <at>{you, select, true {l'avez démarré {when}} other {l'a démarré {when}}}</at>",
       "everyReviewer": "Tous les évaluateurs",
@@ -9422,7 +9441,8 @@
         "knownNoAbstract": "Dans l'index, sans résumé",
         "fileWithPages": "Lu depuis son PDF, {count, plural, one {# page} other {# pages}}",
         "list": "Les PDF de cette source",
-        "pager": "PDF"
+        "pager": "PDF",
+        "loading": "Chargement des PDF"
       },
       "dois": {
         "fromFile": "DOI dans un fichier",
@@ -9443,6 +9463,7 @@
       "zotero": {
         "myLibrary": "Ma bibliothèque",
         "loading": "Chargement de Zotero",
+        "loadingCollections": "Chargement des collections",
         "notConnected": "Zotero n'est pas connecté",
         "connectWhy": "Connectez-le pour choisir dans votre bibliothèque et dans vos groupes.",
         "connect": "Connecter Zotero",

@@ -44,6 +44,8 @@ export const changeValidator = v.object({
   ranges: v.optional(v.array(v.object({ sourceId: v.id("screeningSources"), first: v.optional(v.number()), last: v.optional(v.number()) }))),
   addPeople: v.optional(v.array(v.id("users"))),
   addModels: v.optional(v.array(modelInput)),
+  // People invited by email with the save, sent before it (../sharing/invitations.ts): the preview counts them as the rule waits for them.
+  inviting: v.optional(v.number()),
   remove: v.optional(v.array(v.object({ reviewerId: v.id("screeningReviewers"), discard: v.optional(v.boolean()) }))),
   // The settled papers are checked again under the settings as the save leaves them, and none keeps its result for having had it.
   recheck: v.optional(v.boolean()),

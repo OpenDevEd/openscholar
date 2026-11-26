@@ -7788,6 +7788,10 @@
         "joinsWithNone": "{name} anajiunga na kupata barua pepe inayomjulisha. Kila makala iliyo wazi tayari ina wakaguzi wake, kwa hivyo bado hakuna itakayomwendea"
       },
       "votesStay": "Kura zilizokwisha kupigwa zinabaki zilivyo",
+      "modelVotes": {
+        "advice": "Kwenye makala ambazo bado ziko wazi, kura za watu zinaamua kila makala aliyo nayo mtu, na kura za modeli zikiwa ushauri",
+        "vote": "Kura ya modeli inahesabiwa kama ya mkaguzi mmoja kwenye makala ambazo bado ziko wazi"
+      },
       "conflict": {
         "all": "Kura zote za makala zikishafika, kura zinazotofautiana zinaiweka kwenye mgongano",
         "most": "Kura zote za makala zikishafika, makala isiyo na wingi wa kura iko kwenye mgongano"
@@ -7959,6 +7963,7 @@
         "votedInclude": "Ulipigia Jumuisha",
         "yourOwn": "Zako mwenyewe",
         "seeAll": "Ona zote {count} kwenye Makala",
+        "loading": "Inapakia makala",
         "noneMine": "Bado hujapigia Jumuisha makala yoyote."
       },
       "votes": {
@@ -8222,6 +8227,10 @@
         "rangeHeld": "Makala {first} hadi {last} tayari ziko kwenye uchujaji huu na zinabaki humo, kwa hiyo masafa yanaweza kuongezwa tu. Ili kuziondoa, ondoa chanzo.",
         "checkedEvery": "{every, select, day {Kinakaguliwa kila siku} week {Kinakaguliwa kila wiki} other {Kinakaguliwa kila mwezi}}",
         "couldntBeRead": "Haikuweza kusomwa",
+        "stoppedAfter": "{read, plural, other {Ilisimama baada ya # kati ya {total}}}",
+        "notSaved": "Openscholar ilipata hitilafu ikisoma chanzo hiki.",
+        "readAgain": "Jaribu tena",
+        "loadingList": "Inapakia orodha",
         "keep": "Weka",
         "range": "Makala {first} hadi {last}",
         "choose": "Chagua makala",
@@ -8334,16 +8343,25 @@
         "votesAgree": "Kura zinakubaliana",
         "settled": "Imeamuliwa",
         "votesSplit": "Kura zinatofautiana",
-        "help": "Kila kura kwenye makala inaingia kwenye kanuni hii. Kura zikikubaliana kama kanuni inavyotaka, makala inaamuliwa. Zisipokubaliana, ina mgongano, na mtu mmoja anauamua.",
+        "help": "Makala inaamuliwa kura zake zikikubaliana kama kanuni inavyotaka. Zisipokubaliana, ina mgongano, na mtu mmoja anauamua.",
         "each": "Watu kwenye kila makala",
         "factModels": "Modeli zinasoma kila makala iliyo wazi",
         "factEveryone": "Kila mtu inajumuisha yeyote atakayejiunga baadaye",
         "eachHelp": "Kila modeli inasoma kila makala iliyo wazi inapojiunga. Hiki kinaweka watu wangapi wanapigia kura kila moja. Makala zinagawanywa ili kila mtu asome idadi inayokaribiana. Idadi iliyowekwa inabaki ileile timu ikikua. Kila mtu inamaanisha kila mtu kwenye uchujaji, sasa na baadaye.",
         "everyone": "Kila mtu",
+        "onePerson": "Mtu mmoja, kwa kuwa kura ya kwanza ndiyo inayoamua",
+        "modelVotes": "Kura za modeli",
+        "countAsVote": "Hesabu kama ya mtu",
+        "adviceOnly": "Ushauri tu",
+        "modelVotesVote": "Zikihesabiwa kama za mtu, kura ya kila modeli ni ya mkaguzi mmoja, na makala inaamuliwa kwa kura za watu na za modeli pamoja. Pale ambapo modeli peke yake zingeshinda kura za kila mtu kwenye makala hiyo, makala ina mgongano badala yake.",
+        "modelVotesAdvice": "Zikiwa ushauri, makala aliyo nayo mtu inaamuliwa kwa kura za watu peke yake, na kura za modeli zinaonekana kando ya zao.",
+        "modelVotesNever": "Kwa njia yoyote, makala ambayo hakuna mtu aliyepewa inaamuliwa kwa kura za modeli.",
+        "addModel": "Ongeza modeli ili uchague",
+        "modelsUnderOne": "Ushauri kwenye makala aliyo nayo mtu",
         "addPerson": "Ongeza mtu ili uchague",
         "settledWhen": "Makala inaamuliwa pale",
         "settlingTitle": "Kuamua makala",
-        "oneVote": "Kila mkaguzi aliyepewa makala ana kura moja, modeli sawa na mtu.",
+        "oneVote": "Kila mkaguzi aliyepewa makala ana kura moja.",
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Migongano inaamuliwa na",
         "conflictsTitle": "Migongano",
@@ -8652,6 +8670,7 @@
         "text": "Kila upau unagawa makala za uchujaji kulingana na hali yake sasa. Bonyeza sehemu ya upau kuona makala hizo."
       },
       "loadingScreenings": "Inapakia uchujaji",
+      "loadingMenu": "Inapakia menyu",
       "needsYouNote": "Makala za kuchuja, migongano ya kuamua na maswali uliyoulizwa",
       "startedBy": "<person>{who}</person> <at>{you, select, true {uliuanzisha {when}} other {aliuanzisha {when}}}</at>",
       "everyReviewer": "Kila mkaguzi",
@@ -9423,7 +9442,8 @@
         "knownNoAbstract": "Iko kwenye faharasa, haina muhtasari",
         "fileWithPages": "Inasomwa kutoka PDF yake, {count, plural, one {ukurasa #} other {kurasa #}}",
         "list": "PDF za chanzo hiki",
-        "pager": "PDF"
+        "pager": "PDF",
+        "loading": "Inapakia PDF"
       },
       "dois": {
         "fromFile": "DOI kwenye faili",
@@ -9444,6 +9464,7 @@
       "zotero": {
         "myLibrary": "Maktaba yangu",
         "loading": "Inapakia Zotero",
+        "loadingCollections": "Inapakia mikusanyiko",
         "notConnected": "Zotero haijaunganishwa",
         "connectWhy": "Iunganishe ili uchague kutoka maktaba yako na vikundi ulivyomo.",
         "connect": "Unganisha Zotero",

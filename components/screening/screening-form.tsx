@@ -53,7 +53,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
-import { EVERY_MS, MAX_SOURCES } from "@/lib/screening/rules";
+import { EVERY_MS, MAX_SOURCES, readersFor } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
@@ -188,6 +188,7 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     ...(saved.sources.some((source) => !draft.sources.some((one) => one.id === source.id)) ? { removeSources: saved.sources.filter((source) => !draft.sources.some((one) => one.id === source.id)).map((source) => source.id as Id<"screeningSources">) } : {}),
     ...(ranged.length ? { ranges: ranged.map((source) => ({ sourceId: source.id as Id<"screeningSources">, ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) })) } : {}),
     ...(joining.some((one) => one.kind === "person" && !one.guest && !one.email) ? { addPeople: joining.filter((one) => one.kind === "person" && !one.guest && !one.email).map((one) => one.id as Id<"users">) } : {}),
+    ...(joining.some((one) => one.kind === "person" && one.email) ? { inviting: joining.filter((one) => one.kind === "person" && one.email).length } : {}),
     ...(joining.some((one) => one.kind === "model") ? { addModels: joining.filter((one) => one.kind === "model").map(modelOf) } : {}),
     ...(leaving.length ? { remove: leaving.map((one) => ({ reviewerId: one.row!, ...(draft.reviewers.find((now) => now.id === one.id)?.discarded && !one.discarded ? { discard: true } : {}) })) } : {}),
     ...(recheck ? { recheck: true } : {}),
@@ -720,10 +721,11 @@ export function ScreeningForm({ id }: { id?: string }) {
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left));
+      // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
+      await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
       // A community's collection is checked, or made, there before the save.
       if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
       else await saveChange({ jobId: saved.id, change });
-      await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
       // The page stays where it is: Changes keeps what the save did until the next edit.
       setLastSave({ edits, lines, moves });
       setRecheck(false);
@@ -1410,10 +1412,11 @@ export function ScreeningForm({ id }: { id?: string }) {
               {/* What the rule does, on three made-up papers. */}
               <div className="space-y-2 bg-inset px-4 py-3">
                 {/* The examples show as many votes as a paper gets here. With nobody on it yet there are none to show. */}
-                {models.length + each ? (
+                {/* Someone invited by email is counted: the rule waits for their vote as for anyone's. */}
+                {models.length + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) ? (
                   <>
-                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: models.length + each })}</p>
-                    <RuleExamples rule={draft.rule} people={joined.length} models={models.length} />
+                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: models.length + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) })}</p>
+                    <RuleExamples rule={draft.rule} people={readers} models={models.length} />
                   </>
                 ) : <p className="text-xs text-muted-foreground">{t("decided.addReviewer")}</p>}
               </div>

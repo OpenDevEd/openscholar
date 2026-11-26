@@ -7787,6 +7787,10 @@
         "joinsWithNone": "{name} 加入并会收到邮件通知。每篇未定案的论文都已有审核人，因此暂时不会分给对方"
       },
       "votesStay": "已投的票保持不变",
+      "modelVotes": {
+        "advice": "在仍未定案的论文上，分配给人员的论文由人员的投票定案，模型的投票作为参考",
+        "vote": "在仍未定案的论文上，模型的一票算作一位审核人的一票"
+      },
       "conflict": {
         "all": "一篇论文的所有投票都到齐后，只要投票不一致就会产生冲突",
         "most": "一篇论文的所有投票都到齐后，没有多数票的论文就会产生冲突"
@@ -7958,6 +7962,7 @@
         "votedInclude": "你投了入选的",
         "yourOwn": "你自己的",
         "seeAll": "在论文中查看全部 {count} 篇",
+        "loading": "正在加载论文",
         "noneMine": "你还没有对任何论文投入选。"
       },
       "votes": {
@@ -8221,6 +8226,10 @@
         "rangeHeld": "第 {first} 至 {last} 篇论文已在本次筛选中并会保留，因此范围只能扩大。要移除它们，请移除该来源。",
         "checkedEvery": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
         "couldntBeRead": "无法读取",
+        "stoppedAfter": "{read, plural, other {读取 # / {total} 后停止}}",
+        "notSaved": "Openscholar 读取此来源时出错。",
+        "readAgain": "重试",
+        "loadingList": "正在加载列表",
         "keep": "保留",
         "range": "第 {first} 至 {last} 篇论文",
         "choose": "选择论文",
@@ -8333,16 +8342,25 @@
         "votesAgree": "投票一致",
         "settled": "定案",
         "votesSplit": "投票分歧",
-        "help": "一篇论文的每一票都按此规则计算。投票符合规则要求的一致程度时，论文定案。不符合时就是冲突，由一个人裁决。",
+        "help": "论文的投票符合规则要求的一致程度时，论文定案。不符合时就是冲突，由一个人裁决。",
         "each": "每篇论文的人数",
         "factModels": "模型阅读每篇未定案的论文",
         "factEveryone": "“所有人”包括之后加入的人",
         "eachHelp": "每个模型都会阅读它加入时所有未定案的论文。这里设定每篇论文由几个人投票。论文会平均分配，每人阅读的数量大致相同。团队扩大时，设定的数字保持不变。“所有人”指筛选中现在和以后的每个人。",
         "everyone": "所有人",
+        "onePerson": "一人，因为第一票即决定结果",
+        "modelVotes": "模型的投票",
+        "countAsVote": "与人员同等计票",
+        "adviceOnly": "仅作参考",
+        "modelVotesVote": "与人员同等计票时，每个模型的一票算作一位审核人的一票，论文由人员和模型的投票共同定案。如果仅凭模型的投票就能压过论文上的每个人员，论文会转为冲突。",
+        "modelVotesAdvice": "仅作参考时，分配给人员的论文只按人员的投票定案，模型的投票显示在旁边。",
+        "modelVotesNever": "无论哪种方式，没有分配给任何人的论文都按模型的投票定案。",
+        "addModel": "添加模型后可选择",
+        "modelsUnderOne": "对分配给人员的论文仅作参考",
         "addPerson": "添加人员后可选择",
         "settledWhen": "论文定案的条件",
         "settlingTitle": "论文定案",
-        "oneVote": "分配到论文的每位审核人各有一票，模型和人员一样。",
+        "oneVote": "分配到论文的每位审核人各有一票。",
         "ruleMeans": "<b>{label}。</b>{means}",
         "settledBy": "冲突裁决人",
         "conflictsTitle": "冲突",
@@ -8651,6 +8669,7 @@
         "text": "每个进度条按当前进展划分筛选中的论文。点按进度条的某一段即可查看那些论文。"
       },
       "loadingScreenings": "正在加载筛选",
+      "loadingMenu": "正在加载菜单",
       "needsYouNote": "待你筛选的论文、待你裁决的冲突和问你的问题",
       "startedBy": "<person>{who}</person> <at>{you, select, true {{when}开始} other {{when}开始}}</at>",
       "everyReviewer": "所有审核人",
@@ -9422,7 +9441,8 @@
         "knownNoAbstract": "在索引中，无摘要",
         "fileWithPages": "按 PDF 读取，{count, plural, other {# 页}}",
         "list": "此来源的 PDF",
-        "pager": "个 PDF"
+        "pager": "个 PDF",
+        "loading": "正在加载 PDF"
       },
       "dois": {
         "fromFile": "文件中的 DOI",
@@ -9443,6 +9463,7 @@
       "zotero": {
         "myLibrary": "我的文库",
         "loading": "正在加载 Zotero",
+        "loadingCollections": "正在加载合集",
         "notConnected": "Zotero 未连接",
         "connectWhy": "连接后即可从你的文库和你所在的群组中选择。",
         "connect": "连接 Zotero",
