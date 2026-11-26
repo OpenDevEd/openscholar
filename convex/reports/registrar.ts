@@ -10,7 +10,7 @@ import { internal } from "../_generated/api";
 import { zenodoAccessToken } from "../zenodo/connectionActions";
 import { internalAction } from "../_generated/server";
 import type { PublicationSecrets } from "../evidenceLibraries/publicationValidators";
-import { docidClient, userAgent } from "../evidenceLibraries/publicationCredentialVerification";
+import { docidClient, readDocidLists, userAgent } from "../evidenceLibraries/publicationCredentialVerification";
 import { decrypt } from "../lib/crypto";
 import { requireAppUrl } from "../lib/env";
 import { openAlexFetch } from "../../lib/openalex/fetch";
@@ -264,12 +264,14 @@ export const register = internalAction({
               const { doi: _, ...sent } = zenodoRecord(record, job.metadata);
               const deposited = await client.deposit({
                 token,
-                // The record Crossref and Zenodo are sent, of the kind its author chose, as Zenodo files it.
+                // The record Crossref and Zenodo are sent, of the kind its author chose, as Zenodo files it, with its date
+                // as the author gave it: DOCiD takes a year or a month alone, where Zenodo needs a whole date.
                 deposit: buildDocidDeposit(
-                  { ...sent, ...(doi && { doi }) },
+                  { ...sent, publicationDate: record.publicationDate, ...(doi && { doi }) },
                   {
                     docid: handle,
-                    lists: docid.options,
+                    // Read now, so a type DOCiD added since the settings were saved is used.
+                    lists: await readDocidLists(token),
                     organizationTypes,
                     // Its file only when anyone may get it: DOCiD shows what it holds to everyone.
                     ...(openFile && { file: { filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await openFile.arrayBuffer()) } }),

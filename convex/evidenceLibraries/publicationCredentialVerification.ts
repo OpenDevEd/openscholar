@@ -178,7 +178,11 @@ export const docidClient = () =>
  * may use: DOCiD filters them by its category, and an account it hasn't allowed any gets none.
  */
 export async function docidLists(email: string, password: string) {
-  const { token } = await docidClient().signIn({ email, password });
+  return readDocidLists((await docidClient().signIn({ email, password })).token);
+}
+
+/** The lists `docidLists` reads, for an account already signed in. */
+export async function readDocidLists(token: string) {
   const read = async (list: string, name: string) => {
     const response = await fetch(`${docidEndpoint()}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`DOCiD answered ${response.status} when asked for its ${list.replaceAll("-", " ")}.`);

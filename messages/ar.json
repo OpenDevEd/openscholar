@@ -374,7 +374,7 @@
     "accountConnectedAs": "متصل: {name}",
     "docidHint": "معرّف تحالف Africa PID Alliance، وهو Handle تحت 20.500.14351.",
     "enableDocid": "استخدام DOCiD",
-    "docidPermanent": "لا توجد لدى DOCiD خدمة تجريبية. كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
+    "docidPermanent": "كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
     "docidEmail": "بريد الحساب",
     "docidCredential": "كلمة المرور",
     "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بعد بتسجيل التقارير بنوع Manuscripts، لذا لا يمكنه إيداعها. اطلب من Africa PID Alliance السماح بـ Manuscripts، ثم تحقّق واحفظ مرة أخرى."
