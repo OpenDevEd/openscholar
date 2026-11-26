@@ -29,6 +29,12 @@ type Counted = NonNullable<Vote["counted"]>;
 const ACTIVE_EVERY_MS = 60_000;
 const NO_COUNTS: Counts = { cast: 0, include: 0, maybe: 0, exclude: 0, failed: 0, closed: 0, spent: 0 };
 export const NO_RESULTS = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
+/**
+ * Where a paper stands, under the name everything outside the screening's own pages still reads it by: an
+ * extraction that takes a screening's included papers, another screening that takes them as a source, the old
+ * exports. Kept in step with `result` here, with the progress row's `qualified`, until those read `result`.
+ */
+const OUTCOME: Record<Result, Doc<"screeningResults">["outcome"]> = { include: "included", maybe: "unclear", exclude: "excluded", conflict: undefined, waiting: undefined };
 
 /** A vote's row as the rules read a place (lib/screening/project.ts). */
 export const placeOf = (vote: Vote, reviewer: Reviewer | undefined): Place => ({ reviewer: vote.reviewerId, kind: reviewer?.kind ?? "person", status: vote.status, ...(vote.decision ? { decision: vote.decision } : {}), ...(vote.reason ? { reason: vote.reason } : {}), ...(vote.at === undefined ? {} : { at: vote.at }), ...(vote.answers ? { answers: vote.answers as Record<string, Answer> } : {}) });
@@ -158,7 +164,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if (now !== "waiting") counts[now]++;
     if (was === "exclude") reasons[paper.reason ?? "other"] = (reasons[paper.reason ?? "other"] ?? 1) - 1;
     if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
-    const patch = paper.withdrawn ? { result: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, reason, score: points, stars, split, reopen: undefined, out: undefined, ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
+    const patch = paper.withdrawn ? { result: undefined, outcome: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], reason, score: points, stars, split, reopen: undefined, out: undefined, ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);
     if (paper.withdrawn) continue;
     // Included papers go where the screening sends them, and one that ends excluded leaves the collection it came from, where that was asked.
@@ -179,6 +185,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
 
   await ctx.db.patch("screeningJobProgress", progress._id, {
     counts,
+    qualified: counts.include,
     reasons: Object.fromEntries(Object.entries(reasons).filter(([, n]) => n > 0)),
     included: Object.fromEntries(Object.entries(included).filter(([, n]) => n > 0)),
     ...(perReviewer.size ? { reviewers: { ...progress.reviewers, ...Object.fromEntries(perReviewer) } } : {}),

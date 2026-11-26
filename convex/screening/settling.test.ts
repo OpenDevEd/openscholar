@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { give, paper, runAll, settleAll, standingOf, started, team, type Team } from "./reviewers.test-support";
+import { give, paper, papersOf, runAll, settleAll, standingOf, started, team, type Team } from "./reviewers.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -29,6 +29,8 @@ describe("a paper settled on its votes", () => {
     const split = await standingOf(made.t, jobId);
     expect(split.papers.map((one) => one.result)).toEqual(["include", "conflict"]);
     expect(split.counts).toEqual({ include: 1, maybe: 0, exclude: 0, conflict: 1 });
+    // An extraction, or another screening, that takes this one's included papers finds them by the old name.
+    expect((await papersOf(made.t, jobId)).map((one) => one.outcome)).toEqual(["included", undefined]);
     expect(split.reviewers.ann).toMatchObject({ dealt: 2, cast: 2, include: 2 });
     expect(split.reviewers.ben).toMatchObject({ dealt: 2, cast: 2, include: 1, exclude: 1 });
     // Ann by Ben: both included one, and Ann included one Ben excluded.
