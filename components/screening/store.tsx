@@ -10,11 +10,12 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
+import { readsPdfs } from "@/lib/assistant/files";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { screeningPaperCredits, screeningPdfsCredits } from "@/lib/pricing/estimate";
-import type { Answer } from "@/lib/screening/setup";
+import type { Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, keptOf, num, readBy, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, baseTaken, keptOf, num, paperTotal, readBy, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -23,18 +24,27 @@ export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"]
 export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) {
   return screeningPaperCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion });
 }
+type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "inputs">;
+/** Whether a model is given a paper that is only its PDF: it takes a file (convex/screening/dealing.ts `teamFor`). */
+export const readsFiles = (model: Pick<MapModel, "inputs">) => readsPdfs(model.inputs);
+/** The papers of a screening a model is given: all of them, less the ones that are only a PDF where it takes no files. */
+export const readableBy = (model: Pick<MapModel, "inputs">, papers: number, pdfs: { papers: number }) => (readsFiles(model) ? papers : Math.max(0, papers - pdfs.papers));
 /** The papers a screening's sources took that are screened as their own PDF, and the pages those have. */
 export const pdfsOf = (sources: Source[]) => sources.reduce((sum, source) => ({ papers: sum.papers + (source.read?.filed ?? 0), pages: sum.pages + (source.read?.filePages ?? 0) }), { papers: 0, pages: 0 });
 /**
  * What a model's reading of `ahead` of a screening's `papers` costs at most. A paper read as its PDF costs by the
  * page, far more than one read as an abstract: such papers are taken for the same share of the ones ahead as they
- * are of them all.
+ * are of them all. Every page that prices a model's reading does it with this one sum, or with `readingOf`.
  */
-export function readingCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">, ahead: number, papers: number, pdfs: { papers: number; pages: number }) {
+export function readingCredits(model: Priced, ahead: number, papers: number, pdfs: { papers: number; pages: number }) {
+  // A model that takes no files is given none of the papers that are only a PDF: every paper ahead of it has an abstract.
+  if (!readsFiles(model)) return paperCredits(model) * ahead;
   const share = pdfs.papers && papers ? Math.min(1, ahead / papers) : 0;
   const filed = pdfs.papers * share;
   return paperCredits(model) * Math.max(0, ahead - filed) + (filed ? screeningPdfsCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, filed, pdfs.pages * share) : 0);
 }
+/** What `count` of one screening's papers cost a model at most. */
+export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, paperTotal(screening.sources), pdfsOf(screening.sources));
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
 /** What a model charges to read one paper, as every page says it. */
@@ -55,7 +65,7 @@ export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
     kind: row.kind,
     name: row.name,
     ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
-    ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.effort ? { effort: row.model.effort } : {}) } } : {}),
+    ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.effort ? { effort: row.model.effort } : {}), /* What it takes besides text, as far as a screening asks: a file. */ inputs: row.model.files ? ["file"] : [] } } : {}),
     ...(row.guest ? { guest: true } : {}),
     addedAt: row.addedAt,
     ...(row.left === undefined ? {} : { left: row.left }),
@@ -158,7 +168,7 @@ export function useOpenScreening(id: string) {
     /** The person's place on it where they are a guest. */
     guest: view.guest ?? null,
     /** Its papers are still being fetched from its sources: how many are in, of how many its sources promise where every one of them has been counted. */
-    gathering: view.gathering?.first ? { done: view.gathering.done, of: Math.max(view.gathering.done, screening.sources.reduce((sum, source) => sum + (source.read?.state === "done" ? keptOf(source) : Math.max(0, Math.min(source.range[1], source.total) - source.range[0] + 1)), 0)) } : null,
+    gathering: view.gathering?.first ? { done: view.gathering.done, of: Math.max(view.gathering.done, screening.sources.reduce((sum, source) => sum + (source.read?.state === "done" ? keptOf(source) : baseTaken(source)), 0)) } : null,
     /** The screening whose models read before this one's, and how far they have read. */
     waitingFor: view.models === "waiting" && view.ahead ? view.ahead : null,
     /** The last check that brought papers: how many, and how many of them wait for the person looking. */
@@ -184,11 +194,11 @@ export function useOpenScreening(id: string) {
     wallet: view.credits,
     spent: (model: Reviewer) => model.tally?.spent ?? 0,
     /** The most a model can come to: what it has cost, and the papers it has still to read. */
-    most: (model: Reviewer) => (model.tally?.spent ?? 0) + (model.tally?.waiting ?? 0) * (model.model ? paperCredits(model.model) : 0),
+    most: (model: Reviewer) => (model.tally?.spent ?? 0) + (model.model ? readingOf(screening, model.model, model.tally?.waiting ?? 0) : 0),
     /** What sending a model back to the papers it couldn't read comes to, and how far the workspace's credits fall short of it. */
     retryOf: (model: Reviewer) => {
       const papers = model.tally?.failed ?? 0;
-      const cost = model.model ? papers * paperCredits(model.model) : 0;
+      const cost = model.model ? readingOf(screening, model.model, papers) : 0;
       return { papers, cost, short: Math.max(0, cost - (view.credits ?? Infinity)) };
     },
     vote: (paperId: Id<"screeningResults">, ballot: Ballot | null) => vote({ jobId, paperId, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),

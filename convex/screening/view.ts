@@ -18,6 +18,7 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../l
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
 import { isFinal } from "../../lib/screening/rules";
+import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
@@ -99,10 +100,11 @@ type Counts = NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screenin
  * Whether how the other reviewers voted is kept from whoever looks: where votes are hidden until one has voted, a
  * reviewer who still has papers to vote on sees how far the others are, and not how they voted or how far they
  * agree. A count of someone's votes by how they went moves when they vote, which would tell their vote on a paper
- * the person has yet to vote on. One function, for every figure a page or a file shows of the others.
+ * the person has yet to vote on. A finished screening keeps nothing: no vote can be cast in it any more. One
+ * function, for every figure a page or a file shows of the others.
  */
-export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined) =>
-  job.rule?.blind === "after" && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined) =>
+  job.rule?.blind === "after" && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
 
 /** A reviewer's row as the pages read it, with their counts. `kept`: how they voted is kept from whoever looks (`keepsVotes`). */
 async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: Counts | undefined, members: Map<Id<"users">, boolean>, kept = false): Promise<ReviewerView> {
@@ -111,7 +113,7 @@ async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
   const base = { row: reviewer._id, addedAt: reviewer.addedAt, ...(reviewer.left === undefined ? {} : { left: reviewer.left }), ...(reviewer.discarded === undefined ? {} : { discarded: reviewer.discarded }), ...(reviewer.reminded === undefined ? {} : { reminded: reviewer.reminded }), dealt: reviewer.dealt, ...tally, waiting };
   if (reviewer.kind === "model") {
     const model = reviewer.modelId ? await ctx.db.get("models", reviewer.modelId) : null;
-    return { ...base, id: reviewer._id, kind: "model", name: modelName(model), ...(model ? { model: { _id: model._id, modelId: model.modelId, name: modelName(model), inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden } } : {}) };
+    return { ...base, id: reviewer._id, kind: "model", name: modelName(model), ...(model ? { model: { _id: model._id, modelId: model.modelId, name: modelName(model), inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities) } } : {}) };
   }
   const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
   if (!user) return { ...base, id: reviewer._id, kind: "person", name: SOMEONE };
@@ -153,6 +155,28 @@ export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJob
   return [...new Set(open.map((message) => message.resultId))];
 }
 
+/**
+ * What waits for one person on one screening: papers for their vote and conflicts for them to settle, none once it
+ * is finished, and the papers someone asked them about. One function, for the list, the rail and every summary.
+ */
+export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null, progress: Doc<"screeningJobProgress"> | null) {
+  const open = job.finishedAt === undefined;
+  return {
+    forYou: open && reviewer && reviewer.left === undefined ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0,
+    conflicts: open && job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0,
+    asked: await askedOf(ctx, job._id, userId),
+  };
+}
+
+/** The screenings something may wait for one person on, in any workspace: the ones they review, and the open ones whose conflicts they settle, reviewer or not. */
+async function theirs(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
+  const [reviewing, settling] = await Promise.all([
+    ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX),
+    ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", userId).eq("status", "processing")).order("desc").take(MINE_MAX),
+  ]);
+  return [...new Set([...reviewing.map((row) => row.jobId), ...settling.map((job) => job._id)])];
+}
+
 /** The summary of a screening for someone who may see it. */
 export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, { job, member, reviewer }: Standing): Promise<Summary> {
   const [rows, progress, check, creator, resolver] = await Promise.all([
@@ -168,11 +192,9 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   const settled = { ...NO_RESULTS, ...progress?.counts };
   const total = papersOf(job, progress, check);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
-  const mine = reviewer ? reviewers.find((one) => one.row === reviewer._id) : undefined;
   const canResolve = job.rule?.resolver === actor.userId;
-  const open = job.finishedAt === undefined;
   const { state, ahead } = await modelsNow(ctx, job, reviewers, progress, check);
-  const asked = await askedOf(ctx, job._id, actor.userId);
+  const waits = await waitsOn(ctx, job, actor.userId, reviewer, progress);
   return {
     id: job._id,
     name: job.name ?? "Screening",
@@ -191,10 +213,10 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     reviewers,
     total,
     counts,
-    forYou: open ? (mine?.waiting ?? 0) : 0,
-    conflicts: open && canResolve ? counts.conflict : 0,
-    asked: asked.length,
-    ...(asked[0] ? { askedFirst: asked[0] } : {}),
+    forYou: waits.forYou,
+    conflicts: waits.conflicts,
+    asked: waits.asked.length,
+    ...(waits.asked[0] ? { askedFirst: waits.asked[0] } : {}),
     models: state,
     ...(ahead ? { ahead } : {}),
     criteria: job.criteria?.length ?? 0,
@@ -260,25 +282,20 @@ export const mine = workspaceQuery({
   args: {},
   returns: paginationResultValidator(summaryValidator),
   handler: async (ctx, actor) => {
-    const { userId, workspaceId } = actor;
+    const { userId } = actor;
     const own = await inOwnWorkspace(ctx, actor);
-    // The ones they review, the ones whose conflicts they settle, and in their own workspace the ones given to them from outside.
-    const reviewing = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX);
+    // The ones they review or settle, and in their own workspace the ones given to them from outside.
     const given = own ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", "screening")).order("desc").take(MINE_MAX) : [];
-    const ids = [...new Set([...reviewing.map((row) => row.jobId as string), ...given.map((row) => row.item)])];
-    // Conflicts go to one person, who may not be among the reviewers: the workspace's open screenings they settle are looked at too.
-    const settles = (await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(MINE_MAX)).filter((job) => job.rule?.resolver === userId && !ids.includes(job._id));
+    const ids = [...new Set([...(await theirs(ctx, userId)).map((id) => id as string), ...given.map((row) => row.item)])];
     // What waits for them, and what is shared with them whether or not anything waits: only those are summarised.
-    const kept = (await Promise.all([...ids, ...settles.map((job) => job._id as string)].map(async (id) => {
+    const kept = (await Promise.all(ids.map(async (id) => {
       const jobId = ctx.db.normalizeId("screeningJobs", id);
       const standing = jobId ? await standingOn(ctx, actor, jobId) : null;
       if (standing?.job.shape !== 2) return [];
       const { job, member, reviewer } = standing;
       if (member) {
-        if (job.finishedAt !== undefined) return [];
-        const progress = await progressRow(ctx as QueryCtx, job._id);
-        const waits = (reviewer ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0) + (job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0);
-        if (!waits && !(await askedOf(ctx, job._id, userId)).length) return [];
+        const waits = await waitsOn(ctx, job, userId, reviewer, await progressRow(ctx as QueryCtx, job._id));
+        if (job.finishedAt !== undefined || !(waits.forYou + waits.conflicts + waits.asked.length)) return [];
       }
       return [await summaryOf(ctx, actor, standing)];
     }))).flat();
@@ -289,15 +306,14 @@ export const mine = workspaceQuery({
 /** Open screenings looked at for one whose models are reading. */
 const READING_LOOKED = 5;
 
-/** The open screenings the person reviews, in any workspace, with what waits for them on each: papers to vote on, and conflicts where they settle them. */
+/** The open screenings something waits for the person on, in any workspace, with what waits on each. */
 async function waitsFor(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
-  const rows = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX);
-  const found = await Promise.all(rows.filter((row) => row.left === undefined).map(async (row) => {
-    const job = await ctx.db.get("screeningJobs", row.jobId);
+  const found = await Promise.all((await theirs(ctx, userId)).map(async (jobId) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.shape !== 2 || job.finishedAt !== undefined) return [];
-    const progress = await progressRow(ctx as QueryCtx, job._id);
-    const [forYou, conflicts] = [waitingOf(row, progress?.reviewers?.[row._id]), job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0];
-    return forYou + conflicts ? [{ job, forYou, conflicts }] : [];
+    const [reviewer, progress] = await Promise.all([ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first(), progressRow(ctx as QueryCtx, jobId)]);
+    const waits = await waitsOn(ctx, job, userId, reviewer, progress);
+    return waits.forYou + waits.conflicts + waits.asked.length ? [{ job, forYou: waits.forYou, conflicts: waits.conflicts, asked: waits.asked.length }] : [];
   }));
   return found.flat();
 }
@@ -339,12 +355,12 @@ export const elsewhere = workspaceQuery({
     const [user, own] = await Promise.all([ctx.db.get("users", actor.userId), inOwnWorkspace(ctx, actor)]);
     if (!user) return [];
     const there = (await waitsFor(ctx, actor.userId)).filter(({ job }) => job.workspaceId !== actor.workspaceId);
-    const pointed = await Promise.all(there.map(async ({ job, forYou, conflicts }) => {
+    const pointed = await Promise.all(there.map(async ({ job, forYou, conflicts, asked }) => {
       const member = (await actorIn(ctx, user, job.workspaceId)) !== null;
       // One shared with them from outside is in their own workspace's list already.
       if (!member && own) return [];
       const workspace = await workspaceOf(ctx, job.workspaceId);
-      return [{ id: job._id, name: job.name ?? "Screening", in: workspace.name, ...(member && workspace.slug ? { slug: workspace.slug } : {}), forYou, conflicts }];
+      return [{ id: job._id, name: job.name ?? "Screening", in: workspace.name, ...(member && workspace.slug ? { slug: workspace.slug } : {}), forYou, conflicts, asked }];
     }));
     return pointed.flat().slice(0, ELSEWHERE_MAX);
   },

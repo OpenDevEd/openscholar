@@ -79,11 +79,11 @@ export const drop = workspaceQuery({
 /** A page of a drop's PDFs in the order they were added, each with what its first reading found. */
 export const list = workspaceQuery({
   args: { batch: v.string(), paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(v.object({ id: v.id("screeningFiles"), name: v.string(), state: pdfStateValidator, title: v.optional(v.string()), known: v.boolean(), pages: v.optional(v.number()) })),
+  returns: paginationResultValidator(v.object({ id: v.id("screeningFiles"), name: v.string(), state: pdfStateValidator, title: v.optional(v.string()), known: v.boolean(), /** Read as the file it is: the index doesn't hold it, or holds it with no abstract. */ asFile: v.boolean(), pages: v.optional(v.number()) })),
   handler: async (ctx, actor, { batch, paginationOpts }) => {
     await own(ctx, actor, batch);
     const page = await ctx.db.query("screeningFiles").withIndex("by_batch_and_at", (q) => q.eq("batch", batch)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PDFS_A_CALL) });
-    return { ...page, page: page.page.map((file) => ({ id: file._id, name: file.name, state: file.state, ...(file.title ? { title: file.title } : {}), known: file.known === true, ...(file.pages === undefined ? {} : { pages: file.pages }) })) };
+    return { ...page, page: page.page.map((file) => ({ id: file._id, name: file.name, state: file.state, ...(file.title ? { title: file.title } : {}), known: file.known === true, asFile: file.state === "read" && (file.known !== true || file.bare === true), ...(file.pages === undefined ? {} : { pages: file.pages }) })) };
   },
 });
 

@@ -4,6 +4,8 @@
 
 export type Answer = "yes" | "no" | "unclear";
 export const ANSWERS: Answer[] = ["yes", "no", "unclear"];
+/** A model's answer to a criterion as an answer: true, false, or one it couldn't give. */
+export const answerOf = (value: boolean | null): Answer => (value === true ? "yes" : value === false ? "no" : "unclear");
 export type Decision = "include" | "maybe" | "exclude";
 /** Where a paper stands: settled one way, split between its reviewers, or still short of votes. */
 export type Result = Decision | "conflict" | "waiting";
@@ -142,10 +144,17 @@ export function takesOver(paper: string, person: string, before: number, waiting
 /**
  * Whether someone sees the other votes on a paper, and what was written about it. The votes are kept from a person
  * only while the paper still waits for their own: on a paper that isn't theirs to vote on, on one they have voted on,
- * on one that is settled, and wherever the rule says votes show at any time, they see them. One rule, for every page
- * and every file.
+ * on one that is settled, in a screening that is finished, where no vote can be cast any more, and wherever the rule
+ * says votes show at any time, they see them. One rule, for every page and every file.
  */
-export const seesVotes = (blind: Rule["blind"], result: Result | undefined, mine: Ballot["status"] | undefined) => blind === "always" || isFinal(result) || mine !== "waiting";
+export const seesVotes = (blind: Rule["blind"], result: Result | undefined, mine: Ballot["status"] | undefined, finished: boolean) => blind === "always" || finished || isFinal(result) || mine !== "waiting";
+
+/** Someone whose account is gone still has a name where their votes are. */
+export const SOMEONE = "Someone who left";
+/** A model as a reviewer before it has a row: the model at one effort. The server and the pages name it the same way. */
+export const modelKey = (model: string, effort?: string) => `model:${model}:${effort ?? ""}`;
+/** Who settles conflicts once the one who did is taken off: whoever started the screening where they are still on it, else the first person still on it, else whoever started it. Conflicts always have someone to settle them. */
+export const nextResolver = <Person extends string>(createdBy: Person, people: Person[]): Person => (people.includes(createdBy) ? createdBy : (people[0] ?? createdBy));
 
 /** The most sources a screening reads at a time: the ones taken out don't count. */
 export const MAX_SOURCES = 20;

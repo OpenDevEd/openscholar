@@ -8,7 +8,7 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
+import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources } from "./library-sources";
@@ -29,7 +29,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { rowKey, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
-import { COLUMN_KEYS, COLUMN_LABEL, FILE_MAX_BYTES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
+import { COLUMN_KEYS, COLUMN_LABEL, FILE_MAX_BYTES, REFERENCES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
@@ -38,6 +38,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { PDF_STANDS, hash, num, plural, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip } from "./pieces";
+import { credits } from "./store";
 
 const PAGE = 5;
 /** A row's height with its line: a list keeps its page's height on a last page that holds fewer. */
@@ -173,6 +174,9 @@ function useUpload() {
 export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
   const upload = useUpload();
   const look = useWorkspaceAction(api.screening.held.look);
+  const addDois = useAddDois(sources, onAdd);
+  // What one PDF's first reading costs, said before any is added.
+  const lookCredits = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(usePageWorkspace(), {})).data;
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [reading, setReading] = useState<string[]>([]);
@@ -207,6 +211,10 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           if (table.ask) return setPending((now) => [...now.filter((one) => one.ref !== refOf(file)), { name: file.name, ref: refOf(file), table, picked: table.picked, file }]);
           return await addTable(file, table, table.picked);
         }
+        // A note or a list that holds DOIs and no references is read as the DOIs in it, as if they were pasted.
+        const text = await file.text();
+        const { dois } = doisIn(text);
+        if (dois.length && !REFERENCES.test(text) && !readTable(text)?.picked.title) return (await addDois(dois, file.name)) === "twice" ? refuse(file.name, "Already a source") : undefined;
         const kept = await upload(file);
         const held = await look({ file: kept });
         // A text file that is a table after all: its columns are named here, as any table's are.
@@ -287,6 +295,8 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           </Help>
         </p>
         <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
+        {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. */}
+        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />A model reads each PDF&apos;s first pages for its title and DOI: about {credits(lookCredits)} credits a PDF, paid as it is added</p> : null}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
         <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />Choose files</Button>
       </div>
@@ -346,13 +356,20 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
       <ul aria-label="The PDFs of this source" className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, FILES_PAGE) * 45 }}>
         {rows.items.map((row) => {
           const stands = row.state === "read" ? (row.known ? "known" : "file") : row.state;
+          const pages = row.pages ? `, ${plural(row.pages, "page", "pages")}` : "";
           return (
             <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
               <div className="min-w-0 flex-1 max-sm:basis-full">
                 <p className="truncate text-sm">{row.title ?? row.name}</p>
                 {row.title ? <p className="truncate text-xs text-muted-foreground">{row.name}</p> : null}
               </div>
-              {stands === "broken" ? <StateChip tone="warning" icon={FileX}>{PDF_STANDS.broken}</StateChip> : stands === "waiting" ? <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip> : <Chip icon={stands === "known" ? Check : FileText}>{PDF_STANDS[stands]}{stands === "file" && row.pages ? `, ${plural(row.pages, "page", "pages")}` : ""}</Chip>}
+              {/* A file says both where both hold: the index has the paper, and it is read as its PDF all the same, for want of an abstract there. */}
+              {stands === "broken" ? <StateChip tone="warning" icon={FileX}>{PDF_STANDS.broken}</StateChip> : stands === "waiting" ? <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip> : (
+                <span className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  {row.known ? <Chip icon={Check}>{PDF_STANDS.known}{row.asFile ? ", no abstract" : ""}</Chip> : null}
+                  {row.asFile ? <Chip icon={FileText}>{PDF_STANDS.file}{pages}</Chip> : null}
+                </span>
+              )}
             </li>
           );
         })}
@@ -364,26 +381,37 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
 
 // ── Pasted DOIs ──────────────────────────────────────────────────────────────────────────────────
 
-/** Pasted DOIs: found in whatever text holds them, looked up in the index, and added as one source. What the lookup didn't find, and what it found with no abstract, is said before anything is added. */
+/**
+ * Adds DOIs as one source, the same whether they were pasted or came in a file: the list is kept, and the screening
+ * looks each one up as it reads the source, so its row says what was taken and what was left out, as every source's
+ * does. "twice" where the same DOIs are a source already.
+ */
+function useAddDois(sources: Source[], onAdd: (added: Added) => void) {
+  const keep = useWorkspaceAction(api.screening.held.keepDois);
+  return async (dois: string[], from?: string): Promise<"added" | "twice"> => {
+    // The same DOIs are the same source, in whatever order they came.
+    const ref = `dois:${hash([...dois].sort().join())}`;
+    if (sources.some((source) => source.ref === ref)) return "twice";
+    const kept = await keep({ dois });
+    onAdd({ ref, name: from ?? `${dois[0]}${dois.length > 1 ? ` and ${num(dois.length - 1)} more` : ""}`, detail: from ? "DOIs in a file" : "Pasted DOIs", total: kept.dois, set: { kind: "dois", file: kept.file } });
+    return "added";
+  };
+}
+
+/** Pasted DOIs: found in whatever text holds them, and added as one source. */
 export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
-  const lookUp = useWorkspaceAction(api.screening.held.lookDois);
+  const addDois = useAddDois(sources, onAdd);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [missed, setMissed] = useState<{ missing: number; bare: number } | "twice" | null>(null);
+  const [twice, setTwice] = useState(false);
   const { dois, repeats } = doisIn(text);
-  // The same DOIs are the same source, in whatever order they were pasted.
-  const ref = `dois:${hash([...dois].sort().join())}`;
   const run = async () => {
-    if (sources.some((source) => source.ref === ref)) return setMissed("twice");
     setBusy(true);
     try {
-      const { file, found, bare, missing } = await lookUp({ dois });
-      // None of them can be screened: there is no source to add, and why is said here.
-      if (!found) return setMissed({ missing, bare });
-      onAdd({ ref, name: `${dois[0]}${dois.length > 1 ? ` and ${num(dois.length - 1)} more` : ""}`, detail: "Pasted DOIs", total: found + bare + missing, set: { kind: "dois", file }, filters: [...(bare ? [`${num(bare)} with no abstract`] : []), ...(missing ? [`${num(missing)} not found`] : [])] });
-      setText("");
+      if ((await addDois(dois)) === "twice") setTwice(true);
+      else setText("");
     } catch (error) {
-      toast.error(getErrorMessage(error, "The DOIs couldn't be looked up. Try again."));
+      toast.error(getErrorMessage(error, "The DOIs couldn't be added. Try again."));
     } finally {
       setBusy(false);
     }
@@ -392,26 +420,21 @@ export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: A
     <div className="space-y-2">
       <span className="flex items-center gap-1">
         <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is looked up once</HelpFact></>}>Openscholar looks each DOI up in its index and takes the paper&apos;s title and abstract from there. The ones it has no record of, and the ones whose record has no abstract, are left out and listed on the source&apos;s row once the screening has read it.</Help>
+        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is taken once</HelpFact></>}>Openscholar looks each DOI up in its index, then in Crossref and DataCite, and takes the paper&apos;s title and abstract from there. The ones none of them has a record of, and the ones whose record has no abstract, are left out and listed on the source&apos;s row once it has been read.</Help>
       </span>
-      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setMissed(null); }} rows={5} aria-invalid={Boolean(missed) || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
+      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setTwice(false); }} rows={5} aria-invalid={twice || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="flex flex-wrap items-center gap-1.5">
-          {missed === "twice" ? (
+          {twice ? (
             <StateChip tone="warning" icon={TriangleAlert}>{dois.length === 1 ? "This DOI is already a source" : "These DOIs are already a source"}</StateChip>
-          ) : missed ? (
-            <>
-              {missed.missing ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.missing === 1 ? "1 DOI has no record" : `${num(missed.missing)} DOIs have no record`}</StateChip> : null}
-              {missed.bare ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.bare === 1 ? "1 paper has no abstract" : `${num(missed.bare)} papers have no abstract`}</StateChip> : null}
-            </>
           ) : dois.length ? (
             <Chip icon={Hash}>{plural(dois.length, "DOI", "DOIs")}</Chip>
           ) : text.trim() ? (
             <StateChip tone="warning" icon={TriangleAlert}>No DOI in what you pasted</StateChip>
           ) : null}
-          {repeats && !missed ? <Chip>{num(repeats)} pasted more than once</Chip> : null}
+          {repeats && !twice ? <Chip>{num(repeats)} pasted more than once</Chip> : null}
         </span>
-        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length || busy} onClick={() => void run()}>{busy ? <Spinner className="size-4" /> : <Plus />}Look up {dois.length ? plural(dois.length, "DOI", "DOIs") : "DOIs"}</Button>
+        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length || busy} onClick={() => void run()}>{busy ? <Spinner className="size-4" /> : <Plus />}Add {dois.length ? plural(dois.length, "DOI", "DOIs") : "DOIs"}</Button>
       </div>
     </div>
   );
@@ -552,7 +575,9 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
             offer={{ name: `Every paper in ${library.name}`, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0 }}
             icon={Library}
             added={added()}
-            count={library.papers !== undefined}
+            // Zotero counts a library's items, attached files and notes among them: how many are papers is known once it is read.
+            count={false}
+            chips={library.papers === undefined ? undefined : <Chip>{plural(library.papers, "item", "items")} in Zotero</Chip>}
             onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0, filters: ["Whole library"], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
           />
         )}

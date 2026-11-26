@@ -89,12 +89,19 @@ export function screeningPaperCredits(pricing: Pricing): number {
 export const SCREENING_PDF_TOKENS = { page: 4_000, asked: 2_000, answer: 800 };
 /** The tokens a paper screened as its PDF takes at most: every page of it, with the criteria. */
 export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKENS.page + SCREENING_PDF_TOKENS.asked;
+/** Whether a model can be given a paper that is only its PDF: it takes a file, and every page of this one fits what one call to it holds. */
+export const readsPdfOf = (model: { files: boolean; room?: number } | undefined, pages: number) => Boolean(model?.files) && (model!.room === undefined || screeningPdfTokens(pages) <= model!.room);
 /** What screening papers as their PDFs costs at most on a model: one call a paper with its whole file, `pages` in all. */
 export function screeningPdfsCredits(pricing: Pricing, papers: number, pages: number): number {
   return estimateCredits(pricing, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer });
 }
 /** The same for one paper. */
 export const screeningPdfCredits = (pricing: Pricing, pages: number) => screeningPdfsCredits(pricing, 1, pages);
+
+/** The pages a paper prints its title, its authors and its DOI on: what the first reading of a PDF handed to a screening is sent. */
+export const PDF_LOOK_PAGES = 2;
+/** What that first reading costs at most on a model: those pages as a file, and the few lines it copies from them. */
+export const pdfLookCredits = (pricing: Pricing) => estimateCredits(pricing, { input: PDF_LOOK_PAGES * SCREENING_PDF_TOKENS.page + 500, output: 400 });
 
 /** Tokens a text takes at most: Claude counts about two characters a token, the fewest of the models measured. */
 export function tokensIn(text: string): number {

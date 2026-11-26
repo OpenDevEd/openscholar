@@ -56,7 +56,7 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
 export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper: Paper, votes: Vote[]): PaperView {
   const mine = reviewer ? votes.find((vote) => vote.reviewerId === reviewer._id) : undefined;
   const result = paper.result ?? "waiting";
-  const sees = seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined);
+  const sees = seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
   const cast = votes
     .filter((vote) => vote.status !== "discarded")
     // A place closed because the paper was settled without that vote is still a place: the page says the paper was settled without it.
@@ -151,9 +151,9 @@ export const counts = workspaceQuery({
     if (asked === "start" && !check) return null;
     const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? "other") === reason));
     const tally = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
+    const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
+    if (cards.length > COUNTED) return null;
     if (!reviewer) {
-      const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
-      if (cards.length > COUNTED) return null;
       for (const card of cards) if (keeps(card)) tally[card.result]++;
       return tally;
     }
@@ -170,8 +170,9 @@ export const counts = workspaceQuery({
         : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
     ).take(COUNTED + 1);
     if (theirs.length > COUNTED) return null;
-    const cards = await Promise.all(theirs.map((vote) => ctx.db.query("screeningCards").withIndex("by_result", (q) => q.eq("resultId", vote.resultId)).unique()));
-    for (const card of cards) if (card && keeps(card)) tally[card.result]++;
+    // Their votes are matched to the screening's cards here: two reads, however many papers they voted on.
+    const cardOf = new Map(cards.map((card) => [card.resultId, card]));
+    for (const vote of theirs) { const card = cardOf.get(vote.resultId); if (card && keeps(card)) tally[card.result]++; }
     return tally;
   },
 });
@@ -199,7 +200,8 @@ export const queueAction = defineUserQuery({
     if (needle) {
       // Found by its words, best match first, then kept to the queue.
       const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(options);
-      const rows = await views(ctx, looking, read.page);
+      // A paper whose source was taken out is in no queue, found by its words or not.
+      const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn));
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
       return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
     }

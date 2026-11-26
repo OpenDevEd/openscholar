@@ -15,7 +15,7 @@ import { cellOf, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
-import { countDealt, modelRow, personRow, reviewersOf, teamOf, votesOf } from "./dealing";
+import { countDealt, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
 import { conflictsWait } from "./notices";
 import type { Infer } from "convex/values";
 import type { reviewerCountsValidator } from "./validators";
@@ -82,6 +82,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   const ballot = (vote: Vote) => ballotOf(placeOf(vote, byId.get(vote.reviewerId)), job.criteria ?? []);
 
   const team = teamOf(reviewers);
+  const reads = await readsOf(ctx, reviewers);
   for (const paper of papers) {
     let votes = await votesOf(ctx, paper._id);
     const ballots = () => votes.map(ballot);
@@ -97,7 +98,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     // One whose source was taken out stands nowhere: the places nobody voted from go, and its votes stay on record and count for nothing.
     const plan: Pick<Projected, "result" | "made" | "reopened" | "closed" | "gone"> = paper.withdrawn
       ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place) => place.status === "waiting" || place.status === "closed") }
-      : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" || returning, refill: returning });
+      : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, teamFor(team, paper, reads), job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" || returning, refill: returning });
     const now = plan.result;
     if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;

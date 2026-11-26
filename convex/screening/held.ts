@@ -6,19 +6,20 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { ActionCtx } from "../_generated/server";
+import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { availableCredits } from "../billing/accounts";
 import { pricingOf, resolveTaskPick } from "../ai/serverModel";
 import { createError } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
-import { workspaceAction, workspaceMutation } from "../lib/userActions";
+import { workspaceAction, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { readSearchPage, readWork } from "../paperSets/openalex";
 import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from "../paperSets/search";
 import { readsPdfs } from "../../lib/assistant/files";
+import { pdfLookCredits } from "../../lib/pricing/estimate";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
 import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
 import { registered } from "./doiRecords";
-import { DOIS_MAX, doisLookValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
+import { DOIS_MAX, doisKeptValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
 import type { Infer } from "convex/values";
 
 /** Zotero's importer, which reads every reference format the databases export: the one live communities are given. */
@@ -27,8 +28,6 @@ const TRANSLATION_URL = process.env.ZOTERO_TRANSLATION_URL ?? "https://bib.opend
 const DOIS_A_REQUEST = 50;
 /** The order a lookup by DOI asks for: any the index takes without words to rank by, since every DOI asked for comes back in the one page. */
 const BY_DOI_SORT = "cited_by_count:desc";
-/** Titles a file's preview shows. */
-const SAMPLE = 3;
 
 export type LeftOut = { name: string; why: Infer<typeof leftOutWhyValidator>; key?: string };
 type Spend = (pages: number) => Promise<boolean>;
@@ -66,24 +65,16 @@ async function recordsIn(ctx: Pick<ActionCtx, "storage">, file: Id<"_storage">, 
 }
 
 /**
- * Reads a file a person is about to add to a screening and says what it holds: how many records, how many have no
- * title or no abstract and would be left out, how many carry a DOI, and its first titles. For a table it names the
- * columns, the ones it took for the title, the abstract and so on, and whether someone has to say which is which.
+ * Reads a file a person is about to add to a screening and says what it holds: how many records with a title. For a
+ * table it names the columns, the ones it took for the title, the abstract and so on, and whether someone has to say
+ * which is which.
  */
 export const look = workspaceAction({
   args: { file: v.id("_storage"), columns: v.optional(v.record(v.string(), v.string())) },
   returns: fileLookValidator,
   handler: async (ctx, _actor, { file, columns }) => {
     const { records, table } = await recordsIn(ctx, file, columns);
-    const titled = records.filter((record) => record.title);
-    return {
-      records: titled.length,
-      untitled: records.length - titled.length,
-      bare: titled.filter((record) => !record.abstract).length,
-      withDoi: titled.filter((record) => record.doi).length,
-      sample: titled.slice(0, SAMPLE).map((record) => record.title.slice(0, 300)),
-      ...(table ? { table: { heads: table.heads.slice(0, 200), picked: table.picked as Record<string, string>, ask: table.ask } } : {}),
-    };
+    return { records: records.filter((record) => record.title).length, ...(table ? { table: { heads: table.heads.slice(0, 200), picked: table.picked as Record<string, string>, ask: table.ask } } : {}) };
   },
 });
 
@@ -137,25 +128,18 @@ export async function withAbstracts(papers: SearchPaper[], spend: Spend): Promis
 }
 
 /**
- * Looks a pasted list of DOIs up in the index and keeps the list as a file a screening can read: how many it found
- * with an abstract, how many it found with none (left out when the screening reads them) and how many it has no
- * record of.
+ * Keeps a pasted list of DOIs as a file a screening can read, each DOI once. What the index holds of each is asked
+ * once, when the screening reads the list (`handedPapers`): its source's row then says what was taken and what was
+ * left out, as every source's does.
  */
-export const lookDois = workspaceAction({
+export const keepDois = workspaceAction({
   args: { dois: v.array(v.string()) },
-  returns: doisLookValidator,
-  handler: async (ctx, { userId, workspaceId }, { dois: sent }) => {
+  returns: doisKeptValidator,
+  handler: async (ctx, _actor, { dois: sent }) => {
     const dois = [...new Set(sent.map((doi) => normalDoi(doi)).filter((doi): doi is string => doi !== null))];
     if (!dois.length) throw createError("VALIDATION_ERROR", "Paste at least one DOI.");
     if (dois.length > DOIS_MAX) throw createError("VALIDATION_ERROR", `Paste up to ${DOIS_MAX.toLocaleString("en-GB")} DOIs at a time.`);
-    const who: { clerkId: string } | null = await ctx.runQuery(internal.screening.held.reader, { userId, workspaceId });
-    if (!who) throw createError("NOT_FOUND", "Your account wasn't found.");
-    const found = await byDois(dois, spender(ctx, who.clerkId));
-    // A DOI the index has no record of is asked of Crossref, then DataCite.
-    const elsewhere = await registered(dois.filter((doi) => !found.has(doi)));
-    const bare = [...found.values(), ...elsewhere.values()].filter((paper) => !paper.abstract?.trim()).length;
-    const file = await ctx.storage.store(new Blob([dois.join("\n")], { type: "text/plain" }));
-    return { file, found: found.size + elsewhere.size - bare, bare, missing: dois.length - found.size - elsewhere.size };
+    return { file: await ctx.storage.store(new Blob([dois.join("\n")], { type: "text/plain" })), dois: dois.length };
   },
 });
 
@@ -166,10 +150,29 @@ export const reader = internalQuery({
   handler: async (ctx, working) => {
     const user = await ctx.db.get("users", working.userId);
     if (!user) return null;
-    const pick = await resolveTaskPick(ctx, working, "overview");
-    const model = pick ? await ctx.db.get("models", pick.modelId) : null;
-    const pricing = model ? await pricingOf(ctx, model._id) : null;
-    return { clerkId: user.clerkId, balance: await availableCredits(ctx, working.workspaceId), model: model && pricing ? { slug: model.modelId, ...pricing, files: readsPdfs(model.inputModalities) } : null };
+    return { clerkId: user.clerkId, balance: await availableCredits(ctx, working.workspaceId), model: await lookModel(ctx, working) };
+  },
+});
+
+/** The model that reads a PDF's own first pages for whoever works in a workspace: the one they have for overviews, with what it costs and whether it takes a PDF as a file. */
+async function lookModel(ctx: Pick<QueryCtx, "db">, working: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const pick = await resolveTaskPick(ctx as QueryCtx, working, "overview");
+  const model = pick ? await ctx.db.get("models", pick.modelId) : null;
+  const pricing = model ? await pricingOf(ctx as QueryCtx, model._id) : null;
+  return model && pricing ? { slug: model.modelId, ...pricing, files: readsPdfs(model.inputModalities) } : null;
+}
+
+/**
+ * What the first reading of one PDF costs the workspace at most, said where PDFs are added, before any is: a
+ * thousand PDFs cost a thousand of these. Null where no model of the person's reads a PDF: a PDF is then added
+ * under its own name, and nothing is paid for it.
+ */
+export const pdfLook = workspaceQuery({
+  args: {},
+  returns: v.union(v.null(), v.number()),
+  handler: async (ctx, { userId, workspaceId }) => {
+    const model = await lookModel(ctx, { userId, workspaceId });
+    return model?.files ? pdfLookCredits({ input: model.input, output: model.output }) : null;
   },
 });
 
@@ -226,12 +229,15 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
   // A record whose DOI the index knows is that paper, so it can be saved to a library and found again. Without the allowance to ask, it is screened as the file gives it.
   const dois = records.flatMap((record) => normalDoi(record.doi) ?? []);
   const found = dois.length ? await byDois(dois, spend).catch(() => new Map<string, SearchPaper>()) : new Map<string, SearchPaper>();
+  // A record with no abstract whose DOI the index has no record of takes the abstract Crossref or DataCite registered, as a pasted DOI does.
+  const elsewhere = await registered(records.flatMap((record) => { const doi = normalDoi(record.doi); return doi && !record.abstract && !found.has(doi) ? [doi] : []; }));
   const papers = records.map((record, at): SearchPaper => {
-    const known = found.get(normalDoi(record.doi) ?? "");
+    const doi = normalDoi(record.doi) ?? "";
+    const known = found.get(doi);
     // What the person brought is what is screened: the file's own title and abstract where it has them.
     return known
       ? { ...known, title: record.title || known.title, ...(record.abstract ?? known.abstract ? { abstract: record.abstract ?? known.abstract } : {}) }
-      : fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
+      : fromRecord({ ...record, ...(record.abstract ? {} : { abstract: elsewhere.get(doi)?.abstract }) }, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
   });
   return { papers, left: [] };
 }

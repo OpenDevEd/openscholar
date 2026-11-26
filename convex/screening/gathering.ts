@@ -21,9 +21,9 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { actorIn } from "../workspaces/actor";
-import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE } from "../zotero/libraryValidators";
+import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
+import { countDealt, dealNew, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
@@ -147,7 +147,11 @@ export const beat = internalMutation({
 async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading): Promise<"wait" | void> {
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
-  const give = (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers, read, ended, ...(resume ? { resume } : {}), ...(leftOut?.length ? { leftOut } : {}) });
+  const give = async (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => {
+    // A paper an index holds with no abstract takes OpenAlex's, where it has one, whichever source brought it.
+    const who: { clerkId: string } | null = papers.some((paper) => !paper.abstract?.trim()) ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
+    await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers: who ? await withAbstracts(papers, spender(ctx, who.clerkId)) : papers, read, ended, ...(resume ? { resume } : {}), ...(leftOut?.length ? { leftOut } : {}) });
+  };
   const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;
   if (source.state === "waiting") {
     // A file, a pasted list or PDFs: what it holds is counted from the file itself.
@@ -166,7 +170,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     // With the collections under it: the library's collections are kept as rows (../zotero/tree.ts), and the check comes back while they are still being read. `resume` keeps the collections still to read, this one first, and how far into the first the reading is. What it holds with everything under it is what Zotero counts in each, so a paper filed in two of them is counted twice until it is read.
     if (set.kind === "zotero" && set.deep && set.collectionKey) {
       const library = { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}) };
-      if (!(await ctx.runMutation(internal.zotero.tree.ready, library))) return "wait";
+      const tree: "done" | "wait" | "failed" = await ctx.runMutation(internal.zotero.tree.ready, library);
+      if (tree === "failed") throw createError("EXTERNAL_SERVICE_ERROR", "Zotero didn't give this library's collections. Check that Zotero is still connected.");
+      if (tree === "wait") return "wait";
       const root: { under: number } | null = await ctx.runQuery(internal.zotero.tree.one, { ...library, key: set.collectionKey });
       return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, ...(root ? { total: root.under } : {}), resume: JSON.stringify({ keys: [set.collectionKey], at: 0 }) }));
     }
@@ -187,9 +193,7 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     const paged = source.snapshot !== undefined && numbered(source.snapshot.request, last);
     const { papers, ended, resume, taken } = await searchPapers(ctx, reader, { searchId: set.searchId, first: from, last: to }, source.snapshot, paged ? { goesOn: false } : { resume: source.resume, goesOn: true });
     const read = paged ? to - from + 1 : taken;
-    // A paper the search's index holds with no abstract takes OpenAlex's, where it has one.
-    const who: { clerkId: string } | null = papers.some((paper) => !paper.abstract?.trim()) ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
-    return void (await give(who ? await withAbstracts(papers, spender(ctx, who.clerkId)) : papers, read, ended || from + read > last, resume));
+    return void (await give(papers, read, ended || from + read > last, resume));
   }
   if (set.kind === "evidenceLibrary") {
     const job = (await ctx.runQuery(internal.screening.gathering.jobOf, { checkId }))!;
@@ -217,6 +221,12 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       }
     };
     const room = last - from + 1;
+    /** How many of these papers one step takes: as far as the room left, and no more with no abstract than one call fetches the PDFs of. */
+    const within = (papers: Array<{ abstract?: string }>) => {
+      let bare = 0;
+      const cut = papers.findIndex((one) => !one.abstract?.trim() && ++bare > ZOTERO_PDFS_A_CALL);
+      return Math.min(room, cut === -1 ? papers.length : cut);
+    };
     // The collections still to read, in a line. One is a collection's key, or a key with where the list of the collections inside it goes on, for one that has more of them than a page.
     type Waiting = string | [key: string, inside: string];
     const deep: { keys: Waiting[]; at: number } | null = set.deep && source.resume ? JSON.parse(source.resume) : null;
@@ -228,20 +238,31 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       const kept: Array<{ items: number } | null> = await Promise.all(front.map((one) => (one.own ? ctx.runQuery(internal.zotero.tree.one, { ...library, key: one.key }) : null)));
       const reads = await Promise.all(front.map((one, at): Promise<Page> => (one.own && kept[at]?.items ? page(one.key, (at === 0 ? deep.at : 0) + 1) : Promise.resolve({ papers: [], ended: true }))));
       const open = reads.findIndex((read) => !read.ended);
-      const papers = await withFiles((open === -1 ? reads : reads.slice(0, open + 1)).flatMap(asPapers).slice(0, room));
+      const pages = (open === -1 ? reads : reads.slice(0, open + 1)).map(asPapers);
+      const all = pages.flat();
+      const taking = within(all);
+      // Where this step stops short of a collection's end: at the end of a page of one that has more, or part way into a page, where the step holds all the papers with no abstract it takes.
+      let stop = open === -1 ? null : { at: open, read: ZOTERO_LIST_PAGE };
+      if (taking < all.length) {
+        let [at, read] = [0, taking];
+        while (read >= pages[at]!.length) read -= pages[at++]!.length;
+        stop = { at, read };
+      }
+      const papers = await withFiles(all.slice(0, taking));
       // A collection read to its end hands on to the ones inside it, which join the end of the line.
-      const ended = open === -1 ? front : front.slice(0, open);
+      const ended = stop ? front.slice(0, stop.at) : front;
       const under: Array<{ page: Array<{ key: string }>; isDone: boolean; continueCursor: string }> = await Promise.all(ended.map((one) => ctx.runQuery(internal.zotero.tree.inside, { ...library, parent: one.key, paginationOpts: { cursor: one.inside, numItems: ZOTERO_LIST_PAGE } })));
       const joining = under.flatMap((found, at): Waiting[] => [...found.page.map((one) => one.key), ...(found.isDone ? [] : [[ended[at]!.key, found.continueCursor] as [string, string]])]);
-      const next = { keys: [...deep.keys.slice(ended.length), ...joining], at: open === -1 ? 0 : (open === 0 ? deep.at : 0) + ZOTERO_LIST_PAGE };
+      const next = { keys: [...deep.keys.slice(ended.length), ...joining], at: stop ? (stop.at === 0 ? deep.at : 0) + stop.read : 0 };
       return void (await hand(papers, !next.keys.length || papers.length >= room, JSON.stringify(next)));
     }
     // A library or one collection is read by its papers' places in it, several pages at once: each is asked for by where it starts, so they come back in order.
     const starts = Array.from({ length: Math.min(ZOTERO_AT_ONCE, Math.ceil(room / ZOTERO_LIST_PAGE)) }, (_, at) => from + at * ZOTERO_LIST_PAGE);
     const reads = await Promise.all(starts.map((first) => page(set.collectionKey, first)));
     const ends = reads.findIndex((read) => read.ended);
-    const papers = await withFiles((ends === -1 ? reads : reads.slice(0, ends + 1)).flatMap(asPapers).slice(0, room));
-    return void (await hand(papers, ends !== -1 || papers.length >= room));
+    const all = (ends === -1 ? reads : reads.slice(0, ends + 1)).flatMap(asPapers);
+    const papers = await withFiles(all.slice(0, within(all)));
+    return void (await hand(papers, (ends !== -1 && papers.length === all.length) || papers.length >= room));
   }
   if (set.kind === "collection" || set.kind === "saved" || set.kind === "screening") {
     const { papers, resume } = await heldPapers(ctx, reader, set, { first: from, last: to }, source.resume);
@@ -301,6 +322,7 @@ export const fill = internalMutation({
     const job = check?.state === "running" && source?.state === "reading" ? await ctx.db.get("screeningJobs", check.jobId) : null;
     if (!check || !source || !job) return null;
     const reviewers = await reviewersOf(ctx, job._id);
+    const reads = await readsOf(ctx, reviewers);
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const now = Date.now();
     let [taken, duplicates, left, bare, back, filed, filePages] = [0, 0, 0, 0, 0, 0, 0];
@@ -308,11 +330,14 @@ export const fill = internalMutation({
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
     let capped = false;
     const leave = async (name: string, why: Why, paperKey?: string) => {
+      const was = paperKey ? await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first() : null;
+      // A source that holds a paper twice, as a Zotero library does one filed in two collections, leaves it out once.
+      if (was?.checkId === checkId) return;
       left++;
       if (why === "abstract") bare++;
-      // A check that reads a source again finds what it left out before: counted again, and named once.
-      if (paperKey && (await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first())) return;
-      await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
+      // A check that reads a source again finds what it left out before: counted again, and named once, with why as it is now.
+      if (was) await ctx.db.patch("screeningLeftOut", was._id, { checkId, why });
+      else await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, checkId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
     };
     for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     for (const sent of papers) {
@@ -362,7 +387,7 @@ export const fill = internalMutation({
         ...(keys.doiKey ? { doiKey: keys.doiKey } : {}),
         titleKey: keys.titleKey,
       });
-      await dealNew(ctx, job, { _id: resultId, place }, reviewers, dealt);
+      await dealNew(ctx, job, { _id: resultId, place, abstract, file: paper.file, pages: paper.pages }, reviewers, reads, dealt);
       taken++;
       if (!abstract) { filed++; filePages += paper.pages ?? 0; }
     }

@@ -177,11 +177,19 @@ export const count = internalMutation({
   },
 });
 
-/** For a screening that reads a collection with everything under it: has the library read where it is old, and says whether it is all in. */
+/**
+ * For a screening that reads a collection with everything under it: has the library read where it is old, and says
+ * whether it is all in. A reading that has just failed is said, and not tried again: the screening's check fails its
+ * source as it does any other it can't read, and the next check, or the form, starts the reading anew.
+ */
 export const ready = internalMutation({
   args: { userId: v.id("users"), groupId: v.optional(v.string()) },
-  returns: v.boolean(),
-  handler: async (ctx, { userId, groupId }) => (await ensure(ctx, userId, groupId)).state === "done",
+  returns: v.union(v.literal("done"), v.literal("wait"), v.literal("failed")),
+  handler: async (ctx, { userId, groupId }) => {
+    const tree = await treeOf(ctx, userId, groupId ?? "");
+    if (tree?.state === "failed" && Date.now() - tree.readAt < STUCK_MS) return "failed";
+    return (await ensure(ctx, userId, groupId)).state === "done" ? "done" : "wait";
+  },
 });
 
 /** One collection as kept: what it holds itself, and with everything under it. */

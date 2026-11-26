@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, RESULTS, SHORT_NAME_LENGTH, defaultStars, hash, kappa, readersFor, scoreOf, shortOf, type Decision, type Result } from "@/lib/screening/rules";
+import { DECISIONS, OTHER_REASONS as OTHER_KEYS, RESULTS, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, type Decision, type Result } from "@/lib/screening/rules";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
 export type { Decision, Result };
@@ -25,8 +25,7 @@ export const PERSON_SAYS = { invited: "Invited by email, votes once they join", 
 export const standsTo = (person: Pick<Person, "guest"> | undefined) => (person?.guest ? PERSON_SAYS.guest : PERSON_SAYS.member);
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
-/** Someone whose account is gone still has a name where their votes are: the one the server gives them. */
-export const SOMEONE = "Someone who left";
+export { SOMEONE };
 /** A person as the one looking reads them at the start of a line: "You" for themselves, their name for anyone else. */
 export const youOr = (person: { id: string; name: string }, me: string | undefined) => (person.id === me ? "You" : person.name);
 /** A reviewer's name where there is little room: a person's first name, and a model's whole name, since its first word alone only names its maker. */
@@ -79,7 +78,7 @@ export type Reviewer = {
 export const personReviewer = (person: Person, addedAt: number): Reviewer => ({ id: person.id, kind: "person", name: person.name, imageUrl: person.imageUrl, addedAt, ...(person.guest ? { guest: true } : {}) });
 export const invitedReviewer = (email: string, addedAt: number): Reviewer => ({ id: `invite:${email}`, kind: "person", name: email, email, addedAt, guest: true });
 /** A model on a draft, before its row exists: named by its slug and effort, which is what makes it one reviewer. */
-export const modelKey = (model: Pick<MapModel, "id" | "effort">) => `model:${model.id}:${model.effort ?? ""}`;
+export const modelKey = (model: Pick<MapModel, "id" | "effort">) => reviewerKey(model.id, model.effort);
 export const modelReviewer = (model: MapModel, addedAt: number): Reviewer => ({ id: modelKey(model), kind: "model", name: model.name, model, addedAt });
 
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
@@ -153,14 +152,16 @@ export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => 
 /** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
 export type LeftOut = { name: string; why: string };
 /** How a PDF handed to a screening stands, in words: the index holds its paper, it is screened as the file it is, or it doesn't open. */
-export const PDF_STANDS = { known: "In the index", file: "Screened as the PDF", broken: LEFT_WHY.broken, waiting: "Reading it" } as const;
+/** How a paper with no abstract is read, said the same on a source's row, on a file's and over the paper: its PDF stands in for the abstract. */
+export const AS_PDF = "Read as its PDF";
+export const PDF_STANDS = { known: "In the index", file: AS_PDF, broken: LEFT_WHY.broken, waiting: "Reading it" } as const;
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
 /** What a source held when it was added, before any check found more. */
 export const baseTotal = (source: Source) => source.total - grown(source);
 /** The papers taken from what it held at first: all of them, or a range. */
-const baseTaken = (source: Source) => (source.scope === "all" ? baseTotal(source) : Math.max(0, Math.min(source.range[1], baseTotal(source)) - source.range[0] + 1));
+export const baseTaken = (source: Source) => (source.scope === "all" ? baseTotal(source) : Math.max(0, Math.min(source.range[1], baseTotal(source)) - source.range[0] + 1));
 /** What a source brought before duplicates were merged: as the server read it, or as its range promises before it is read. */
 export const taken = (source: Source) => (source.read ? source.read.taken + source.read.duplicates : baseTaken(source) + grown(source));
 export const keptOf = (source: Source) => (source.read ? source.read.taken : Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) + (source.updates ?? []).reduce((sum, update) => sum + update.added - update.duplicates, 0));
@@ -191,7 +192,8 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
-const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason" }];
+const OTHER_LABEL: Record<(typeof OTHER_KEYS)[number], string> = { duplicate: "A duplicate of another paper", other: "Another reason" };
+const OTHER_REASONS: Array<{ key: string; label: string }> = OTHER_KEYS.map((key) => ({ key, label: OTHER_LABEL[key] }));
 /**
  * What a paper can be excluded for, in groups, the same wherever Exclude asks why: a must-have it fails, any other
  * criterion it fails, or another reason. Each has a key for the keyboard: a criterion its own number, as far as the
@@ -316,15 +318,13 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
   return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length) };
 };
 /**
- * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever started the screening,
- * or failing that the first person still on it, as the server gives them (convex/screening/reviewers.ts `takeOff`).
- * With nobody else on it they stay theirs.
+ * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever the server gives
+ * them to, by the same rule (lib/screening/rules.ts `nextResolver`).
  */
 export function withoutReviewer(screening: Screening, reviewer: Reviewer, discard: boolean, now: number): Screening {
   const reviewers = screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: now, ...(discard ? { discarded: now } : {}) } : one));
   const people = readersOf({ ...screening, reviewers }).people;
-  const next = screening.rule.resolver === reviewer.id ? (people.find((one) => one.id === screening.createdBy) ?? people[0])?.id : undefined;
-  return { ...screening, reviewers, ...(next ? { rule: { ...screening.rule, resolver: next } } : {}) };
+  return { ...screening, reviewers, ...(screening.rule.resolver === reviewer.id ? { rule: { ...screening.rule, resolver: nextResolver(screening.createdBy, people.map((one) => one.id)) } } : {}) };
 }
 /** Reviewers in the one order every list, row of faces and table shows them: the person looking, then the other people, then the models. Within each, the order they were added in. */
 export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[], me: string) => {

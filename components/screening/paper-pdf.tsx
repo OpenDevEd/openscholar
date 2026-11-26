@@ -16,7 +16,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { pdfAssets } from "@/lib/pdf-assets";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, termsPattern, type Paper } from "./data";
+import { AS_PDF, plural, termsPattern, type Paper } from "./data";
 import { Chip } from "./parts";
 import { INLINE_LINK } from "./pieces";
 
@@ -49,7 +49,7 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <Chip icon={FileText}>Screened as its PDF{paper.pdf?.pages ? `, ${plural(paper.pdf.pages, "page", "pages")}` : ""}</Chip>
+        <Chip icon={FileText}>{AS_PDF}{paper.pdf?.pages ? `, ${plural(paper.pdf.pages, "page", "pages")}` : ""}</Chip>
         {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>Open the PDF in a new tab<ExternalLink aria-hidden className="size-3" /></a> : null}
       </div>
       {/* The column holds its pages' height from the first frame: each page arrives inside its own place. */}

@@ -45,7 +45,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
         <Command shouldFilter={false}>
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
-            <CommandEmpty>{email || found === undefined ? null : "Nobody in this workspace by that name. Type an email address to invite someone."}</CommandEmpty>
+            <CommandEmpty>{email || found === undefined ? null : text.trim() ? "Nobody in this workspace by that name. Type an email address to invite someone." : "Nobody else in this workspace to add. Type an email address to invite someone."}</CommandEmpty>
             {left.length ? (
               <CommandGroup heading={PERSON_SAYS.member}>
                 {left.map((person) => (

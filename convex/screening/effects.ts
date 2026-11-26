@@ -10,11 +10,11 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalQuery } from "../lib/functions";
 import { workspaceAction } from "../lib/userActions";
-import { isFinal, seesVotes, type Decision, type Result } from "../../lib/screening/rules";
+import { isFinal, modelKey, seesVotes, type Decision, type Result } from "../../lib/screening/rules";
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, papersOf, readingModel, sourcesOf, votesOf } from "./dealing";
+import { dealable, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -23,11 +23,11 @@ type Preview = Infer<typeof previewValidator>;
 /** Papers one step of the count looks at: each with its votes, a few hundred rows. */
 const STEP = 200;
 /** A count with nothing in it yet. Made anew each time: what it holds is added to, and a shared one would carry one request's figures into the next. */
-const nothing = (): Preview => ({ total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, added: 0, removed: 0, included: 0, moves: [], again: 0 });
+const nothing = (): Preview => ({ total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, removed: 0, included: 0, moves: [], again: 0 });
 const SETTLED = ["include", "maybe", "exclude"] as const;
 
-/** A model about to be put on the screening, by what names it before it has a row: the page names it the same way. */
-const modelKey = (model: { model: string; effort?: string }) => `model:${model.model}:${model.effort ?? ""}`;
+/** A model about to be put on the screening, by what names it before it has a row. */
+const keyOf = (model: { model: string; effort?: string }) => modelKey(model.model, model.effort);
 
 const stepArgs = { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("screeningJobs"), change: changeValidator };
 const stepReturns = v.object({ counted: previewValidator, loads: v.record(v.string(), v.number()), cursor: v.union(v.string(), v.null()) });
@@ -48,10 +48,13 @@ export const step = internalQuery({
     const discards = new Map(plan.leaving.map(({ reviewer, discard }) => [reviewer._id as string, discard]));
     const staying = plan.reviewers.filter((one) => !discards.has(one._id));
     const joiners = plan.joining.map(({ userId: id, before }) => ({ id: id as string, before }));
-    const [readers, newModels] = [staying.filter(readingModel).map((one) => one._id as string), plan.models.map(modelKey)];
+    const [readers, newModels] = [staying.filter(readingModel).map((one) => one._id as string), plan.models.map(keyOf)];
     // Who papers go to once the change is made: the people dealt to, in the order they joined, the ones who join last, and the models that read.
     const team = { people: [...staying.filter(dealable).map((one) => one._id as string), ...joiners.map((one) => one.id)], models: [...readers, ...newModels] };
     const mine = plan.reviewers.find((one) => one.userId === userId && one.left === undefined)?._id;
+    // What each model, on it already or about to join, can be given: a paper that is only its PDF goes to the ones that take files.
+    const reads = await readsOf(ctx, staying);
+    for (const model of plan.models) reads.set(keyOf(model), readOf(await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", model.model)).first()));
 
     const joining: Preview["joining"] = Object.fromEntries([...joiners.map((one) => [one.id, { dealt: 0 }]), ...newModels.map((key) => [key, { reads: 0 }])]);
     const leaving: Preview["leaving"] = Object.fromEntries([...discards.keys()].map((id) => [id, { cast: 0, unvoted: 0, voted: 0, to: [] as string[], settled: 0, waiting: 0 }]));
@@ -75,7 +78,7 @@ export const step = internalQuery({
       const places = withJoined({ id: paper._id, result: was }, left, joiners, plan.rule.each === "all");
       // A settled paper keeps its result through the change, unless it is checked again or votes on it are thrown out.
       const held = isFinal(was) && !paper.resolved && !recheck && !thrown;
-      const after = project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
+      const after = project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, teamFor(team, paper, reads), plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
       const now = after.result;
       const open = !isFinal(now);
 
@@ -83,7 +86,7 @@ export const step = internalQuery({
         const move = moves.get(`${was}>${now}`) ?? { from: was, to: now, count: 0, papers: [], hidden: 0 };
         move.count++;
         // A paper whose votes the person asking can't see yet is counted, not named.
-        if (!seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined)) move.hidden++;
+        if (!seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined)) move.hidden++;
         else if (move.papers.length < PREVIEW_PAPERS) move.papers.push({ id: paper._id, title: paper.title, ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }) });
         moves.set(`${was}>${now}`, move);
         if (open) reopened++;

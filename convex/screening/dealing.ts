@@ -8,6 +8,9 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
 import { project } from "../../lib/screening/project";
+import { SOMEONE } from "../../lib/screening/rules";
+import { readsPdfs } from "../../lib/assistant/files";
+import { readsPdfOf } from "../../lib/pricing/estimate";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
 
 type Reviewer = Doc<"screeningReviewers">;
@@ -33,7 +36,7 @@ export const readingModel = (reviewer: Reviewer) => reviewer.kind === "model" &&
 export const teamOf = (reviewers: Reviewer[]) => ({ people: reviewers.filter(dealable).map((one) => one._id as string), models: reviewers.filter(readingModel).map((one) => one._id as string) });
 
 /** Someone whose account is gone still has a name where their votes are. */
-export const SOMEONE = "Someone who left";
+export { SOMEONE };
 /** A person's name wherever a screening names them, and a model's. */
 export const nameOf = (user: Doc<"users"> | null | undefined) => (user ? personName(user) || user.email : SOMEONE);
 export const modelName = (model: Pick<Doc<"models">, "name"> | null | undefined) => (model ? stripProviderPrefix(model.name) : "A model");
@@ -55,6 +58,24 @@ const CHECKS_LOOKED = 20;
 /** A screening's latest checks for new papers that have ended, the last first. The first look in its sources is the screening starting, and is none of them. */
 export const laterChecks = async (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) =>
   (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)).filter((check) => check.state === "done" && check.from > 0);
+
+/** What each of a screening's models can be given, by its row or by whatever names it before it has one: whether it takes a PDF as a file, and the tokens one call to it holds. */
+export type Reads = Map<string, { files: boolean; room?: number }>;
+export const readOf = (model: Pick<Doc<"models">, "inputModalities" | "contextLength"> | null) => ({ files: readsPdfs(model?.inputModalities), ...(model?.contextLength === undefined ? {} : { room: model.contextLength }) });
+/** That, for the models on a screening: read once for a batch of its papers. */
+export async function readsOf(ctx: Pick<QueryCtx, "db">, reviewers: Reviewer[]): Promise<Reads> {
+  const models = reviewers.filter((one) => one.kind === "model");
+  const rows = await Promise.all(models.map((one) => (one.modelId ? ctx.db.get("models", one.modelId) : null)));
+  return new Map(models.map((one, at) => [one._id as string, readOf(rows[at]!)]));
+}
+type Readable = Pick<Doc<"screeningResults">, "abstract" | "file" | "pages">;
+/**
+ * The team one paper goes to: every person, and the models that can read it. A paper with no abstract is its PDF,
+ * which a model reads only where it takes files and this one fits a call. A model that can't is never given the
+ * paper: it has nothing to fail on there, nothing to pay for, and no say in it, and the others settle it.
+ */
+export const teamFor = <Team extends { people: string[]; models: string[] }>(team: Team, paper: Readable, reads: Reads): Team =>
+  paper.abstract || !paper.file ? team : { ...team, models: team.models.filter((id) => readsPdfOf(reads.get(id), paper.pages ?? 0)) };
 
 /** What marks a screening as just changed: when it was, for its row and for the order of the list. */
 export const touched = (now = Date.now()) => ({ updatedAt: now, activeAt: now });
@@ -78,9 +99,9 @@ export const personRow = (job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningR
  * Gives a paper that just arrived to its reviewers, and says how many rows each got, for the caller to add to
  * their `dealt` once for the whole step.
  */
-export async function dealNew(ctx: MutationCtx, job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningResults">, "_id" | "place">, reviewers: Reviewer[], dealt: Map<Id<"screeningReviewers">, number>) {
+export async function dealNew(ctx: MutationCtx, job: Doc<"screeningJobs">, paper: Readable & Pick<Doc<"screeningResults">, "_id" | "place">, reviewers: Reviewer[], reads: Reads, dealt: Map<Id<"screeningReviewers">, number>) {
   // The sum that deals every later change deals the first time too, to a paper with no places yet.
-  const { made } = project({ id: paper._id, place: paper.place ?? 0, result: "waiting", held: false, away: [] }, [], teamOf(reviewers), job.rule!, job.criteria ?? [], { models: true });
+  const { made } = project({ id: paper._id, place: paper.place ?? 0, result: "waiting", held: false, away: [] }, [], teamFor(teamOf(reviewers), paper, reads), job.rule!, job.criteria ?? [], { models: true });
   for (const place of made) {
     const reviewer = reviewers.find((one) => one._id === place.reviewer)!;
     await ctx.db.insert("screeningVotes", place.kind === "model" ? modelRow(job, paper, reviewer) : personRow(job, paper, reviewer));

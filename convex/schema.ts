@@ -1376,6 +1376,8 @@ export default defineSchema({
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
     // The ones never started, oldest touched first, for the sweep that takes them away (./screening/screenings.ts `sweepDrafts`).
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    // The open screenings whose conflicts one person settles, whether or not they review them.
+    .index("by_resolver_and_status", ["rule.resolver", "status"])
     // A search's screenings, which share its answers and move with it (#654).
     .index("by_screening", ["screeningId"]),
 
@@ -1729,6 +1731,8 @@ export default defineSchema({
     doi: v.optional(v.string()),
     // The index holds the paper its DOI names, under the title it prints: the screening shows that paper.
     known: v.optional(v.boolean()),
+    // The index's paper has no abstract: it is read as this file all the same.
+    bare: v.optional(v.boolean()),
     workId: v.optional(v.string()),
   })
     .index("by_batch_and_at", ["batch", "at"])
@@ -1740,8 +1744,10 @@ export default defineSchema({
     sourceId: v.id("screeningSources"),
     name: v.string(),
     why: leftOutWhyValidator,
-    // The paper it was read as, for a file someone says was matched to the wrong one.
+    // The record it was read as: a source that holds it twice, or is read again, names it once.
     paperKey: v.optional(v.string()),
+    // The check that last counted it: one that meets it again doesn't count it twice.
+    checkId: v.optional(v.id("screeningChecks")),
   })
     .index("by_source", ["sourceId"])
     .index("by_source_and_paperKey", ["sourceId", "paperKey"])

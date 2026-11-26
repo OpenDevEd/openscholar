@@ -27,7 +27,7 @@ async function readable(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id
   const paper = standing?.job.shape === 2 ? await ctx.db.get("screeningResults", paperId) : null;
   if (!standing || paper?.jobId !== jobId) return null;
   const mine = standing.reviewer ? (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === standing.reviewer!._id) : undefined;
-  return seesVotes(standing.job.rule?.blind ?? "after", paper.result, mine?.status === "waiting" ? "waiting" : undefined) ? { ...standing, paper } : null;
+  return seesVotes(standing.job.rule?.blind ?? "after", paper.result, mine?.status === "waiting" ? "waiting" : undefined, standing.job.finishedAt !== undefined) ? { ...standing, paper } : null;
 }
 
 const person = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });

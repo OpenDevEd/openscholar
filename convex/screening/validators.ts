@@ -254,18 +254,14 @@ export const sourceSetValidator = v.union(
 /** One page of a person's Zotero groups, as Zotero pages them (../zotero/libraryValidators.ts `ZOTERO_LIST_PAGE`), with where the next page starts. */
 const ZOTERO_LISTED = 100;
 export const zoteroGroupsValidator = v.object({ page: capped(v.array(v.object({ id: v.string(), name: v.string(), papers: v.number() })), ZOTERO_LISTED), next: v.optional(v.number()) });
-/** What the index knows of a pasted list of DOIs, kept as a file a screening can read (./held.ts `lookDois`). */
-export const doisLookValidator = v.object({ file: v.id("_storage"), found: v.number(), bare: v.number(), missing: v.number() });
+/** A pasted list of DOIs, kept as a file a screening can read, and how many it holds (./held.ts `keepDois`). */
+export const doisKeptValidator = v.object({ file: v.id("_storage"), dois: v.number() });
 /** The most DOIs one pasted list holds. */
 export const DOIS_MAX = 5_000;
 
 /** What a file a person is about to add holds (./held.ts `look`). */
 export const fileLookValidator = v.object({
   records: v.number(),
-  untitled: v.number(),
-  bare: v.number(),
-  withDoi: v.number(),
-  sample: capped(v.array(v.string()), 3),
   table: v.optional(v.object({ heads: capped(v.array(v.string()), 200), picked: capped(v.record(v.string(), v.string()), 20), ask: v.boolean() })),
 });
 
@@ -274,7 +270,7 @@ export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("tit
 
 /** Where a PDF handed to a screening stands: still to be read, read, or a file that doesn't open. */
 export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read"), v.literal("broken"));
-/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. */
+/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. `bare`: that paper has no abstract there, so it is read as the file. */
 export const pdfReadValidator = v.object({
   state: v.union(v.literal("read"), v.literal("broken")),
   pages: v.optional(v.number()),
@@ -283,6 +279,7 @@ export const pdfReadValidator = v.object({
   year: v.optional(v.number()),
   doi: v.optional(v.string()),
   known: v.optional(v.boolean()),
+  bare: v.optional(v.boolean()),
 });
 /** PDFs one call adds to a drop, and the rows of a drop a page of its list shows. */
 export const PDFS_A_CALL = 50;
@@ -304,7 +301,8 @@ export const starsValidator = capped(v.optional(v.array(v.number())), MAX_STARS)
 export const voteConfidencesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
 export const optionalPassagesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
 
-const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean() });
+/** A model on a screening. `files`: it takes a PDF as a file, so a paper that is only its PDF is given to it. */
+const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean(), files: v.boolean() });
 
 /**
  * A reviewer as every page shows them. `id` is what a vote, a rule or a link names them by: a person's account, and
@@ -344,7 +342,7 @@ export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX
 /** Screenings in the person's other workspaces that one page points at. */
 export const ELSEWHERE_MAX = 20;
 /** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
-export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number() })), ELSEWHERE_MAX);
+export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number(), asked: v.number() })), ELSEWHERE_MAX);
 
 /** What tells a source from another of the same name, as the list it was picked from said it: a few short facts. */
 export const SOURCE_FACTS = 6;
@@ -471,8 +469,7 @@ export const previewValidator = v.object({
   eachChanged: v.number(),
   // Each model that stays: the papers it has still to read once the change is made, and the ones the change has it read at once.
   models: capped(v.record(v.string(), v.object({ ahead: v.number(), atOnce: v.number() })), MAX_REVIEWERS),
-  // Papers that join and leave with its sources, and the ones it has included.
-  added: v.number(),
+  // Papers that leave with a source taken out, and the ones it has included. What a source being added brings is known once it is read.
   removed: v.number(),
   included: v.number(),
   moves: capped(v.array(previewMoveValidator), RESULT_MOVES),

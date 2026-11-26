@@ -18,11 +18,11 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
-import { readersFor, takesOver } from "../../lib/screening/rules";
+import { nextResolver, readersFor, takesOver } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
-import { countDealt, dealable, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, reviewersOf, votesOf } from "./dealing";
+import { countDealt, dealable, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
 import { modelFor, modelInput, modelsLimit, NEEDS_CRITERIA } from "./screenings";
 import { startWaitingVotes } from "./slots";
 
@@ -124,10 +124,8 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, ...(discard ? { discarded: now } : {}) });
   const rule = job.rule;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
-    // They go to whoever started the screening, or failing that the first person still on it.
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
-    const resolver = (people.find((one) => one.userId === job.createdBy) ?? people[0])?.userId;
-    if (resolver) await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver } });
+    await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver: nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) } });
   }
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId: reviewer._id, discard, cursor: null, status: "waiting" });
 }
@@ -159,8 +157,11 @@ export const enlist = internalMutation({
     const [job, reviewer] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningReviewers", reviewerId)]);
     if (!job || !reviewer || !readingModel(reviewer)) return null;
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: STEP });
+    const reads = await readsOf(ctx, [reviewer]);
     let made = 0;
     for (const paper of page.page) {
+      // A paper that is only its PDF is not for a model that takes no files (./dealing.ts `teamFor`).
+      if (!teamFor({ people: [], models: [reviewerId as string] }, paper, reads).models.length) continue;
       const votes = await votesOf(ctx, paper._id);
       const mine = votes.find((vote) => vote.reviewerId === reviewerId);
       // Back after its votes were thrown out, it reads the paper again.

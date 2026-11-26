@@ -14,7 +14,7 @@ import { internalMutation } from "../lib/functions";
 import { newCollection } from "../library/collections";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
-import type { Criterion } from "../../lib/screening/rules";
+import { nextResolver, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater, saveQualified } from "./bookkeeping";
 import { dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
@@ -67,9 +67,9 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   // Each person who joins, with how many people there were before them: what their even share is counted from.
   const joining = [...new Set(change.addPeople ?? [])].filter((userId) => !people.some((one) => one.userId === userId)).map((userId, at) => ({ userId, before: people.length + at }));
   const rule = { ...job.rule!, ...(change.rule ? { each: change.rule.each === "all" ? ("all" as const) : Math.max(0, Math.floor(change.rule.each)), settle: change.rule.settle, blind: change.rule.blind, ...(change.rule.resolver ? { resolver: change.rule.resolver } : {}) } : {}) };
-  // Conflicts always have someone to settle them: when that person is taken off, they go to whoever started the screening, or failing that the first person still on it.
+  // Conflicts always have someone to settle them: when that person is taken off, they go on by the one rule (`nextResolver`).
   const resolverLeft = leaving.some(({ reviewer }) => reviewer.kind === "person" && reviewer.userId === rule.resolver) && !change.rule?.resolver;
-  const settles = resolverLeft ? ((people.find((one) => one.userId === job.createdBy) ?? people[0])?.userId ?? job.createdBy) : rule.resolver;
+  const settles = resolverLeft ? nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) : rule.resolver;
   const was = new Map(before.map((criterion) => [criterion.key, criterion]));
   const keys = new Set(criteria.map((criterion) => criterion.key));
   return {

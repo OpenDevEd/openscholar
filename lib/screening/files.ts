@@ -101,7 +101,8 @@ export function doisIn(text: string) {
 }
 
 const yearOf = (text: string | undefined) => { const year = Number(text?.match(/\b(1[5-9]\d{2}|20\d{2})\b/)?.[1]); return Number.isInteger(year) ? year : undefined; };
-const kept = (record: FileRecord): FileRecord => Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && value !== "" && !(Array.isArray(value) && !value.length))) as FileRecord;
+/** A record with the parts it has. Its title stays where it has none: a record with no title is left out by name, and one with no title key is refused whole. */
+const kept = ({ title, ...rest }: FileRecord): FileRecord => ({ title, ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined && value !== "" && !(Array.isArray(value) && !value.length))) });
 
 /** A table's rows as records, once its columns are named. A row with no title is still a record: the screening leaves it out, and says so. */
 export function tableRecords(table: Pick<TableRead, "rows">, picked: TableRead["picked"]): FileRecord[] {
@@ -112,10 +113,10 @@ export function tableRecords(table: Pick<TableRead, "rows">, picked: TableRead["
 /** One item as Zotero's importer gives it (zotero/translation-server, POST /import). */
 export type ImportedItem = { itemType?: string; title?: string; abstractNote?: string; creators?: Array<{ firstName?: string; lastName?: string; name?: string }>; date?: string; DOI?: string; publicationTitle?: string; bookTitle?: string; proceedingsTitle?: string };
 
-/** The records a reference file holds, from what Zotero's importer read in it. Notes and attached files are no records. */
+/** The records a reference file holds, from what Zotero's importer read in it. Notes and attached files are no records, and neither is an item with nothing in it: Ovid ends each record with a line the importer reads as one. */
 export function itemRecords(items: ImportedItem[]): FileRecord[] {
   return items
-    .filter((item) => item.itemType !== "note" && item.itemType !== "attachment")
+    .filter((item) => item.itemType !== "note" && item.itemType !== "attachment" && Boolean(item.title?.trim() || item.abstractNote?.trim() || item.DOI || item.creators?.length))
     .map((item) => kept({
       title: item.title?.trim() ?? "",
       abstract: item.abstractNote?.trim(),

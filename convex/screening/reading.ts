@@ -12,11 +12,11 @@ import { internalAction } from "../_generated/server";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
 import type { ScreeningReadData } from "../../lib/ai/core/batch-types";
 import { sentencesOf } from "../../lib/screening/passages";
-import { answerOf } from "../../lib/screening/setup";
+import { answerOf } from "../../lib/screening/rules";
 import { screeningPaperCredits } from "../../lib/pricing";
-import { screeningPdfCredits, screeningPdfTokens } from "../../lib/pricing/estimate";
+import { readsPdfOf, screeningPdfCredits } from "../../lib/pricing/estimate";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
-import { withUserCredits } from "../ai/helpers";
+import { outOfCredits, withUserCredits } from "../ai/helpers";
 import { openRouterModel } from "../ai/provider";
 import { createError } from "../lib/errors";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
@@ -25,7 +25,6 @@ import { readingValidator } from "./readings";
 /** A criterion as the model is asked it: the question, with the guidance its organiser wrote for whoever answers. */
 const asked = (criterion: { text: string; note?: string }) => (criterion.note?.trim() ? `${criterion.text} (Guidance: ${criterion.note.trim()})` : criterion.text);
 
-const outOfCredits = (error: unknown) => error instanceof Error && (error.message.includes("AI_INSUFFICIENT_CREDITS") || (error as { data?: { code?: string } }).data?.code === "AI_INSUFFICIENT_CREDITS");
 
 export const readPaper = internalAction({
   args: { voteId: v.id("screeningVotes") },
@@ -38,8 +37,8 @@ export const readPaper = internalAction({
     const questions = context.criteria.map(asked);
     // A paper with no abstract is read as the PDF it is, every page of it, the way the assistant gives a model a file.
     const { file, pages = 0 } = context.paper.abstract ? { file: undefined } : context.paper;
-    if (file && !context.model.files) return { read: false, why: "unreadable", error: `${context.model.name} can't read a PDF. It reads papers that have an abstract.` };
-    if (file && context.model.room !== undefined && screeningPdfTokens(pages) > context.model.room) return { read: false, why: "unreadable", error: `This PDF has ${pages.toLocaleString("en-GB")} pages, more than ${context.model.name} reads at once.` };
+    // A model is given a paper that is only its PDF where it can read it (./dealing.ts `teamFor`): this holds for one that got here another way.
+    if (file && !readsPdfOf(context.model, pages)) return { read: false, why: "unreadable", error: context.model.files ? `This PDF has ${pages.toLocaleString("en-GB")} pages, more than ${context.model.name} reads at once.` : `${context.model.name} can't read a PDF. It reads papers that have an abstract.` };
     const address = file ? await ctx.storage.getUrl(file) : null;
     if (file && !address) return { read: false, why: "unreadable", error: "This paper's PDF is gone." };
     try {

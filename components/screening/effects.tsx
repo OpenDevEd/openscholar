@@ -12,10 +12,10 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "./parts";
 import { cn } from "@/lib/utils";
-import { collectionName, num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
+import { baseTaken, collectionName, num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./pieces";
-import { credits, paperCredits } from "./store";
+import { credits, paperCredits, readingOf } from "./store";
 
 /** The part of the settings a line is about, by its anchor there. */
 export type EffectSection = "name" | "papers" | "new-papers" | "criteria" | "reviewers" | "decided" | "goes-to";
@@ -46,8 +46,7 @@ export type Preview = {
   eachChanged: number;
   /** Each model: the papers it has still to read once the change is made, and the ones the change has it read at once. */
   models: Record<string, { ahead: number; atOnce: number }>;
-  /** Papers that join and leave with its sources. */
-  added: number;
+  /** Papers that leave with a source taken out. */
   removed: number;
   included: number;
   moves: Move[];
@@ -56,7 +55,7 @@ export type Preview = {
   /** The fewest and the most papers a person would have. */
   loads?: { least: number; most: number };
 };
-export const NO_PREVIEW: Preview = { total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, added: 0, removed: 0, included: 0, moves: [], again: 0 };
+export const NO_PREVIEW: Preview = { total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, removed: 0, included: 0, moves: [], again: 0 };
 
 const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
 
@@ -150,7 +149,7 @@ export function effectItems(before: Screening, after: Screening, counted: Previe
       // Whatever keeps this model from starting, in the order it would have to end: papers still arriving, a finished screening, paused models, credits for its next paper, another screening's turn.
       const starts = after.gathered !== undefined ? "once all its papers arrive" : after.finishedAt ? "once the screening is reopened" : after.paused ? "once the models resume" : paperCredits(reviewer.model!) > wallet ? "once the workspace has enough credits for its next paper" : waiting ? "when its models' turn comes" : onSave;
       if (!reads) lines.push({ text: after.gathered !== undefined ? `${reviewer.name} starts once the papers arrive` : `${reviewer.name} has no papers left to read`, section: "reviewers" });
-      else lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${plural(total, "paper", "papers")}` : `the ${plural(reads, "paper", "papers")} not settled yet`}`, when: starts, kind: "cost", credits: reads * paperCredits(reviewer.model!), section: "reviewers" });
+      else lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${plural(total, "paper", "papers")}` : `the ${plural(reads, "paper", "papers")} not settled yet`}`, when: starts, kind: "cost", credits: readingOf(after, reviewer.model!, reads), section: "reviewers" });
     }
     else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and papers once they join`, kind: "mail", section: "reviewers" });
     else {
@@ -234,7 +233,10 @@ export function effectItems(before: Screening, after: Screening, counted: Previe
   } else if (before.living && !after.living) lines.push({ text: "The screening stops checking for new papers. The ones it has stay", kind: "schedule", section: "new-papers" });
   else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: `The screening checks for new papers ${EVERY_LABEL[after.living.every].toLowerCase()} from now on`, kind: "schedule", section: "new-papers" });
 
-  if (counted.added) lines.push({ text: `About ${plural(counted.added, "paper joins", "papers join")} the screening, fewer where another source already has them`, section: "papers" });
+  // What a source this adds brings is known once the screening has read it: until then, what its range promises is the most it can be.
+  const promised = promisedBy(before, after);
+  const reading = modelsOf(after).reduce((sum, model) => sum + readingOf(after, model.model!, promised), 0);
+  if (promised) lines.push({ text: `Up to ${plural(promised, "new paper joins", "new papers join")} the screening and ${promised === 1 ? "goes" : "go"} to its reviewers. Fewer do where another source already has them or they have no abstract`, ...(reading ? { kind: "cost" as const, credits: reading } : {}), section: "papers" });
   if (counted.removed) lines.push({ text: `${plural(counted.removed, "paper leaves", "papers leave")} the screening, with ${counted.removed === 1 ? "its" : "their"} votes kept on record`, kind: "leave", section: "papers" });
 
   const [from, to] = [collectionName(before), collectionName(after)];
@@ -257,8 +259,11 @@ const withCredits = (line: EffectLine, text: string) => (line.credits ? `${text}
 /** One line as the activity log keeps it, once the change is made: what it did, without "as soon as this is saved". */
 export const lineText = (line: EffectLine) => withCredits(line, [line.text, line.then].filter(Boolean).join(" "));
 
+/** The papers the sources a change adds promise at most: which of them are new is known once the screening has read them. */
+export const promisedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => after.sources.filter((source) => !before.sources.some((one) => one.id === source.id)).reduce((sum, source) => sum + baseTaken(source), 0);
+
 /** What a change has every model read at once comes to: a criterion added to a running screening is answered on the open papers each has read. The preview and the save both charge this. */
-export const rereadCost = (screening: Screening, counted: Preview) => modelsOf(screening).reduce((sum, model) => sum + (counted.models[model.id]?.atOnce ?? 0) * paperCredits(model.model!), 0);
+export const rereadCost = (screening: Screening, counted: Preview) => modelsOf(screening).reduce((sum, model) => sum + readingOf(screening, model.model!, counted.models[model.id]?.atOnce ?? 0), 0);
 
 /** The moves, in words, for a confirmation. */
 export const movesText = (moves: Move[]) => moves.map((move) => `${plural(move.count, "paper", "papers")} moved from ${RESULT_LABEL[move.from]} to ${RESULT_LABEL[move.to]}`).join(". ");

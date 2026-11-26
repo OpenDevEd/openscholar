@@ -92,12 +92,14 @@ describe("who a paper goes to", () => {
 
 describe("who sees the other votes", () => {
   it("hides them only on a paper that still waits for the person's own vote", () => {
-    expect(seesVotes("after", "waiting", "waiting")).toBe(false);
-    expect(seesVotes("after", "waiting", "cast")).toBe(true);
-    expect(seesVotes("after", "waiting", undefined)).toBe(true);
-    expect(seesVotes("after", "include", "closed")).toBe(true);
-    expect(seesVotes("after", "conflict", "cast")).toBe(true);
-    expect(seesVotes("always", "waiting", "waiting")).toBe(true);
+    expect(seesVotes("after", "waiting", "waiting", false)).toBe(false);
+    expect(seesVotes("after", "waiting", "cast", false)).toBe(true);
+    expect(seesVotes("after", "waiting", undefined, false)).toBe(true);
+    expect(seesVotes("after", "include", "closed", false)).toBe(true);
+    expect(seesVotes("after", "conflict", "cast", false)).toBe(true);
+    expect(seesVotes("always", "waiting", "waiting", false)).toBe(true);
+    // No vote can be cast in a finished screening: nothing is kept from someone who never got to a paper.
+    expect(seesVotes("after", "waiting", "waiting", true)).toBe(true);
   });
 });
 

@@ -5,6 +5,7 @@
 // one is changed with the same form, which says what each change will do before it is saved.
 
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
@@ -53,14 +54,14 @@ import { cn } from "@/lib/utils";
 import { EVERY_MS, MAX_SOURCES } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { LEFT_WHY, SETTLE_MEANS, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, SHORT_NAME_LENGTH, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo } from "./data";
+import { LEFT_WHY, SETTLE_MEANS, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo } from "./data";
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
-import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
+import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, promisedBy, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
-import { credits, paperCredits, pdfsOf, perPaper, readingCredits, useOpenScreening } from "./store";
+import { credits, paperCredits, pdfsOf, perPaper, readableBy, readingCredits, readsFiles, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -112,11 +113,13 @@ const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: screening
 /** How long the form waits after the last change to a new screening's sources before the server reads them: a range being dragged, or a second source on its way, is one read and not several. */
 const SOURCES_SETTLE_MS = 1_200;
 /**
- * The papers a source holds, for the row that takes them all. A Zotero collection added with everything under it is
- * counted, until it is read, by what Zotero files in each collection, where a paper filed in two counts twice: once
- * it is read, it holds the papers that were found.
+ * The papers a source holds, for the row that takes them all. A Zotero collection added with everything under it
+ * holds the papers that were found once it is read. Until then nobody knows how many: Zotero counts what is filed in
+ * each collection, where a paper filed in two counts twice, so the row gives no number (null).
  */
-const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.deep && source.read?.state === "done" ? source.read.taken + source.read.duplicates + source.read.left : baseTotal(source));
+const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.deep ? (source.read?.state === "done" ? source.read.taken + source.read.duplicates + source.read.left : null) : baseTotal(source));
+/** The papers a source's open row shows a sample of: what it brought, or, while it is still read, what its range promises. */
+const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : taken(source));
 /** A source the server hasn't read yet, as its row shows it. */
 const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
 const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
@@ -346,10 +349,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
-  const key = id ?? `new:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
+  // A new screening being filled in is its maker's, in the workspace it was begun in: its files, its searches and what was read of them are that workspace's.
+  const key = id ?? `new:${workspaceId ?? ""}:${setup?.me.id ?? ""}:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
   const kept = useKept((store) => store.drafts[key]);
   const keep = useKept((store) => store.draft);
-  const draft = kept ?? origin;
+  // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
+  const [sent, setSent] = useState<Screening | null>(null);
+  const draft = sent ?? kept ?? origin;
   // A new screening's sources are read by the server as the form holds them, a moment after the last change to them
   // (convex/screening/screenings.ts `sync`). So each row says what its source holds, what another source already
   // brought and what is left out, as counted by what takes the papers, and starting has nothing left to read.
@@ -431,6 +437,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const share = useSharing((saved?.id ?? "") as Id<"screeningJobs">);
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
+  // What one PDF's first reading cost when it was added (./sources.tsx says the same before any is).
+  const lookCredits = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(workspaceId, id ? "skip" : {})).data;
 
   // What a save would do to a running screening, counted by the server for the change as it stands: the lines and the moves both read it.
   const change = saved && draft ? changeOf(saved, draft, recheck) : null;
@@ -467,20 +475,24 @@ export function ScreeningForm({ id }: { id?: string }) {
   const found = foundTotal(sources);
   const papers = paperTotal(sources);
   const pdfs = pdfsOf(sources);
+  // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to".
+  const promisedNew = saved ? promisedBy(saved, draft) : 0;
+  const upTo = promisedNew ? "Up to " : "";
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
   const shareSays = (() => {
     if (!joined.length) return undefined;
     if (fresh && joined.length === 1) return `${joined[0]!.id === me ? "You read" : `${firstName(joined[0]!.name)} reads`} every paper`;
     if (fresh) return `About ${num(Math.ceil((papers * each) / joined.length))} papers for each person`;
     const loads = preview.loads ?? (() => { const dealt = joined.map((person) => person.tally?.dealt ?? 0); return { least: Math.min(...dealt), most: Math.max(...dealt) }; })();
-    return loads.most - loads.least <= 2 ? `About ${num(loads.most)} papers for each person` : `${num(loads.least)} to ${num(loads.most)} papers for each person`;
+    const now = loads.most - loads.least <= 2 ? `About ${num(loads.most)} papers for each person` : `${num(loads.least)} to ${num(loads.most)} papers for each person`;
+    return promisedNew ? `${now}, and a share of the new ones` : now;
   })();
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
-  const ahead = (model: Reviewer) => (fresh ? papers : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0));
+  const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), papers, pdfs);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
   const added = Boolean(saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)));
-  const atOnce = (model: Reviewer) => (saved ? (preview.models[model.id]?.atOnce ?? 0) * paperCredits(model.model!) : 0);
+  const atOnce = (model: Reviewer) => (saved ? readingCredits(model.model!, preview.models[model.id]?.atOnce ?? 0, papers, pdfs) : 0);
   const reread = models.reduce((sum, model) => sum + atOnce(model), 0);
   // How many settled papers the change would move if they were checked again. They keep their result unless that is asked for.
   const again = saved ? preview.again : 0;
@@ -519,9 +531,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The papers a model got to and couldn't read: it has read everything else.
   const unreadBy = (reviewer: Reviewer) => reviewer.tally?.failed ?? 0;
   const unreadText = (count: number) => `${num(count)} couldn't be read`;
+  // A new screening's sources are still being read: every count of its papers is of what has been read so far, and says so.
+  const reading = fresh && sources.some((source) => source.read?.state === "waiting" || source.read?.state === "reading");
+  const soFar = reading ? " so far" : "";
+  // The PDFs it was handed, each read once as it was added, which the workspace paid for then.
+  const handedPdfs = fresh ? sources.reduce((sum, source) => sum + (source.set?.kind === "pdf" ? baseTotal(source) : 0), 0) : 0;
   // Why it can't start yet: it needs papers and a reviewer first.
   const stop: Block | null = !papers
-    ? { text: fresh && sources.some((source) => source.read?.state === "waiting" || source.read?.state === "reading") ? "Reading its papers" : "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
+    ? { text: reading ? "Reading its papers" : "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
       : lacking;
@@ -636,6 +653,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       const outside = [...activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).map((one) => ({ one, role: "editor" as const })), ...(draft.viewers ?? []).map((one) => ({ one, role: "viewer" as const }))];
       const sent = await Promise.allSettled(outside.map(({ one, role }) => (one.email ? invite({ kind: "screening", id: jobId, email: one.email, role }) : give({ kind: "screening", id: jobId, personId: one.id as Id<"users">, role }))));
       if (sent.some((one) => one.status === "rejected")) showStyledToast("error", "Some people couldn't be added. Add them again from People.");
+      flushSync(() => setSent(draft));
       keep(key, () => undefined);
       // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
       router.replace(overviewHref(jobId));
@@ -748,7 +766,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const reviewersNow = inOrder(activeReviewers(draft), me);
   // `unset`: a part left empty that the screening can start without. It gets no tick, which would read as done.
   const summary: Array<{ id: string; label: string; value: string; problem: boolean; unset?: boolean; aside?: ReactNode }> = [
-    { id: "papers", label: "Papers", value: papers ? `${plural(papers, "paper", "papers")} from ${plural(draft.sources.length, "source", "sources")}` : "No papers yet", problem: !papers },
+    { id: "papers", label: "Papers", value: papers ? `${upTo}${plural(papers, "paper", "papers")}${soFar} from ${plural(draft.sources.length, "source", "sources")}` : reading ? "Reading its papers" : "No papers yet", problem: !papers },
     { id: "criteria", label: "Criteria", value: draft.criteria.length ? `${plural(draft.criteria.length, "criterion", "criteria")}, ${plural(musts, "must-have", "must-haves")}` : "No criteria", problem: needsCriteria, unset: !draft.criteria.length },
     {
       id: "reviewers",
@@ -807,12 +825,13 @@ export function ScreeningForm({ id }: { id?: string }) {
             aside={
               <>
                 {/* What the sources held, what of that can't be screened, what two of them both held, and what is left. */}
-                <Chip><AnimatedNumber value={found + leftTotal(sources)} /> found</Chip>
+                {reading ? <Chip><Spinner className="size-3" />Still reading</Chip> : null}
+                <Chip><AnimatedNumber value={found + leftTotal(sources)} /> found{soFar}</Chip>
                 {leftTotal(sources) ? <Chip><AnimatedNumber value={leftTotal(sources)} /> left out</Chip> : null}
                 <Chip><AnimatedNumber value={found - papers} /> duplicates merged</Chip>
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved ? (
-                  <LinkChip href={papersHref(saved.id)} tone="primary"><AnimatedNumber value={papers} /> {papers === 1 ? "paper" : "papers"}</LinkChip>
+                  <LinkChip href={papersHref(saved.id)} tone="primary">{upTo}<AnimatedNumber value={papers} /> {papers === 1 ? "paper" : "papers"}</LinkChip>
                 ) : (
                   <Chip className="bg-primary/12 font-medium text-primary"><AnimatedNumber value={papers} /> to screen</Chip>
                 )}
@@ -874,8 +893,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {/* Its counts take the place the chip holds once the lookup or the count is back, so the row keeps its height. */}
                                   {busy ? <Chip key="busy"><Spinner className="size-3" />{busy}</Chip> : (
                                     <>
-                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(heldBy(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
-                                      {source.read?.filed ? <Chip icon={FileText}>{num(source.read.filed)} screened as the PDF</Chip> : null}
+                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : heldBy(source) === null ? "All of it" : `All ${num(heldBy(source)!)}`) : `${num(baseTotal(source))} in the source`}</Chip>
+                                      {source.read?.filed ? <Chip icon={FileText}>{num(source.read.filed)} read as {source.read.filed === 1 ? "its PDF" : "PDFs"}</Chip> : null}
                                       {doubled > 0 && taken(source) ? <Chip>{num(doubled)} already in another source</Chip> : null}
                                       {grew > 0 && own && !gone ? (
                                         <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
@@ -933,13 +952,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
                                       total={baseTotal(source)}
                                       label={`Papers of ${source.name}`}
-                                      summary={<p className="text-xs text-muted-foreground">Every one of its {num(heldBy(source))} papers.</p>}
+                                      summary={<p className="text-xs text-muted-foreground">{heldBy(source) === null ? "Every paper in it and in the collections under it." : `Every one of its ${num(heldBy(source)!)} papers.`}</p>}
                                     />
-                                    {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
+                                    {/* While it is read, the titles hold the room its range promises: nothing arrives under the row once it is open. */}
+                                    {SAMPLED.has(source.kind) && source.set && promised(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={promised(source)} /> : null}
                                     {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}
-                                    {link && taken(source) ? (
+                                    {link && promised(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
-                                        <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">See all {num(taken(source))} {link.where}<ExternalLink aria-hidden className="size-3" /></a>
+                                        <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{busy ? "See it" : `See all ${num(taken(source))}`} {link.where}<ExternalLink aria-hidden className="size-3" /></a>
                                       </p>
                                     ) : null}
                                     {/* A range of a Zotero source is counted in the order its papers were added there, which holds from one read to the next. */}
@@ -993,7 +1013,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       <AutoHeight>
                       <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
                         {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
-                        {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? "Nothing by that name." : kind === "screening" ? "No other screening has included a paper yet." : kind === "search" ? "No saved searches yet." : "Nothing here yet."}</p> : null}
+                        {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? "Nothing by that name." : kind === "screening" ? (here?.kind === "personal" ? "None of your own screenings has included a paper yet." : `No screening in ${workspace.name} has included a paper yet.`) : kind === "search" ? "No saved searches yet." : "Nothing here yet."}</p> : null}
                       </div>
                       </AutoHeight>
                       {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel="sources" steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length }} /> : null}
@@ -1224,6 +1244,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                               <>
                                 {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{MODELS_SAY.paused.row}</StateChip> : null}
                                 <Chip icon={Coins}>{perPaper(reviewer.model)}</Chip>
+                                {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
+                                {pdfs.papers && !readsFiles(reviewer.model) ? <StateChip tone="warning" icon={FileText}>Can&apos;t read PDFs: {plural(pdfs.papers, "paper gets", "papers get")} no vote from it</StateChip> : null}
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{credits(due(reviewer))} credits for {plural(left, "paper", "papers")}</Chip>
                                 ) : null}
@@ -1423,8 +1445,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </JumpLink>
                 ))}
                 {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{plural(pdfs.papers, "paper is", "papers are")} read as {pdfs.papers === 1 ? "its PDF" : "their PDFs"}, {plural(pdfs.pages, "page", "pages")} in all.</span></p> : null}
+                {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">First reading of {plural(handedPdfs, "PDF", "PDFs")}, paid as {handedPdfs === 1 ? "it was" : "they were"} added</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">About {credits(handedPdfs * lookCredits)} credits</span></div> : null}
                 {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? `Answering the new ${draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length === 1 ? "criterion" : "criteria"} on papers already read` : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
-                <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Total, at most" : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
+                <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? (handedPdfs && lookCredits ? `Still to pay${soFar}, at most` : `Total${soFar}, at most`) : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>
                   <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-warning" : "bg-primary"} />
                 </div>
@@ -1451,8 +1474,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         <ActionBar>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 max-lg:pe-[5.5rem]">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-0.5">
-              <span className="text-sm"><span className="text-lg font-semibold tabular-nums"><AnimatedNumber value={papers} /></span> <span className="text-muted-foreground">{papers === 1 ? "paper" : "papers"} to screen</span></span>
-              <span className="text-sm">{models.length ? <><span className="text-muted-foreground">Total, at most</span> <span className="font-semibold tabular-nums">{credits(cost)} credits</span></> : <span className="text-muted-foreground">People only, no credits</span>}</span>
+              <span className="text-sm"><span className="text-lg font-semibold tabular-nums"><AnimatedNumber value={papers} /></span> <span className="text-muted-foreground">{papers === 1 ? "paper" : "papers"} to screen{soFar}</span></span>
+              <span className="text-sm">{models.length ? <><span className="text-muted-foreground">{handedPdfs && lookCredits ? "Still to pay" : "Total"}{soFar}, at most</span> <span className="font-semibold tabular-nums">{credits(cost)} credits</span></> : <span className="text-muted-foreground">{handedPdfs && lookCredits ? "People only, nothing more to pay" : "People only, no credits"}</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
               {stop ? <Blocker block={stop} /> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
@@ -1497,7 +1520,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             icon={ListChecks}
             title="New screening"
             trail={[SCREENINGS_CRUMB]}
-            titleAside={<Help title="Screening" side="bottom" facts={<><HelpFact>Title and abstract only</HelpFact><HelpFact>People and AI models</HelpFact></>}>Your reviewers vote include, maybe or exclude on each paper&apos;s title and abstract. A rule you choose turns the votes into a result, and a paper the votes split on goes to one person.</Help>}
+            titleAside={<Help title="Screening" side="bottom" facts={<><HelpFact>Title and abstract, or the paper&apos;s PDF</HelpFact><HelpFact>People and AI models</HelpFact></>}>Your reviewers vote include, maybe or exclude on each paper&apos;s title and abstract. A paper that has no abstract and came with its PDF is voted on from the PDF. A rule you choose turns the votes into a result, and a paper the votes split on goes to one person.</Help>}
           >
             {body}
           </LibraryPageShell>
@@ -1639,8 +1662,9 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
       <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => (
           <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
-            <p className="min-w-0 flex-1 truncate text-sm max-sm:basis-full">{row.name}</p>
-            <StateChip tone="warning" icon={FileX}>{LEFT_WHY[row.why]}</StateChip>
+            {/* A title is read in full here: this list is where someone finds out what was left out. */}
+            <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
+            <StateChip tone="warning" icon={FileX} className="shrink-0 self-start">{LEFT_WHY[row.why]}</StateChip>
           </li>
         ))}
       </ul>

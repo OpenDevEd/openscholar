@@ -13,7 +13,7 @@ import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
 import { localPath } from "../lib/env";
-import { ZOTERO_ABSTRACT_MAX, ZOTERO_LIST_PAGE, ZOTERO_NAME_MAX, ZOTERO_PAGE, ZOTERO_TITLE_MAX, checkZoteroIds } from "./libraryValidators";
+import { ZOTERO_ABSTRACT_MAX, ZOTERO_LIST_PAGE, ZOTERO_NAME_MAX, ZOTERO_PAGE, ZOTERO_PDFS_A_CALL, ZOTERO_TITLE_MAX, checkZoteroIds } from "./libraryValidators";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
 import { PDFDocument } from "@cantoo/pdf-lib";
@@ -426,8 +426,7 @@ async function zoteroAccess(ctx: ActionCtx, userId: Id<"users">, groupId?: strin
   return { apiKey, connection, prefix: groupId ? `/groups/${groupId}` : `/users/${connection.zoteroUserId}` };
 }
 
-/** Items whose PDFs one call fetches for a screening, and how many at a time, as Zotero asks. */
-const PDFS_A_CALL = 100;
+/** PDFs fetched at a time, as Zotero asks. */
 const PDFS_AT_ONCE = 4;
 
 /**
@@ -442,7 +441,8 @@ export const pdfsOf = internalAction({
   handler: async (ctx, { userId, groupId, itemKeys }): Promise<Array<{ key: string; file: Id<"_storage">; pages: number }>> => {
     const { apiKey, connection } = await zoteroAccess(ctx, userId, groupId);
     const kept: Array<{ key: string; file: Id<"_storage">; pages: number }> = [];
-    const keys = itemKeys.slice(0, PDFS_A_CALL);
+    if (itemKeys.length > ZOTERO_PDFS_A_CALL) throw createError("VALIDATION_ERROR", `Fetch the PDFs of up to ${ZOTERO_PDFS_A_CALL} items at a time.`);
+    const keys = itemKeys;
     for (let at = 0; at < keys.length; at += PDFS_AT_ONCE) {
       const read = await Promise.all(keys.slice(at, at + PDFS_AT_ONCE).map(async (key) => {
         checkZoteroIds({ groupId, itemKey: key });

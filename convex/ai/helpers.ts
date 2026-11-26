@@ -55,6 +55,9 @@ function isApiKeyMissingMessage(message: string): boolean {
   );
 }
 
+/** Whether a call paid for with credits (`withUserCredits`) failed because the credits ran out. */
+export const outOfCredits = (error: unknown) => error instanceof Error && (error.message.includes("AI_INSUFFICIENT_CREDITS") || (error as { data?: { code?: string } }).data?.code === "AI_INSUFFICIENT_CREDITS");
+
 function throwStructuredAIError(error: unknown): never {
   // Normalize bare INSUFFICIENT_CREDITS from deductCredits into the AI-prefixed
   // code so the entire upstream chain (hook fallback, screening catch, toast system)

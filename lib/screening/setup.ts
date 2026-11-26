@@ -8,13 +8,12 @@ export type JobRow = FunctionReturnType<typeof api.screening.queries.listUserScr
 export type Paper = FunctionReturnType<typeof api.screening.papers.list>["page"][number];
 export type PaperSet = NonNullable<Job["set"]>;
 export type Outcome = Paper["outcome"];
-export type Answer = "yes" | "no" | "unclear";
+export { ANSWERS, answerOf, type Answer } from "./rules";
+import type { Answer } from "./rules";
 /** A question with the points each answer gives. `key` only tells the form's rows apart. A required one includes no paper it isn't answered yes. */
 export type Question = { key: string; text: string; yes: number; no: number; unclear: number; required?: boolean };
 
 export const OUTCOMES: Outcome[] = ["included", "unclear", "excluded", "failed"];
-export const ANSWERS: Answer[] = ["yes", "no", "unclear"];
-export const answerOf = (value: boolean | null): Answer => (value === true ? "yes" : value === false ? "no" : "unclear");
 export const valueOf = (answer: Answer) => (answer === "yes" ? true : answer === "no" ? false : null);
 
 /** Highest score a paper can get; a required question's No and Unclear count for nothing. */

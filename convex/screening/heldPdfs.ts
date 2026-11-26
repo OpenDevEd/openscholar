@@ -13,11 +13,11 @@ import { z } from "zod";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { executeAIOperation } from "../../lib/ai/core/execute";
-import { MAX_PDF_BYTES, PDF_PAGE_TOKENS } from "../../lib/assistant/files";
+import { MAX_PDF_BYTES } from "../../lib/assistant/files";
 import { normalDoi } from "../../lib/papers/paper-ref";
-import { estimateCredits } from "../../lib/pricing";
+import { PDF_LOOK_PAGES, pdfLookCredits } from "../../lib/pricing/estimate";
 import { sameTitle } from "../../lib/screening/files";
-import { withUserCredits } from "../ai/helpers";
+import { outOfCredits, withUserCredits } from "../ai/helpers";
 import { openRouterModel } from "../ai/provider";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { spender } from "../paperSets/search";
@@ -26,10 +26,6 @@ import { pdfReadValidator } from "./validators";
 
 type Read = typeof pdfReadValidator.type;
 
-/** The pages a paper prints its title, its authors and its DOI on. */
-const FIRST_PAGES = 2;
-/** What one reading of those pages takes at most, for its estimate. */
-const READ_TOKENS = { input: FIRST_PAGES * PDF_PAGE_TOKENS + 500, output: 400 };
 const TITLE_MAX = 500;
 
 const printed = z.object({
@@ -39,7 +35,6 @@ const printed = z.object({
   doi: z.string().nullable().describe("The document's own DOI, as printed on these pages. Never the DOI of a work it cites. Null if these pages print none."),
 });
 
-const outOfCredits = (error: unknown) => error instanceof Error && (error.message.includes("AI_INSUFFICIENT_CREDITS") || (error as { data?: { code?: string } }).data?.code === "AI_INSUFFICIENT_CREDITS");
 
 export const look = internalAction({
   args: { fileId: v.id("screeningFiles") },
@@ -56,7 +51,7 @@ export const look = internalAction({
       pages = whole.getPageCount();
       if (!pages) return { state: "broken" };
       const part = await PDFDocument.create();
-      for (const page of await part.copyPages(whole, Array.from({ length: Math.min(pages, FIRST_PAGES) }, (_, i) => i))) part.addPage(page);
+      for (const page of await part.copyPages(whole, Array.from({ length: Math.min(pages, PDF_LOOK_PAGES) }, (_, i) => i))) part.addPage(page);
       firstPages = await part.save();
     } catch (error) {
       // Damaged, password-protected, or not a PDF at all: what the assistant refuses too.
@@ -72,7 +67,7 @@ export const look = internalAction({
     try {
       ({ result: read } = await withUserCredits<z.infer<typeof printed>>(
         ctx,
-        { userId: held.userId, workspaceId: held.workspaceId, chargeId: `screening-pdf:${held.file}:${crypto.randomUUID()}`, estimate: estimateCredits(pricing, READ_TOKENS), hold: false, balance: who.balance, clerkId: who.clerkId, kind: "screening", description: "Reading a PDF for a screening", model: model.slug },
+        { userId: held.userId, workspaceId: held.workspaceId, chargeId: `screening-pdf:${held.file}:${crypto.randomUUID()}`, estimate: pdfLookCredits(pricing), hold: false, balance: who.balance, clerkId: who.clerkId, kind: "screening", description: "Reading a PDF for a screening", model: model.slug },
         pricing,
         async () => {
           const { output, usage } = await executeAIOperation({
@@ -106,7 +101,8 @@ export const look = internalAction({
       ...(read.authors.length ? { authors: read.authors.slice(0, MAX_AUTHORS).map((name) => name.slice(0, 300)) } : {}),
       ...(read.year ? { year: read.year } : {}),
       // A DOI nothing confirms is not kept: the paper would be merged with whatever else carries it.
-      ...(known ? { doi, known } : {}),
+      // The index's paper with no abstract is still read as this file.
+      ...(known ? { doi, known, ...(found.abstract?.trim() ? {} : { bare: true }) } : {}),
     };
   },
 });

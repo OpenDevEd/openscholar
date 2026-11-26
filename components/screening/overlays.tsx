@@ -25,7 +25,7 @@ import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { newHref, settingsHref } from "./links";
 import { Panel, ReviewerMark, OpenPapersChips } from "./pieces";
-import { credits, paperCredits, type Open, perPaper } from "./store";
+import { credits, readingOf, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 
 export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete" | "leave";
@@ -198,7 +198,7 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
             <EffectList lines={effectLines(screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor) })} />
           )}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
-          {reviewer.model && open.wallet !== undefined ? <Credits model={reviewer.model} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
+          {reviewer.model && open.wallet !== undefined ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
         </>
       ) : null}
     </ConfirmChange>
@@ -238,10 +238,9 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
 }
 
 /** What the workspace has to pay a model with: where that runs out before the model has read every paper, how far it gets. */
-function Credits({ model, papers, wallet, onAddCredits }: { model: MapModel; papers: number; wallet: number; onAddCredits: () => void }) {
-  const each = paperCredits(model);
-  if (each * papers <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{credits(wallet)} credits in the workspace now</p>;
-  const paid = Math.floor(wallet / each);
+function Credits({ cost, papers, wallet, onAddCredits }: { /** What reading those papers costs the model at most. */ cost: number; papers: number; wallet: number; onAddCredits: () => void }) {
+  if (cost <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{credits(wallet)} credits in the workspace now</p>;
+  const paid = Math.floor((papers * wallet) / cost);
   return (
     <Panel tone="warning" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl p-3">
       <Coins className="mt-0.5 size-4 shrink-0 self-start ink-warning" />
