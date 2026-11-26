@@ -187,7 +187,7 @@
     "question": "Question",
     "response": "Réponse",
     "generate": "Générer",
-    "screen": "Filtrer",
+    "screen": "Cribler",
     "redirecting": "Redirection...",
     "planUpdated": "Abonnement mis à jour",
     "openBillingPortal": "Ouvrir le portail de facturation",
@@ -5071,6 +5071,7 @@
         "chat": "{name} a partagé une discussion"
       },
       "pointOwn": "Elle se trouve dans votre propre espace de travail",
+      "pointOwnScreening": "Vous l'ouvrez depuis votre propre espace de travail. C'est le criblage sur lequel les autres votent aussi, pas une copie",
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",
       "open": "Ouvrir",
       "openFailed": "Impossible de l'ouvrir",
@@ -8105,7 +8106,7 @@
       "again": "{name}, à nouveau",
       "inLibrary": "Dans {name}",
       "loading": "Chargement du formulaire",
-      "onlyMembers": "Seuls les membres de {workspace} peuvent modifier ces paramètres",
+      "onlyMembers": "{personal, select, true {Ces paramètres ne peuvent être modifiés que par {workspace}} other {Seuls les membres de {workspace} peuvent modifier ces paramètres}}",
       "goToOverview": "Aller à la Vue d'ensemble",
       "thisWorkspace": "cet espace de travail",
       "share": {
@@ -8212,7 +8213,7 @@
         "removedOnSave": "Retiré à l'enregistrement",
         "atStart": "{count, plural, other {# au départ}}",
         "allOfIt": "Tout",
-        "all": "{count, plural, other {Tous (#)}}",
+        "all": "{count, plural, one {Sa notice (#)} other {Toutes les notices (#)}}",
         "inSource": "{count, plural, other {# dans la source}}",
         "readAsPdf": "{count, plural, one {# lu depuis son PDF} other {# lus depuis leur PDF}}",
         "duplicates": "{count, plural, one {# doublon fusionné} other {# doublons fusionnés}}",
@@ -8237,6 +8238,11 @@
         "nothingHere": "Rien ici pour l'instant.",
         "pagerSources": "sources",
         "pagerLeftOut": "écartés",
+        "pagerMerged": "doublons",
+        "mergedFrom": "Même article qu'un article de {source}",
+        "mergedSame": "Présent plus d'une fois dans cette source",
+        "mergedElsewhere": "une autre source",
+        "mergedGone": "L'article auquel il correspondait a quitté le criblage",
         "firstPapers": "Les premiers articles de cette plage",
         "titleYear": "{title} ({year})",
         "andMore": "{count, plural, one {et # autre} other {et # autres}}"
@@ -8318,6 +8324,7 @@
         "allRead": "Tout est lu",
         "none": "Pas encore d'évaluateurs",
         "addPerson": "Ajouter une personne",
+        "guestsLeft": "{count, plural, one {{names} vote comme invité sur le criblage copié, mais pas sur celui-ci. Partagez-le avec cette personne une fois qu'il aura démarré.} other {{names} votent comme invités sur le criblage copié, mais pas sur celui-ci. Partagez-le avec ces personnes une fois qu'il aura démarré.}}",
         "addModel": "Ajouter un modèle"
       },
       "decided": {
@@ -8460,6 +8467,7 @@
         "hiddenMine": "Votes masqués dans votre liste À faire",
         "hiddenTheirs": "Votes masqués dans la liste À faire des évaluateurs",
         "visible": "Votes visibles par tous",
+        "visibleFinished": "Votes visibles maintenant qu'il est terminé",
         "conflictsGoTo": "Désaccords confiés à {who}",
         "checks": "{every, select, day {Cherche de nouveaux articles chaque jour} week {Cherche de nouveaux articles chaque semaine} other {Cherche de nouveaux articles chaque mois}}",
         "chips": "Chaque article reçoit les votes nommés dans ces pastilles, et il est tranché une fois qu'ils sont tous là.",
@@ -8471,12 +8479,13 @@
         "member": "{finished, select, true {Vous voyez chaque article et chaque vote. Vous ne faites pas partie de ses évaluateurs, vous ne recevez donc aucun article sur lequel voter.} other {Vous voyez chaque article et chaque vote. Vous ne faites pas partie de ses évaluateurs, vous ne recevez donc aucun article sur lequel voter. Rejoignez-le comme évaluateur pour en recevoir.}}",
         "viewer": "{workspace} l'a partagé avec vous. Vous voyez chaque article et chaque vote, et vous ne recevez aucun article sur lequel voter.",
         "guest": "Invité",
-        "guestSays": "{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Seuls les membres de {workspace} modifient ses paramètres."
+        "guestSays": "{personal, select, true {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Ses paramètres ne sont modifiés que par {workspace}.} other {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Seuls les membres de {workspace} modifient ses paramètres.}}"
       },
       "banner": {
         "checked": "{done, number} sur {of, plural, one {# source vérifiée} other {# sources vérifiées}}",
         "arrived": "<link>{count, plural, one {# nouvel article} other {# nouveaux articles}}</link> {count, plural, one {arrivé} other {arrivés}} {ago}",
         "screenNew": "Criblez d'abord {count, plural, one {votre nouvel article} other {vos # nouveaux articles}}",
+        "arrivedForYou": "{count, plural, one {# nouvel article pour vous arrivé {ago}} other {# nouveaux articles pour vous arrivés {ago}}}",
         "nothing": "La dernière vérification n'a trouvé aucun nouvel article",
         "counting": "<done></done> sur {of, number}",
         "modelPrice": "{name}, {price}",
@@ -8500,7 +8509,7 @@
         "emailsOff": "Ce criblage ne vous enverra plus d'e-mails",
         "emailsOn": "Ce criblage vous envoie de nouveau des e-mails",
         "stopEmails": "Ne plus m'envoyer ses e-mails",
-        "emailAgain": "M'envoyer de nouveau ses e-mails",
+        "emailAgain": "Ses e-mails ne me sont plus envoyés : les réactiver",
         "pauseModels": "Mettre les modèles en pause",
         "duplicate": "Dupliquer en un nouveau criblage",
         "move": "Déplacer vers un autre espace de travail",
@@ -8517,6 +8526,8 @@
       "finish": {
         "title": "Marquer ce criblage comme terminé ?",
         "unsettled": "{count, plural, one {# article n'est pas tranché et reste tel quel} other {# articles ne sont pas tranchés et restent tels quels}}",
+        "votingStops": "Personne ne peut voter dessus tant qu'il n'est pas rouvert",
+        "votesShow": "Les votes qui étaient masqués aux évaluateurs deviennent visibles par toutes les personnes du criblage",
         "modelsStop": "Les modèles cessent de lire",
         "checksStop": "Il ne cherche plus de nouveaux articles",
         "movesToFinished": "Il passe dans Terminés dans la liste, et peut être rouvert ou modifié à tout moment"
@@ -8572,7 +8583,7 @@
         "modelToo": "{you, select, true {Un modèle est aussi un évaluateur : il lit chaque article ouvert et vote, payé sur vos crédits.} other {Un modèle est aussi un évaluateur : il lit chaque article ouvert et vote, payé sur les crédits de {workspace}.}}",
         "close": "Fermer",
         "addAs": "Ajouter des personnes comme",
-        "finishedAdds": "Terminé : les personnes ajoutées maintenant peuvent le consulter. Rouvrez-le pour ajouter des évaluateurs",
+        "finishedAdds": "Ce criblage est terminé : les personnes ajoutées maintenant peuvent le consulter. Rouvrez-le pour ajouter des évaluateurs.",
         "addModel": "Ajouter un modèle",
         "membersAdd": "Les membres de {workspace} ajoutent des personnes et changent ce que chacune peut faire.",
         "full": "Le forfait de {workspace} permet de partager un criblage avec {count, plural, one {# personne extérieure} other {# personnes extérieures}}. Retirez-en une pour en ajouter une autre.",
@@ -8747,6 +8758,7 @@
         "people": "Personnes",
         "models": "Modèles",
         "takenOff": "Retirés",
+        "invited": "Invités",
         "thrownOut": "Votes annulés",
         "stillCount": "{count, plural, one {# vote compte encore} other {# votes comptent encore}}",
         "castNone": "Aucun vote émis",
@@ -8840,7 +8852,7 @@
         "change": "Modifier",
         "choose": "Choisir une collection",
         "aCollection": "Une collection",
-        "nowhereYet": "Nulle part pour l'instant",
+        "nowhereYet": "Conservés dans ce criblage",
         "count": "<num>{count, number}</num> {saved, select, true {enregistrés jusqu'ici} other {inclus}}"
       },
       "credits": {
@@ -9029,7 +9041,8 @@
       "why": {
         "nobodyCanVote": "Aucun évaluateur ne peut encore voter dessus",
         "waitingOnYou": "Vous attend",
-        "waitingOn": "Attend"
+        "waitingOn": "Attend",
+        "noVoteFrom": "Pas de vote de"
       },
       "pointsOf": "{points, number} sur {max, plural, one {# point} other {# points}}",
       "note": {
@@ -9288,7 +9301,7 @@
       "note": {
         "label": "Remarque",
         "settling": "Pourquoi, pour mémoire (facultatif)",
-        "voting": "Une remarque pour les autres, enregistrée avec votre vote"
+        "voting": "Une remarque pour les autres, enregistrée avec votre vote. Une question pour l'un d'eux va dans Discussion, plus bas"
       },
       "settle": {
         "title": "Trancher ce désaccord",
@@ -9331,7 +9344,8 @@
         "help": "Le modèle note chacune de ses réponses de 0 à 100 %. Sous 65 %, lisez le résumé avant de vous fier à cette réponse.",
         "unsure": "Peu sûr : {sure, number, percent}",
         "sure": "Sûr à {sure, number, percent}",
-        "noSentence": "Il n'a cité aucune phrase du résumé pour cette réponse."
+        "noSentence": "Il n'a cité aucune phrase du résumé pour cette réponse.",
+        "noSentencePdf": "Il a lu cet article depuis son PDF. Un modèle ne cite une phrase que lorsqu'il lit un résumé."
       }
     },
     "sources": {
@@ -9384,7 +9398,7 @@
         "pdfLimit": "PDF jusqu'à {mb, number} Mo chacun",
         "aboutFiles": "Un fichier de références est ce qu'exporte une base de données ou un gestionnaire de références. Chacune de ses notices qui a un titre et un résumé est un article.",
         "aboutPdfs": "Un PDF est lu dès qu'il est ajouté, pour son titre et son DOI. Si l'index d'Openscholar contient ce DOI, l'article s'affiche avec le titre et le résumé de l'index. Sinon, l'article est le PDF : une personne qui le crible lit le fichier, et chaque évaluateur IA aussi, en entier. Un document scanné est lu de la même façon. Un fichier qui ne s'ouvre pas est écarté.",
-        "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV et PDF, autant que vous voulez à la fois",
+        "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF ou un fichier texte de DOI, autant que vous voulez à la fois",
         "pdfCost": "Un modèle lit les premières pages de chaque PDF pour trouver son titre et son DOI : jusqu'à {credits} crédits par PDF, payés à l'ajout",
         "filesLabel": "Fichiers à importer",
         "choose": "Choisir des fichiers",
@@ -9586,6 +9600,7 @@
         "failed": "Le modèle n'a pas pu lire l'article"
       },
       "hiddenUntilVote": "Masqué jusqu'à votre vote",
+      "hiddenWhileToDo": "Masqué tant que des articles attendent votre vote",
       "votesHiddenSays": "Ce criblage masque les autres votes à un évaluateur uniquement sur les articles qui attendent encore son propre vote.",
       "ago": {
         "now": "à l'instant",

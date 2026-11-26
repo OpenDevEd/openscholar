@@ -5071,6 +5071,7 @@
         "chat": "{name} がチャットを共有しました"
       },
       "pointOwn": "あなた自身のワークスペースに表示されます",
+      "pointOwnScreening": "あなた自身のワークスペースから開きます。コピーではなく、ほかの人も投票するスクリーニングそのものです",
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",
       "open": "開く",
       "openFailed": "開けませんでした",
@@ -7840,7 +7841,7 @@
         "every": "今後、{every, select, day {毎日} week {毎週} other {毎月}}新しい論文を確認します"
       },
       "sources": {
-        "promised": "最大で{count, plural, other {新しい論文 # 件}}がスクリーニングに加わり、レビュアーに割り当てられます。ほかの取得元にすでにある論文や要約のない論文があれば、それより少なくなります{pdfs, select, true {。PDF から読み取る論文はモデルの費用が高くなります} other {}}",
+        "promised": "最大で{count, plural, other {新しい論文 # 件}}がスクリーニングに加わり、レビュアーに割り当てられます。ほかの取得元にすでにある論文や要約のない論文があれば、それより少なくなります{pdfs, select, true {。PDF として加わる論文はモデルの費用がページ数で決まるため、費用はスクリーニングが読み取った後に表示されます} other {}}",
         "removed": "{count, plural, other {論文 # 件がスクリーニングから外れます。投票は記録に残ります}}"
       },
       "collection": {
@@ -7962,7 +7963,7 @@
       "votes": {
         "title": "{voters, plural, other {レビュアー # 人}}による{votes, plural, other {# 票}}",
         "help": "各論文の各レビュアーにつき 1 行です。投票と理由、メモ、各基準への回答、論文の現在の状態が入ります。まだ投票していないレビュアーや、論文を読み取れなかったモデルにも行があります。",
-        "leftOut": "あなたがまだ投票していない{count, plural, other {論文 # 件}}へのほかの人の投票は、あなたの投票に影響しないよう除いています。",
+        "leftOut": "あなたがまだ投票していない{count, plural, other {論文 # 件}}へのほかの人の投票は、あなたの投票に影響しないようすべて除いています。",
         "whose": "誰の投票か",
         "everyone": "全員",
         "oneReviewer": "1 人のレビュアー",
@@ -8105,7 +8106,7 @@
       "again": "{name}（再）",
       "inLibrary": "{name} 内",
       "loading": "フォームを読み込み中",
-      "onlyMembers": "これらの設定を変更できるのは {workspace} のメンバーだけです",
+      "onlyMembers": "{personal, select, true {これらの設定を変更できるのは {workspace} だけです} other {これらの設定を変更できるのは {workspace} のメンバーだけです}}",
       "goToOverview": "概要へ",
       "thisWorkspace": "このワークスペース",
       "share": {
@@ -8207,14 +8208,16 @@
         "toScreen": "スクリーニング対象 <n></n> 件",
         "readingIt": "読み取り中",
         "leftOutCount": "{count, plural, other {# 件を除外}}",
-        "grew": "{doubled, plural, =0 {{count, plural, other {開始後に # 件増加}}} other {{count, plural, other {開始後に # 件増加}}、うち # 件はほかの取得元にあります}}",
+        "grew": "{doubled, plural, =0 {{count, plural, other {開始後に # 件増加}}} other {{count, plural, other {開始後に # 件増加}}、重複 # 件をまとめました}}",
         "newTab": "（新しいタブで開きます）",
         "removedOnSave": "保存すると削除されます",
         "atStart": "{count, plural, other {開始時 # 件}}",
         "allOfIt": "すべて",
-        "all": "{count, plural, other {# 件すべて}}",
+        "all": "{count, plural, =1 {レコード # 件} other {レコード # 件すべて}}",
         "inSource": "{count, plural, other {取得元に # 件}}",
         "readAsPdf": "{count, plural, other {# 件を PDF から読み取り}}",
+        "duplicates": "{count, plural, other {重複 # 件をまとめました}}",
+        "rangeHeld": "論文 {first}〜{last} はすでにこのスクリーニングに入っており、そのまま残ります。そのため範囲は広げることしかできません。取り除くには取得元を削除してください。",
         "checkedEvery": "{every, select, day {毎日確認} week {毎週確認} other {毎月確認}}",
         "couldntBeRead": "読み取れませんでした",
         "keep": "残す",
@@ -8235,6 +8238,11 @@
         "nothingHere": "まだ何もありません。",
         "pagerSources": "件",
         "pagerLeftOut": "件",
+        "pagerMerged": "件",
+        "mergedFrom": "{source} の論文と同じ論文",
+        "mergedSame": "この取得元に複数回含まれています",
+        "mergedElsewhere": "別の取得元",
+        "mergedGone": "一致した論文はスクリーニングから外れました",
         "firstPapers": "この範囲の最初の論文",
         "titleYear": "{title}（{year}）",
         "andMore": "{count, plural, other {ほか # 件}}"
@@ -8260,7 +8268,7 @@
         "helpTitle": "必須基準と望ましい基準",
         "factPeople": "人は直接投票します",
         "factModels": "モデルの投票は回答で決まります",
-        "help": "各基準は、はい・いいえで答える質問として書きます。モデルは各基準に「はい」「いいえ」「不明」で答えます。必須基準に「いいえ」があればその投票は除外に、「不明」があれば保留になります。望ましい基準で論文が除外されることはありません。質問の下の目安には、何が該当するかを書きます。レビュアーはスクリーニング画面で質問の下の「目安」から開き、モデルは質問と一緒に読みます。基準にマークする語は、人が投票する間、各要約でマークされて表示されます。",
+        "help": "各基準は、はい・いいえで答える質問として書きます。モデルは各基準に「はい」「いいえ」「不明」で答えます。必須基準に「いいえ」があればその投票は除外に、「不明」があれば保留になります。望ましい基準でモデルが除外に投票することはありません。人はそれを除外の理由にできます。質問の下の目安には、何が該当するかを書きます。レビュアーはスクリーニング画面で質問の下の「目安」から開き、モデルは質問と一緒に読みます。基準にマークする語は、人が投票する間、各要約でマークされて表示されます。",
         "import": "{searches, plural, other {{count, plural, other {検索から質問 # 件を追加}}}}",
         "copyFrom": "スクリーニングからコピー",
         "copyAdds": "その基準を点数ごと、ここにある基準に追加します",
@@ -8316,6 +8324,7 @@
         "allRead": "すべて読み取り済み",
         "none": "レビュアーはまだいません",
         "addPerson": "人を追加",
+        "guestsLeft": "{count, plural, other {{names} は複製元のスクリーニングにゲストとして投票していますが、このスクリーニングには参加していません。開始したら共有してください。}}",
         "addModel": "モデルを追加"
       },
       "decided": {
@@ -8382,6 +8391,7 @@
         "credits": "{credits} クレジット",
         "noPapers": "論文はまだありません",
         "pdfsRead": "{count, plural, other {論文 # 件を PDF から読み取ります}}。計{pages, plural, other {# ページ}}{capped, select, true {です。このクレジットのうち最大 {credits} です。} other {です。}}",
+        "pdfsUnpriced": "PDF として加わる新しい論文は、ページ数に応じてここでの計算より高くなります。費用はスクリーニングが新しい取得元を読み取った後に表示されます。",
         "firstReading": "{count, plural, other {PDF # 件の初回の読み取り。追加時に支払い済み}}",
         "upTo": "最大 {credits} クレジット",
         "answering": "{count, plural, other {読み取り済みの論文で新しい基準に回答}}",
@@ -8457,6 +8467,7 @@
         "hiddenMine": "未投票の論文では投票を非表示",
         "hiddenTheirs": "レビュアーの未投票の論文では投票を非表示",
         "visible": "投票は全員に表示",
+        "visibleFinished": "完了したため投票を表示",
         "conflictsGoTo": "不一致は {who} へ",
         "checks": "{every, select, day {毎日新しい論文を確認} week {毎週新しい論文を確認} other {毎月新しい論文を確認}}",
         "chips": "各論文には、これらのチップにある投票が集まり、揃った時点で結果が確定します。",
@@ -8468,12 +8479,13 @@
         "member": "{finished, select, true {すべての論文とすべての投票を見られます。あなたはレビュアーではないため、投票する論文は割り当てられません。} other {すべての論文とすべての投票を見られます。あなたはレビュアーではないため、投票する論文は割り当てられません。割り当てを受けるには、レビュアーとして参加してください。}}",
         "viewer": "{workspace} があなたと共有しました。すべての論文とすべての投票を見られますが、投票する論文は割り当てられません。",
         "guest": "ゲスト",
-        "guestSays": "{workspace} があなたと共有しました。割り当てられた論文に投票できます。設定を変更できるのは {workspace} のメンバーだけです。"
+        "guestSays": "{personal, select, true {{workspace} があなたと共有しました。割り当てられた論文に投票できます。設定を変更できるのは {workspace} だけです。} other {{workspace} があなたと共有しました。割り当てられた論文に投票できます。設定を変更できるのは {workspace} のメンバーだけです。}}"
       },
       "banner": {
         "checked": "{of, plural, other {取得元 # 件}}中 {done, number} 件を確認済み",
         "arrived": "{ago}に<link>{count, plural, other {新しい論文 # 件}}</link>が届きました",
         "screenNew": "まず{count, plural, other {新しい論文 # 件}}をスクリーニングしてください",
+        "arrivedForYou": "{count, plural, other {{ago}に、あなたに割り当てられた新しい論文 # 件が届きました}}",
         "nothing": "前回の確認では新しい論文はありませんでした",
         "counting": "{of, number} 件中 <done></done> 件",
         "modelPrice": "{name}、{price}",
@@ -8497,7 +8509,7 @@
         "emailsOff": "このスクリーニングからのメールは届かなくなります",
         "emailsOn": "このスクリーニングからのメールが再び届きます",
         "stopEmails": "このスクリーニングのメールを停止",
-        "emailAgain": "このスクリーニングのメールを再び受け取る",
+        "emailAgain": "このスクリーニングのメールは停止中: オンにする",
         "pauseModels": "モデルを一時停止",
         "duplicate": "新しいスクリーニングとして複製",
         "move": "別のワークスペースに移動",
@@ -8514,6 +8526,8 @@
       "finish": {
         "title": "このスクリーニングを完了にしますか？",
         "unsettled": "{count, plural, other {結果が確定していない論文 # 件は、そのまま残ります}}",
+        "votingStops": "再開するまで誰も投票できません",
+        "votesShow": "レビュアーに非表示だった投票が、このスクリーニングの全員に表示されます",
         "modelsStop": "モデルは読み取りを止めます",
         "checksStop": "新しい論文の確認を止めます",
         "movesToFinished": "一覧の「完了」に移ります。いつでも再開や変更ができます"
@@ -8522,7 +8536,8 @@
         "title": "{name} を削除しますか？",
         "goes": "投票と設定も一緒に削除されます",
         "saved": "{count, plural, other {{collection} に保存した論文 # 件はそのまま残ります}}",
-        "final": "元に戻せません"
+        "final": "元に戻せません",
+        "shut": "このスクリーニングを削除できるのは、{name} またはこのワークスペースの管理者だけです。"
       },
       "leave": {
         "title": "このスクリーニングから退出しますか？",
@@ -8568,6 +8583,7 @@
         "modelToo": "{you, select, true {モデルもレビュアーです。未確定の論文をすべて読んで投票し、費用はあなたのクレジットから支払われます。} other {モデルもレビュアーです。未確定の論文をすべて読んで投票し、費用は {workspace} のクレジットから支払われます。}}",
         "close": "閉じる",
         "addAs": "追加する役割",
+        "finishedAdds": "このスクリーニングは完了しています。今追加した人は閲覧できます。レビュアーを追加するには再開してください。",
         "addModel": "モデルを追加",
         "membersAdd": "人の追加と、それぞれができることの変更は {workspace} のメンバーが行います。",
         "full": "{workspace} のプランでは、スクリーニングを外部の{count, plural, other {# 人}}と共有できます。別の人を追加するには、誰かを外してください。",
@@ -8607,7 +8623,7 @@
       "whichScreenings": "表示するスクリーニング",
       "firstUse": {
         "title": "レビューに含める論文を決めましょう",
-        "text": "検索、コレクション、手元のファイルから論文を集め、基準を設定してスクリーニングします。自分の手で、チームで、追加のレビュアーとして AI モデルを使って、またはそのすべてを組み合わせて行えます。"
+        "text": "検索、コレクション、手元のファイルから論文を集め、基準を設定してスクリーニングします。自分で、同僚と、AI モデルで、またはそれらを組み合わせて行えます。"
       },
       "legend": {
         "label": "バーの色の意味",
@@ -8742,6 +8758,7 @@
         "people": "人",
         "models": "モデル",
         "takenOff": "外されました",
+        "invited": "招待中",
         "thrownOut": "投票は無効",
         "stillCount": "{count, plural, other {# 票は引き続き数えられます}}",
         "castNone": "投票なし",
@@ -8835,7 +8852,7 @@
         "change": "変更",
         "choose": "コレクションを選ぶ",
         "aCollection": "コレクション",
-        "nowhereYet": "まだ保存先なし",
+        "nowhereYet": "このスクリーニング内に保持",
         "count": "<num>{count, number}</num> 件{saved, select, true {を保存済み} other {を採用}}"
       },
       "credits": {
@@ -8907,7 +8924,8 @@
         "result": "結果",
         "newest": "出版日の新しい順",
         "split": "意見が分かれた順",
-        "points": "点数の高い順"
+        "points": "点数の高い順",
+        "shut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかのレビュアーの投票を非表示にしています。この並び順ではそれが分かってしまいます"
       },
       "settledBy": "{you, select, true {あなたが判定} other {{name} が判定}}",
       "settledToast": "{count, number} 件を{result}と判定しました",
@@ -9023,7 +9041,8 @@
       "why": {
         "nobodyCanVote": "この論文に投票できるレビュアーはまだいません",
         "waitingOnYou": "あなたの投票待ち",
-        "waitingOn": "投票待ち:"
+        "waitingOn": "投票待ち:",
+        "noVoteFrom": "投票なし:"
       },
       "pointsOf": "{max, plural, other {# 点}}中 {points, number} 点",
       "note": {
@@ -9282,7 +9301,7 @@
       "note": {
         "label": "メモ",
         "settling": "記録用の理由（任意）",
-        "voting": "ほかの人へのメモ。投票と一緒に保存されます"
+        "voting": "ほかの人へのメモ。投票と一緒に保存されます。特定の人への質問は、下のディスカッションに書いてください"
       },
       "settle": {
         "title": "この不一致を判定",
@@ -9325,7 +9344,8 @@
         "help": "モデルは各回答の確信度を 0〜100% で示します。65% 未満なら、その回答に頼る前に要約を読んでください。",
         "unsure": "確信なし: 確信度 {sure, number, percent}",
         "sure": "確信度 {sure, number, percent}",
-        "noSentence": "この回答について、要約のどの文も挙げていません。"
+        "noSentence": "この回答について、要約のどの文も挙げていません。",
+        "noSentencePdf": "この論文は PDF で読み取りました。モデルが文を挙げるのは、要約を読んだ場合だけです。"
       }
     },
     "sources": {
@@ -9378,7 +9398,7 @@
         "pdfLimit": "PDF は 1 件 {mb, number} MB まで",
         "aboutFiles": "文献ファイルは、データベースや文献管理ソフトからエクスポートしたファイルです。タイトルと要約のあるレコード 1 件が論文 1 件になります。",
         "aboutPdfs": "PDF は追加するとすぐに読み取られ、タイトルと DOI を取り出します。その DOI が Openscholar のインデックスにあれば、論文はインデックスのタイトルと要約で表示されます。なければ PDF そのものが論文になり、スクリーニングする人はそのファイルを読み、AI レビュアーもすべてのページを読みます。スキャンした PDF も同じように読みます。開けないファイルは除きます。",
-        "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV、PDF に対応。複数まとめて追加できます",
+        "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV、PDF、または DOI を並べたテキストファイルに対応。複数まとめて追加できます",
         "pdfCost": "モデルが各 PDF の最初の数ページを読んでタイトルと DOI を取り出します。PDF 1 件あたり最大 {credits} クレジットで、追加時に支払われます",
         "filesLabel": "アップロードするファイル",
         "choose": "ファイルを選ぶ",
@@ -9465,6 +9485,7 @@
       "looker": "{member, select, true {レビュアー以外} other {閲覧者}}",
       "person": {
         "invited": "メールで招待済み。参加すると投票できます",
+        "invitedFinished": "メールで招待済み。参加し、スクリーニングが再開されると投票できます",
         "invitedToLook": "メールで招待済み。参加すると閲覧できます",
         "toInvite": "保存すると招待が送られます",
         "toInviteAtStart": "開始すると招待が送られます",
@@ -9579,6 +9600,7 @@
         "failed": "モデルが論文を読み取れませんでした"
       },
       "hiddenUntilVote": "投票するまで非表示",
+      "hiddenWhileToDo": "あなたの投票待ちの論文では非表示",
       "votesHiddenSays": "このスクリーニングでは、レビュアー本人の投票を待っている論文に限り、ほかの人の投票をそのレビュアーから隠します。",
       "ago": {
         "now": "たった今",
