@@ -22,7 +22,8 @@ import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./valida
 type Preview = Infer<typeof previewValidator>;
 /** Papers one step of the count looks at: each with its votes, a few hundred rows. */
 const STEP = 200;
-const NOTHING: Preview = { total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, added: 0, removed: 0, included: 0, moves: [], again: 0 };
+/** A count with nothing in it yet. Made anew each time: what it holds is added to, and a shared one would carry one request's figures into the next. */
+const nothing = (): Preview => ({ total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, added: 0, removed: 0, included: 0, moves: [], again: 0 });
 const SETTLED = ["include", "maybe", "exclude"] as const;
 
 /** A model about to be put on the screening, by what names it before it has a row: the page names it the same way. */
@@ -114,7 +115,7 @@ export const step = internalQuery({
         else if (place.status === "waiting") leaving[id] = { ...gone, ...(open ? { waiting: gone.waiting + 1 } : { settled: gone.settled + 1 }) };
       }
     }
-    return { counted: { ...NOTHING, reopened, eachChanged, joining, leaving, models, moves: [...moves.values()] }, loads, cursor: page.isDone ? null : page.continueCursor };
+    return { counted: { ...nothing(), reopened, eachChanged, joining, leaving, models, moves: [...moves.values()] }, loads, cursor: page.isDone ? null : page.continueCursor };
   },
 });
 
@@ -175,7 +176,7 @@ export const preview = workspaceAction({
   handler: async (ctx, { userId, workspaceId }, { jobId, change }): Promise<Preview> => {
     const asked = { userId, workspaceId, jobId, change };
     const base: Start = await ctx.runQuery(internal.screening.effects.start, asked);
-    const counted: Preview = { ...NOTHING, total: base.total, removed: base.removed, included: base.included, leaving: Object.fromEntries(Object.entries(base.cast).map(([id, cast]) => [id, { cast, unvoted: 0, voted: 0, to: [], settled: 0, waiting: 0 }])) };
+    const counted: Preview = { ...nothing(), total: base.total, removed: base.removed, included: base.included, leaving: Object.fromEntries(Object.entries(base.cast).map(([id, cast]) => [id, { cast, unvoted: 0, voted: 0, to: [], settled: 0, waiting: 0 }])) };
     const loads: Record<string, number> = {};
     // The papers still open are settled again under the change. The settled ones are looked at only where the change can move them: a check of them, or votes thrown out.
     // Each result is its own range of papers, so they are counted side by side, a page after a page within one.
