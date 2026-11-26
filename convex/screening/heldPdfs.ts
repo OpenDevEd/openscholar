@@ -95,7 +95,7 @@ export const look = internalAction({
     const spend = spender(ctx, who.clerkId);
     const indexed = doi && title ? (await byDois([doi], spend).catch(() => null))?.get(doi) : undefined;
     const known = indexed !== undefined && sameTitle(indexed.title, title);
-    // Whether that paper will be screened on an abstract is asked as its source will ask it: of OpenAlex, then of the registries.
+    // Whether that paper is screened on an abstract is asked here, once: of OpenAlex, then of the registries. One found where the index has none is kept with the file, and its source takes it from there (./held.ts `handedPapers`).
     const found = indexed && known ? (await withAbstracts([indexed], spend))[0]! : indexed;
     return {
       state: "read",
@@ -105,7 +105,7 @@ export const look = internalAction({
       ...(read.year ? { year: read.year } : {}),
       // A DOI nothing confirms is not kept: the paper would be merged with whatever else carries it.
       // The index's paper with no abstract is still read as this file.
-      ...(found && known ? { doi, known, ...(found.abstract?.trim() ? {} : { bare: true }) } : {}),
+      ...(found && known ? { doi, known, ...(found.abstract?.trim() ? (indexed?.abstract?.trim() ? {} : { abstract: found.abstract }) : { bare: true }) } : {}),
     };
   },
 });

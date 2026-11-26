@@ -271,7 +271,7 @@ export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("tit
 
 /** Where a PDF handed to a screening stands: still to be read, read, or a file that doesn't open. */
 export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read"), v.literal("broken"));
-/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. `bare`: that paper has no abstract there, so it is read as the file. */
+/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. `abstract`: the abstract found for that paper where the index has none, kept so its source never asks for it again. `bare`: none was found, so it is read as the file. */
 export const pdfReadValidator = v.object({
   state: v.union(v.literal("read"), v.literal("broken")),
   pages: v.optional(v.number()),
@@ -280,6 +280,7 @@ export const pdfReadValidator = v.object({
   year: v.optional(v.number()),
   doi: v.optional(v.string()),
   known: v.optional(v.boolean()),
+  abstract: v.optional(v.string()),
   bare: v.optional(v.boolean()),
 });
 /** PDFs one call adds to a drop, and the rows of a drop a page of its list shows. */
@@ -373,7 +374,7 @@ export const sourceViewValidator = v.object({
   filed: v.number(),
   filePages: v.number(),
   // Those pages by the length of the paper they are in (lib/pricing/estimate.ts `Pdfs`).
-  fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number() }))), PDF_BANDS),
+  fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number(), most: v.optional(v.number()) }))), PDF_BANDS),
   // Its reading stopped at the most papers the workspace's plan gives one screening.
   capped: v.optional(v.literal(true)),
   checkedAt: v.optional(v.number()),

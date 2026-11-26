@@ -37,11 +37,14 @@ const calledOf = async (ctx: Pick<MutationCtx, "db">, reviewer: Reviewer) =>
 /** Stamps a paper for the bookkeeping worker without waking it: a step that stamps many wakes it once. */
 const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">, reopen?: "vote") => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, ...(reopen ? { reopen } : {}) });
 
+/** How long after someone is put on a screening their email goes: by then their share of its open papers is given out, and the email says how many. */
+const JOINED_AFTER_MS = 2 * 60_000;
+
 /**
  * Puts a person on a screening, new or back again. Someone who comes back keeps the votes they cast. Their share
  * of the papers nobody has voted on follows a step at a time (`join`).
  */
-export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, by: Id<"users">) {
+export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, by: Id<"users">, { tell = false }: { /** A colleague put them on it: an email says so, with the papers that wait for them once their share is given out. */ tell?: boolean } = {}) {
   const reviewers = await reviewersOf(ctx, job._id);
   const before = reviewers.filter(dealable).length;
   const old = reviewers.find((one) => one.kind === "person" && one.userId === userId);
@@ -50,6 +53,7 @@ export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, use
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "person", userId, addedAt: Date.now(), addedBy: by, dealt: 0 }));
   if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, addedAt: Date.now() });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId: job._id, reviewerId, before, cursor: null, result: "waiting" });
+  if (tell && by !== userId) await ctx.scheduler.runAfter(JOINED_AFTER_MS, internal.screening.noticeMail.send, { jobId: job._id, userId, about: "joined", by });
   return reviewerId;
 }
 
@@ -199,7 +203,7 @@ export const add = workspaceMutation({
     if (personId) {
       const person = await ctx.db.get("users", personId);
       if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
-      await addPerson(ctx, job, personId, actor.userId);
+      await addPerson(ctx, job, personId, actor.userId, { tell: true });
       await logChange(ctx, actor, job, "reviewerAdded", { detail: nameOf(person) });
       return null;
     }

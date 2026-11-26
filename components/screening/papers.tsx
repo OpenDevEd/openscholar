@@ -50,7 +50,7 @@ import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
 import type { ExportTab } from "./dialogs";
-import { everyPaper, risOf, save, votesCsv } from "./export";
+import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -305,8 +305,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
-    if (as === "csv") save("selected-papers-votes.csv", "text/csv", votesCsv(screening, open.me, pickedPapers));
-    else save("selected-papers.ris", "application/x-research-info-systems", risOf(pickedPapers));
+    if (as === "csv") save(fileName(open, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(screening, open.me, pickedPapers));
+    else save(fileName(open, "selected-papers", "ris", Date.now()), "application/x-research-info-systems", risOf(pickedPapers));
   };
 
   // What narrows the table, each as a chip that takes it away.
@@ -827,7 +827,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
-      <QuestionHint question={questionOf(reasonKey, open.screening.criteria)} label={label}>
+      <QuestionHint question={questionOf(reasonKey, open.screening.criteria, "label")} label={label}>
         <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={open.screening.criteria} unclear={state.result === "maybe"} /></NextLink>
       </QuestionHint>
     );

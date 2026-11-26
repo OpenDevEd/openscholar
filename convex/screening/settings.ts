@@ -177,7 +177,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   for (const { userId } of plan.joining) {
     const person = await ctx.db.get("users", userId);
     if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
-    await addPerson(ctx, saved, userId, actor.userId);
+    await addPerson(ctx, saved, userId, actor.userId, { tell: true });
   }
   for (const model of plan.models) await addModel(ctx, saved, model, actor.userId);
 

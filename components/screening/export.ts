@@ -61,37 +61,53 @@ const authorsOf = (paper: Pick<Paper, "authors">) => paper.authors ?? [];
 /** The papers still open: in conflict, or waiting for votes, the ones still on their way from a source among them. */
 const openIn = ({ counts }: Taken) => counts.conflict + counts.waiting;
 const kindOf = (reviewer: { kind: "person" | "model" }) => (reviewer.kind === "model" ? "AI model" : "Person");
+/** The records that are read as their own PDF, having no abstract. */
+const filedOf = (sources: Screening["sources"]) => sources.reduce((sum, source) => sum + (source.read?.filed ?? 0), 0);
 /** Its excluded papers by the reason, the most common first. */
 const excludedBy = (figures: Figures | undefined) => Object.entries(figures?.reasons ?? {}).sort((a, b) => b[1] - a[1]);
 
-/** A file's name: the screening, what the file holds, "unfinished" while it is running with papers still open, "with-open-papers" where it was marked finished with some, and the day it was taken out. A file sent on says by its name what it is a picture of. */
-export const fileName = (out: Taken, what: string, ending: string, at: number) => `${slug(out.screening.name)}-${what}${!openIn(out) ? "" : out.screening.finishedAt ? "-with-open-papers" : "-unfinished"}-${iso(at).slice(0, 10)}.${ending}`;
+/**
+ * A file's name: the screening, what the file holds, "unfinished" while it is running with papers still open,
+ * "with-open-papers" where it was marked finished with some, and the day and time (UTC) it was taken out. While
+ * votes can be hidden from whoever takes a file out, two people's files of one screening differ, so the name says
+ * whose it is. A file sent on says by its name what it is a picture of.
+ */
+export const fileName = ({ screening, counts, me }: Pick<Taken, "screening" | "counts" | "me">, what: string, ending: string, at: number) =>
+  `${slug(screening.name)}-${what}${!(counts.conflict + counts.waiting) ? "" : screening.finishedAt ? "-with-open-papers" : "-unfinished"}-${iso(at).slice(0, 10)}-${iso(at).slice(11, 16).replace(":", "")}utc${screening.rule.blind === "after" && !screening.finishedAt ? `-${slug(nameOn(screening, me))}` : ""}.${ending}`;
 
-/** A file of rows, as a spreadsheet opens it: every cell quoted, a quote in a cell doubled. */
-const toCsv = (lines: unknown[][]) => lines.map((line) => line.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+/**
+ * A file of rows, as a spreadsheet opens it: every cell quoted, a quote in a cell doubled. A text that begins the way
+ * a formula does (=, +, -, @) takes an apostrophe in front, so a spreadsheet keeps a title or a note as text and
+ * never runs it. A number stays a number.
+ */
+const toCsv = (lines: unknown[][]) => lines.map((line) => line.map((cell) => `"${(typeof cell === "string" && /^[=+\-@\t\r]/.test(cell) ? `'${cell}` : String(cell ?? "")).replace(/"/g, '""')}"`).join(",")).join("\n");
 
 /** Papers one read of a file's rows takes. */
 const EXPORT_PAGE = 100;
 type ListArgs = Omit<(typeof api.screening.paperViews.list)["_args"], "paginationOpts">;
-/** A list of a screening's papers, a page at a time, as the server gives them to the person asking. */
-async function* pagesOf(convex: ConvexReactClient, args: ListArgs) {
+type PageOf<T> = (paginationOpts: { cursor: string | null; numItems: number }) => Promise<{ page: T[]; isDone: boolean; continueCursor: string }>;
+/** What a paginated query holds, a page after the other. */
+async function* pagesOf<T>(read: PageOf<T>) {
   let cursor: string | null = null;
   do {
-    const read: { page: Paper[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.paperViews.list, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
-    yield read.page;
-    cursor = read.isDone ? null : read.continueCursor;
+    const got = await read({ cursor, numItems: EXPORT_PAGE });
+    yield got.page;
+    cursor = got.isDone ? null : got.continueCursor;
   } while (cursor);
 }
-/**
- * Every paper of a list, for a file that holds them all. ponytail: the whole list is held in the browser while its
- * file is built, which a plan's most papers a screening (a few thousand) keeps small; a screening of far more would
- * have the server write the file a part at a time, as convex/exports.ts does for a library.
- */
-export async function everyPaper(convex: ConvexReactClient, args: ListArgs) {
-  let all: Paper[] = [];
-  for await (const page of pagesOf(convex, args)) all = all.concat(page);
+/** All of it, for a file that is built in the browser from every row. */
+async function allOf<T>(read: PageOf<T>) {
+  let all: T[] = [];
+  for await (const page of pagesOf(read)) all = all.concat(page);
   return all;
 }
+/**
+ * Every paper of a list, as the server gives them to the person asking, for a file that holds them all. ponytail: the
+ * whole list is held in the browser while its file is built, which a plan's most papers a screening (a few thousand)
+ * keeps small; a screening of far more would have the server write the file a part at a time, as convex/exports.ts
+ * does for a library.
+ */
+export const everyPaper = (convex: ConvexReactClient, args: ListArgs) => allOf<Paper>((paginationOpts) => convex.query(api.screening.paperViews.list, { ...args, paginationOpts }));
 
 /** The columns of the papers file, each with what it holds. The file's rows, the guide in the dialog and the guide in the whole record are made from this one list. */
 export const PAPER_GUIDE = {
@@ -254,19 +270,22 @@ export function flowOf(out: Taken): FlowRow[] {
   const { left, bare, merged } = removedOf(screening.sources);
   const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
+  // The records with no abstract that came with their own PDF are read as that: the stage then says how many were read each way.
+  const filed = filedOf(screening.sources);
+  const on = filed ? "" : " on title and abstract";
   return [
     {
       main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(looks.added && looks.lastAt ? [{ label: looks.later === 1 ? `Of these, by the later search on ${fullDay(looks.lastAt)}` : `Of these, by ${looks.later} later searches, the last on ${fullDay(looks.lastAt)}`, n: looks.added }] : [])] },
       side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: REMOVED_LABEL.merged, n: merged }, ...(bare ? [{ label: REMOVED_LABEL.bare, n: bare }] : []), ...(left - bare ? [{ label: REMOVED_LABEL.unread, n: left - bare }] : [])] }],
     },
     {
-      main: { title: open ? "Records in screening on title and abstract" : "Records screened on title and abstract", n: kept },
+      main: { title: open ? `Records in screening${on}` : `Records screened${on}`, n: kept, ...(filed ? { lines: [{ label: "On title and abstract", n: kept - filed }, { label: "On the full text, having no abstract", n: filed }] } : {}) },
       side: [
         { title: "Records excluded", n: counts.exclude, lines: excludedBy(figures).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n })) },
-        ...(counts.maybe || open ? [{ title: open ? "Not yet included or excluded" : "Neither included nor excluded", n: counts.maybe + open, lines: [...(counts.maybe ? [{ label: "Left at Maybe", n: counts.maybe }] : []), ...(open ? [{ label: "Still open", n: open }] : [])] }] : []),
+        ...(counts.maybe || open ? [{ title: "Neither included nor excluded", n: counts.maybe + open, lines: [...(counts.maybe ? [{ label: "Left at Maybe", n: counts.maybe }] : []), ...(open ? [{ label: "Still open", n: open }] : [])] }] : []),
       ],
     },
-    { main: { title: "Records included on title and abstract", n: counts.include }, side: [] },
+    { main: { title: `Records included${on}`, n: counts.include }, side: [] },
   ];
 }
 
@@ -332,7 +351,7 @@ export function methodsOf(out: Taken) {
   // Marked finished with papers left open: nothing is claimed of every record, since not every one was done.
   const partial = open > 0 && !running;
   // The records with no abstract that came with their own PDF, which is what their reviewers read.
-  const filed = screening.sources.reduce((sum, source) => sum + (source.read?.filed ?? 0), 0);
+  const filed = filedOf(screening.sources);
   // The records still open, by how they stand: the ones its reviewers split on, and the ones still short of votes.
   const waiting = Math.max(0, open - counts.conflict);
   const stillOpen = `${counts.conflict ? `, ${num(counts.conflict)} ${counts.conflict === 1 ? "was" : "were"} in conflict` : ""}${waiting ? `${counts.conflict ? " and" : ","} ${num(waiting)} ${waiting === 1 ? "was" : "were"} waiting for votes` : ""}`;
@@ -346,7 +365,7 @@ export function methodsOf(out: Taken) {
     `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
     looks.later && looks.lastAt ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
-    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text.` : ""}`,
+    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text instead.` : ""}`,
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
     everyModel.length ? `${everyModel.length === 1 ? "One AI model" : `${everyModel.length} AI models`} (${everyModel.map((m) => m.name).join(", ")}) ${running && !offModels.length ? (models.length === 1 ? "votes" : "vote") : running ? "have voted" : "voted"} on the records${people.length ? ` as ${everyModel.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} decided by the other reviewers` : ""}.${offModels.length ? ` ${listed(offModels.map((m) => m.name))} ${offModels.length === 1 ? "was" : "were"} taken off after screening began, and ${offModels.length === 1 ? "its" : "their"} votes cast until then were kept.` : ""}` : "No AI model took part.",
@@ -357,26 +376,6 @@ export function methodsOf(out: Taken) {
     kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
     `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
   ].filter(Boolean).join(" ");
-}
-
-type Said = (typeof api.screening.discussion.all)["_returnType"]["page"][number];
-type Logged = (typeof api.screening.view.activity)["_returnType"]["page"][number];
-/** What its reviewers wrote to each other and what was changed, a page at a time: the parts of the whole record that aren't its papers. */
-async function* saidIn(convex: ConvexReactClient, args: { workspaceId: Id<"workspaces">; jobId: Id<"screeningJobs"> }) {
-  let cursor: string | null = null;
-  do {
-    const read: { page: Said[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.discussion.all, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
-    yield read.page;
-    cursor = read.isDone ? null : read.continueCursor;
-  } while (cursor);
-}
-async function* loggedIn(convex: ConvexReactClient, args: { workspaceId: Id<"workspaces">; jobId: Id<"screeningJobs"> }) {
-  let cursor: string | null = null;
-  do {
-    const read: { page: Logged[]; isDone: boolean; continueCursor: string } = await convex.query(api.screening.view.activity, { ...args, paginationOpts: { cursor, numItems: EXPORT_PAGE } });
-    yield read.page;
-    cursor = read.isDone ? null : read.continueCursor;
-  } while (cursor);
 }
 
 /**
@@ -390,10 +389,13 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const { screening, me, counts } = out;
   const { criteria, rule, scoring, destination } = screening;
   const of = { workspaceId, jobId: screening.id };
-  const papers = await everyPaper(convex, of);
-  let [said, logged]: [Said[], Logged[]] = [[], []];
-  for await (const page of saidIn(convex, of)) said = said.concat(page);
-  for await (const page of loggedIn(convex, of)) logged = logged.concat(page);
+  // Its papers, what its reviewers wrote to each other, what was changed, and what each source held that it didn't take.
+  const [papers, said, logged, leftOut] = await Promise.all([
+    everyPaper(convex, of),
+    allOf((paginationOpts) => convex.query(api.screening.discussion.all, { ...of, paginationOpts })),
+    allOf((paginationOpts) => convex.query(api.screening.view.activity, { ...of, paginationOpts })),
+    Promise.all(screening.sources.map((source) => (leftOf(source) ? allOf((paginationOpts) => convex.query(api.screening.view.leftOut, { ...of, sourceId: source.id as Id<"screeningSources">, paginationOpts })) : []))),
+  ]);
   // A file's words are English whoever downloads it: the activity's sentences are made from the English messages, which are read when a record is asked for and at no other time.
   const messages = (await import("@/messages/en-GB.json")).default;
   const english: EffectsSay = { words: wordsOf({ t: createTranslator({ locale: "en-GB", messages, namespace: "screening.words" }), format: createFormatter({ locale: "en-GB" }) }), t: createTranslator({ locale: "en-GB", messages, namespace: "screening.effects" }) };
@@ -423,7 +425,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
-    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
+    // Each source with the records it held and the screening didn't take, by name and with why. A duplicate merged into a paper another record brought is counted, not named: the paper is in `papers` under the source that brought it first.
+    sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
     papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

@@ -67,7 +67,7 @@
     "every": "The screening checks for new papers {every, select, day {every day} week {every week} other {every month}} from now on"
   },
   "sources": {
-    "promised": "Up to {count, plural, one {# new paper joins} other {# new papers join}} the screening and {count, plural, one {goes} other {go}} to its reviewers. Fewer do where another source already has them or they have no abstract{pdfs, select, true {. The models charge more for one read as its PDF} other {}}",
+    "promised": "Up to {count, plural, one {# new paper joins} other {# new papers join}} the screening and {count, plural, one {goes} other {go}} to its reviewers. Fewer do where another source already has them or they have no abstract{pdfs, select, true {. A model is charged by the page for one that comes as its PDF, so what these cost shows once the screening has read them} other {}}",
     "removed": "{count, plural, one {# paper leaves the screening, with its votes kept on record} other {# papers leave the screening, with their votes kept on record}}"
   },
   "collection": {

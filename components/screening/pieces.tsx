@@ -705,8 +705,7 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
   const words = useWords();
   if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
-  const named = criteria.find((criterion) => criterion.key === reason);
-  const question = asked && named && words.isNamed(named) ? questionOf(reason, criteria) : undefined;
+  const question = asked ? questionOf(reason, criteria, "label") : undefined;
   return (
     <span className="min-w-0">
       <Reason reason={reason} criteria={criteria} wrap />
@@ -793,7 +792,7 @@ export function VoteFacts({ vote, failed = false, kept = false, settled = false,
 /** The reason a vote or a result excludes a paper, as a chip: the criterion it fails by its short name, with the whole question for whoever asks. The same chip wherever a reason shows. */
 export function ReasonChip({ reason, criteria, className }: { reason: string; criteria: Criterion[]; className?: string }) {
   const words = useWords();
-  return <QuestionName question={questionOf(reason, criteria)} label={words.failed(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
+  return <QuestionName question={questionOf(reason, criteria, "label")} label={words.failed(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
 /** To the paper before and the one after, with their keys: the same pair in Screen's bar and at the head of the Papers drawer. */

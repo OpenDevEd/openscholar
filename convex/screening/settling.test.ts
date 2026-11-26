@@ -227,6 +227,28 @@ describe("what a change takes out", () => {
     const counts = [(await about("ann"))?.count ?? 0, (await about("ben"))?.count ?? 0];
     expect(counts.toSorted()).toEqual([0, 1]);
   });
+
+  it("emails a colleague put on a screening, with the papers that wait for them or with none", async () => {
+    const made = await team(["ann", "ben", "cat"]);
+    const { workspaceId } = made;
+    const { jobId } = await started(made, ["ann"], 2, { rule: { each: 2, settle: "all", blind: "after" } });
+    await run(made.t);
+    const joined = (name: string) => made.t.query(internal.screening.notices.context, { jobId, userId: made.ids[name]!, about: "joined", by: made.ids.ann! });
+    // Nobody put Ben on it: there is nothing to tell him.
+    expect(await joined("ben")).toBeNull();
+    await made.as.ann!.mutation(api.screening.reviewers.add, { workspaceId, jobId, personId: made.ids.ben! });
+    await run(made.t);
+    // Each paper asks for two people and had one: both come to Ben, and the email says so and who added him.
+    expect(await joined("ben")).toMatchObject({ count: 2, by: expect.any(String) });
+    // Cat joins once both papers are settled: she is told she is on it, with no paper waiting yet.
+    const vote = voter(made, jobId);
+    for (const one of await papersOf(made.t, jobId)) { await vote("ann", one._id, "include"); await vote("ben", one._id, "include"); }
+    await run(made.t);
+    await made.as.ann!.mutation(api.screening.reviewers.add, { workspaceId, jobId, personId: made.ids.cat! });
+    await run(made.t);
+    expect(await joined("cat")).toMatchObject({ count: 0 });
+    expect((await made.t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect())).filter((one) => one.name.includes("noticeMail") && (one.args[0] as { about?: string }).about === "joined")).toHaveLength(2);
+  });
 });
 
 describe("papers from several sources", () => {

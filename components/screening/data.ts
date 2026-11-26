@@ -99,7 +99,7 @@ export const refOf = (set: SourceSet) =>
   : set.kind === "saved" ? "saved"
   : undefined;
 /** How a source's reading stands on the server, once the screening exists: what was read of it, taken, merged with another source's and left out. */
-export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; /** Those by length (lib/pricing/estimate.ts `Pdfs`). */ fileSpread?: Record<string, { papers: number; pages: number }>; checkedAt?: number; removedAt?: number ; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
+export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; /** Those by length (lib/pricing/estimate.ts `Pdfs`). */ fileSpread?: Record<string, { papers: number; pages: number; most?: number }>; checkedAt?: number; removedAt?: number ; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
 export type Source = {
   id: string;
@@ -175,12 +175,12 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
 const OTHER_LABEL: Record<(typeof OTHER_KEYS)[number], string> = { duplicate: "A duplicate of another paper", other: "Another reason" };
 const OTHER_REASONS: Array<{ key: string; label: string }> = OTHER_KEYS.map((key) => ({ key, label: OTHER_LABEL[key] }));
-/** A reason in words: the criterion's short name, or one of the others. */
-export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** Whether someone wrote a criterion's short name. One nobody wrote is its question cut short, which names nothing: the question stands in for it. */
 export const isNamed = (criterion: Pick<Criterion, "short" | "text">) => criterion.short !== shortOf(criterion.text);
-/** A criterion as a line names it: the name someone wrote, or else its question. */
+/** A criterion as a line names it: the name someone wrote, or else its question. Every sentence, chip and file that names one takes it from here, in whichever language. */
 export const criterionLabel = (criterion: Pick<Criterion, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
+/** A reason in words: the criterion as a line names it, or one of the others. */
+export const reasonLabel = (key: string, criteria: Criterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
 /**
  * A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met,
  * by the name someone gave it or by its question, or one of the other reasons. On a page it is drawn, by `Reason`.
@@ -189,10 +189,13 @@ export const failedLabel = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion ? (isNamed(criterion) ? `${criterion.short} not met` : `Not met: ${criterionLabel(criterion)}`) : reasonLabel(key, criteria);
 };
-/** The question a short name or a reason stands for, where the name isn't already the question's own words. */
-export const questionOf = (key: string, criteria: Criterion[]) => {
+/**
+ * The question a criterion's name stands for, where what a line shows of it isn't already the question's own words:
+ * its short name in a column, or its label (`criterionLabel`) in a sentence or a chip.
+ */
+export const questionOf = (key: string, criteria: Criterion[], shown: "short" | "label" = "short") => {
   const criterion = criteria.find((one) => one.key === key);
-  return criterion && criterion.short !== criterion.text.replace(/[?.]$/, "").trim() ? criterion.text : undefined;
+  return criterion && (shown === "label" ? criterionLabel(criterion) : criterion.short).trim() !== criterion.text.replace(/[?.]$/, "").trim() ? criterion.text : undefined;
 };
 
 // ── A screening ──────────────────────────────────────────────────────────────────────────────────

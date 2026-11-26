@@ -1,6 +1,6 @@
 /**
  * The emails a screening with reviewers sends its people (plans/screening-reviewers): new papers wait for their
- * vote, conflicts wait for them to settle, and a colleague's reminder. Each person turns one screening's emails off
+ * vote, conflicts wait for them to settle, a colleague's reminder, and a colleague putting them on it. Each person turns one screening's emails off
  * for themselves. The sending itself needs Node (./noticeMail.ts).
  */
 import { v } from "convex/values";
@@ -14,7 +14,7 @@ import { progressRow } from "./bookkeeping";
 import { laterChecks, nameOf, newFor, waitsOn } from "./dealing";
 import { screeningPath } from "../../lib/screening/links";
 
-export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"));
+export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"), v.literal("joined"));
 
 /** A person's own row for one screening's emails: whether they turned them off, and when the last one about conflicts went. */
 export const noticeOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) => ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).unique();
@@ -54,7 +54,8 @@ export const context = internalQuery({
     // What waits for them is counted as every page counts it (./dealing.ts `waitsOn`).
     const waits = await waitsOn(ctx, job, userId, on, progress);
     const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0) : waits.forYou;
-    if (!count) return null;
+    // Someone put on a screening is told so whether or not a paper waits for them yet.
+    if (!count && !(about === "joined" && on)) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
     return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
   },

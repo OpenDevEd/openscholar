@@ -6,7 +6,8 @@
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
 import { useFormatter, useTranslations } from "next-intl";
-import { OTHER_REASONS, shortOf, type Decision, type Result } from "@/lib/screening/rules";
+import { OTHER_REASONS, type Decision, type Result } from "@/lib/screening/rules";
+import { criterionLabel, isNamed } from "./data";
 
 /** A criterion as far as its name goes. */
 type Named = { key: string; text: string; short: string; must: boolean };
@@ -36,13 +37,11 @@ export function wordsOf({ t, format }: Said) {
   const listed = (names: string[]) => format.list(names, { type: "conjunction" });
   /** What someone wrote, quoted: a note with a vote, a paper's title in a line of text. One form everywhere. */
   const quoted = (text: string) => t("quoted", { text });
-  /** Whether someone wrote a criterion's short name. One nobody wrote is its question cut short, which names nothing: the question stands in for it. */
-  const isNamed = (criterion: Pick<Named, "short" | "text">) => criterion.short !== shortOf(criterion.text);
-  /** A criterion as a line names it: the name someone wrote, or else its question. */
-  const criterionLabel = (criterion: Pick<Named, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
   const otherReason = (key: string) => (OTHER_REASONS as readonly string[]).includes(key) ? t(`otherReason.${key as (typeof OTHER_REASONS)[number]}`) : undefined;
-  /** A reason in words: the criterion's short name, or one of the others. */
-  const reason = (key: string, criteria: Named[]) => criteria.find((criterion) => criterion.key === key)?.short ?? otherReason(key) ?? key;
+  /** A criterion by its key, as a line names it (./data.ts `criterionLabel`). */
+  const labelOf = (key: string, criteria: Named[]) => { const criterion = criteria.find((one) => one.key === key); return criterion && criterionLabel(criterion); };
+  /** A reason in words: the criterion as a line names it, or one of the others. */
+  const reason = (key: string, criteria: Named[]) => labelOf(key, criteria) ?? otherReason(key) ?? key;
   /** Someone on a screening by name, or the words for someone whose account is gone. */
   const nameOn = (screening: Peopled, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? t("someone");
   /** The name someone is called by in a line of text or a narrow column. */
@@ -86,7 +85,7 @@ export function wordsOf({ t, format }: Said) {
       return criterion ? (isNamed(criterion) ? t("notMet", { name: criterion.short }) : t("notMetInFull", { name: criterionLabel(criterion) })) : reason(key, criteria);
     },
     /** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
-    unclear: (key: string, criteria: Named[]) => t("unclearOn", { name: criteria.find((criterion) => criterion.key === key)?.short ?? key }),
+    unclear: (key: string, criteria: Named[]) => t("unclearOn", { name: labelOf(key, criteria) ?? key }),
     /**
      * What a paper can be excluded for, in groups, the same wherever Exclude asks why: a must-have it fails, any other
      * criterion it fails, or another reason. Each has a key for the keyboard: a criterion its own number, as far as the

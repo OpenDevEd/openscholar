@@ -157,8 +157,8 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
   const give = async (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => {
-    // A paper that came with no abstract takes the one OpenAlex holds, and failing that the one registered under its DOI, whichever source brought it.
-    const bare = papers.some((paper) => !paper.abstract?.trim());
+    // A paper that came with no abstract takes the one OpenAlex holds, and failing that the one registered under its DOI, whichever source brought it. A PDF's was asked for when the file was first read (./heldPdfs.ts): it comes with what that found.
+    const bare = set.kind !== "pdf" && papers.some((paper) => !paper.abstract?.trim());
     const who: { clerkId: string } | null = bare ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
     const ready = bare ? await withAbstracts(papers, who ? spender(ctx, who.clerkId) : null) : papers;
     // The source's place moves on with the last of them only: a reading cut short before that reads these papers again, and the ones it gave already are passed over.
@@ -239,9 +239,10 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     };
     const room = last - from + 1;
     /** How many of these papers one step takes: as far as the room left, and no more with no abstract than one call fetches the PDFs of. */
-    const within = (papers: Array<{ abstract?: string }>) => {
-      let bare = 0;
-      const cut = papers.findIndex((one) => !one.abstract?.trim() && ++bare > ZOTERO_PDFS_A_CALL);
+    const within = (papers: Array<{ key: string; abstract?: string }>) => {
+      // An item filed in two of the collections read at once is one PDF to fetch.
+      const bare = new Set<string>();
+      const cut = papers.findIndex((one) => !one.abstract?.trim() && bare.add(one.key).size > ZOTERO_PDFS_A_CALL);
       return Math.min(room, cut === -1 ? papers.length : cut);
     };
     // The collections still to read, in a line. One is a collection's key, or a key with where the list of the collections inside it goes on, for one that has more of them than a page.
@@ -392,8 +393,7 @@ export const fill = internalMutation({
         title,
         ...(abstract ? { abstract } : {}),
         ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }) } : {}),
-        // An index can list one author once for each of their affiliations.
-        authors: paper.authors && [...new Set(paper.authors)].slice(0, MAX_AUTHORS),
+        authors: paper.authors?.slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,
         doi: paper.doi,
         venue: paper.venue,
@@ -415,7 +415,7 @@ export const fill = internalMutation({
         filed++;
         filePages += paper.pages ?? 0;
         const band = fileSpread[pdfBand(paper.pages ?? 0)];
-        if (paper.pages) fileSpread[pdfBand(paper.pages)] = { papers: (band?.papers ?? 0) + 1, pages: (band?.pages ?? 0) + paper.pages };
+        if (paper.pages) fileSpread[pdfBand(paper.pages)] = { papers: (band?.papers ?? 0) + 1, pages: (band?.pages ?? 0) + paper.pages, most: Math.max(band?.most ?? 0, paper.pages) };
       }
     }
     if (back) await bookkeepLater(ctx);

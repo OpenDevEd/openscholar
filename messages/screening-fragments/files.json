@@ -40,9 +40,9 @@
     "noneMine": "You haven't voted Include on a paper yet."
   },
   "votes": {
-    "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}{hidden, select, true {, some hidden from you} other {}}",
+    "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
     "help": "One row for each reviewer on each paper: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper.",
-    "leftOut": "How the others voted on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
+    "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
     "whose": "Whose votes",
     "everyone": "Everyone",
     "oneReviewer": "One reviewer",

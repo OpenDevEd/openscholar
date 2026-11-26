@@ -1,12 +1,17 @@
 import { creditsForUsage } from "./convert";
 import { PAPER_PDF_CREDITS } from "./paper-pdf";
 
-/** A model's price in USD per million tokens. */
 /** What a model charges once a prompt is long, where it charges more: every token of a call whose prompt has `from` tokens or more, in USD per million. */
 export type LongPrompt = { from: number; input: number; output: number };
+/** A model's price in USD per million tokens. */
 export type Pricing = { input: number; output: number; long?: LongPrompt };
-/** A catalog model's prices, as every estimate that can meet a long prompt takes them. */
-export const pricingOf = (model: { inputPricePerMillion: number; outputPricePerMillion: number; longPrompt?: LongPrompt }): Pricing => ({ input: model.inputPricePerMillion, output: model.outputPricePerMillion, ...(model.longPrompt ? { long: model.longPrompt } : {}) });
+/**
+ * A catalog model's prices as every estimate takes them, on the server and on a page. Output is priced at the
+ * model's reasoning rate where that is higher, since the output an estimate holds may all be reasoning.
+ * ponytail: a page's model carries no reasoning rate, and no catalog model's is above its output price (checked
+ * 2026-11-26). Send it with the model (components/settings/model-map.tsx) once one is.
+ */
+export const pricingOf = (model: { inputPricePerMillion: number; outputPricePerMillion: number; reasoningPricePerMillion?: number; longPrompt?: LongPrompt }): Pricing => ({ input: model.inputPricePerMillion, output: Math.max(model.outputPricePerMillion, model.reasoningPricePerMillion ?? 0), ...(model.longPrompt ? { long: model.longPrompt } : {}) });
 export type CallTokens = { input: number; output: number };
 
 /**
@@ -102,9 +107,10 @@ export const screeningPdfCredits = (pricing: Pricing, pages: number) => estimate
  * A screening's papers read as their PDFs, by length: how many, their pages, and the same for the ones in each
  * band of PDF_BAND pages (band 0 holds papers of 1 to 8 pages, band 1 of 9 to 16). The bands are what lets a
  * model that charges more for a long prompt, or that holds only so many pages, be priced without reading every
- * paper again. A paper whose pages nobody counted is in no band.
+ * paper again. A band says how long its longest paper is (`most`), so a paper past what a model holds is never
+ * taken for one it reads. A paper whose pages nobody counted is in no band.
  */
-export type Pdfs = { papers: number; pages: number; spread?: Record<string, { papers: number; pages: number }> };
+export type Pdfs = { papers: number; pages: number; spread?: Record<string, { papers: number; pages: number; most?: number }> };
 export const PDF_BAND = 8;
 /** How many bands there are: the last one holds every paper longer than it starts at, 1,017 pages. */
 export const PDF_BANDS = 128;
@@ -125,10 +131,15 @@ export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs): number {
   return part(pricing, Math.max(0, pdfs.papers - longPapers), Math.max(0, pdfs.pages - longPages)) + (long ? part(long, longPapers, longPages) : 0);
 }
 
-/** Of those papers, the ones a model is given (`readsPdfOf`): none where it takes no file, and none of a band whose shortest paper is more than one call to it holds. */
-export function pdfsFor(model: { files: boolean; room?: number } | undefined, pdfs: Pdfs): Pdfs {
+/**
+ * Of those papers, the ones a model is given (`readsPdfOf`): none where it takes no file, and none of a band that
+ * is more than one call to it holds. A cost keeps a band whose shortest paper fits, so it is never under what is
+ * charged. A warning (`sure`) keeps only a band whose longest paper fits, so a paper nobody can read is never
+ * passed over: it may count the shorter papers of that one band with it.
+ */
+export function pdfsFor(model: { files: boolean; room?: number } | undefined, pdfs: Pdfs, sure = false): Pdfs {
   if (!model?.files) return { papers: 0, pages: 0 };
-  const past = bandsOf(pdfs).filter(({ fewest }) => !readsPdfOf(model, fewest));
+  const past = bandsOf(pdfs).filter(({ fewest, most, held }) => !readsPdfOf(model, sure ? held.most ?? most : fewest));
   if (!past.length) return pdfs;
   const gone = new Set(past.map(({ band }) => band));
   return { papers: pdfs.papers - past.reduce((sum, { held }) => sum + held.papers, 0), pages: pdfs.pages - past.reduce((sum, { held }) => sum + held.pages, 0), spread: Object.fromEntries(Object.entries(pdfs.spread ?? {}).filter(([band]) => !gone.has(band))) };

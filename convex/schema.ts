@@ -1672,7 +1672,7 @@ export default defineSchema({
     filed: v.optional(v.number()),
     filePages: v.optional(v.number()),
     // Those pages by the length of the paper they are in, a band of pages at a time (lib/pricing/estimate.ts `Pdfs`): a model that charges more for a long prompt is priced from it.
-    fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number() }))), PDF_BANDS),
+    fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number(), most: v.optional(v.number()) }))), PDF_BANDS),
     // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
@@ -1742,7 +1742,9 @@ export default defineSchema({
     doi: v.optional(v.string()),
     // The index holds the paper its DOI names, under the title it prints: the screening shows that paper.
     known: v.optional(v.boolean()),
-    // The index's paper has no abstract: it is read as this file all the same.
+    // The abstract its first reading found for that paper, where the index holds none: the screening takes it from here.
+    abstract: v.optional(v.string()),
+    // No abstract was found for the index's paper: it is read as this file all the same.
     bare: v.optional(v.boolean()),
     workId: v.optional(v.string()),
   })

@@ -132,9 +132,9 @@ const SLICE = 200;
 /** PDFs `from` to `to` of a drop (from 1), as its source reads them, `SLICE` of them at most. */
 export const slice = internalQuery({
   args: { batch: v.string(), from: v.number(), to: v.number() },
-  returns: v.array(v.object({ file: v.id("_storage"), name: v.string(), state: pdfStateValidator, pages: v.optional(v.number()), title: v.optional(v.string()), authors: screeningAuthorsValidator, year: v.optional(v.number()), doi: v.optional(v.string()), known: v.optional(v.boolean()) })),
+  returns: v.array(v.object({ file: v.id("_storage"), name: v.string(), state: pdfStateValidator, pages: v.optional(v.number()), title: v.optional(v.string()), authors: screeningAuthorsValidator, year: v.optional(v.number()), doi: v.optional(v.string()), known: v.optional(v.boolean()), abstract: v.optional(v.string()) })),
   handler: async (ctx, { batch, from, to }) => {
     const rows: Doc<"screeningFiles">[] = await ctx.db.query("screeningFiles").withIndex("by_batch_and_at", (q) => q.eq("batch", batch).gte("at", from - 1).lte("at", to - 1)).take(Math.min(to - from + 1, SLICE));
-    return rows.map(({ file, name, state, pages, title, authors, year, doi, known }) => ({ file, name, state, pages, title, authors, year, doi, known }));
+    return rows.map(({ file, name, state, pages, title, authors, year, doi, known, abstract }) => ({ file, name, state, pages, title, authors, year, doi, known, abstract }));
   },
 });

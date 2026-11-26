@@ -975,7 +975,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       href: papersHref(id),
       rows: [
         { key: "exclude", label: words.result("exclude"), value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" },
-        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: words.failed(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: words.failed(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria, "label"), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
         { key: "maybe", label: words.result("maybe"), value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar, tone: "maybe" },
         { key: "conflict", label: words.result("conflict"), value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" },
         { key: "waiting", label: words.result("waiting"), value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: `bg-foreground/10 ${HATCH}` },

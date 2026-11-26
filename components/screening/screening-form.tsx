@@ -58,8 +58,9 @@ import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useW
 import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
-import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
+import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref, newHref } from "./links";
+import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
@@ -100,15 +101,15 @@ type Pager = { page: number; canPrevious: boolean; canNext: boolean; hasPages: b
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
 /** The papers of a source a screening asks for: all of it, or a range of it. */
-const askedOf = (source: Source) => (source.scope === "range" ? source.range.join("-") : "all");
+const scopeOf = (source: Source) => (source.scope === "range" ? source.range.join("-") : "all");
 /** The sources a change asks for other papers of. The draft that is kept, the list of unsaved changes and the save all go by this one test. */
-const rangedIn = (before: Screening, after: Screening) => after.sources.filter((source) => { const was = before.sources.find((one) => one.id === source.id); return was !== undefined && askedOf(was) !== askedOf(source); });
+const rangedIn = (before: Screening, after: Screening) => after.sources.filter((source) => { const was = before.sources.find((one) => one.id === source.id); return was !== undefined && scopeOf(was) !== scopeOf(source); });
 const SETTINGS = ["name", "question", "sources", "criteria", "reviewers", "rule", "scoring", "destination", "living"] as const;
 const settingOf = (screening: Screening, field: (typeof SETTINGS)[number]) =>
   JSON.stringify(
     field === "living" ? screening.living?.every
     : field === "reviewers" ? activeReviewers(screening).map((one) => [one.kind === "model" && one.model ? modelKey(one.model) : one.id, one.discarded ?? null])
-    : field === "sources" ? screening.sources.map((source) => [source.id, askedOf(source)])
+    : field === "sources" ? screening.sources.map((source) => [source.id, scopeOf(source)])
     : screening[field],
   );
 const settingsOf = (screening: Screening) => SETTINGS.map((field) => settingOf(screening, field)).join();
@@ -377,7 +378,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const elsewhere = id || kept ? undefined : Object.entries(begun).flatMap(([name, held]) => {
     const [kind, place, who, copied, search, handoff] = name.split(":");
     const row = kind === "new" && who === setup?.me.id && place !== (workspaceId ?? "") ? workspaces?.find((one) => one.workspaceId === place) : undefined;
-    return row ? [{ name: held.name.trim(), workspace: row.name, href: `${row.kind === "organization" && row.slug ? `/o/${row.slug}` : ""}${newHref({ ...(copied ? { from: copied } : {}), ...(search ? { search } : {}), ...(handoff ? { handoff } : {}) })}` }] : [];
+    return row ? [{ name: held.name.trim(), workspace: row.name, href: workspaceHref(row.kind === "organization" ? row.slug : undefined, newHref({ ...(copied ? { from: copied } : {}), ...(search ? { search } : {}), ...(handoff ? { handoff } : {}) })) }] : [];
   })[0];
   const keep = useKept((store) => store.draft);
   // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
@@ -512,6 +513,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to".
   const promisedNew = saved ? promisedBy(saved, draft) : 0;
   const upTo = Boolean(promisedNew);
+  // Some of those can come as their PDF, which costs by the page: the figures count each as a paper with an abstract, and the cost says what they leave out.
+  const pdfsUnpriced = Boolean(saved && pdfsPromised(saved, draft));
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
   const shareSays = (() => {
     if (!joined.length) return undefined;
@@ -911,6 +914,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const doubled = Math.min(source.duplicates, taken(source) - grew);
                         // On a running screening the name opens the papers it brought; where it lives opens from the icon beside it.
                         const own = saved?.sources.some((one) => one.id === source.id) ? saved.id : null;
+                        // The papers it has brought stay in the screening whatever its range becomes (convex/screening/settings.ts): the range can only take more of it, and says so.
+                        const heldRange = (one: Source) => {
+                          const was = saved?.sources.find((kept) => kept.id === one.id);
+                          if (!was) return undefined;
+                          const range: [number, number] = was.scope === "range" ? was.range : [1, Math.max(1, baseTotal(was))];
+                          return { range, note: t("papers.rangeHeld", { first: words.num(range[0]), last: words.num(range[1]) }) };
+                        };
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
@@ -999,6 +1009,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       range={source.range}
                                       onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
                                       total={baseTotal(source)}
+                                      held={heldRange(source)}
                                       label={t("papers.of", { name: source.name })}
                                       summary={<p className="text-xs text-muted-foreground">{heldBy(source) === null ? t("papers.everyDeep") : t("papers.everyOne", { count: heldBy(source)! })}</p>}
                                     />
@@ -1493,6 +1504,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </JumpLink>
                 ))}
                 {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsRead", { count: pdfs.papers, pages: pdfs.pages, capped: String(Boolean(pdfCost)), credits: words.credits(pdfCost) })}</span></p> : null}
+                {pdfsUnpriced ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsUnpriced")}</span></p> : null}
                 {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{t("cost.firstReading", { count: handedPdfs })}</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">{t("cost.upTo", { credits: words.credits(handedPdfs * lookCredits) })}</span></div> : null}
                 {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.credits(reread) })}</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.credits(cost) }) : t("cost.nothing")}</span></div>

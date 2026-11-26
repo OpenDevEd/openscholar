@@ -30,7 +30,7 @@ import { changeOpens, changeSays } from "./activity-words";
 import { modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import { papersHref } from "./links";
-import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
+import { Help, ReviewerMark, ReviewerName, ShutChip, ShutNote } from "./pieces";
 import { perPaper, type Open } from "./store";
 import { AddModel } from "./team";
 import { useWords } from "./words";
@@ -146,8 +146,10 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   ];
   const [query, setQuery] = useState("");
   const text = useDeferredValue(query.trim());
-  // What the people added from the field become.
-  const [addAs, setAddAs] = useState<Role>("reviewer");
+  // What the people added from the field become. A finished screening takes no reviewer until it is reopened (convex/screening/reviewers.ts `add`): whoever is added then looks at it.
+  const [asked, setAddAs] = useState<Role>("reviewer");
+  const finished = Boolean(screening.finishedAt);
+  const addAs: Role = finished ? "viewer" : asked;
   const may = state.canChange;
   const shared = inWorkspace(workspaceId, may ? { kind: "screening" as const, id: id as string } : "skip");
   // Read while the panel is shut, so it opens with everyone in it. Guests and invitations are the workspace's to read.
@@ -212,9 +214,13 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
         </div>
         {may ? (
           <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
-            <span className="text-xs font-medium text-muted-foreground">{t("peopleDialog.addAs")}</span>
-            <Segmented label={t("peopleDialog.addAs")} value={addAs} onChange={setAddAs} options={ROLES.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }))} />
-            {screening.finishedAt ? null : (
+            {finished ? <ShutChip by="member">{t("peopleDialog.finishedAdds")}</ShutChip> : (
+              <>
+                <span className="text-xs font-medium text-muted-foreground">{t("peopleDialog.addAs")}</span>
+                <Segmented label={t("peopleDialog.addAs")} value={addAs} onChange={setAddAs} options={ROLES.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }))} />
+              </>
+            )}
+            {finished ? null : (
               <AddModel taken={models.map((model) => modelKey(model.model!))} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
                 <Button variant="outline" size="sm" className="ms-auto h-8"><AiIcon />{t("peopleDialog.addModel")}</Button>
               </AddModel>
@@ -266,15 +272,15 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               avatar: <IdentityAvatar name={guest.name || guest.email} imageUrl={guest.imageUrl} className="size-9" />,
               name: guest.name || guest.email,
               detail: words.t("person.guest"),
-              role: "viewer" as const,
-              onRole: (role: Role) => { if (role === "reviewer") onAdd(personReviewer({ id: guest.userId, name: guest.name || guest.email, ...(guest.imageUrl ? { imageUrl: guest.imageUrl } : {}), guest: true }, Date.now())); },
+              // Made a reviewer from here, while the screening is open.
+              ...(finished ? { role: { kind: "view" as const, label: t("peopleDialog.viewer") } } : { role: "viewer" as const, onRole: (role: Role) => { if (role === "reviewer") onAdd(personReviewer({ id: guest.userId, name: guest.name || guest.email, ...(guest.imageUrl ? { imageUrl: guest.imageUrl } : {}), guest: true }, Date.now())); } }),
               onRemove: () => void unshare({ kind: "screening", id, guest: { userId: guest.userId } }).catch(failed),
             })),
             ...invited.results.map((invitation) => ({
               key: invitation.email,
               avatar: <EmailAvatar />,
               name: invitation.email,
-              detail: invitation.delivery === "failed" ? t("peopleDialog.notSent") : invitation.role === "editor" ? words.t("person.invited") : words.t("person.invitedToLook"),
+              detail: invitation.delivery === "failed" ? t("peopleDialog.notSent") : invitation.role === "editor" ? words.t(finished ? "person.invitedFinished" : "person.invited") : words.t("person.invitedToLook"),
               role: (invitation.role === "editor" ? "reviewer" : "viewer") as Role,
               onRole: (role: Role) => void setRole({ kind: "screening", id, guest: { email: invitation.email }, role: GUEST_ROLE[role] }).catch(failed),
               onRemove: () => void unshare({ kind: "screening", id, guest: { email: invitation.email } }).catch(failed),

@@ -72,5 +72,10 @@ describe("screening a paper as its PDF", () => {
     expect(pdfsFor({ files: true, room: 200_000 }, pdfs)).toMatchObject({ papers: 3, pages: 63 });
     expect(pdfsFor({ files: false }, pdfs)).toEqual({ papers: 0, pages: 0 });
     expect(pdfsFor({ files: true }, pdfs)).toBe(pdfs);
+    // A model that holds 128,000 tokens reads 31 pages and not 32, and both are in the band of 25 to 32. A cost keeps the band: the 31-page paper is charged. A warning drops it where its longest paper is the one that doesn't fit, and keeps it where every paper in it does.
+    const edge = (most: number) => ({ papers: 2, pages: 25 + most, spread: { "3": { papers: 2, pages: 25 + most, most } } });
+    expect(pdfsFor({ files: true, room: 128_000 }, edge(32)).papers).toBe(2);
+    expect(pdfsFor({ files: true, room: 128_000 }, edge(32), true).papers).toBe(0);
+    expect(pdfsFor({ files: true, room: 128_000 }, edge(31), true).papers).toBe(2);
   });
 });

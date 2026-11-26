@@ -71,11 +71,14 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const lines = voteRows(screening, voted.items, whose === "all" ? undefined : whose).flatMap((row) => (row.vote ? [{ ...row, vote: row.vote, result: row.paper.result }] : []));
   const sample = lines.filter((row, i) => lines.findIndex((one) => one.paper.id === row.paper.id) === i).slice(0, 3);
   // What the server has counted of the votes: the ones cast, and the places with no vote in them, by why.
-  const counted = reviewers.filter((one) => whose === "all" || one.id === whose).map((one) => one.tally ?? { dealt: 0, cast: 0, failed: 0, waiting: 0, closed: 0 });
-  const votes = counted.reduce((sum, tally) => sum + tally.cast, 0);
-  const voters = counted.filter((tally) => tally.cast).length;
-  const [yet, failed] = [counted.reduce((sum, tally) => sum + tally.waiting, 0), counted.reduce((sum, tally) => sum + tally.failed, 0)];
-  const none = counted.reduce((sum, tally) => sum + tally.closed, 0);
+  const talliesOf = (ones: typeof reviewers) => {
+    const counted = ones.map((one) => one.tally ?? { dealt: 0, cast: 0, failed: 0, waiting: 0, closed: 0 });
+    const sum = (of: "cast" | "waiting" | "failed" | "closed") => counted.reduce((all, tally) => all + tally[of], 0);
+    return { votes: sum("cast"), voters: counted.filter((tally) => tally.cast).length, yet: sum("waiting"), failed: sum("failed"), none: sum("closed") };
+  };
+  // The votes file holds everyone's or one reviewer's. The whole record holds everyone's, whichever the votes tab is set to.
+  const { votes, voters, yet, failed, none } = talliesOf(reviewers.filter((one) => whose === "all" || one.id === whose));
+  const everyones = talliesOf(reviewers);
   const openNow = counts.conflict + counts.waiting;
   const flow = flowOf(out);
   const svg = () => flowSvg(out, Date.now());
@@ -124,8 +127,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       ),
     },
     votes: {
-      // Every vote cast is counted. Some are hidden from whoever still has papers to vote on, and the title says so.
-      title: t("votes.title", { votes, voters, hidden: String(Boolean(blind && state.toDo)) }),
+      // Every vote cast is counted, the ones hidden from whoever still has papers to vote on among them: the note over the file says which those are.
+      title: t("votes.title", { votes, voters }),
       help: (
         <Help title={t("tab.votes")} facts={<><HelpFact>{t("facts.csv")}</HelpFact><HelpFact>{t("facts.columns")}</HelpFact><HelpFact>{t("facts.ids")}</HelpFact></>}>
           {t("votes.help")}
@@ -251,7 +254,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                           <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} onClick={onClose} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
                           <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{words.decision(row.vote.decision)}</span></td>
                           <td className="px-3 text-xs text-muted-foreground">
-                            {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, screening.criteria)} label={words.failed(row.vote.reason, screening.criteria)} className="flex max-w-40 min-w-0"><Reason reason={row.vote.reason} criteria={screening.criteria} /></QuestionName> : t("votes.none")}
+                            {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, screening.criteria, "label")} label={words.failed(row.vote.reason, screening.criteria)} className="flex max-w-40 min-w-0"><Reason reason={row.vote.reason} criteria={screening.criteria} /></QuestionName> : t("votes.none")}
                           </td>
                           <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-28 truncate">{row.vote.note ?? t("votes.none")}</span></td>
                           <td className="px-3"><ResultChip result={row.result} /></td>
@@ -265,7 +268,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <p className="text-xs text-muted-foreground">
                   {sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
                   {blind && state.toDo ? `${t("votes.hiddenRows")} ` : ""}
-                  {whose === "all" && yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
+                  {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <NextLink href={papersHref(id)} onClick={onClose}>{t("votes.seeEvery")}<ArrowRight /></NextLink>
@@ -281,8 +284,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <ul className={LIST}>
                   {([
                     ["papers", total],
-                    ["votes", votes],
-                    ["withoutVote", yet + none + failed],
+                    ["votes", everyones.votes],
+                    ["withoutVote", everyones.yet + everyones.none + everyones.failed],
                     ["criteria", screening.criteria.length],
                     ["reviewers", reviewers.length],
                     ["sources", screening.sources.length],
@@ -314,7 +317,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 { key: `ris:${group}`, format: "RIS", run: async () => save(fileName(out, GROUP_FILE[group], "ris", Date.now()), "application/x-research-info-systems", risOf(await every(papersOf(group)))), off: !included },
               ]
             : tab === "votes"
-              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(screening, whose))}`, "csv", Date.now()), "text/csv", votesCsv(screening, state.me, await every(votesOf), whose === "all" ? undefined : whose)), off: !total }]
+              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(screening, whose))}`, "csv", Date.now()), "text/csv", votesCsv(screening, state.me, await every({}), whose === "all" ? undefined : whose)), off: !total }]
               : tab === "flow"
                 ? [
                     { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: false },

@@ -155,6 +155,8 @@ function Screen({ open }: { open: Open }) {
   // The list shown is the one asked for: not an earlier search or page that stays up while the new one is read.
   const arrived = !listed.isLoading && !listed.isStale;
   if (!picked && arrived && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
+  // It follows a paper the address names too. Whatever then takes the name out, a search, a page turn, another order or choice of votes, leaves that paper open until the list asked for arrives, and never the first paper of a page read long before.
+  if (picked && led?.id !== picked) setLed({ of: leading, id: picked });
   // Until the list asked for arrives, the paper that was open stays open.
   const opened = picked ?? (led && (led.of === leading || !arrived) ? led.id : null);
   // The open paper is read by itself, so Back, a reload or a link shows the paper its address says, whether or not the queue still holds it.
@@ -166,11 +168,8 @@ function Screen({ open }: { open: Open }) {
   const dealtWith = (one: Paper) => (queue === "todo" ? Boolean(myVote(one)) : queue === "again" ? !myVote(one)?.flagged : queue === "conflicts" ? one.result !== "conflict" : voted !== "any" && myVote(one)?.decision !== voted);
 
   const paper: Paper | undefined = (opened ? (named ?? listed.items.find((one) => one.id === opened)) : undefined) ?? (opened && named === undefined ? undefined : listed.items[0]);
-  // Typing in the search box takes the paper out of the address, so the first paper found opens. The one open now stays until the papers found arrive.
-  const setFind = (next: string) => {
-    if (paper) setLed({ of: leading, id: paper.id });
-    void setPlace({ q: next, paper: null }, { history: "replace" });
-  };
+  // Typing in the search box takes the paper out of the address, so the first paper found opens.
+  const setFind = (next: string) => void setPlace({ q: next, paper: null }, { history: "replace" });
   // The open paper is still being read by itself: a paper from a link or from Back, which the list doesn't hold.
   const opening = Boolean(opened) && named === undefined && !paper;
   // Where the open paper stood in the list when the list last held it. Once your vote takes it out of the queue it is shown there still. A paper opened from a link, which the list never held, leads the first page.

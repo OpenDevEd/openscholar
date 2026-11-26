@@ -228,6 +228,9 @@ const SORTS = v.union(v.literal("active"), v.literal("newest"), v.literal("oldes
 const PAGE_MAX = 50;
 const FILTER_ROWS = 500;
 
+/** Screenings read for one word of their names: the best matches, which the list's other filters are then applied to. */
+const NAMED = 200;
+
 export const listAction = defineUserQuery({
   path: "screening/view:list",
   description:
@@ -242,14 +245,19 @@ export const listAction = defineUserQuery({
     const keeps = async (job: Doc<"screeningJobs">) => fits(job) && (!included || ((await progressRow(ctx as QueryCtx, job._id))?.counts?.include ?? 0) > 0);
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const jobs = stream(ctx.db, schema).query("screeningJobs");
-    const read = needle
-      ? // A name is found by its words, best match first.
-        await ctx.db.query("screeningJobs").withSearchIndex("search_name", (q) => q.search("name", needle).eq("workspaceId", workspaceId)).paginate(options)
-      : await (sort === "name" ? jobs.withIndex("by_workspace_and_name", (q) => q.eq("workspaceId", workspaceId)).order("asc") : sort === "active" ? jobs.withIndex("by_workspace_and_activeAt", (q) => q.eq("workspaceId", workspaceId)).order("desc") : jobs.withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(sort === "oldest" ? "asc" : "desc"))
+    if (needle) {
+      // A name is found by its words, best match first. A search can't leave out the ones the other filters do, so the best matches are all read and paged here: a page is then never short, or empty with more after it.
+      // ponytail: the NAMED best matches. A workspace with more screenings than that under one word lists those.
+      const found = await ctx.db.query("screeningJobs").withSearchIndex("search_name", (q) => q.search("name", needle).eq("workspaceId", workspaceId)).take(NAMED);
+      const matching = (await Promise.all(found.map(async (job) => ((await keeps(job)) ? [job] : [])))).flat();
+      const from = Number(paginationOpts.cursor ?? 0) || 0;
+      const shown = matching.slice(from, from + options.numItems);
+      return { page: await Promise.all(shown.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!))), isDone: from + options.numItems >= matching.length, continueCursor: String(from + options.numItems) };
+    }
+    const read = await (sort === "name" ? jobs.withIndex("by_workspace_and_name", (q) => q.eq("workspaceId", workspaceId)).order("asc") : sort === "active" ? jobs.withIndex("by_workspace_and_activeAt", (q) => q.eq("workspaceId", workspaceId)).order("desc") : jobs.withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(sort === "oldest" ? "asc" : "desc"))
           .filterWith(keeps)
           .paginate({ ...options, maximumRowsRead: FILTER_ROWS });
-    const kept = (await Promise.all(read.page.map(async (job) => ((await keeps(job)) ? [job] : [])))).flat();
-    const page = await Promise.all(kept.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
+    const page = await Promise.all(read.page.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
     return { ...read, page };
   },
 });

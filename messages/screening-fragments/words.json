@@ -18,6 +18,7 @@
   "looker": "{member, select, true {Not a reviewer} other {Viewer}}",
   "person": {
     "invited": "Invited by email, votes once they join",
+    "invitedFinished": "Invited by email. Votes once they have joined and this is reopened",
     "invitedToLook": "Invited by email, sees it once they join",
     "toInvite": "Gets an invitation when you save",
     "toInviteAtStart": "Gets an invitation when you start",

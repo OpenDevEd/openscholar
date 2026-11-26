@@ -111,6 +111,7 @@
       "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced",
       "ASKED_SHOWN": "questions put to one person on one screening, counted for its list's row and its frame; past it the count says that many, and each is still found from its paper",
       "MINE_MAX": "the screenings one person reviews or is given, newest first, looked through for the ones that wait for them; the workspace's own list pages through every one",
+      "NAMED": "the screenings of a workspace whose names match a word best, which the list's other filters are then applied to; past it the list shows those best matches",
       "CHECKS_LOOKED": "a screening's latest checks of its sources, looked through for the last one that brought papers; its checks are listed a page at a time",
       "FLAGGED_COUNTED": "a reviewer's votes cast before a criterion became a must-have, counted for their tab; their queue pages through every one",
       "LATEST_COUNTED": "the papers a screening's last check brought, counted for the ones still open; its Papers page lists every one",

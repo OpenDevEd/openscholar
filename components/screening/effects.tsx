@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { baseTaken, bringsPdfs, readersOf, activeReviewers, defaultScoring, growing, modelsOf, type Criterion, type Result, type Reviewer, type Screening } from "./data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./pieces";
-import { paperCredits, readingOf } from "./store";
+import { paperCredits, readingOf, takesFiles } from "./store";
 import { useWords, type Words } from "./words";
 
 /** What a function here says things with: the shared words and this part's own messages. */
@@ -64,11 +64,11 @@ export const NO_PREVIEW: Preview = { total: 0, reopened: 0, joining: {}, leaving
 
 const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
 
-/** A criterion in quotes, in its own words as the list shows them, cut at a word near 60 letters where it runs longer. */
-export const criterionName = ({ words, t }: EffectsSay, criterion: Pick<Criterion, "text">) => {
-  const text = criterion.text.trim();
+/** A criterion in quotes, as a line names it: the name someone wrote, or else its question, cut at a word near 60 letters where it runs longer. */
+export const criterionName = ({ words, t }: EffectsSay, criterion: Pick<Criterion, "text" | "short">) => {
   // One whose question is being written has no words to quote yet.
-  if (!text) return t("criterionUnwritten");
+  if (!criterion.text.trim()) return t("criterionUnwritten");
+  const text = words.criterionLabel(criterion).trim();
   return words.quoted(text.length > 60 ? `${text.slice(0, 60).replace(/\s+\S*$/, "")}…` : text);
 };
 
@@ -241,10 +241,10 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
 
   // What a source this adds brings is known once the screening has read it: until then, what its range promises is the most it can be.
   const promised = promisedBy(before, after);
-  // Nobody has read them yet: each is priced as a paper with an abstract, and a source that can bring PDFs says they cost more.
+  // Nobody has read them yet: each is priced as a paper with an abstract. Where one can come as its PDF, which a model is charged for by the page, no figure is a cap: the line gives none, and says when the cost is known.
   const reading = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!) * promised, 0);
-  const unreadPdfs = bringsPdfs(bringing(before, after).map((one) => one.source));
-  if (promised) lines.push({ text: t("sources.promised", { count: promised, pdfs: String(Boolean(reading && unreadPdfs)) }), ...(reading ? { kind: "cost" as const, credits: reading } : {}), section: "papers" });
+  const byThePage = pdfsPromised(before, after);
+  if (promised) lines.push({ text: t("sources.promised", { count: promised, pdfs: String(Boolean(reading && byThePage)) }), ...(reading && !byThePage ? { kind: "cost" as const, credits: reading } : {}), section: "papers" });
   if (counted.removed) lines.push({ text: t("sources.removed", { count: counted.removed }), kind: "leave", section: "papers" });
 
   const [from, to] = [words.collectionName(before), words.collectionName(after)];
@@ -267,7 +267,6 @@ const withCredits = ({ words, t }: EffectsSay, line: EffectLine, text: string) =
 /** One line as the activity log keeps it, once the change is made: what it did, without "as soon as this is saved". */
 export const lineText = (say: EffectsSay, line: EffectLine) => withCredits(say, line, line.done ?? line.text);
 
-/** The papers the sources a change adds promise at most: which of them are new is known once the screening has read them. */
 /** The sources a change brings more papers from, each with how many more its range promises: a source it adds, and one whose range it widens. */
 const bringing = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) =>
   after.sources.flatMap((source) => {
@@ -275,7 +274,10 @@ const bringing = (before: Pick<Screening, "sources">, after: Pick<Screening, "so
     const more = was ? Math.max(0, baseTaken(source) - baseTaken(was)) : baseTaken(source);
     return more ? [{ source, more, widened: Boolean(was) }] : [];
   });
+/** The papers those sources promise at most: which of them are new is known once the screening has read them. */
 export const promisedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => bringing(before, after).reduce((sum, one) => sum + one.more, 0);
+/** Whether some of them can come as their PDF to a model that takes one: such a paper costs by the page, which nobody knows until the screening has read the source. */
+export const pdfsPromised = (before: Pick<Screening, "sources">, after: Pick<Screening, "reviewers" | "sources">) => bringsPdfs(bringing(before, after).map((one) => one.source)) && modelsOf(after).some((one) => one.model && takesFiles(one.model));
 /** Of those, the ones a wider range of a source it already has promises: a source's own count is of what it has read, so they are added to it. */
 export const widenedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => bringing(before, after).reduce((sum, one) => sum + (one.widened ? one.more : 0), 0);
 

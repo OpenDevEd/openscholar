@@ -168,7 +168,10 @@ describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"]
       const now = after.stands[paperId]!;
       if (now !== was) moved.set(`${was} to ${now}`, (moved.get(`${was} to ${now}`) ?? 0) + 1);
     }
-    expect(Object.fromEntries(said.moves.map((move) => [`${move.from} to ${move.to}`, move.count]))).toEqual(Object.fromEntries(moved));
+    // Ann still has papers to vote on, and the others' votes on those are kept from her: such a paper's move is counted and not said (./keeping.test.ts). Each move she is told of is one that happened, and with the ones kept back they are all of them.
+    const told = said.moves.filter((move) => move.count > move.hidden);
+    for (const move of told) expect(moved.get(`${move.from} to ${move.to}`) ?? 0).toBeGreaterThanOrEqual(move.count);
+    expect(said.moves.reduce((sum, move) => sum + move.count, 0)).toBe([...moved.values()].reduce((sum, count) => sum + count, 0));
 
     // Whoever it put on the screening got the open papers it said they would, and whoever it took off had the votes it said they had.
     const dealt = await made.t.run(async (ctx) => {
