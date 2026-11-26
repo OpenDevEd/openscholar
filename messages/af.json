@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { elk} other {}}",
       "moved": "{count, plural, one {# artikel} other {# artikels}} van {from} na {to} geskuif",
       "noChange": "Geen artikel se uitslag verander nie",
-      "hidden": "{count, plural, one {# artikel waarop jy nog moet stem, verander} other {# artikels waarop jy nog moet stem, verander}} ook van uitslag. {done, select, true {Hul stemme bly versteek terwyl hulle vir joune wag.} other {Watter kant toe, verskyn sodra die verandering gemaak is.}}",
+      "hidden": "{done, select, true {{count, plural, one {# artikel waarop jy nog moet stem, het dalk ook van uitslag verander. Sy stemme bly versteek terwyl dit vir joune wag.} other {# artikels waarop jy nog moet stem, het dalk ook van uitslag verander. Hul stemme bly versteek terwyl hulle vir joune wag.}}} other {{count, plural, one {Wat dit doen aan # artikel waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want sy stemme is vir jou versteek.} other {Wat dit doen aan die # artikels waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want hul stemme is vir jou versteek.}}}}",
       "papersLabel": "artikels",
       "more": "nog {count, number}",
       "activity": {
@@ -9318,6 +9318,8 @@
         "noneYet": "Geen artikel het nog by jou uitgekom nie",
         "noneYours": "Geen van sy artikels is joune om op te stem nie",
         "allVoted": "Jy het op al jou artikels gestem",
+        "finished": "Hierdie siftering is klaar",
+        "unvoted": "{count, plural, one {# van jou artikels het nie jou stem nie} other {# van jou artikels het nie jou stem nie}}",
         "noneWaits": "Geen artikel wag vir jou stem nie",
         "settledWithout": "{count, plural, one {# van jou artikels is daarsonder beslis} other {# van jou artikels is daarsonder beslis}}",
         "noneAgain": "Geen van jou stemme het ’n nuwe een nodig nie",

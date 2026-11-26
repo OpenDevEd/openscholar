@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { pro Artikel} other {}}",
       "moved": "{count, plural, one {# Artikel} other {# Artikel}} von {from} zu {to} verschoben",
       "noChange": "Das Ergebnis keines Artikels ändert sich",
-      "hidden": "{count, plural, one {Auch das Ergebnis von # Artikel, über den Sie noch abstimmen, ändert sich} other {Auch das Ergebnis von # Artikeln, über die Sie noch abstimmen, ändert sich}}. {done, select, true {Ihre Stimmen bleiben verborgen, solange diese Artikel auf Ihre warten.} other {In welche Richtung, zeigt sich, sobald die Änderung vorgenommen ist.}}",
+      "hidden": "{done, select, true {{count, plural, one {Auch das Ergebnis von # Artikel, über den Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange er auf Ihre wartet.} other {Auch das Ergebnis von # Artikeln, über die Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange sie auf Ihre warten.}}} other {{count, plural, one {Was das für # Artikel bedeutet, über den Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist. Die Stimmen darüber sind für Sie verborgen.} other {Was das für die # Artikel bedeutet, über die Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist. Die Stimmen darüber sind für Sie verborgen.}}}}",
       "papersLabel": "Artikel",
       "more": "{count, number} weitere",
       "activity": {
@@ -9318,6 +9318,8 @@
         "noneYet": "Noch kein Artikel ist bei Ihnen angekommen",
         "noneYours": "Über keinen seiner Artikel stimmen Sie ab",
         "allVoted": "Sie haben über alle Ihre Artikel abgestimmt",
+        "finished": "Dieses Screening ist abgeschlossen",
+        "unvoted": "{count, plural, one {# Ihrer Artikel hat keine Stimme von Ihnen} other {# Ihrer Artikel haben keine Stimme von Ihnen}}",
         "noneWaits": "Kein Artikel wartet auf Ihre Stimme",
         "settledWithout": "{count, plural, one {# Ihrer Artikel wurde ohne Ihre Stimme entschieden} other {# Ihrer Artikel wurden ohne Ihre Stimme entschieden}}",
         "noneAgain": "Keine Ihrer Stimmen muss neu abgegeben werden",

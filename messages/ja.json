@@ -7855,7 +7855,7 @@
       "creditsChip": "{credits}{each, select, true {／件} other {}}",
       "moved": "{count, plural, other {論文 # 件}}を {from} から {to} に移しました",
       "noChange": "結果が変わる論文はありません",
-      "hidden": "{count, plural, other {まだ投票していない論文 # 件も結果が変わります}}。{done, select, true {あなたの投票を待つ間、ほかの投票は非表示のままです。} other {どう変わるかは、変更後に表示されます。}}",
+      "hidden": "{done, select, true {{count, plural, other {まだ投票していない論文 # 件も結果が変わった可能性があります。あなたの投票を待つ間、ほかの投票は非表示のままです。}}} other {{count, plural, other {まだ投票していない論文 # 件への影響は、変更後に表示されます。これらの論文の投票はあなたには非表示になっているためです。}}}}",
       "papersLabel": "件",
       "more": "ほか {count, number} 件",
       "activity": {
@@ -9317,6 +9317,8 @@
         "noneYet": "まだ論文は割り当てられていません",
         "noneYours": "あなたが投票する論文はありません",
         "allVoted": "割り当てられた論文すべてに投票しました",
+        "finished": "このスクリーニングは完了しています",
+        "unvoted": "{count, plural, other {あなたの論文のうち # 件にまだ投票していません}}",
         "noneWaits": "あなたの投票を待っている論文はありません",
         "settledWithout": "{count, plural, other {あなたの論文のうち # 件は、あなたの投票なしで結果が確定しました}}",
         "noneAgain": "投票し直す必要があるものはありません",

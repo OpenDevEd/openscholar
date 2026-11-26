@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { cada uno} other {}}",
       "moved": "{count, plural, one {# artículo movido} other {# artículos movidos}} de {from} a {to}",
       "noChange": "No cambia el resultado de ningún artículo",
-      "hidden": "{count, plural, one {# artículo que usted aún no ha votado también cambia} other {# artículos que usted aún no ha votado también cambian}} de resultado. {done, select, true {Sus votos siguen ocultos mientras esperan el suyo.} other {El sentido del cambio se verá cuando se haga.}}",
+      "hidden": "{done, select, true {{count, plural, one {También puede haber cambiado de resultado # artículo que usted aún no ha votado. Sus votos siguen ocultos mientras espera el suyo.} other {También pueden haber cambiado de resultado # artículos que usted aún no ha votado. Sus votos siguen ocultos mientras esperan el suyo.}}} other {{count, plural, one {Lo que esto supone para # artículo que usted aún no ha votado se verá cuando se haga el cambio, porque sus votos están ocultos para usted.} other {Lo que esto supone para los # artículos que usted aún no ha votado se verá cuando se haga el cambio, porque sus votos están ocultos para usted.}}}}",
       "papersLabel": "artículos",
       "more": "{count, number} más",
       "activity": {
@@ -9318,6 +9318,8 @@
         "noneYet": "Todavía no le ha llegado ningún artículo",
         "noneYours": "No le toca votar ninguno de sus artículos",
         "allVoted": "Ha votado todos sus artículos",
+        "finished": "Este cribado ha terminado",
+        "unvoted": "{count, plural, one {# de sus artículos no tiene su voto} other {# de sus artículos no tienen su voto}}",
         "noneWaits": "Ningún artículo espera su voto",
         "settledWithout": "{count, plural, one {# de sus artículos se resolvió sin él} other {# de sus artículos se resolvieron sin él}}",
         "noneAgain": "Ninguno de sus votos necesita uno nuevo",

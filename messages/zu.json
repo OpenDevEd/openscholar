@@ -7855,7 +7855,7 @@
       "creditsChip": "{credits}{each, select, true { ngalinye} other {}}",
       "moved": "{count, plural, one {# iphepha lihanjisiwe} other {# amaphepha ahanjisiwe}} kusuka ku-{from} kuya ku-{to}",
       "noChange": "Awukho umphumela wephepha oshintshayo",
-      "hidden": "{count, plural, one {# iphepha ongakavoti kulo lishintsha} other {# amaphepha ongakavoti kuwo ashintsha}} umphumela nawo. {done, select, true {Amavoti awo ahlala efihliwe ngesikhathi elinde elakho.} other {Ukuthi kuya ngakuphi kuvela uma ushintsho selwenziwe.}}",
+      "hidden": "{done, select, true {{count, plural, one {# iphepha ongakavoti kulo kungenzeka ukuthi nalo lishintshe umphumela. Amavoti alo ahlala efihliwe ngesikhathi lilinde elakho.} other {# amaphepha ongakavoti kuwo kungenzeka ukuthi nawo ashintshe umphumela. Amavoti awo ahlala efihliwe ngesikhathi elinde elakho.}}} other {{count, plural, one {Okwenziwa yilokhu ephepheni elingu-# ongakavoti kulo kuvela uma ushintsho selwenziwe, ngoba amavoti alo afihliwe kuwe.} other {Okwenziwa yilokhu emaphepheni angu-# ongakavoti kuwo kuvela uma ushintsho selwenziwe, ngoba amavoti awo afihliwe kuwe.}}}}",
       "papersLabel": "amaphepha",
       "more": "{count, number} engeziwe",
       "activity": {
@@ -9317,6 +9317,8 @@
         "noneYet": "Alikho iphepha elize kuwe okwamanje",
         "noneYours": "Alikho kumaphepha akho okungelakho ukulivotela",
         "allVoted": "Uvote kuwo wonke amaphepha akho",
+        "finished": "Lokhu kuskrini kuqediwe",
+        "unvoted": "{count, plural, one {# wamaphepha akho alinalo ivoti lakho} other {# wamaphepha akho awanalo ivoti lakho}}",
         "noneWaits": "Alikho iphepha elilinde ivoti lakho",
         "settledWithout": "{count, plural, one {# wamaphepha akho lixazululwe ngaphandle kwalo} other {# wamaphepha akho axazululwe ngaphandle kwalo}}",
         "noneAgain": "Alikho kumavoti akho elidinga elisha",

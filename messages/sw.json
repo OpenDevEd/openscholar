@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { kila moja} other {}}",
       "moved": "{count, plural, one {Makala # imehamishwa} other {Makala # zimehamishwa}} kutoka {from} kwenda {to}",
       "noChange": "Hakuna matokeo ya makala yanayobadilika",
-      "hidden": "{count, plural, one {Makala # ambayo bado hujaipigia kura inabadilisha} other {Makala # ambazo bado hujazipigia kura zinabadilisha}} matokeo pia. {done, select, true {Kura zake zinabaki zimefichwa wakati zinasubiri kura yako.} other {Mwelekeo unaonekana badiliko likishafanywa.}}",
+      "hidden": "{done, select, true {{count, plural, one {Makala # ambayo bado hujaipigia kura huenda imebadilisha matokeo pia. Kura zake zinabaki zimefichwa wakati inasubiri kura yako.} other {Makala # ambazo bado hujazipigia kura huenda zimebadilisha matokeo pia. Kura zao zinabaki zimefichwa wakati zinasubiri kura yako.}}} other {{count, plural, one {Athari ya hili kwa makala # ambayo bado hujaipigia kura inaonekana badiliko likishafanywa, kwa sababu kura zake zimefichwa kwako.} other {Athari ya hili kwa makala # ambazo bado hujazipigia kura inaonekana badiliko likishafanywa, kwa sababu kura zao zimefichwa kwako.}}}}",
       "papersLabel": "makala",
       "more": "{count, number} zaidi",
       "activity": {
@@ -9318,6 +9318,8 @@
         "noneYet": "Bado hakuna makala iliyokufikia",
         "noneYours": "Hakuna makala yake iliyo yako kuipigia kura",
         "allVoted": "Umepigia kura makala zako zote",
+        "finished": "Uchujaji huu umekamilika",
+        "unvoted": "{count, plural, one {Makala # kati ya zako haina kura yako} other {Makala # kati ya zako hazina kura yako}}",
         "noneWaits": "Hakuna makala inayosubiri kura yako",
         "settledWithout": "{count, plural, one {Makala # kati ya zako iliamuliwa bila kura yako} other {Makala # kati ya zako ziliamuliwa bila kura yako}}",
         "noneAgain": "Hakuna kura yako inayohitaji kupigwa upya",

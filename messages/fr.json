@@ -7855,7 +7855,7 @@
       "creditsChip": "{credits}{each, select, true { chacun} other {}}",
       "moved": "{count, plural, one {# article déplacé} other {# articles déplacés}} de {from} à {to}",
       "noChange": "Le résultat d'aucun article ne change",
-      "hidden": "{count, plural, one {# article sur lequel vous n'avez pas encore voté change aussi de résultat} other {# articles sur lesquels vous n'avez pas encore voté changent aussi de résultat}}. {done, select, true {Leurs votes restent masqués tant qu'ils attendent le vôtre.} other {Le sens du changement s'affiche une fois la modification faite.}}",
+      "hidden": "{done, select, true {{count, plural, one {# article sur lequel vous n'avez pas encore voté a peut-être aussi changé de résultat. Ses votes restent masqués tant qu'il attend le vôtre.} other {# articles sur lesquels vous n'avez pas encore voté ont peut-être aussi changé de résultat. Leurs votes restent masqués tant qu'ils attendent le vôtre.}}} other {{count, plural, one {Ce que cela change pour # article sur lequel vous n'avez pas encore voté s'affiche une fois la modification faite, car ses votes vous sont masqués.} other {Ce que cela change pour les # articles sur lesquels vous n'avez pas encore voté s'affiche une fois la modification faite, car leurs votes vous sont masqués.}}}}",
       "papersLabel": "articles",
       "more": "{count, number} de plus",
       "activity": {
@@ -9317,6 +9317,8 @@
         "noneYet": "Aucun article ne vous est encore parvenu",
         "noneYours": "Aucun de ses articles ne vous revient",
         "allVoted": "Vous avez voté sur tous vos articles",
+        "finished": "Ce criblage est terminé",
+        "unvoted": "{count, plural, one {# de vos articles est resté sans votre vote} other {# de vos articles sont restés sans votre vote}}",
         "noneWaits": "Aucun article n'attend votre vote",
         "settledWithout": "{count, plural, one {# de vos articles a été tranché sans votre vote} other {# de vos articles ont été tranchés sans votre vote}}",
         "noneAgain": "Aucun de vos votes n'est à refaire",

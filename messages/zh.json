@@ -7855,7 +7855,7 @@
       "creditsChip": "{credits}{each, select, true {/篇} other {}}",
       "moved": "{count, plural, other {# 篇论文}}已从 {from} 转给 {to}",
       "noChange": "没有论文的结果改变",
-      "hidden": "你还没投票的 {count, plural, other {# 篇论文}}的结果也会改变。{done, select, true {在等待你投票期间，其他人的投票仍然隐藏。} other {改变的方向在更改生效后才会显示。}}",
+      "hidden": "{done, select, true {{count, plural, other {你还没投票的 # 篇论文的结果可能也已改变。在等待你投票期间，其他人的投票仍然隐藏。}}} other {{count, plural, other {这项更改对你还没投票的 # 篇论文有什么影响，要在更改生效后才会显示，因为你看不到这些论文的投票。}}}}",
       "papersLabel": "篇论文",
       "more": "另外 {count, number} 项",
       "activity": {
@@ -9317,6 +9317,8 @@
         "noneYet": "还没有分给你的论文",
         "noneYours": "其中没有需要你投票的论文",
         "allVoted": "你已对你的所有论文投票",
+        "finished": "此筛选已完成",
+        "unvoted": "{count, plural, other {你的论文中有 # 篇还没有你的投票}}",
         "noneWaits": "没有等待你投票的论文",
         "settledWithout": "{count, plural, other {你的论文中有 # 篇未等你的投票就已定案}}",
         "noneAgain": "你的投票都不需要重投",
