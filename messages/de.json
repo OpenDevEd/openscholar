@@ -6499,8 +6499,7 @@
       "seriesSaved": "Name der Reihe gespeichert",
       "seriesName": "Name der Reihe",
       "issn": "ISSN",
-      "issnHint": "Leer lassen, bis die Reihe eine hat. Bis dahin steht in Quellenzeilen ISSN {pending}.",
-      "issnPending": "Ausstehend",
+      "issnHint": "Leer lassen, bis die Reihe eine hat. Bis dahin nennen Quellenzeilen keine ISSN.",
       "issnSaved": "ISSN gespeichert",
       "enterSeriesName": "Gib den Namen der Reihe ein.",
       "enterByline": "Gib die Quellenzeile ein.",
@@ -6871,7 +6870,6 @@
       "yourTitle": "Ihr Titel",
       "noDoi": "Noch kein DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN ausstehend",
       "live": "Online",
       "seePlans": "Pläne ansehen",
       "activation": {
@@ -7596,7 +7594,7 @@
         },
         "byline": {
           "title": "Die Reihenzeile",
-          "about": "Die Zeile, die jeder Bericht dieser Reihe druckt, mit dem Namen der Reihe, ihrer ISSN und dem DOI des Berichts.",
+          "about": "Die Zeile, die jeder Bericht dieser Reihe druckt, mit dem Namen der Reihe und dem DOI des Berichts.",
           "note": "Sie muss Text im PDF sein, kein Bild, denn die Prüfungen suchen danach. Wählen Sie Für mich hinzufügen, und Openscholar fügt eine letzte Seite mit der Zeile an."
         },
         "checks": {
@@ -7606,8 +7604,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "Die Nummer, die die Reihe kennzeichnet, wie die einer Zeitschrift.",
-          "note": "Ausstehend, bis die Reihe registriert ist. Der DOI Ihres Berichts funktioniert auch ohne sie."
+          "about": "Die Nummer, die die Reihe kennzeichnet, wie die einer Zeitschrift."
         },
         "activation": {
           "title": "Aktivieren",

@@ -2963,10 +2963,12 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         <TooltipHint label={report ? (printedOf(report)?.short ?? "") : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report && printedOf(report) ? "text-foreground" : "text-muted-foreground")}>{(report && printedOf(report)?.short) || t("noDoi")}</p>
         </TooltipHint>
-        <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
-          {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
-          <FieldHelp field="issn" />
-        </p>
+        {basics.series.issn ? (
+          <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+            {t("issn", { issn: basics.series.issn })}
+            <FieldHelp field="issn" />
+          </p>
+        ) : null}
         {facts.length > 0 ? (
           <dl className="mt-4 space-y-1.5 border-t border-border-subtle pt-3 text-sm">
             {facts.map((fact) => (

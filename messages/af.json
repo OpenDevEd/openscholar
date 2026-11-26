@@ -6499,8 +6499,7 @@
       "seriesSaved": "Reeksnaam gestoor",
       "seriesName": "Reeksnaam",
       "issn": "ISSN",
-      "issnHint": "Laat leeg totdat die reeks 'n ISSN kry. Tot dan sê die eienaarsreël ISSN {pending}.",
-      "issnPending": "hangende",
+      "issnHint": "Laat leeg totdat die reeks 'n ISSN kry. Tot dan laat die eienaarsreël die ISSN uit.",
       "issnSaved": "ISSN gestoor",
       "enterSeriesName": "Tik die reeks se naam.",
       "enterByline": "Tik die eienaarsreël.",
@@ -6871,7 +6870,6 @@
       "yourTitle": "Jou titel",
       "noDoi": "Nog geen DOI nie",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN hangende",
       "live": "Gepubliseer",
       "seePlans": "Sien planne",
       "activation": {
@@ -7596,7 +7594,7 @@
         },
         "byline": {
           "title": "Die reeksreël",
-          "about": "Die reël wat elke verslag in hierdie reeks druk, met die reeks se naam, sy ISSN en die verslag se DOI.",
+          "about": "Die reël wat elke verslag in hierdie reeks druk, met die reeks se naam en die verslag se DOI.",
           "note": "Dit moet teks in die PDF wees, nie ’n prent nie, want die toetse soek daarna. Kies Voeg dit vir my by en Openscholar voeg ’n laaste bladsy met die reël by."
         },
         "checks": {
@@ -7606,8 +7604,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "Die nommer wat die reeks identifiseer, soos ’n tydskrif s’n.",
-          "note": "Hangende totdat die reeks geregistreer is. Jou verslag se DOI werk daarsonder."
+          "about": "Die nommer wat die reeks identifiseer, soos ’n tydskrif s’n."
         },
         "activation": {
           "title": "Aktiveer",

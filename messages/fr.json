@@ -6498,8 +6498,7 @@
       "seriesSaved": "Nom de la collection enregistré",
       "seriesName": "Nom de la collection",
       "issn": "ISSN",
-      "issnHint": "Laissez vide tant que la série n'en a pas. D'ici là, les mentions indiquent ISSN {pending}.",
-      "issnPending": "En attente",
+      "issnHint": "Laissez vide tant que la série n'en a pas. D'ici là, les mentions n'indiquent pas d'ISSN.",
       "issnSaved": "ISSN enregistré",
       "enterSeriesName": "Saisissez le nom de la série.",
       "enterByline": "Saisissez la mention.",
@@ -6870,7 +6869,6 @@
       "yourTitle": "Votre titre",
       "noDoi": "Pas encore de DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN en attente",
       "live": "En ligne",
       "seePlans": "Voir les offres",
       "activation": {
@@ -7595,7 +7593,7 @@
         },
         "byline": {
           "title": "La mention de la collection",
-          "about": "La ligne que chaque rapport de cette collection imprime, avec le nom de la collection, son ISSN et le DOI du rapport.",
+          "about": "La ligne que chaque rapport de cette collection imprime, avec le nom de la collection et le DOI du rapport.",
           "note": "Elle doit être du texte dans le PDF, pas une image, car les vérifications la recherchent. Choisissez Ajoutez-la pour moi et Openscholar ajoute une dernière page avec la ligne."
         },
         "checks": {
@@ -7605,8 +7603,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "Le numéro qui identifie la collection, comme celui d’une revue.",
-          "note": "En attente jusqu’à l’enregistrement de la collection. Le DOI de votre rapport fonctionne sans lui."
+          "about": "Le numéro qui identifie la collection, comme celui d’une revue."
         },
         "activation": {
           "title": "Activation",

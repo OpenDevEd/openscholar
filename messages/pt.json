@@ -6499,8 +6499,7 @@
       "seriesSaved": "Nome da série guardado",
       "seriesName": "Nome da série",
       "issn": "ISSN",
-      "issnHint": "Deixe vazio até a série ter um. Até lá, as linhas de crédito dizem ISSN {pending}.",
-      "issnPending": "Pendente",
+      "issnHint": "Deixe vazio até a série ter um. Até lá, as linhas de crédito não indicam o ISSN.",
       "issnSaved": "ISSN guardado",
       "enterSeriesName": "Escreva o nome da série.",
       "enterByline": "Escreva a linha de crédito.",
@@ -6871,7 +6870,6 @@
       "yourTitle": "O seu título",
       "noDoi": "Ainda sem DOI",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN pendente",
       "live": "Publicado",
       "seePlans": "Ver planos",
       "activation": {
@@ -7596,7 +7594,7 @@
         },
         "byline": {
           "title": "A linha da série",
-          "about": "A linha que cada relatório desta série imprime, com o nome da série, o seu ISSN e o DOI do relatório.",
+          "about": "A linha que cada relatório desta série imprime, com o nome da série e o DOI do relatório.",
           "note": "Tem de ser texto no PDF, não uma imagem, porque as verificações a procuram. Escolha Acrescentem por mim e a Openscholar acrescenta uma última página com a linha."
         },
         "checks": {
@@ -7606,8 +7604,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "O número que identifica a série, como o de uma revista.",
-          "note": "Pendente até a série ser registada. O DOI do seu relatório funciona sem ele."
+          "about": "O número que identifica a série, como o de uma revista."
         },
         "activation": {
           "title": "Ativação",

@@ -6498,8 +6498,7 @@
       "seriesSaved": "Series name saved",
       "seriesName": "Series name",
       "issn": "ISSN",
-      "issnHint": "Leave empty until the series has one. Bylines say ISSN {pending} until then.",
-      "issnPending": "Pending",
+      "issnHint": "Leave empty until the series has one. Bylines leave the ISSN out until then.",
       "issnSaved": "ISSN saved",
       "enterSeriesName": "Enter the series' name.",
       "enterByline": "Enter the byline.",
@@ -6870,7 +6869,6 @@
       "yourTitle": "Your title",
       "noDoi": "No DOI yet",
       "issn": "ISSN {issn}",
-      "issnPending": "ISSN pending",
       "live": "Live",
       "seePlans": "See plans",
       "activation": {
@@ -7595,7 +7593,7 @@
         },
         "byline": {
           "title": "The series line",
-          "about": "The line every report in this series prints, naming the series, its ISSN and the report's DOI.",
+          "about": "The line every report in this series prints, naming the series and the report's DOI.",
           "note": "It has to be text in the PDF, not a picture, because the checks look for it. Choose Add it for me and Openscholar adds a last page with the line."
         },
         "checks": {
@@ -7605,8 +7603,7 @@
         },
         "issn": {
           "title": "ISSN",
-          "about": "The number that identifies the series, as a journal's does.",
-          "note": "Pending until the series is registered. Your report's DOI works without it."
+          "about": "The number that identifies the series, as a journal's does."
         },
         "activation": {
           "title": "Activating",

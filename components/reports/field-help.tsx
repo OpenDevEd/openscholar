@@ -95,9 +95,9 @@ const HELP = {
   agreement: { note: true, sources: ["ccLicences"] },
   workspace: { note: true },
   doi: { note: true, filled: "reserved", sources: ["doi"] },
-  byline: { note: true, entry: "chosen", sources: ["issn"] },
+  byline: { note: true, entry: "chosen" },
   checks: { note: true },
-  issn: { note: true, sources: ["issn"] },
+  issn: { sources: ["issn"] },
   activation: { note: true },
 } as const satisfies Record<string, Help>;
 export type HelpKey = keyof typeof HELP;
