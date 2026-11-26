@@ -7779,11 +7779,11 @@
       "model": {
         "startsLater": "{name} begin sodra die artikels aankom",
         "nothingToRead": "{name} het geen artikels oor om te lees nie",
-        "reads": "{name} lees {all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}{when, select, gathered { sodra al sy artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir sy volgende artikel het} waiting { wanneer sy modelle se beurt kom} save { sodra dit gestoor is} other {}}"
+        "reads": "{name} lees {all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
       },
       "person": {
         "invited": "{name} kry ’n uitnodiging per e-pos, en artikels sodra hulle aansluit",
-        "invitedNoneOpen": "{name} kry ’n uitnodiging per e-pos, en artikels wat inkom nadat hulle aangesluit het. Elke artikel wat dit nou het, is beslis, so geeneen daarvan gaan na hulle nie",
+        "invitedNoneOpen": "{name} kry ’n uitnodiging per e-pos, en artikels wat inkom nadat hulle aangesluit het. Elke artikel wat die siftering nou het, is beslis, so geeneen daarvan gaan na hulle nie",
         "dealt": "{name} kry {count, plural, one {# oop artikel} other {# oop artikels}}, ’n gelyke deel, en ’n e-pos wat dit sê",
         "joinsWithNone": "{name} sluit aan en kry ’n e-pos wat dit sê. Elke oop artikel het reeds sy beoordelaars, so nog geeneen gaan na hulle nie"
       },
@@ -7796,7 +7796,7 @@
         "noVote": "{you, select, true {Jy het geen stem uitgebring nie} other {{name} het geen stem uitgebring nie}}",
         "votesStop": "{you, select, true {Jou} other {{name} se}} {count, plural, one {# stem bly op rekord en tel nie meer nie} other {# stemme bly op rekord en tel nie meer nie}}",
         "votesKept": "{you, select, true {Jou} other {{name} se}} {count, plural, one {# stem tel} other {# stemme tel}} steeds",
-        "papersGo": "{count, plural, one {# artikel gaan} other {# artikels gaan}} na {takers}: {unvoted, plural, =0 {} other {# waarop {you, select, true {jy} other {{name}}} nie gestem het nie, en }}{voted, number} waarop {you, select, true {jy} other {{name}}} gestem het, waar {voted, plural, one {daardie stem {thrown, select, true {ophou tel} other {bly tel}}} other {daardie stemme {thrown, select, true {ophou tel} other {bly tel}}}}",
+        "papersGo": "{count, plural, one {# artikel gaan} other {# artikels gaan}} na {takers}, {unvoted, plural, =0 {} other {# waarop {you, select, true {jy} other {{name}}} nie gestem het nie, en }}{voted, number} waarop {you, select, true {jy} other {{name}}} gestem het, waar {voted, plural, one {daardie stem {thrown, select, true {ophou tel} other {bly tel}}} other {daardie stemme {thrown, select, true {ophou tel} other {bly tel}}}}",
         "unvotedGo": "Die {count, plural, one {# artikel} other {# artikels}} waarop {you, select, true {jy} other {{name}}} nie gestem het nie, gaan na {takers}",
         "settled": "{count, plural, one {# artikel} other {# artikels}} waarop {you, select, true {jy} other {{name}}} nie gestem het nie, word op die ander stemme beslis",
         "waiting": "{count, plural, one {# artikel} other {# artikels}} waarop {you, select, true {jy} other {{name}}} nie gestem het nie, wag vir die ander se stemme"
@@ -7817,11 +7817,11 @@
       },
       "criteria": {
         "modelsAnswerNew": "Die modelle beantwoord {count, plural, one {die nuwe kriterium} other {die nuwe kriteria}} op die oop artikels wat hulle gelees het",
-        "votesStand": "Mense se stemme bly soos hulle is: hulle is uitgebring voor {count, plural, one {hierdie kriterium} other {hierdie kriteria}}",
+        "votesStand": "Mense se stemme bly soos hulle is, omdat hulle voor {count, plural, one {hierdie kriterium} other {hierdie kriteria}} uitgebring is",
         "modelsStop": "Die modelle hou op om {name} te beantwoord. Stemme wat reeds uitgebring is, bly soos hulle uitgebring is",
         "noLongerAsked": "{name} word nie meer gevra nie. Stemme wat reeds uitgebring is, bly soos hulle uitgebring is",
-        "becomesMust": "{name} word ’n vereiste: voortaan dui ’n nee daarop op Sluit uit. Mense se stemme op die artikels wat nog oop is, bly, en word vir ’n nuwe stem gemerk",
-        "becomesNice": "{name} word wenslik: voortaan dui ’n nee daarop nie meer op Sluit uit nie. Stemme wat reeds uitgebring is, bly soos hulle uitgebring is",
+        "becomesMust": "{name} word ’n vereiste. Voortaan dui ’n nee daarop op Sluit uit. Mense se stemme op die artikels wat nog oop is, bly, en word vir ’n nuwe stem gemerk",
+        "becomesNice": "{name} word wenslik. Voortaan dui ’n nee daarop nie meer op Sluit uit nie. Stemme wat reeds uitgebring is, bly soos hulle uitgebring is",
         "writeQuestion": "Skryf die kriterium se vraag voordat jy stoor",
         "modelsReworded": "Die modelle beantwoord die herformuleerde {name} op artikels wat hulle voortaan lees",
         "reviewersReworded": "Beoordelaars beantwoord voortaan die herformuleerde {name}. Stemme wat reeds uitgebring is, bly soos hulle uitgebring is",
@@ -7846,7 +7846,7 @@
         "removed": "{count, plural, one {# artikel verlaat die siftering, met sy stemme op rekord behou} other {# artikels verlaat die siftering, met hul stemme op rekord behou}}"
       },
       "collection": {
-        "renamed": "Sy versameling word na {name} hernoem, met die artikels daarin",
+        "renamed": "Die siftering se versameling word na {name} hernoem en hou die artikels daarin",
         "stopsSaving": "Ingesluite artikels word nie meer in ’n versameling gestoor nie{kept, select, true {. {count, plural, one {Die een in {from} bly daar} other {Die # in {from} bly daar}}} other {}}",
         "added": "Die {count, plural, one {# artikel} other {# artikels}} wat tot dusver ingesluit is, word by {to} gevoeg{was, select, true {. Hulle bly in {from}} other {}}",
         "prune": "Uitgesluite artikels word uit die versameling gehaal waaruit hulle gekom het",
@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { elk} other {}}",
       "moved": "{count, plural, one {# artikel} other {# artikels}} van {from} na {to} geskuif",
       "noChange": "Geen artikel se uitslag verander nie",
-      "hidden": "{done, select, true {{count, plural, one {# artikel waarop jy nog moet stem, het dalk ook van uitslag verander. Sy stemme bly versteek terwyl dit vir joune wag.} other {# artikels waarop jy nog moet stem, het dalk ook van uitslag verander. Hul stemme bly versteek terwyl hulle vir joune wag.}}} other {{count, plural, one {Wat dit doen aan # artikel waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want sy stemme is vir jou versteek.} other {Wat dit doen aan die # artikels waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want hul stemme is vir jou versteek.}}}}",
+      "hidden": "{done, select, true {{count, plural, one {# artikel waarop jy nog moet stem, het dalk ook van uitslag verander. Die stemme daarop bly versteek terwyl dit vir joune wag.} other {# artikels waarop jy nog moet stem, het dalk ook van uitslag verander. Die stemme daarop bly versteek terwyl hulle vir joune wag.}}} other {{count, plural, one {Wat dit doen aan # artikel waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want die stemme daarop is vir jou versteek.} other {Wat dit doen aan die # artikels waarop jy nog moet stem, verskyn sodra die verandering gemaak is, want die stemme daarop is vir jou versteek.}}}}",
       "papersLabel": "artikels",
       "more": "nog {count, number}",
       "activity": {
@@ -7865,7 +7865,7 @@
         "renamed": "Het dit na {name} hernoem",
         "finished": "Het die siftering as klaar gemerk",
         "unsettled": "{count, plural, one {# artikel is} other {# artikels is}} nie beslis nie",
-        "checksStopped": "Dit het opgehou om vir nuwe artikels te kontroleer",
+        "checksStopped": "Kontroles vir nuwe artikels het opgehou",
         "reopened": "Het die siftering heropen",
         "paused": "Het die modelle onderbreek",
         "resumed": "Het die modelle hervat",
@@ -7890,14 +7890,14 @@
         "joined": "{count, plural, one {# artikel het} other {# artikels het}} by die siftering aangesluit",
         "reopenedByCheck": "Die siftering is weer oop",
         "changed": "Het {parts} verander",
-        "changedSettings": "Het sy instellings verander",
+        "changedSettings": "Het die instellings verander",
         "setting": {
-          "name": "sy naam",
+          "name": "die naam",
           "question": "die navorsingsvraag",
-          "papers": "sy bronne",
+          "papers": "die bronne",
           "newPapers": "hoe dit na nuwe artikels soek",
-          "criteria": "sy kriteria",
-          "reviewers": "sy beoordelaars",
+          "criteria": "die kriteria",
+          "reviewers": "die beoordelaars",
           "decided": "hoe oor ’n artikel besluit word",
           "goesTo": "waarheen ingesluite artikels gaan"
         },
@@ -7952,7 +7952,7 @@
           "waiting": "{count, plural, one {# artikel wag} other {# artikels wag}} vir stemme",
           "mine": "{count, plural, one {# artikel} other {# artikels}} waarop jy Sluit in gestem het"
         },
-        "help": "Die artikels van een uitslag, of elke artikel. BibTeX en RIS dra elke artikel se id hier, titel, outeurs, jaar, joernaal, DOI en opsomming, vir ’n verwysingsbestuurder. Die CSV voeg by waar elkeen vandaan kom, waar dit staan, hoekom dit uitgesluit is, wie dit beslis het, hoe sy beoordelaars gestem het en sy punte: wat sy beoordelaars se antwoorde onder hierdie siftering se puntetelling optel, wat ingesluite artikels rangskik en niks beslis nie.",
+        "help": "Die artikels van een uitslag, of elke artikel. BibTeX en RIS dra elke artikel se id hier, titel, outeurs, jaar, joernaal, DOI en opsomming, vir ’n verwysingsbestuurder. Die CSV voeg by waar elke artikel vandaan kom, waar dit staan, hoekom dit uitgesluit is, wie dit beslis het, hoe sy beoordelaars gestem het, en sy punte. Punte is wat die beoordelaars se antwoorde onder hierdie siftering se puntetelling optel. Hulle rangskik ingesluite artikels en beslis niks nie.",
         "which": "Watter artikels",
         "every": "Elke artikel",
         "allOfThem": "Almal",
@@ -7963,7 +7963,7 @@
       },
       "votes": {
         "title": "{votes, plural, one {# stem} other {# stemme}} deur {voters, plural, one {# beoordelaar} other {# beoordelaars}}",
-        "help": "Een ry vir elke artikel wat ’n beoordelaar gekry het: hul stem met sy rede, sy nota en die antwoord op elke kriterium, en waar die artikel nou staan. ’n Beoordelaar wat nog moet stem, het ook ’n ry, en so ook ’n model wat die artikel nie kon lees nie. ’n Model kry nie ’n artikel wat net ’n PDF is wat dit nie kan lees nie, en ’n beoordelaar wat later bygevoeg word, kry nie artikels wat beslis is voordat hulle aangesluit het nie.",
+        "help": "Een ry vir elke artikel wat ’n beoordelaar gekry het, met hul stem, die rede en nota daarby, die antwoord op elke kriterium, en waar die artikel nou staan. ’n Beoordelaar wat nog moet stem, het ook ’n ry, en so ook ’n model wat die artikel nie kon lees nie. ’n Model kry nie ’n artikel wat net ’n PDF is wat dit nie kan lees nie, en ’n beoordelaar wat later bygevoeg word, kry nie artikels wat beslis is voordat hulle aangesluit het nie.",
         "leftOut": "Enige stem wat die ander uitgebring het op die {count, plural, one {# artikel} other {# artikels}} waarop jy nog moet stem, word uitgelaat sodat dit joune nie kan beïnvloed nie.",
         "whose": "Wie se stemme",
         "everyone": "Almal",
@@ -7980,7 +7980,7 @@
         "none": "Geen",
         "shown": "Dit is {shown} van die {votes, plural, one {# stem} other {# stemme}} wat uitgebring is.",
         "hiddenRows": "Die lêer het ’n ry vir elke stem wat vir jou versteek is, sonder die stem.",
-        "emptyRows": "Die lêer het ook {count, plural, one {# ry} other {# rye}} sonder ’n stem om te wys: {why}.",
+        "emptyRows": "Die lêer het ook {count, plural, one {# ry} other {# rye}} sonder ’n stem om te wys, vir {why}.",
         "emptyWhy": {
           "yet": "beoordelaars wat nog moet stem",
           "finished": "beoordelaars wat nie gestem het nie toe die siftering as klaar gemerk is",
@@ -7992,19 +7992,19 @@
       "flow": {
         "title": "PRISMA 2020-vloeidiagram",
         "help": "Die getalle vul PRISMA 2020 se identifikasie- en sifteringsblokke in, geneem uit hierdie siftering soos dit nou staan.",
-        "alt": "PRISMA-diagram: {boxes}"
+        "alt": "PRISMA-diagram wat {boxes} wys"
       },
       "record": {
         "title": "Die hele rekord",
-        "help": "Een JSON-lêer van die hele siftering: sy artikels, stemme, kriteria, beoordelaars, bronne, bespreking en veranderinge, met ’n gids tot elke kolom. ’n Model se antwoorde kom saam met die gedeeltes wat dit genoem het. Wat die siftering gekos het, word uitgelaat.",
+        "help": "Een JSON-lêer van die hele siftering, met sy artikels, stemme, kriteria, beoordelaars, bronne, bespreking en veranderinge, en ’n gids tot elke kolom. ’n Model se antwoorde kom saam met die gedeeltes wat dit genoem het. Wat die siftering gekos het, word uitgelaat.",
         "part": {
           "papers": {
             "name": "Artikels",
-            "what": "Elkeen met sy DOI, sy opsomming, waar dit vandaan kom en waar dit staan"
+            "what": "Elke artikel met sy DOI, opsomming, bron en waar dit staan"
           },
           "votes": {
             "name": "Stemme",
-            "what": "{hidden, select, true {Elkeen met sy rede, sy nota, sy antwoorde en die sin wat ’n model genoem het. Dié wat vir jou versteek is, word daarsonder gelys} other {Elkeen met sy rede, sy nota, sy antwoorde en die sin wat ’n model genoem het}}"
+            "what": "{hidden, select, true {Elke stem met sy rede, nota en antwoorde, en die sin wat ’n model genoem het. Stemme wat vir jou versteek is, word daarsonder gelys} other {Elke stem met sy rede, nota en antwoorde, en die sin wat ’n model genoem het}}"
           },
           "withoutVote": {
             "name": "Sonder ’n stem",
@@ -8028,7 +8028,7 @@
           },
           "changes": {
             "name": "Veranderinge",
-            "what": "Die aktiwiteitslog: wat verander is, deur wie en wanneer"
+            "what": "Die aktiwiteitslog van wat verander is, deur wie en wanneer"
           },
           "columns": {
             "name": "Kolomme",
@@ -8054,7 +8054,7 @@
       "copyToast": {
         "copied": "Die metodeparagraaf is gekopieer",
         "failed": "Jou blaaier het nie die bladsy toegelaat om te kopieer nie",
-        "select": "Kies die paragraaf en kopieer dit:"
+        "select": "Kies die paragraaf en kopieer dit."
       },
       "notLoaded": "Die werkruimte het nog nie gelaai nie. Probeer oor ’n oomblik weer.",
       "notMade": "Die lêer kon nie gemaak word nie. Probeer weer."
@@ -8126,19 +8126,19 @@
         "overModels": "{count, plural, one {’n Siftering gebruik # model} other {’n Siftering gebruik tot # modelle}}",
         "orphaned": "{many, select, true {{count, plural, one {# artikel is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by}}} other {{count, plural, one {# artikel is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by}}}}",
         "creditsShort": "{credits} krediete kort",
-        "reading": "Lees sy artikels",
+        "reading": "Lees die artikels",
         "addPapers": "Voeg artikels by om te begin",
         "addReviewer": "Voeg ’n beoordelaar by om te begin"
       },
       "unread": "{count, plural, other {# kon nie gelees word nie}}",
       "toast": {
-        "nothingWritten": "Dit het niks gevind om hier by die kriteria te voeg nie",
+        "nothingWritten": "Die model het niks gevind om by hierdie kriteria te voeg nie",
         "notWritten": "Die kriteria kon nie geskryf word nie. Probeer weer.",
         "removed": "{name} verwyder",
         "undo": "Ongedaan maak",
         "failed": "Dit het nie gewerk nie. Probeer weer.",
         "notAdded": "Sommige mense kon nie bygevoeg word nie. Voeg hulle weer by onder Mense.",
-        "notStarted": "Dit kon nie begin word nie. Probeer weer.",
+        "notStarted": "Die siftering kon nie begin word nie. Probeer weer.",
         "saved": "Veranderinge gestoor",
         "discarded": "Veranderinge weggegooi"
       },
@@ -8150,10 +8150,10 @@
       },
       "goes": {
         "collectionName": "Versamelingnaam",
-        "itsCollection": "Sy versameling",
+        "itsCollection": "Die siftering se versameling",
         "newCollection": "Nuwe versameling",
         "addTo": "Voeg by {name}",
-        "addToIts": "Voeg by sy versameling",
+        "addToIts": "Voeg by die siftering se versameling",
         "nowhere": "Nêrens",
         "kept": "In die siftering gehou",
         "private": "Privaat",
@@ -8163,8 +8163,8 @@
         "aCommunity": "’n Gemeenskap",
         "readingCommunity": "Lees die gemeenskap se versamelings",
         "prune": "Verwyder uitgesluite artikels uit {name}",
-        "excludedLeave": "Uitgesluite verlaat",
-        "othersStay": "Miskien en in konflik bly"
+        "excludedLeave": "Uitgesluite artikels gaan uit",
+        "othersStay": "Artikels by Miskien of in konflik bly"
       },
       "part": {
         "papers": "Artikels",
@@ -8180,14 +8180,14 @@
         "noCriteria": "Geen kriteria nie",
         "invited": "{count, plural, other {# uitgenooi}}",
         "nobody": "Nog niemand nie",
-        "decided": "{you, select, true {{rule}, konflikte na jou} other {{rule}, konflikte na {name}}}"
+        "decided": "{you, select, true {{rule}, en jy besleg konflikte} other {{rule}, en {name} besleg konflikte}}"
       },
       "filledFrom": "Ingevul uit <b>{name}</b>",
       "openIt": "Maak dit oop",
       "partsNav": "Gaan na ’n deel van die vorm",
       "neededToStart": "Nodig om te begin",
       "elsewhere": "{named, select, true {Jou onvoltooide siftering {name} word in {workspace} gehou, waar dit begin is.} other {Jou onvoltooide siftering word in {workspace} gehou, waar dit begin is.}}",
-      "goOnThere": "Gaan daar daarmee voort",
+      "goOnThere": "Gaan daar voort",
       "name": {
         "label": "Naam",
         "placeholder": "Soos “Skoolmaaltye en leer”",
@@ -8199,9 +8199,9 @@
       },
       "papers": {
         "upToSources": "{count, plural, other {Tot # bronne}}",
-        "helpFrom": "Voeg elke plek by waar die artikels vandaan kom: soektogte, versamelings, gemeenskappe, Zotero, lêers of DOI’s. ’n Artikel wat in twee bronne gevind word, word een keer gesif.",
+        "helpFrom": "Voeg elke plek by waar die artikels vandaan kom, soos soektogte, versamelings, gemeenskappe, Zotero, lêers of DOI’s. ’n Artikel wat in twee bronne gevind word, word een keer gesif.",
         "helpRead": "’n Siftering lees ’n titel en ’n opsomming. ’n Rekord wat Openscholar se indeks ken, neem albei daarvandaan. ’n Artikel wat met sy eie PDF kom en geen opsomming het nie, word as die PDF gelees.",
-        "helpLeft": "Wat nie gesif kan word nie, word uitgelaat, en sy bron se ry lys dit met die rede: ’n artikel sonder opsomming en sonder PDF, ’n rekord sonder titel, ’n DOI wat nie gevind word nie, ’n lêer wat nie oopgaan nie.",
+        "helpLeft": "’n Artikel sonder opsomming en sonder PDF, ’n rekord sonder titel, ’n DOI wat nie gevind word nie en ’n lêer wat nie oopgaan nie, kan nie gesif word nie. Elkeen word uitgelaat en met die rede op sy bron se ry gelys.",
         "stillReading": "Lees nog",
         "found": "{soFar, select, true {<n></n> tot dusver gevind} other {<n></n> gevind}}",
         "leftOut": "<n></n> uitgelaat",
@@ -8215,7 +8215,7 @@
         "removedOnSave": "Verwyder wanneer jy stoor",
         "atStart": "{count, plural, other {# by die begin}}",
         "allOfIt": "Alles",
-        "all": "{count, plural, one {Sy # rekord} other {Al # rekords}}",
+        "all": "{count, plural, one {Die een rekord} other {Al # rekords}}",
         "inSource": "{count, plural, other {# in die bron}}",
         "readAsPdf": "{count, plural, one {# as sy PDF gelees} other {# as PDF’e gelees}}",
         "duplicates": "{count, plural, one {# duplikaat saamgevoeg} other {# duplikate saamgevoeg}}",
@@ -8228,7 +8228,7 @@
         "remove": "Verwyder {name}",
         "of": "Artikels van {name}",
         "everyDeep": "Elke artikel daarin en in die versamelings daaronder.",
-        "everyOne": "{count, plural, one {Sy een artikel.} other {Elkeen van sy # artikels.}}",
+        "everyOne": "{count, plural, one {Die een artikel daarin.} other {Al # artikels daarin.}}",
         "zoteroOrder": "Eerste by Zotero gevoeg eerste",
         "handoffGone": "Wat die gemeenskap oorgedra het, kan nie meer gelees word nie. Kies sy rekords weer onder Gemeenskap.",
         "addFrom": "Voeg artikels by uit",
@@ -8262,18 +8262,19 @@
         "nextCheck": "Volgende kontrole {day}",
         "firstCheck": "Eerste kontrole {day}",
         "firstOnSave": "Eerste kontrole sodra dit gestoor is",
-        "perNew": "{credits} krediete per nuwe artikel{pdf, select, true {, meer vir een wat as sy PDF gelees word} other {}}{last, select, true {, {spent} vir die laaste {count}} other {}}",
+        "perNew": "{pdf, select, true {{credits} krediete per nuwe artikel, meer as dit as ’n PDF gelees word} other {{credits} krediete per nuwe artikel}}",
         "noneGrow": "Geeneen van hierdie bronne kry artikels by nie. Voeg ’n soektog, ’n versameling, ’n gemeenskap, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
-        "addToCheck": "Voeg ’n soektog, ’n versameling, ’n gemeenskap, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer."
+        "addToCheck": "Voeg ’n soektog, ’n versameling, ’n gemeenskap, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
+        "lastSpent": "{spent} vir {count, plural, one {die laaste artikel} other {die laaste # artikels}}"
       },
       "criteria": {
         "helpTitle": "Vereiste en wenslik",
         "factPeople": "Mense stem direk",
         "factModels": "Antwoorde bepaal modelle se stemme",
-        "help": "Skryf elke kriterium as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n vereiste kriterium maak sy stem Sluit uit, en ’n onduidelik maak dit Miskien. ’n Wenslike kriterium laat ’n model nooit Sluit uit stem nie. ’n Persoon kan dit steeds as hul rede gee. Riglyne onder ’n vraag sê wat tel: ’n beoordelaar maak dit oop met “Riglyne” onder die vraag op Sif, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n kriterium merk, word in elke opsomming gemerk gewys terwyl ’n persoon stem.",
+        "help": "Skryf elke kriterium as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n vereiste kriterium laat die model Sluit uit stem, en ’n onduidelik laat dit Miskien stem. ’n Wenslike kriterium laat ’n model nooit Sluit uit stem nie, maar ’n persoon kan dit steeds as hul rede gee. Riglyne onder ’n vraag sê wat tel. ’n Beoordelaar maak dit oop met “Riglyne” onder die vraag op Sif, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n kriterium merk, word in elke opsomming gemerk terwyl ’n persoon stem.",
         "import": "{searches, plural, one {{count, plural, one {Voeg # vraag uit jou soektog by} other {Voeg # vrae uit jou soektog by}}} other {{count, plural, one {Voeg # vraag uit jou soektogte by} other {Voeg # vrae uit jou soektogte by}}}}",
         "copyFrom": "Kopieer uit ’n siftering",
-        "copyAdds": "Voeg sy kriteria by dié hier, met hul punte",
+        "copyAdds": "Voeg daardie siftering se kriteria en hul punte by hierdie",
         "write": "Skryf kriteria uit die vraag",
         "writing": "Skryf kriteria uit die vraag",
         "needQuestion": "Skryf eers ’n navorsingsvraag",
@@ -8284,7 +8285,7 @@
         "shortName": "Kort naam",
         "shortNameOf": "Kort naam van kriterium {n}",
         "shortNameMax": "{count, plural, other {Tot # karakters}}",
-        "shortNameHelp": "Die naam waarmee ’n kriterium bekend staan waar sy vraag nie pas nie: tabelkolomme, filters en die redes waarom artikels uitgesluit is. Dit is die vraag se eie woorde totdat jy een skryf.",
+        "shortNameHelp": "Die naam waarmee ’n kriterium bekend staan waar sy vraag nie pas nie, soos tabelkolomme, filters en die redes waarom artikels uitgesluit is. Totdat jy een skryf, is dit die vraag se eie woorde.",
         "criterion": "Kriterium {n}",
         "questionPlaceholder": "Skryf ’n ja-of-nee-vraag",
         "guidanceFor": "Riglyne vir kriterium {n}",
@@ -8321,7 +8322,7 @@
         "help": "Elke beoordelaar stem Sluit in, Miskien of Sluit uit op die artikels wat hulle kry. ’n Persoon lees die titel en opsomming en stem. ’n Model beantwoord elke kriterium op elke artikel wat dit lees, en sy antwoorde maak sy stem.",
         "aiModel": "KI-model",
         "votesKeep": "{count, plural, one {# stem tel steeds} other {# stemme tel steeds}}",
-        "pdfsMissed": "{why, select, text {{count, plural, one {Kan nie PDF’e lees nie: # artikel kry geen stem daarvan nie} other {Kan nie PDF’e lees nie: # artikels kry geen stem daarvan nie}}} other {{count, plural, one {Kan nie die langste PDF’e lees nie: # artikel kry geen stem daarvan nie} other {Kan nie die langste PDF’e lees nie: # artikels kry geen stem daarvan nie}}}}",
+        "pdfsMissed": "{why, select, text {{count, plural, one {Kan nie PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie PDF’e lees nie, so # artikels kry geen stem daarvan nie}}} other {{count, plural, one {Kan nie die langste PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie die langste PDF’e lees nie, so # artikels kry geen stem daarvan nie}}}}",
         "creditsFor": "{credits} krediete vir {count, plural, one {# artikel} other {# artikels}}",
         "allRead": "Alles gelees",
         "none": "Nog geen beoordelaars nie",
@@ -8337,7 +8338,7 @@
         "each": "Mense op elke artikel",
         "factModels": "Modelle lees elke oop artikel",
         "factEveryone": "Almal sluit in wie ook al later aansluit",
-        "eachHelp": "Elke model lees elke artikel wat oop is wanneer dit aansluit. Dit stel hoeveel mense op elkeen stem. Die artikels word verdeel sodat elke persoon omtrent dieselfde aantal lees. ’n Getal bly daardie getal wanneer die span groei. Almal beteken elke persoon op die siftering, toe en later.",
+        "eachHelp": "Elke model lees elke artikel wat oop is wanneer dit aansluit. Dit stel hoeveel mense op elkeen stem. Die artikels word verdeel sodat elke persoon omtrent dieselfde aantal lees. ’n Vaste getal bly dieselfde wanneer die span groei. Almal beteken elke persoon op die siftering, nou en later.",
         "everyone": "Almal",
         "addPerson": "Voeg ’n persoon by om te kies",
         "settledWhen": "’n Artikel is beslis wanneer",
@@ -8351,12 +8352,12 @@
         "whoSettles": "Wie ’n konflik beslis",
         "seeVotes": "Beoordelaars sien die ander stemme",
         "seeingTitle": "Hoe ander stemme gesien word",
-        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word: elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
+        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
         "after": "Nadat hulle stem",
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
         "addReviewer": "Voeg ’n beoordelaar by om te sien hoe ’n artikel beslis word.",
-        "modelSettles": "’n Model se stem kan ’n artikel beslis voordat enige persoon stem."
+        "modelSettles": "’n Model se stem beslis net die artikels wat geen persoon kry nie. Op die ander beslis die eerste persoon se stem."
       },
       "goesHelp": "Artikels met die uitslag Ingesluit word by die versameling gevoeg wat jy kies, in jou biblioteek of in ’n gemeenskap, met die sterre uit Puntetelling. Nêrens hou hulle net in die siftering.",
       "summaryLabel": "Opsomming",
@@ -8393,7 +8394,7 @@
         "free": "Gratis",
         "credits": "{credits} krediete",
         "noPapers": "Nog geen artikels nie",
-        "pdfsRead": "{count, plural, one {# artikel word as sy PDF gelees} other {# artikels word as hul PDF’e gelees}}, {pages, plural, one {# bladsy} other {# bladsye}} altesaam{capped, select, true {: tot {credits} van hierdie krediete.} other {.}}",
+        "pdfsRead": "{count, plural, one {# artikel word as sy PDF gelees} other {# artikels word as hul PDF’e gelees}}, {pages, plural, one {# bladsy} other {# bladsye}} altesaam{capped, select, true {. Hulle kos tot {credits} van hierdie krediete.} other {.}}",
         "pdfsUnpriced": "’n Nuwe artikel wat as sy PDF kom, kos meer as wat hier getel word, per bladsy. Die koste wys sodra die siftering die nuwe bronne gelees het.",
         "firstReading": "{count, plural, one {Eerste lesing van # PDF, betaal toe dit bygevoeg is} other {Eerste lesing van # PDF’e, betaal toe hulle bygevoeg is}}",
         "upTo": "Tot {credits} krediete",
@@ -8404,9 +8405,9 @@
         "still": "Nog te betaal",
         "nothing": "Niks",
         "overWallet": "{credits} krediete meer as wat die werkruimte het",
-        "walletShare": "Deel van die werkruimte se krediete: {share}",
+        "walletShare": "{share} van die werkruimte se krediete",
         "shareOf": "{under, select, true {Onder {share} van} other {{share} van}}",
-        "inWorkspace": "{credits} in {workspace}",
+        "inWorkspace": "{own, select, true {{credits} beskikbaar} other {{credits} in {workspace}}}",
         "leftAfter": "{credits} oor daarna",
         "spent": "{credits} tot dusver bestee"
       },
@@ -8465,7 +8466,7 @@
       },
       "rule": {
         "title": "Hoe oor ’n artikel besluit word",
-        "eachPaper": "Elke artikel: {who, select, both {{people, plural, one {# persoon} other {# mense}} en {models, plural, one {# KI-model} other {# KI-modelle}}} people {{people, plural, one {# persoon} other {# mense}}} other {{models, plural, one {# KI-model} other {# KI-modelle}}}}",
+        "eachPaper": "{who, select, both {{people, plural, one {# persoon} other {# mense}} en {models, plural, one {# KI-model} other {# KI-modelle}}} people {{people, plural, one {# persoon} other {# mense}}} other {{models, plural, one {# KI-model} other {# KI-modelle}}}} op elke artikel",
         "noReviewer": "Nog geen beoordelaar nie",
         "hiddenMine": "Stemme versteek in jou Om te doen",
         "hiddenTheirs": "Stemme versteek in beoordelaars se Om te doen",
@@ -8492,12 +8493,12 @@
         "nothing": "Die laaste kontrole het geen nuwe artikels gevind nie",
         "counting": "<done></done> van {of, number}",
         "modelPrice": "{name}, {price}",
-        "creditsHelp": "{you, select, true {’n Model stop wanneer die werkruimte nie vir sy volgende artikel kan betaal nie. Sy stemme tot dusver bly, en dit gaan voort waar dit gestop het sodra jy krediete byvoeg.} other {’n Model stop wanneer die werkruimte nie vir sy volgende artikel kan betaal nie. Sy stemme tot dusver bly, en dit gaan voort waar dit gestop het sodra {workspace} krediete byvoeg.}}",
+        "creditsHelp": "{you, select, true {’n Model stop wanneer die werkruimte nie vir sy volgende artikel kan betaal nie. Die stemme wat dit uitgebring het, bly, en dit gaan voort waar dit gestop het sodra jy krediete byvoeg.} other {’n Model stop wanneer die werkruimte nie vir sy volgende artikel kan betaal nie. Die stemme wat dit uitgebring het, bly, en dit gaan voort waar dit gestop het sodra {workspace} krediete byvoeg.}}",
         "stoppedAt": "<models></models> het gestop by {done, number} van {of, plural, one {# artikel} other {# artikels}}",
         "finishedOn": "Klaar op {day}",
         "finishedAgo": "{ago} klaar",
         "finishedTitle": "Voltooide siftering",
-        "finishedHelp": "{member, select, true {Sy modelle hou op lees en dit hou op om vir nuwe artikels te kontroleer. Jy kan dit steeds lees, uitvoer en verander, of dit heropen.} other {Sy modelle hou op lees en dit hou op om vir nuwe artikels te kontroleer. Jy kan dit steeds lees en uitvoer. ’n Lid van {workspace} kan dit heropen.}}",
+        "finishedHelp": "{member, select, true {Die modelle hou op lees en die siftering hou op om vir nuwe artikels te kontroleer. Jy kan dit steeds lees, uitvoer en verander, of dit heropen.} other {Die modelle hou op lees en die siftering hou op om vir nuwe artikels te kontroleer. Jy kan dit steeds lees en uitvoer. ’n Lid van {workspace} kan dit heropen.}}",
         "pausedTitle": "Onderbreekte modelle",
         "pausedHelp": "{member, select, true {Onderbreekte modelle lees niks en bestee geen krediete nie. Mense kan aanhou stem. Hervat die modelle sodat hulle verder lees.} other {Onderbreekte modelle lees niks en bestee geen krediete nie. Mense kan aanhou stem. ’n Lid van {workspace} kan hulle hervat.}}",
         "papersRead": "{done, number} van {of, plural, one {# artikel} other {# artikels}} gelees",
@@ -8509,20 +8510,20 @@
         "read": "{done, number} van {of, number}"
       },
       "menu": {
-        "emailsOff": "Hierdie siftering sal jou nie meer e-pos nie",
-        "emailsOn": "Hierdie siftering e-pos jou weer",
-        "stopEmails": "Stop sy e-posse aan my",
-        "emailAgain": "Sy e-posse aan my is af: skakel hulle aan",
+        "emailsOff": "Jy sal nie meer e-posse van hierdie siftering ontvang nie",
+        "emailsOn": "Jy sal weer e-posse van hierdie siftering ontvang",
+        "stopEmails": "Stop e-posse",
+        "emailAgain": "Ontvang weer e-posse",
         "pauseModels": "Onderbreek modelle",
         "duplicate": "Dupliseer as ’n nuwe siftering",
         "move": "Skuif na ’n ander werkruimte",
         "delete": "Vee uit"
       },
       "move": {
-        "modelsPaid": "{own, select, true {{count, plural, one {Sy model word voortaan uit jou eie krediete betaal} other {Sy modelle word voortaan uit jou eie krediete betaal}}} other {{count, plural, one {Sy model word voortaan uit {to} se krediete betaal} other {Sy modelle word voortaan uit {to} se krediete betaal}}}}",
-        "reviewersStay": "{own, select, true {Sy ander beoordelaars hou dit, as sy gaste} other {Sy ander beoordelaars hou dit, as sy gaste waar hulle nie in {to} is nie}}",
-        "papersStay": "{own, select, true {Artikels wat dit gestoor het, bly waar hulle is, en dié wat dit voortaan insluit, word in jou eie biblioteek gestoor} other {Artikels wat dit gestoor het, bly waar hulle is, en dié wat dit voortaan insluit, word in {to} se biblioteek gestoor}}",
-        "sourcesStay": "{own, select, true {Sy bronne bly in jou eie werkruimte, en dit gaan voort om hulle daar te kontroleer} other {Sy bronne bly in {from}, en dit gaan voort om hulle daar te kontroleer}}",
+        "modelsPaid": "{own, select, true {{count, plural, one {Die model word voortaan uit jou eie krediete betaal} other {Die modelle word voortaan uit jou eie krediete betaal}}} other {{count, plural, one {Die model word voortaan uit {to} se krediete betaal} other {Die modelle word voortaan uit {to} se krediete betaal}}}}",
+        "reviewersStay": "{own, select, true {Die ander beoordelaars bly daarop as gaste} other {Die ander beoordelaars bly daarop, as gaste waar hulle nie in {to} is nie}}",
+        "papersStay": "{own, select, true {Artikels wat reeds gestoor is, bly waar hulle is, en artikels wat voortaan ingesluit word, word in jou eie biblioteek gestoor} other {Artikels wat reeds gestoor is, bly waar hulle is, en artikels wat voortaan ingesluit word, word in {to} se biblioteek gestoor}}",
+        "sourcesStay": "{own, select, true {Die bronne bly in jou eie werkruimte, en die siftering gaan voort om hulle daar te kontroleer} other {Die bronne bly in {from}, en die siftering gaan voort om hulle daar te kontroleer}}",
         "membersLose": "Lede van {from} wat nie sy beoordelaars is nie, sien dit nie meer nie",
         "nothingElse": "Niks anders verander nie"
       },
@@ -8537,7 +8538,7 @@
       },
       "delete": {
         "title": "Vee {name} uit?",
-        "goes": "Sy stemme en sy instellings gaan saam",
+        "goes": "Die stemme en instellings word saam uitgevee",
         "saved": "{count, plural, one {Die # artikel wat in {collection} gestoor is, bly daar} other {Die # artikels wat in {collection} gestoor is, bly daar}}",
         "final": "Dit kan nie ongedaan gemaak word nie",
         "shut": "Net {name} of ’n admin van hierdie werkruimte kan hierdie siftering uitvee."
@@ -8548,7 +8549,7 @@
         "votesCount": "{count, plural, one {Jou # stem tel steeds} other {Jou # stemme tel steeds}}",
         "noVotes": "Jy het geen stem uitgebring nie",
         "papersGo": "{count, plural, one {Die # artikel waarop jy nie gestem het nie, gaan na ’n ander beoordelaar, of word beslis op die stemme wat dit reeds het} other {Die # artikels waarop jy nie gestem het nie, gaan na ander beoordelaars, of word beslis op die stemme wat hulle reeds het}}",
-        "fromList": "Dit verlaat jou lys, en jy kan dit eers weer oopmaak sodra dit weer met jou gedeel word"
+        "fromList": "Die siftering verlaat jou lys. Jy kan dit net weer oopmaak as dit weer met jou gedeel word"
       },
       "add": {
         "title": "Voeg {name} as beoordelaar by?",
@@ -8579,14 +8580,14 @@
       },
       "peopleDialog": {
         "helpTitle": "Wie op ’n siftering is",
-        "personalIn": "{you, select, true {Hierdie siftering is in jou eie werkruimte: jy sien dit en kan dit verander.} other {Hierdie siftering is in {workspace} se eie werkruimte, en hulle kan dit verander.}}",
-        "personalElse": "Enigiemand anders het dit eers sodra dit met hulle gedeel word: as beoordelaar, wat artikels kry en stem, of as kyker, wat elke artikel en elke stem sien.",
-        "membersSee": "Lede van {workspace} sien hierdie siftering en kan dit verander. Dié wat sy beoordelaars is, kry artikels en stem daarop.",
-        "outsideHas": "Iemand buite {workspace} het dit eers sodra dit met hulle gedeel word: as beoordelaar, wat artikels kry en stem, of as kyker, wat elke artikel en elke stem sien.",
-        "modelToo": "{you, select, true {’n Model is ook ’n beoordelaar: dit lees elke oop artikel en stem, betaal uit jou krediete.} other {’n Model is ook ’n beoordelaar: dit lees elke oop artikel en stem, betaal uit {workspace} se krediete.}}",
+        "personalIn": "{you, select, true {Hierdie siftering is in jou eie werkruimte, so jy sien dit en kan dit verander.} other {Hierdie siftering is in {workspace} se eie werkruimte, en hulle kan dit verander.}}",
+        "personalElse": "Enigiemand anders het dit eers sodra dit met hulle gedeel word, óf as beoordelaar, wat artikels kry en stem, óf as kyker, wat elke artikel en elke stem sien.",
+        "membersSee": "Lede van {workspace} sien hierdie siftering en kan dit verander. Dié wat beoordelaars is, kry artikels en stem daarop.",
+        "outsideHas": "Iemand buite {workspace} het dit eers sodra dit met hulle gedeel word, óf as beoordelaar, wat artikels kry en stem, óf as kyker, wat elke artikel en elke stem sien.",
+        "modelToo": "{you, select, true {’n Model is ook ’n beoordelaar. Dit lees elke oop artikel en stem, betaal uit jou krediete.} other {’n Model is ook ’n beoordelaar. Dit lees elke oop artikel en stem, betaal uit {workspace} se krediete.}}",
         "close": "Maak toe",
         "addAs": "Voeg mense by as",
-        "finishedAdds": "Hierdie siftering is klaar: mense wat hier bygevoeg word, kan daarna kyk. Om ’n beoordelaar by te voeg, heropen dit, of voeg hulle in Instellings by, waar hulle stem sodra dit heropen is.",
+        "finishedAdds": "Hierdie siftering is klaar, so mense wat hier bygevoeg word, kan daarna kyk. Om ’n beoordelaar by te voeg, heropen dit, of voeg hulle in Instellings by, waar hulle stem sodra dit heropen is.",
         "addModel": "Voeg ’n model by",
         "membersAdd": "Lede van {workspace} voeg mense by en verander wat elkeen mag doen.",
         "full": "{workspace} se plan deel ’n siftering met {count, plural, one {# persoon} other {# mense}} buite dit. Haal een af om nog een by te voeg.",
@@ -8603,6 +8604,12 @@
         "reviewerCan": "Stem op die artikels wat hulle kry",
         "viewer": "Kyker",
         "viewerCan": "Sien elke artikel en elke stem"
+      },
+      "stopEmails": {
+        "title": "Hou op om e-posse van hierdie siftering te ontvang?",
+        "says": "Jy sal nie e-posse kry oor nuwe artikels om op te stem, konflikte om te besleg of herinneringe nie. Ander mense se e-posse verander nie. Jy kan hulle weer aanskakel in die siftering se kieslys.",
+        "confirm": "Stop e-posse",
+        "cancel": "Hou aan ontvang"
       }
     },
     "list": {
@@ -8654,10 +8661,10 @@
       "forYouToScreen": "{count, plural, other {# vir jou om te sif}}",
       "conflictsToSettle": "{count, plural, one {# konflik om te beslis} other {# konflikte om te beslis}}",
       "questionsForYou": "{count, plural, one {# vraag vir jou} other {# vrae vir jou}}",
-      "finishedIncluded": "{included} ingesluit, {when} klaar",
+      "finishedIncluded": "{included} ingesluit",
       "waitingForVotes": "{count} wag vir stemme",
       "inConflictFor": "{count} in konflik, vir {who} om te beslis",
-      "upToDate": "Op datum, volgende kontrole {day}",
+      "upToDate": "Op datum",
       "allSettled": "Elke artikel is beslis",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
@@ -8679,7 +8686,7 @@
       },
       "discussion": {
         "title": "Bespreking",
-        "about": "{models, select, true {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag: dit bly op hul Siftering-lys totdat hulle antwoord. ’n Model kan nie gevra word nie: druk een van sy merke in die tabel vir die gedeelte wat dit gelees het.} other {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag: dit bly op hul Siftering-lys totdat hulle antwoord.}}",
+        "about": "{models, select, true {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly op hul Siftering-lys totdat hulle antwoord. ’n Model kan nie gevra word nie. Druk een van sy merke in die tabel vir die gedeelte wat dit gelees het.} other {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly op hul Siftering-lys totdat hulle antwoord.}}",
         "blind": "Hierdie siftering versteek wat oor ’n artikel geskryf is vir ’n beoordelaar net solank die artikel nog vir daardie beoordelaar se eie stem wag.",
         "shut": "Beoordelaars bespreek ’n artikel hier. Dit bly uit sig sodat dit jou stem nie kan beïnvloed nie.",
         "notSent": "Dit is nie gestuur nie. Probeer weer.",
@@ -8712,10 +8719,10 @@
     "overview": {
       "notSaved": "Dit het nie gewerk nie. Probeer weer.",
       "empty": {
-        "arriving": "Sy artikels is op pad",
-        "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit sy bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit sy bronne aankom.}}",
-        "noPaper": "{sources, select, true {Sy bronne het geen artikel bevat wat dit kan sif nie.} other {Hierdie siftering het geen bron om artikels uit te neem nie.}}",
-        "toSources": "{sources, select, true {Sien sy bronne} other {Voeg ’n bron by}}"
+        "arriving": "Die artikels is op pad",
+        "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit die bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit die bronne aankom.}}",
+        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {Hierdie siftering het geen bron om artikels uit te neem nie.}}",
+        "toSources": "{sources, select, true {Sien die bronne} other {Voeg ’n bron by}}"
       },
       "progress": {
         "title": "Vordering",
@@ -8730,7 +8737,7 @@
         "extract": "Onttrek uit die ingesluite artikels",
         "finish": "Merk as klaar",
         "settledOf": "{total, plural, one {van # artikel beslis} other {van # artikels beslis}}",
-        "leftOut": "{bare, select, true {{count, number} uitgelaat: geen opsomming nie} other {{count, number} uitgelaat}}",
+        "leftOut": "{bare, select, true {{count, number} uitgelaat omdat hulle geen opsomming het nie} other {{count, number} uitgelaat}}",
         "capped": "{personal, select, true {Gestop by jou plan se artikellimiet} other {Gestop by die artikellimiet van {workspace} se plan}}",
         "pdfsUnread": "{count, plural, one {# PDF het geen beoordelaar wat dit lees nie} other {# PDF’e het geen beoordelaar wat hulle lees nie}}",
         "merged": "{count, plural, one {# duplikaat saamgevoeg} other {# duplikate saamgevoeg}}"
@@ -8797,8 +8804,8 @@
         "unreadLabel": "{count, plural, one {# artikel wat dit nie kon lees nie} other {# artikels wat dit nie kon lees nie}}",
         "unread": "{count, number} kon nie gelees word nie",
         "unreadSays": "{count, plural, one {Dit kon nie hierdie artikel lees nie, so dit het geen sê daaroor nie.} other {Dit kon nie hierdie # artikels lees nie, so dit het geen sê daaroor nie.}}",
-        "notGivenText": "{count, plural, one {Nie op die PDF nie: dit lees net teks} other {Nie op die # PDF’e nie: dit lees net teks}}",
-        "notGivenLong": "{count, plural, one {Nie op # PDF nie: langer as wat dit op een slag lees} other {Nie op # PDF’e nie: langer as wat dit op een slag lees}}",
+        "notGivenText": "{count, plural, one {Kry nie die PDF nie, want dit lees net teks} other {Kry nie die # PDF’e nie, want dit lees net teks}}",
+        "notGivenLong": "{count, plural, one {Kry nie # PDF wat langer is as wat dit op een slag lees nie} other {Kry nie # PDF’e wat langer is as wat dit op een slag lees nie}}",
         "voted": "{decision, select, include {{count, number} het Sluit in gestem} maybe {{count, number} het Miskien gestem} other {{count, number} het Sluit uit gestem}}",
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
         "noPeople": "Geen mense om mee te vergelyk nie",
@@ -8812,7 +8819,7 @@
         "creditsShort": "{credits} krediete kort",
         "remind": "Stuur ’n herinnering",
         "moveAway": "Skuif artikels na iemand anders",
-        "takeOff": "{mine, select, true {Verlaat hierdie siftering} other {Haal van hierdie siftering af}}"
+        "takeOff": "{mine, select, true {Verlaat hierdie siftering} other {Haal hulle van hierdie siftering af}}"
       },
       "unread": {
         "earlier": "Vroeër",
@@ -8826,13 +8833,13 @@
           "above": "{from, number} en hoër"
         },
         "sameOf": "{share, number, percent} dieselfde van {count, plural, one {# artikel} other {# artikels}}",
-        "kept": "Hoe ver die beoordelaars saamstem, verskyn sodra jy op elkeen van jou artikels gestem het: anders sou dit verklap hoe die ander gestem het.",
+        "kept": "Hoe ver die beoordelaars saamstem, verskyn sodra jy op elkeen van jou artikels gestem het. Voor dit sou dit verklap hoe die ander gestem het.",
         "none": "Hoe ver die beoordelaars saamstem, verskyn hier sodra twee van hulle op dieselfde artikels gestem het.",
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
         "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}",
         "splitMost": "Die artikels waaroor hulle die meeste verskil het",
         "noneYet": "Nog geen",
-        "cell": "{a} en {b}: kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
+        "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
       },
       "kappa": {
         "title": "Cohen se kappa",
@@ -8868,9 +8875,9 @@
         "spent": "<num>{count, number}</num> bestee",
         "onceRead": "{credits} sodra elke artikel gelees is",
         "failed": "{count, plural, one {# lesing het misluk} other {# lesings het misluk}}",
-        "arriving": "Sy artikels kom nog aan",
+        "arriving": "Die artikels kom nog aan",
         "allRead": "Elke artikel is gelees",
-        "leftIn": "{credits} oor in {workspace}",
+        "leftIn": "{own, select, true {{credits} oor} other {{credits} oor in {workspace}}}",
         "takenOff": "{credits} deur modelle wat afgehaal is",
         "nothingToPay": "Niks om te betaal nie"
       },
@@ -8883,7 +8890,7 @@
         "skips": "{count, plural, one {Slaan # vaste bron oor} other {Slaan # vaste bronne oor}}",
         "means": "’n Kontrole voer elke bron se soektog weer uit en voeg die artikels by wat hierdie siftering nog nie het nie. Opgelaaide lêers en geplakte lyste verander nooit nie, so kontroles slaan hulle oor.",
         "checkNow": "Kontroleer nou",
-        "every": "{every, select, day {Kontroleer elke dag} week {Kontroleer elke week} other {Kontroleer elke maand}}, volgende kontrole {day}",
+        "every": "{every, select, day {Kontroleer elke dag} week {Kontroleer elke week} other {Kontroleer elke maand}}",
         "onlyWhenAsked": "Kontroleer net wanneer gevra",
         "schedule": "Kontroleer volgens ’n skedule",
         "checkedBy": "{you, select, true {Jy het gekontroleer} other {{name} het gekontroleer}}",
@@ -8919,7 +8926,7 @@
     "papers": {
       "notSaved": "Dit is nie gestoor nie. Probeer weer.",
       "noPapers": {
-        "gathering": "Sy artikels is op pad. Hulle verskyn hier soos hulle aankom.",
+        "gathering": "Die artikels is op pad. Hulle verskyn hier soos hulle aankom.",
         "none": "Hierdie siftering het nog geen artikels nie."
       },
       "sort": {
@@ -8939,7 +8946,7 @@
         "source": "Bron",
         "reviewer": "Beoordelaar",
         "reviewers": "Beoordelaars",
-        "reviewersLabel": "{anyone, select, true {Beoordelaars: enigiemand} other {Beoordelaars: {names}}}",
+        "reviewersLabel": "{anyone, select, true {Enige beoordelaar} other {Beoordelaars {names}}}",
         "anyone": "Enigiemand",
         "people": "Mense",
         "models": "Modelle",
@@ -9027,8 +9034,8 @@
         "includedOnly": "Punte net op ingesluite artikels",
         "mostCommon": "Punte uit die mees algemene antwoord",
         "stars": "1 tot {count, number} sterre uit {points} punte",
-        "says": "Hoekom ’n artikel staan waar dit staan: die kriterium wat dit uitgesluit het, die een waaroor ’n Miskien onduidelik is, hoe ’n konflik verdeel het, of wie se stem dit op wag.",
-        "points": "’n Ingesluite artikel wys sy punte en sterre. Elke kriterium verdien punte uit die antwoord wat die meeste beoordelaars gegee het: ’n ja verdien 1 tensy {canChange, select, true {die siftering se instellings anders sê} other {{workspace} se lede dit anders stel}}. Die sterre volg die punte."
+        "says": "Hoekom ’n artikel staan waar dit staan. Dit is die kriterium wat dit uitgesluit het, die een waaroor ’n Miskien onduidelik is, hoe ’n konflik verdeel het, of wie se stem dit op wag.",
+        "points": "’n Ingesluite artikel wys sy punte en sterre. Elke kriterium verdien punte uit die antwoord wat die meeste beoordelaars gegee het. ’n Ja verdien 1 tensy {canChange, select, true {die siftering se instellings anders sê} other {{workspace} se lede dit anders stel}}. Die sterre volg die punte."
       },
       "menu": {
         "papersVoted": "{you, select, true {Artikels waarop jy {decision} gestem het} other {Artikels waarop {name} {decision} gestem het}}",
@@ -9051,7 +9058,7 @@
       },
       "pointsOf": "{points, number} van {max, plural, one {# punt} other {# punte}}",
       "note": {
-        "neededForOther": "Nota, nodig vir ’n ander rede",
+        "neededForOther": "Skryf die ander rede",
         "label": "Nota",
         "writeReason": "Skryf die rede in die nota",
         "forOthers": "Nota vir die ander (opsioneel)",
@@ -9063,7 +9070,7 @@
         "notInList": "Nie in hierdie lys nie",
         "close": "Maak toe",
         "paper": "Artikel",
-        "says": "Sy opsomming, sy stemme en sy uitslag",
+        "says": "Die opsomming, stemme en uitslag van hierdie artikel",
         "yourVote": "Jou stem",
         "youVoted": "Jy het {decision} gestem",
         "changeIt": "Verander dit",
@@ -9075,7 +9082,7 @@
         "reopen": "Heropen",
         "waitingToSettle": "{you, select, true {Wag dat jy dit beslis} other {Wag dat {name} dit beslis}}",
         "everyConflict": "Elke konflik",
-        "override": "Oorheers uitslag",
+        "override": "Oorheers die uitslag",
         "overrideTitle": "Hoe om ’n uitslag te oorheers",
         "votesKept": "Stemme behou",
         "canReopen": "Kan heropen word",
@@ -9119,7 +9126,7 @@
         "sources": "Geen bron kry artikels by nie"
       },
       "notReviewer": {
-        "shared": "Hierdie siftering is met jou gedeel om te lees. Sy beoordelaars stem.",
+        "shared": "Hierdie siftering is met jou gedeel om te lees. Net sy beoordelaars stem.",
         "finished": "Jy is nie een van sy beoordelaars nie, en die siftering is klaar.",
         "join": "Jy is nie een van sy beoordelaars nie. Sluit as beoordelaar aan om op sy artikels te stem."
       },
@@ -9131,17 +9138,17 @@
         "conflict": "{count, number} in konflik",
         "waiting": "{count, number} wag vir stemme"
       },
-      "filterLabel": "{name}: {choice}",
+      "filterLabel": "{name}, {choice}",
       "tag": {
         "ai": "KI",
         "takenOff": "Afgehaal"
       },
       "voteMark": {
-        "failed": "{who}: kon nie die artikel lees nie",
-        "hidden": "{who}: gestem, versteek totdat jy stem",
-        "none": "{who}: geen stem nie",
-        "yet": "{who}: nog geen stem nie",
-        "cast": "{who}: {decision}"
+        "failed": "{who} kon nie die artikel lees nie",
+        "hidden": "{who} het gestem. Die stem is versteek totdat jy stem",
+        "none": "{who} het geen stem nie",
+        "yet": "{who} het nog nie gestem nie",
+        "cast": "{who} het {decision} gestem"
       },
       "votedHidden": "Gestem, versteek totdat jy stem",
       "reasonSign": {
@@ -9156,7 +9163,7 @@
         "no": "Nee",
         "unclear": "Onduidelik"
       },
-      "answerMark": "{label}: {answer}",
+      "answerMark": "{label}, {answer}",
       "votesHelp": {
         "title": "Hoe om die stemme te lees",
         "anAnswer": "’n Antwoord",
@@ -9164,7 +9171,7 @@
         "answersDiffer": "Antwoorde verskil",
         "answeredDifferently": "Beoordelaars het dit verskillend beantwoord",
         "opensAnswer": "Maak oop wat agter die antwoord sit",
-        "body": "Elke kolom is ’n beoordelaar en elke ry ’n kriterium, met hul stem in die laaste ry. Druk ’n gesig vir daardie beoordelaar se stem en nota. Druk ’n antwoord vir wat daaragter sit: die gedeelte wat ’n model gelees het, of ’n persoon se stem en nota. ’n Model wat ’n artikel nie kon lees nie, het geen sê daaroor nie.",
+        "body": "Elke kolom is ’n beoordelaar en elke ry ’n kriterium, met hul stem in die laaste ry. Druk ’n gesig vir daardie beoordelaar se stem en nota. Druk ’n antwoord vir wat daaragter sit, naamlik die gedeelte wat ’n model gelees het, of ’n persoon se stem en nota. ’n Model wat ’n artikel nie kon lees nie, het geen sê daaroor nie.",
         "lock": "’n Slot staan waar ’n stem versteek is."
       },
       "anotherReason": "’n Ander rede…",
@@ -9240,10 +9247,10 @@
         "settledBy": "{you, select, true {Deur jou beslis} other {Deur {name} beslis}}"
       },
       "hint": {
-        "against": "Jy het {voted} gestem, en jou antwoorde dui op {points}.",
-        "againstWhy": "Jy het {voted} gestem, en jou antwoorde dui op {points}: jy het {answer, select, no {Nee} other {Onduidelik}} geantwoord op {many, select, true {kriteria {numbers}, vereistes} other {kriterium {numbers}, ’n vereiste}}.",
-        "pointsWhy": "Jou antwoorde dui op <b>{points}</b>: jy het {answer, select, no {Nee} other {Onduidelik}} geantwoord op {many, select, true {kriteria {numbers}, vereistes} other {kriterium {numbers}, ’n vereiste}}. Jou stem is nog nie uitgebring nie.",
-        "allMet": "Jou antwoorde dui op <b>{points}</b>: aan elke vereiste is voldoen. Jou stem is nog nie uitgebring nie.",
+        "against": "Jy het {voted} gestem, maar jou antwoorde dui op {points}.",
+        "againstWhy": "Jy het {voted} gestem, maar jou antwoorde dui op {points}. Jy het {answer, select, no {Nee} other {Onduidelik}} geantwoord op {many, select, true {kriteria {numbers}, wat vereistes is} other {kriterium {numbers}, ’n vereiste}}.",
+        "pointsWhy": "Jou antwoorde dui op <b>{points}</b>. Jy het {answer, select, no {Nee} other {Onduidelik}} geantwoord op {many, select, true {kriteria {numbers}, wat vereistes is} other {kriterium {numbers}, ’n vereiste}}. Jou stem is nog nie uitgebring nie.",
+        "allMet": "Jou antwoorde dui op <b>{points}</b>, omdat aan elke vereiste voldoen is. Jou stem is nog nie uitgebring nie.",
         "againstLine": "Jy het {voted} gestem. Jou antwoorde dui op <b>{points}</b>.",
         "pointsLine": "Jou antwoorde dui op <b>{points}</b>. Nog nie uitgebring nie."
       },
@@ -9257,17 +9264,17 @@
         "title": "Kriteria",
         "answered": "{answered, number} van {count, number} beantwoord",
         "mustHaveFact": "Vereiste",
-        "guidanceFact": "Riglyne: wat tel en wat nie",
-        "markedFact": "Gemerkte woorde: die woorde waarna ’n kriterium soek",
+        "guidanceFact": "Riglyne sê wat tel en wat nie",
+        "markedFact": "Gemerkte woorde is dié waarna ’n kriterium soek",
         "showsFact": "<mark>Gemerk</mark>Hoe hulle in die opsomming lyk",
-        "helpAnswering": "Antwoorde is opsioneel: een stem is genoeg. ’n Nee op ’n vereiste dui op Sluit uit, en Sluit uit vra aan watter een dit nie voldoen nie, tensy jou antwoorde dit reeds sê.",
+        "helpAnswering": "Antwoorde is opsioneel, en ’n stem alleen is genoeg. ’n Nee op ’n vereiste dui op Sluit uit, en Sluit uit vra aan watter een dit nie voldoen nie, tensy jou antwoorde dit reeds sê.",
         "helpReading": "Die vrae wat elke beoordelaar vir ’n artikel beantwoord, en onder elkeen hoe hulle dit beantwoord het. ’n Nee op ’n vereiste dui op Sluit uit.",
-        "mustHave": "{answering, select, true {’n Vereiste: ’n Nee op een dui op Sluit uit. Antwoorde is opsioneel en is nie jou stem nie.} other {’n Vereiste: ’n Nee op een dui op Sluit uit.}}",
+        "mustHave": "{answering, select, true {’n Vereiste, so ’n Nee dui op Sluit uit. Antwoorde is opsioneel en is nie jou stem nie.} other {’n Vereiste, so ’n Nee dui op Sluit uit.}}",
         "guidance": "Riglyne",
         "markedWords": "Gemerkte woorde",
         "markedFor": "Gemerkte woorde vir kriterium {n, number}",
         "answerTo": "Jou antwoord op kriterium {n, number}",
-        "differFor": "Kriterium {n, number}: wys die antwoord wat verskil",
+        "differFor": "Wys die antwoord wat verskil op kriterium {n, number}",
         "none": "Nog geen kriteria nie",
         "add": "Voeg kriteria by"
       },
@@ -9313,11 +9320,11 @@
         "helpTitle": "Hoe om ’n konflik te beslis",
         "yourVote": "Jou stem as beoordelaar",
         "rule": "Reël",
-        "help": "Die beoordelaars verskil oor hierdie artikel. Wat jy kies, word sy uitslag, ongeag hoe hulle gestem het. Miskien is ook ’n uitslag: dit beslis die artikel as een om weer na te kyk."
+        "help": "Die beoordelaars verskil oor hierdie artikel. Wat jy kies, word sy uitslag, ongeag hoe hulle gestem het. Miskien is ook ’n uitslag. Dit beslis die artikel as een om weer na te kyk."
       },
       "empty": {
         "noConflictPaper": "Geen artikel is in konflik nie",
-        "onTheirWay": "Sy artikels is op pad",
+        "onTheirWay": "Die artikels is op pad",
         "arrived": "{done, number} van {count, number} is hier",
         "noneYet": "Geen artikel het nog by jou uitgekom nie",
         "noneYours": "Geen van sy artikels is joune om op te stem nie",
@@ -9337,8 +9344,8 @@
         "nameYou": "{name}, jy",
         "theirVote": "{name} se stem",
         "on": "{name}, {criterion}",
-        "differFor": "{criterion}: wys die antwoord wat verskil",
-        "show": "{who}, {criterion}: {kind, select, model {wys die gedeelte} you {wys jou stem en nota} other {wys hul stem en nota}}",
+        "differFor": "Wys die antwoord wat verskil op {criterion}",
+        "show": "{kind, select, model {Wys die gedeelte wat {who} vir {criterion} gelees het} you {Wys jou stem en nota op {criterion}} other {Wys {who} se stem en nota op {criterion}}}",
         "vote": "Stem"
       },
       "said": {
@@ -9349,7 +9356,7 @@
         "helpTitle": "Hoe seker die model is",
         "unsureBelow": "Onseker onder 65%",
         "help": "Die model gee elkeen van sy antwoorde ’n telling van 0 tot 100%. Onder 65%, lees die opsomming voordat jy op daardie antwoord staatmaak.",
-        "unsure": "Onseker: {sure, number, percent} seker",
+        "unsure": "Net {sure, number, percent} seker",
         "sure": "{sure, number, percent} seker"
       }
     },
@@ -9362,7 +9369,7 @@
       "remove": "Verwyder {name}",
       "dismiss": "Maak toe",
       "columns": {
-        "needNaming": "Sy kolomme moet benoem word",
+        "needNaming": "Kolomme nog nie benoem nie",
         "pickEach": "Kies die kolom wat elke deel bevat. Daaronder is wat die eerste van sy {count, plural, one {# ry} other {# rye}} daar het.",
         "label": {
           "title": "Titel",
@@ -9377,7 +9384,7 @@
         "untitledLeftOut": "{count, plural, one {# ry} other {# rye}} sonder ’n titel uitgelaat",
         "noAbstract": "{count, number} sonder ’n opsomming",
         "addRecords": "{count, plural, one {Voeg # rekord by} other {Voeg # rekords by}}",
-        "addItsRecords": "Voeg sy rekords by"
+        "addItsRecords": "Voeg die rekords by"
       },
       "upload": {
         "notSent": "Die lêer kon nie gestuur word nie. Probeer weer.",
@@ -9385,11 +9392,11 @@
         "referenceFile": "Verwysingslêer",
         "onePdf": "’n PDF",
         "uploadedPdfs": "{count, plural, one {# opgelaaide PDF} other {# opgelaaide PDF’e}}",
-        "refused": "<file>{name}</file>: {why}",
+        "refused": "<file>{name}</file> is nie bygevoeg nie. {why}",
         "why": {
           "notReadable": "Nie ’n soort lêer wat ’n siftering lees nie",
           "twice": "Reeds ’n bron",
-          "tooBig": "Groter as {mb, number} MB: verdeel dit en voeg elke deel by",
+          "tooBig": "Groter as {mb, number} MB. Verdeel dit en voeg elke deel by",
           "noTable": "Geen tabel van verwysings daarin nie",
           "noReferences": "Geen verwysings daarin nie",
           "unread": "Dit kon nie gelees word nie",
@@ -9402,9 +9409,9 @@
         "fileLimit": "Verwysingslêers tot {mb, number} MB",
         "pdfLimit": "PDF’e tot {mb, number} MB elk",
         "aboutFiles": "’n Verwysingslêer is wat ’n databasis of ’n verwysingsbestuurder uitvoer. Elkeen van sy rekords met ’n titel en ’n opsomming is ’n artikel.",
-        "aboutPdfs": "’n PDF word gelees sodra dit bygevoeg word, vir sy titel en sy DOI. Waar Openscholar se indeks daardie DOI het, verskyn die artikel met die indeks se titel en opsomming. Anders is die artikel die PDF: ’n persoon wat dit sif, lees die lêer, en so ook elke KI-model wat PDF’e lees, elke bladsy daarvan. ’n Model wat net teks lees, of nie so ’n lang PDF kan neem nie, kry geen stem daarop nie. ’n Skandering word op dieselfde manier gelees. ’n Lêer wat nie oopgaan nie, word uitgelaat.",
+        "aboutPdfs": "’n PDF word gelees sodra dit bygevoeg word, vir sy titel en sy DOI. Waar Openscholar se indeks daardie DOI het, verskyn die artikel met die indeks se titel en opsomming. Anders is die artikel die PDF self. ’n Persoon wat dit sif, lees die lêer, en so ook elke KI-model wat PDF’e lees, elke bladsy daarvan. ’n Model wat net teks lees, of nie so ’n lang PDF kan neem nie, kry geen stem daarop nie. ’n Skandering word op dieselfde manier gelees. ’n Lêer wat nie oopgaan nie, word uitgelaat.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF of ’n tekslêer met DOI’s, enige aantal gelyk",
-        "pdfCost": "’n Model lees elke PDF se eerste bladsye vir sy titel en DOI: tot {credits} krediete per PDF, betaal wanneer dit bygevoeg word",
+        "pdfCost": "’n Model lees elke PDF se eerste bladsye vir sy titel en DOI. Dit kos tot {credits} krediete per PDF, betaal wanneer dit bygevoeg word",
         "filesLabel": "Lêers om op te laai",
         "choose": "Kies lêers",
         "sent": "{sent, number} van {total, number} gestuur",
@@ -9455,9 +9462,9 @@
         "includeSub": "Sluit subversamelings in",
         "subHelpTitle": "Subversamelings",
         "subTakenOnce": "’n Artikel wat in twee van hulle geliasseer is, word een keer geneem",
-        "subAbout": "Zotero tel net die items wat direk in ’n versameling geliasseer is, en so ook die telling hier. Met dit aan word ’n versameling bygevoeg met die artikels van elke versameling daaronder: wat hulle saam bevat, is omtrent wat Zotero in elkeen tel, bymekaargetel, en presies sodra die siftering hulle gelees het.",
-        "readingCount": "Lees sy versamelings, {read, number} van {total, number}",
-        "reading": "Lees sy versamelings",
+        "subAbout": "Zotero tel net die items wat direk in ’n versameling geliasseer is, en so ook die telling hier. Met dit aan word ’n versameling bygevoeg met die artikels van elke versameling daaronder. Saam bevat hulle omtrent wat Zotero in elkeen tel, bymekaargetel, en die getal is presies sodra die siftering hulle gelees het.",
+        "readingCount": "Lees die versamelings, {read, number} van {total, number}",
+        "reading": "Lees die versamelings",
         "failed": "Zotero kon nie gelees word nie. Maak die biblioteek weer oop.",
         "everyPaper": "Elke artikel in {library}",
         "group": "Zotero-groep",
@@ -9558,7 +9565,7 @@
         "why": "{many, select, true {Hoekom sluit jy hulle uit?} other {Hoekom sluit jy dit uit?}}"
       },
       "notMet": "{name} nie voldoen nie",
-      "notMetInFull": "Nie voldoen nie: {name}",
+      "notMetInFull": "Voldoen nie aan {name} nie",
       "unclearOn": "{name} onduidelik",
       "includedIn": "Ingesluit in {name}",
       "every": {
@@ -9566,7 +9573,7 @@
         "week": "Elke week",
         "month": "Elke maand"
       },
-      "living": "{every, select, day {Lewend, nuwe artikels elke dag} week {Lewend, nuwe artikels elke week} other {Lewend, nuwe artikels elke maand}}",
+      "living": "{every, select, day {Elke dag} week {Elke week} other {Elke maand}}",
       "settle": {
         "label": {
           "all": "Almal stem saam",
@@ -9576,7 +9583,7 @@
         "means": {
           "all": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en almal dieselfde gestem het. Enige verdeling is ’n konflik.",
           "most": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en meer as die helfte dieselfde gestem het. Sonder so ’n meerderheid is dit ’n konflik.",
-          "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie."
+          "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie. Waar ’n persoon die artikel kry, beslis die eerste persoon se stem dit. ’n Model se stem beslis net ’n artikel wat geen persoon het nie."
         },
         "says": {
           "all": "Beslis wanneer almal saamstem",

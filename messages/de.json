@@ -7779,7 +7779,7 @@
       "model": {
         "startsLater": "{name} startet, sobald die Artikel da sind",
         "nothingToRead": "{name} hat keine Artikel mehr zu lesen",
-        "reads": "{name} liest {all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}{when, select, gathered {, sobald alle seine Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für seinen nächsten Artikel hat} waiting {, wenn seine Modelle an der Reihe sind} save {, sobald dies gespeichert ist} other {}}"
+        "reads": "{name} liest {all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
       },
       "person": {
         "invited": "{name} erhält eine Einladung per E-Mail und nach dem Beitritt Artikel",
@@ -7796,7 +7796,7 @@
         "noVote": "{you, select, true {Sie haben keine Stimme abgegeben} other {{name} hat keine Stimme abgegeben}}",
         "votesStop": "{you, select, true {{count, plural, one {Ihre # Stimme bleibt gespeichert und zählt} other {Ihre # Stimmen bleiben gespeichert und zählen}}} other {{count, plural, one {Die # Stimme von {name} bleibt gespeichert und zählt} other {Die # Stimmen von {name} bleiben gespeichert und zählen}}}} nicht mehr",
         "votesKept": "{you, select, true {{count, plural, one {Ihre # Stimme zählt} other {Ihre # Stimmen zählen}}} other {{count, plural, one {Die # Stimme von {name} zählt} other {Die # Stimmen von {name} zählen}}}} weiter",
-        "papersGo": "{count, plural, one {# Artikel geht} other {# Artikel gehen}} an {takers}: {unvoted, plural, =0 {} other {# ohne Stimme von {you, select, true {Ihnen} other {{name}}} und }}{voted, number} mit einer Stimme von {you, select, true {Ihnen} other {{name}}}, {voted, plural, one {die dort {thrown, select, true {nicht mehr zählt} other {weiter zählt}}} other {die dort {thrown, select, true {nicht mehr zählen} other {weiter zählen}}}}",
+        "papersGo": "{count, plural, one {# Artikel geht} other {# Artikel gehen}} an {takers}, {unvoted, plural, =0 {} other {# ohne Stimme von {you, select, true {Ihnen} other {{name}}} und }}{voted, number} mit einer Stimme von {you, select, true {Ihnen} other {{name}}}, {voted, plural, one {die dort {thrown, select, true {nicht mehr zählt} other {weiter zählt}}} other {die dort {thrown, select, true {nicht mehr zählen} other {weiter zählen}}}}",
         "unvotedGo": "{count, plural, one {Der # Artikel} other {Die # Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {geht} other {gehen}} an {takers}",
         "settled": "{count, plural, one {# Artikel} other {# Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {wird} other {werden}} nach den anderen Stimmen entschieden",
         "waiting": "{count, plural, one {# Artikel} other {# Artikel}} ohne Stimme von {you, select, true {Ihnen} other {{name}}} {count, plural, one {wartet} other {warten}} auf die Stimmen der anderen"
@@ -7817,11 +7817,11 @@
       },
       "criteria": {
         "modelsAnswerNew": "Die Modelle beantworten {count, plural, one {das neue Kriterium} other {die neuen Kriterien}} bei den offenen Artikeln, die sie gelesen haben",
-        "votesStand": "Die Stimmen der Personen bleiben, wie sie sind: Sie wurden vor {count, plural, one {diesem Kriterium} other {diesen Kriterien}} abgegeben",
+        "votesStand": "Die Stimmen der Personen bleiben, wie sie sind, da sie vor {count, plural, one {diesem Kriterium} other {diesen Kriterien}} abgegeben wurden",
         "modelsStop": "Die Modelle beantworten {name} nicht mehr. Bereits abgegebene Stimmen bleiben, wie sie abgegeben wurden",
         "noLongerAsked": "{name} wird nicht mehr gefragt. Bereits abgegebene Stimmen bleiben, wie sie abgegeben wurden",
-        "becomesMust": "{name} wird ein Muss-Kriterium: Ab jetzt deutet ein Nein darauf auf Ausschließen. Die Stimmen der Personen zu den noch offenen Artikeln bleiben und werden für eine neue Stimme markiert",
-        "becomesNice": "{name} wird ein Kann-Kriterium: Ab jetzt deutet ein Nein darauf nicht mehr auf Ausschließen. Bereits abgegebene Stimmen bleiben, wie sie abgegeben wurden",
+        "becomesMust": "{name} wird ein Muss-Kriterium. Ab jetzt deutet ein Nein darauf auf Ausschließen. Die Stimmen der Personen zu den noch offenen Artikeln bleiben und werden für eine neue Stimme markiert",
+        "becomesNice": "{name} wird ein Kann-Kriterium. Ab jetzt deutet ein Nein darauf nicht mehr auf Ausschließen. Bereits abgegebene Stimmen bleiben, wie sie abgegeben wurden",
         "writeQuestion": "Schreiben Sie vor dem Speichern die Frage des Kriteriums",
         "modelsReworded": "Die Modelle beantworten das umformulierte Kriterium {name} bei den Artikeln, die sie ab jetzt lesen",
         "reviewersReworded": "Die Reviewer beantworten ab jetzt das umformulierte Kriterium {name}. Bereits abgegebene Stimmen bleiben, wie sie abgegeben wurden",
@@ -7846,7 +7846,7 @@
         "removed": "{count, plural, one {# Artikel verlässt das Screening, seine Stimmen bleiben gespeichert} other {# Artikel verlassen das Screening, ihre Stimmen bleiben gespeichert}}"
       },
       "collection": {
-        "renamed": "Seine Sammlung wird in {name} umbenannt, mit den Artikeln darin",
+        "renamed": "Die Sammlung des Screenings wird in {name} umbenannt und behält die Artikel darin",
         "stopsSaving": "Eingeschlossene Artikel werden nicht mehr in einer Sammlung gespeichert{kept, select, true {. {count, plural, one {Der eine in {from} bleibt dort} other {Die # in {from} bleiben dort}}} other {}}",
         "added": "{count, plural, one {Der # bisher eingeschlossene Artikel wird} other {Die # bisher eingeschlossenen Artikel werden}} zu {to} hinzugefügt{was, select, true {. {count, plural, one {Er bleibt} other {Sie bleiben}} in {from}} other {}}",
         "prune": "Ausgeschlossene Artikel werden aus der Sammlung entfernt, aus der sie kamen",
@@ -7856,7 +7856,7 @@
       "creditsChip": "{credits}{each, select, true { pro Artikel} other {}}",
       "moved": "{count, plural, one {# Artikel} other {# Artikel}} von {from} zu {to} verschoben",
       "noChange": "Das Ergebnis keines Artikels ändert sich",
-      "hidden": "{done, select, true {{count, plural, one {Auch das Ergebnis von # Artikel, über den Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange er auf Ihre wartet.} other {Auch das Ergebnis von # Artikeln, über die Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange sie auf Ihre warten.}}} other {{count, plural, one {Was das für # Artikel bedeutet, über den Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist. Die Stimmen darüber sind für Sie verborgen.} other {Was das für die # Artikel bedeutet, über die Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist. Die Stimmen darüber sind für Sie verborgen.}}}}",
+      "hidden": "{done, select, true {{count, plural, one {Auch das Ergebnis von # Artikel, über den Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange er auf Ihre wartet.} other {Auch das Ergebnis von # Artikeln, über die Sie noch abstimmen, hat sich vielleicht geändert. Die Stimmen darüber bleiben verborgen, solange sie auf Ihre warten.}}} other {{count, plural, one {Was das für # Artikel bedeutet, über den Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist, weil die Stimmen darüber für Sie verborgen sind.} other {Was das für die # Artikel bedeutet, über die Sie noch abstimmen, zeigt sich, sobald die Änderung vorgenommen ist, weil die Stimmen darüber für Sie verborgen sind.}}}}",
       "papersLabel": "Artikel",
       "more": "{count, number} weitere",
       "activity": {
@@ -7865,7 +7865,7 @@
         "renamed": "Hat es in {name} umbenannt",
         "finished": "Hat das Screening als abgeschlossen markiert",
         "unsettled": "{count, plural, one {# Artikel war} other {# Artikel waren}} nicht entschieden",
-        "checksStopped": "Es fragt keine neuen Artikel mehr ab",
+        "checksStopped": "Die Abfrage neuer Artikel wurde beendet",
         "reopened": "Hat das Screening wieder geöffnet",
         "paused": "Hat die Modelle pausiert",
         "resumed": "Hat die Modelle fortgesetzt",
@@ -7890,14 +7890,14 @@
         "joined": "{count, plural, one {# Artikel kam} other {# Artikel kamen}} ins Screening",
         "reopenedByCheck": "Das Screening ist wieder offen",
         "changed": "Hat {parts} geändert",
-        "changedSettings": "Hat seine Einstellungen geändert",
+        "changedSettings": "Hat die Einstellungen geändert",
         "setting": {
-          "name": "seinen Namen",
+          "name": "den Namen",
           "question": "die Forschungsfrage",
-          "papers": "seine Quellen",
+          "papers": "die Quellen",
           "newPapers": "wie es neue Artikel abfragt",
-          "criteria": "seine Kriterien",
-          "reviewers": "seine Reviewer",
+          "criteria": "die Kriterien",
+          "reviewers": "die Reviewer",
           "decided": "wie ein Artikel entschieden wird",
           "goesTo": "wohin eingeschlossene Artikel gehen"
         },
@@ -7952,7 +7952,7 @@
           "waiting": "{count, plural, one {# Artikel wartet} other {# Artikel warten}} auf Stimmen",
           "mine": "{count, plural, one {# Artikel} other {# Artikel}}, bei denen Sie für Einschließen gestimmt haben"
         },
-        "help": "Die Artikel eines Ergebnisses oder alle Artikel. BibTeX und RIS enthalten für jeden Artikel seine ID hier, Titel, Autoren, Jahr, Zeitschrift, DOI und Abstract, für ein Literaturverwaltungsprogramm. Die CSV-Datei ergänzt, woher jeder Artikel kam, wo er steht, warum er ausgeschlossen wurde, wer ihn entschieden hat, wie seine Reviewer gestimmt haben und seine Punkte: was die Antworten seiner Reviewer nach der Bewertung dieses Screenings ergeben. Die Punkte ordnen eingeschlossene Artikel und entscheiden nichts.",
+        "help": "Die Artikel eines Ergebnisses oder alle Artikel. BibTeX und RIS enthalten für jeden Artikel seine ID hier, Titel, Autoren, Jahr, Zeitschrift, DOI und Abstract, für ein Literaturverwaltungsprogramm. Die CSV-Datei ergänzt, woher jeder Artikel kam, wo er steht, warum er ausgeschlossen wurde, wer ihn entschieden hat, wie seine Reviewer gestimmt haben, und seine Punkte. Punkte sind das, was die Antworten der Reviewer nach der Bewertung dieses Screenings ergeben. Sie ordnen eingeschlossene Artikel und entscheiden nichts.",
         "which": "Welche Artikel",
         "every": "Alle Artikel",
         "allOfThem": "Alle",
@@ -7963,7 +7963,7 @@
       },
       "votes": {
         "title": "{votes, plural, one {# Stimme} other {# Stimmen}} von {voters, plural, one {# Reviewer} other {# Reviewern}}",
-        "help": "Eine Zeile für jeden Artikel, den ein Reviewer bekommen hat: die Stimme mit Grund, Notiz und der Antwort auf jedes Kriterium, und wo der Artikel jetzt steht. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte. Ein Modell bekommt keinen Artikel, der nur aus einem PDF besteht, das es nicht lesen kann, und ein später hinzugefügter Reviewer bekommt keine Artikel, die vor seinem Beitritt entschieden waren.",
+        "help": "Eine Zeile für jeden Artikel, den ein Reviewer bekommen hat, mit der Stimme samt Grund und Notiz, der Antwort auf jedes Kriterium und dem aktuellen Stand des Artikels. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte. Ein Modell bekommt keinen Artikel, der nur aus einem PDF besteht, das es nicht lesen kann, und ein später hinzugefügter Reviewer bekommt keine Artikel, die vor seinem Beitritt entschieden waren.",
         "leftOut": "Jede Stimme der anderen zu {count, plural, one {dem # Artikel, über den} other {den # Artikeln, über die}} Sie noch abstimmen, ist ausgenommen, damit sie Ihre Stimme nicht beeinflusst.",
         "whose": "Wessen Stimmen",
         "everyone": "Alle",
@@ -7980,7 +7980,7 @@
         "none": "Keine",
         "shown": "Das sind {shown} der {votes, plural, one {# abgegebenen Stimme} other {# abgegebenen Stimmen}}.",
         "hiddenRows": "Die Datei hat für jede vor Ihnen verborgene Stimme eine Zeile, ohne die Stimme.",
-        "emptyRows": "Die Datei hat außerdem {count, plural, one {# Zeile} other {# Zeilen}} ohne Stimme: {why}.",
+        "emptyRows": "Die Datei hat außerdem {count, plural, one {# Zeile} other {# Zeilen}} ohne Stimme, für {why}.",
         "emptyWhy": {
           "yet": "Reviewer, die noch nicht abgestimmt haben",
           "finished": "Reviewer, die nicht abgestimmt hatten, als das Screening als abgeschlossen markiert wurde",
@@ -7992,19 +7992,19 @@
       "flow": {
         "title": "PRISMA-2020-Flussdiagramm",
         "help": "Die Zahlen füllen die Felder Identifikation und Screening von PRISMA 2020, aus dem aktuellen Stand dieses Screenings.",
-        "alt": "PRISMA-Diagramm: {boxes}"
+        "alt": "PRISMA-Diagramm mit {boxes}"
       },
       "record": {
         "title": "Das vollständige Protokoll",
-        "help": "Eine JSON-Datei des ganzen Screenings: seine Artikel, Stimmen, Kriterien, Reviewer, Quellen, Diskussion und Änderungen, mit einer Erklärung jeder Spalte. Die Antworten eines Modells enthalten die Textstellen, die es genannt hat. Was das Screening gekostet hat, ist nicht enthalten.",
+        "help": "Eine JSON-Datei des ganzen Screenings mit seinen Artikeln, Stimmen, Kriterien, Reviewern, Quellen, Diskussion und Änderungen und einer Erklärung jeder Spalte. Die Antworten eines Modells enthalten die Textstellen, die es genannt hat. Was das Screening gekostet hat, ist nicht enthalten.",
         "part": {
           "papers": {
             "name": "Artikel",
-            "what": "Jeder mit DOI, Abstract, Herkunft und aktuellem Stand"
+            "what": "Jeder Artikel mit DOI, Abstract, Quelle und aktuellem Stand"
           },
           "votes": {
             "name": "Stimmen",
-            "what": "{hidden, select, true {Jede mit Grund, Notiz, Antworten und dem Satz, den ein Modell genannt hat. Die vor Ihnen verborgenen sind ohne diese Angaben aufgeführt} other {Jede mit Grund, Notiz, Antworten und dem Satz, den ein Modell genannt hat}}"
+            "what": "{hidden, select, true {Jede Stimme mit Grund, Notiz und Antworten und dem Satz, den ein Modell genannt hat. Vor Ihnen verborgene Stimmen sind ohne diese Angaben aufgeführt} other {Jede Stimme mit Grund, Notiz und Antworten und dem Satz, den ein Modell genannt hat}}"
           },
           "withoutVote": {
             "name": "Ohne Stimme",
@@ -8028,7 +8028,7 @@
           },
           "changes": {
             "name": "Änderungen",
-            "what": "Das Aktivitätsprotokoll: was geändert wurde, von wem und wann"
+            "what": "Das Aktivitätsprotokoll darüber, was wann von wem geändert wurde"
           },
           "columns": {
             "name": "Spalten",
@@ -8054,7 +8054,7 @@
       "copyToast": {
         "copied": "Methodenabsatz kopiert",
         "failed": "Ihr Browser hat das Kopieren nicht erlaubt",
-        "select": "Markieren Sie den Absatz und kopieren Sie ihn:"
+        "select": "Markieren Sie den Absatz und kopieren Sie ihn."
       },
       "notLoaded": "Der Arbeitsbereich ist noch nicht geladen. Versuchen Sie es gleich noch einmal.",
       "notMade": "Die Datei konnte nicht erstellt werden. Versuchen Sie es erneut."
@@ -8126,19 +8126,19 @@
         "overModels": "{count, plural, one {Ein Screening nutzt # Modell} other {Ein Screening nutzt bis zu # Modelle}}",
         "orphaned": "{many, select, true {{count, plural, one {# Artikel ist nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu}}} other {{count, plural, one {# Artikel ist nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu}}}}",
         "creditsShort": "{credits} Credits zu wenig",
-        "reading": "Seine Artikel werden gelesen",
+        "reading": "Die Artikel werden gelesen",
         "addPapers": "Fügen Sie Artikel hinzu, um zu starten",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu starten"
       },
       "unread": "{count, plural, other {# nicht lesbar}}",
       "toast": {
-        "nothingWritten": "Hier wurde nichts gefunden, was sich zu den Kriterien hinzufügen ließe",
+        "nothingWritten": "Das Modell hat nichts gefunden, was sich zu diesen Kriterien hinzufügen ließe",
         "notWritten": "Die Kriterien konnten nicht geschrieben werden. Versuchen Sie es erneut.",
         "removed": "{name} entfernt",
         "undo": "Rückgängig",
         "failed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
         "notAdded": "Einige Personen konnten nicht hinzugefügt werden. Fügen Sie sie unter Personen erneut hinzu.",
-        "notStarted": "Es konnte nicht gestartet werden. Versuchen Sie es erneut.",
+        "notStarted": "Das Screening konnte nicht gestartet werden. Versuchen Sie es erneut.",
         "saved": "Änderungen gespeichert",
         "discarded": "Änderungen verworfen"
       },
@@ -8150,10 +8150,10 @@
       },
       "goes": {
         "collectionName": "Name der Sammlung",
-        "itsCollection": "Seine Sammlung",
+        "itsCollection": "Die Sammlung des Screenings",
         "newCollection": "Neue Sammlung",
         "addTo": "Zu {name} hinzufügen",
-        "addToIts": "Zu seiner Sammlung hinzufügen",
+        "addToIts": "Zur Sammlung des Screenings hinzufügen",
         "nowhere": "Nirgends",
         "kept": "Bleiben im Screening",
         "private": "Privat",
@@ -8163,8 +8163,8 @@
         "aCommunity": "Eine Community",
         "readingCommunity": "Sammlungen der Community werden gelesen",
         "prune": "Ausgeschlossene Artikel aus {name} entfernen",
-        "excludedLeave": "Ausgeschlossene werden entfernt",
-        "othersStay": "Vielleicht und im Konflikt bleiben"
+        "excludedLeave": "Ausgeschlossene Artikel werden entfernt",
+        "othersStay": "Artikel bei Vielleicht oder im Konflikt bleiben"
       },
       "part": {
         "papers": "Artikel",
@@ -8180,7 +8180,7 @@
         "noCriteria": "Keine Kriterien",
         "invited": "{count, plural, other {# eingeladen}}",
         "nobody": "Noch niemand",
-        "decided": "{you, select, true {{rule}, Konflikte an Sie} other {{rule}, Konflikte an {name}}}"
+        "decided": "{you, select, true {{rule}, und Sie entscheiden Konflikte} other {{rule}, und {name} entscheidet Konflikte}}"
       },
       "filledFrom": "Ausgefüllt aus <b>{name}</b>",
       "openIt": "Öffnen",
@@ -8199,9 +8199,9 @@
       },
       "papers": {
         "upToSources": "{count, plural, other {Bis zu # Quellen}}",
-        "helpFrom": "Fügen Sie jeden Ort hinzu, aus dem die Artikel kommen: Suchen, Sammlungen, Communities, Zotero, Dateien oder DOIs. Ein Artikel, der in zwei Quellen steht, wird einmal geprüft.",
+        "helpFrom": "Fügen Sie jeden Ort hinzu, aus dem die Artikel kommen, etwa Suchen, Sammlungen, Communities, Zotero, Dateien oder DOIs. Ein Artikel, der in zwei Quellen steht, wird einmal geprüft.",
         "helpRead": "Ein Screening liest Titel und Abstract. Ein Eintrag, den der Index von Openscholar kennt, übernimmt beides von dort. Ein Artikel, der mit eigenem PDF kommt und kein Abstract hat, wird als PDF gelesen.",
-        "helpLeft": "Was nicht geprüft werden kann, wird ausgelassen und in der Zeile seiner Quelle mit Grund aufgeführt: ein Artikel ohne Abstract und ohne PDF, ein Eintrag ohne Titel, eine DOI, die nicht gefunden wird, eine Datei, die sich nicht öffnen lässt.",
+        "helpLeft": "Ein Artikel ohne Abstract und ohne PDF, ein Eintrag ohne Titel, eine DOI, die nicht gefunden wird, und eine Datei, die sich nicht öffnen lässt, können nicht geprüft werden. Jedes davon wird ausgelassen und in der Zeile seiner Quelle mit Grund aufgeführt.",
         "stillReading": "Wird noch gelesen",
         "found": "{soFar, select, true {<n></n> bisher gefunden} other {<n></n> gefunden}}",
         "leftOut": "<n></n> ausgelassen",
@@ -8215,7 +8215,7 @@
         "removedOnSave": "Wird beim Speichern entfernt",
         "atStart": "{count, plural, other {# beim Start}}",
         "allOfIt": "Alles",
-        "all": "{count, plural, one {Ihr # Eintrag} other {Alle # Einträge}}",
+        "all": "{count, plural, one {Der eine Eintrag} other {Alle # Einträge}}",
         "inSource": "{count, plural, other {# in der Quelle}}",
         "readAsPdf": "{count, plural, one {# als PDF gelesen} other {# als PDFs gelesen}}",
         "duplicates": "{count, plural, one {# Duplikat zusammengeführt} other {# Duplikate zusammengeführt}}",
@@ -8228,7 +8228,7 @@
         "remove": "{name} entfernen",
         "of": "Artikel von {name}",
         "everyDeep": "Alle Artikel darin und in den Sammlungen darunter.",
-        "everyOne": "{count, plural, one {Sein einziger Artikel.} other {Alle seine # Artikel.}}",
+        "everyOne": "{count, plural, one {Der eine Artikel darin.} other {Alle # Artikel darin.}}",
         "zoteroOrder": "Zuerst die frühesten zu Zotero hinzugefügten",
         "handoffGone": "Was die Community übergeben hat, lässt sich nicht mehr lesen. Wählen Sie ihre Einträge unter Community erneut.",
         "addFrom": "Artikel hinzufügen aus",
@@ -8262,18 +8262,19 @@
         "nextCheck": "Nächste Abfrage {day}",
         "firstCheck": "Erste Abfrage {day}",
         "firstOnSave": "Erste Abfrage, sobald dies gespeichert ist",
-        "perNew": "{credits} Credits pro neuem Artikel{pdf, select, true {, mehr pro Lesevorgang als PDF} other {}}{last, select, true {, {spent} für die letzten {count}} other {}}",
+        "perNew": "{pdf, select, true {{credits} Credits pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits} Credits pro neuem Artikel}}",
         "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
-        "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu."
+        "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
+        "lastSpent": "{spent} für {count, plural, one {den letzten Artikel} other {die letzten # Artikel}}"
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
         "factPeople": "Personen stimmen direkt ab",
         "factModels": "Antworten bestimmen die Stimmen der Modelle",
-        "help": "Formulieren Sie jedes Kriterium als Ja-oder-Nein-Frage. Ein Modell beantwortet jedes mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium macht seine Stimme zu Ausschließen, ein Unklar zu Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen. Eine Person kann es trotzdem als Grund angeben. Hinweise unter einer Frage sagen, was zählt: Ein Reviewer öffnet sie unter Prüfen über „Hinweise“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, erscheinen in jedem Abstract markiert, während eine Person abstimmt.",
+        "help": "Formulieren Sie jedes Kriterium als Ja-oder-Nein-Frage. Ein Modell beantwortet jedes mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium lässt das Modell für Ausschließen stimmen, ein Unklar für Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen, aber eine Person kann es trotzdem als Grund angeben. Hinweise unter einer Frage sagen, was zählt. Ein Reviewer öffnet sie unter Prüfen über „Hinweise“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, werden in jedem Abstract markiert, während eine Person abstimmt.",
         "import": "{searches, plural, one {{count, plural, one {# Frage aus Ihrer Suche hinzufügen} other {# Fragen aus Ihrer Suche hinzufügen}}} other {{count, plural, one {# Frage aus Ihren Suchen hinzufügen} other {# Fragen aus Ihren Suchen hinzufügen}}}}",
         "copyFrom": "Aus einem Screening kopieren",
-        "copyAdds": "Fügt seine Kriterien mit ihren Punkten zu den vorhandenen hinzu",
+        "copyAdds": "Fügt die Kriterien jenes Screenings mit ihren Punkten zu diesen hinzu",
         "write": "Kriterien aus der Frage schreiben",
         "writing": "Kriterien werden aus der Frage geschrieben",
         "needQuestion": "Schreiben Sie zuerst eine Forschungsfrage",
@@ -8284,7 +8285,7 @@
         "shortName": "Kurzname",
         "shortNameOf": "Kurzname von Kriterium {n}",
         "shortNameMax": "{count, plural, other {Bis zu # Zeichen}}",
-        "shortNameHelp": "Der Name, unter dem ein Kriterium erscheint, wo seine Frage nicht hinpasst: Tabellenspalten, Filter und die Gründe, aus denen Artikel ausgeschlossen wurden. Bis Sie einen schreiben, sind es die Wörter der Frage selbst.",
+        "shortNameHelp": "Der Name, unter dem ein Kriterium erscheint, wo seine Frage nicht hinpasst, etwa in Tabellenspalten, Filtern und den Gründen, aus denen Artikel ausgeschlossen wurden. Bis Sie einen schreiben, sind es die Wörter der Frage selbst.",
         "criterion": "Kriterium {n}",
         "questionPlaceholder": "Schreiben Sie eine Ja-oder-Nein-Frage",
         "guidanceFor": "Hinweise für Kriterium {n}",
@@ -8321,7 +8322,7 @@
         "help": "Jeder Reviewer stimmt bei den Artikeln, die er erhält, für Einschließen, Vielleicht oder Ausschließen. Eine Person liest Titel und Abstract und stimmt ab. Ein Modell beantwortet jedes Kriterium bei jedem Artikel, den es liest, und seine Antworten ergeben seine Stimme.",
         "aiModel": "KI-Modell",
         "votesKeep": "{count, plural, one {# Stimme zählt weiter} other {# Stimmen zählen weiter}}",
-        "pdfsMissed": "{why, select, text {{count, plural, one {Kann keine PDFs lesen: # Artikel erhält keine Stimme von ihm} other {Kann keine PDFs lesen: # Artikel erhalten keine Stimme von ihm}}} other {{count, plural, one {Kann die längsten PDFs nicht lesen: # Artikel erhält keine Stimme von ihm} other {Kann die längsten PDFs nicht lesen: # Artikel erhalten keine Stimme von ihm}}}}",
+        "pdfsMissed": "{why, select, text {{count, plural, one {Kann keine PDFs lesen, daher erhält # Artikel keine Stimme von ihm} other {Kann keine PDFs lesen, daher erhalten # Artikel keine Stimme von ihm}}} other {{count, plural, one {Kann die längsten PDFs nicht lesen, daher erhält # Artikel keine Stimme von ihm} other {Kann die längsten PDFs nicht lesen, daher erhalten # Artikel keine Stimme von ihm}}}}",
         "creditsFor": "{credits} Credits für {count, plural, one {# Artikel} other {# Artikel}}",
         "allRead": "Alle gelesen",
         "none": "Noch keine Reviewer",
@@ -8337,7 +8338,7 @@
         "each": "Personen pro Artikel",
         "factModels": "Modelle lesen jeden offenen Artikel",
         "factEveryone": "Alle schließt später Hinzukommende ein",
-        "eachHelp": "Jedes Modell liest jeden Artikel, der beim Hinzukommen offen ist. Dies legt fest, wie viele Personen über jeden abstimmen. Die Artikel werden so verteilt, dass jede Person etwa gleich viele liest. Eine Zahl bleibt diese Zahl, wenn das Team wächst. Alle heißt jede Person im Screening, jetzt und später.",
+        "eachHelp": "Jedes Modell liest jeden Artikel, der beim Hinzukommen offen ist. Dies legt fest, wie viele Personen über jeden abstimmen. Die Artikel werden so verteilt, dass jede Person etwa gleich viele liest. Eine feste Zahl bleibt gleich, wenn das Team wächst. Alle heißt jede Person im Screening, jetzt und später.",
         "everyone": "Alle",
         "addPerson": "Fügen Sie eine Person hinzu, um zu wählen",
         "settledWhen": "Ein Artikel ist entschieden, wenn",
@@ -8351,12 +8352,12 @@
         "whoSettles": "Wer einen Konflikt entscheidet",
         "seeVotes": "Reviewer sehen die anderen Stimmen",
         "seeingTitle": "Andere Stimmen sehen",
-        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung: Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
+        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
         "after": "Nach der eigenen Stimme",
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu sehen, wie ein Artikel entschieden wird.",
-        "modelSettles": "Die Stimme eines Modells kann einen Artikel entscheiden, bevor eine Person abstimmt."
+        "modelSettles": "Die Stimme eines Modells entscheidet nur die Artikel, die keine Person bekommt. Bei den anderen entscheidet die Stimme der ersten Person."
       },
       "goesHelp": "Artikel mit dem Ergebnis Eingeschlossen werden der Sammlung hinzugefügt, die Sie wählen, in Ihrer Bibliothek oder in einer Community, mit den Sternen aus der Bewertung. Nirgends behält sie nur im Screening.",
       "summaryLabel": "Zusammenfassung",
@@ -8393,7 +8394,7 @@
         "free": "Kostenlos",
         "credits": "{credits} Credits",
         "noPapers": "Noch keine Artikel",
-        "pdfsRead": "{count, plural, one {# Artikel wird als PDF gelesen} other {# Artikel werden als PDFs gelesen}}, {pages, plural, one {# Seite} other {# Seiten}} insgesamt{capped, select, true {: bis zu {credits} dieser Credits.} other {.}}",
+        "pdfsRead": "{count, plural, one {# Artikel wird als PDF gelesen} other {# Artikel werden als PDFs gelesen}}, {pages, plural, one {# Seite} other {# Seiten}} insgesamt{capped, select, true {. Sie kosten bis zu {credits} dieser Credits.} other {.}}",
         "pdfsUnpriced": "Ein neuer Artikel, der als PDF kommt, kostet mehr, als hier gezählt ist, und zwar pro Seite. Die Kosten erscheinen, sobald das Screening die neuen Quellen gelesen hat.",
         "firstReading": "{count, plural, one {Erster Lesevorgang von # PDF, bezahlt beim Hinzufügen} other {Erster Lesevorgang von # PDFs, bezahlt beim Hinzufügen}}",
         "upTo": "Bis zu {credits} Credits",
@@ -8404,9 +8405,9 @@
         "still": "Noch zu zahlen",
         "nothing": "Nichts",
         "overWallet": "{credits} Credits mehr, als der Arbeitsbereich hat",
-        "walletShare": "Anteil an den Credits des Arbeitsbereichs: {share}",
+        "walletShare": "{share} der Credits des Arbeitsbereichs",
         "shareOf": "{under, select, true {Unter {share} von} other {{share} von}}",
-        "inWorkspace": "{credits} in {workspace}",
+        "inWorkspace": "{own, select, true {{credits} verfügbar} other {{credits} in {workspace}}}",
         "leftAfter": "{credits} danach übrig",
         "spent": "{credits} bisher ausgegeben"
       },
@@ -8465,7 +8466,7 @@
       },
       "rule": {
         "title": "Wie ein Artikel entschieden wird",
-        "eachPaper": "Jeder Artikel: {who, select, both {{people, plural, one {# Person} other {# Personen}} und {models, plural, one {# KI-Modell} other {# KI-Modelle}}} people {{people, plural, one {# Person} other {# Personen}}} other {{models, plural, one {# KI-Modell} other {# KI-Modelle}}}}",
+        "eachPaper": "{who, select, both {{people, plural, one {# Person} other {# Personen}} und {models, plural, one {# KI-Modell} other {# KI-Modelle}}} people {{people, plural, one {# Person} other {# Personen}}} other {{models, plural, one {# KI-Modell} other {# KI-Modelle}}}} pro Artikel",
         "noReviewer": "Noch kein Reviewer",
         "hiddenMine": "Stimmen in Ihrem Bereich Offen verborgen",
         "hiddenTheirs": "Stimmen im Bereich Offen der Reviewer verborgen",
@@ -8492,12 +8493,12 @@
         "nothing": "Die letzte Abfrage hat keine neuen Artikel gefunden",
         "counting": "<done></done> von {of, number}",
         "modelPrice": "{name}, {price}",
-        "creditsHelp": "{you, select, true {Ein Modell stoppt, wenn der Arbeitsbereich seinen nächsten Artikel nicht bezahlen kann. Seine bisherigen Stimmen bleiben, und es macht dort weiter, wo es gestoppt hat, sobald Sie Credits hinzufügen.} other {Ein Modell stoppt, wenn der Arbeitsbereich seinen nächsten Artikel nicht bezahlen kann. Seine bisherigen Stimmen bleiben, und es macht dort weiter, wo es gestoppt hat, sobald {workspace} Credits hinzufügt.}}",
+        "creditsHelp": "{you, select, true {Ein Modell stoppt, wenn der Arbeitsbereich seinen nächsten Artikel nicht bezahlen kann. Die Stimmen, die es abgegeben hat, bleiben, und es macht dort weiter, wo es gestoppt hat, sobald Sie Credits hinzufügen.} other {Ein Modell stoppt, wenn der Arbeitsbereich seinen nächsten Artikel nicht bezahlen kann. Die Stimmen, die es abgegeben hat, bleiben, und es macht dort weiter, wo es gestoppt hat, sobald {workspace} Credits hinzufügt.}}",
         "stoppedAt": "<models></models> bei {done, number} von {of, plural, one {# Artikel} other {# Artikeln}} gestoppt",
         "finishedOn": "Abgeschlossen am {day}",
         "finishedAgo": "Abgeschlossen {ago}",
         "finishedTitle": "Abgeschlossenes Screening",
-        "finishedHelp": "{member, select, true {Seine Modelle lesen nicht mehr, und es fragt keine neuen Artikel mehr ab. Sie können es weiterhin lesen, exportieren und ändern oder wieder öffnen.} other {Seine Modelle lesen nicht mehr, und es fragt keine neuen Artikel mehr ab. Sie können es weiterhin lesen und exportieren. Ein Mitglied von {workspace} kann es wieder öffnen.}}",
+        "finishedHelp": "{member, select, true {Die Modelle lesen nicht mehr, und das Screening fragt keine neuen Artikel mehr ab. Sie können es weiterhin lesen, exportieren und ändern oder wieder öffnen.} other {Die Modelle lesen nicht mehr, und das Screening fragt keine neuen Artikel mehr ab. Sie können es weiterhin lesen und exportieren. Ein Mitglied von {workspace} kann es wieder öffnen.}}",
         "pausedTitle": "Pausierte Modelle",
         "pausedHelp": "{member, select, true {Pausierte Modelle lesen nichts und verbrauchen keine Credits. Personen können weiter abstimmen. Setzen Sie die Modelle fort, damit sie weiterlesen.} other {Pausierte Modelle lesen nichts und verbrauchen keine Credits. Personen können weiter abstimmen. Ein Mitglied von {workspace} kann sie fortsetzen.}}",
         "papersRead": "{done, number} von {of, plural, one {# Artikel} other {# Artikeln}} gelesen",
@@ -8509,20 +8510,20 @@
         "read": "{done, number} von {of, number}"
       },
       "menu": {
-        "emailsOff": "Dieses Screening schickt Ihnen keine E-Mails mehr",
-        "emailsOn": "Dieses Screening schickt Ihnen wieder E-Mails",
-        "stopEmails": "Keine E-Mails mehr dazu",
-        "emailAgain": "E-Mails dazu sind aus: wieder einschalten",
+        "emailsOff": "Sie erhalten keine E-Mails mehr von diesem Screening",
+        "emailsOn": "Sie erhalten wieder E-Mails von diesem Screening",
+        "stopEmails": "Keine E-Mails mehr erhalten",
+        "emailAgain": "E-Mails wieder erhalten",
         "pauseModels": "Modelle pausieren",
         "duplicate": "Als neues Screening duplizieren",
         "move": "In einen anderen Arbeitsbereich verschieben",
         "delete": "Löschen"
       },
       "move": {
-        "modelsPaid": "{own, select, true {{count, plural, one {Sein Modell wird ab jetzt aus Ihren eigenen Credits bezahlt} other {Seine Modelle werden ab jetzt aus Ihren eigenen Credits bezahlt}}} other {{count, plural, one {Sein Modell wird ab jetzt aus den Credits von {to} bezahlt} other {Seine Modelle werden ab jetzt aus den Credits von {to} bezahlt}}}}",
-        "reviewersStay": "{own, select, true {Seine anderen Reviewer behalten es, als Gäste} other {Seine anderen Reviewer behalten es, als Gäste, wo sie nicht in {to} sind}}",
-        "papersStay": "{own, select, true {Bereits gespeicherte Artikel bleiben, wo sie sind, und die ab jetzt eingeschlossenen werden in Ihrer eigenen Bibliothek gespeichert} other {Bereits gespeicherte Artikel bleiben, wo sie sind, und die ab jetzt eingeschlossenen werden in der Bibliothek von {to} gespeichert}}",
-        "sourcesStay": "{own, select, true {Seine Quellen bleiben in Ihrem eigenen Arbeitsbereich, und es fragt sie weiterhin dort ab} other {Seine Quellen bleiben in {from}, und es fragt sie weiterhin dort ab}}",
+        "modelsPaid": "{own, select, true {{count, plural, one {Das Modell wird ab jetzt aus Ihren eigenen Credits bezahlt} other {Die Modelle werden ab jetzt aus Ihren eigenen Credits bezahlt}}} other {{count, plural, one {Das Modell wird ab jetzt aus den Credits von {to} bezahlt} other {Die Modelle werden ab jetzt aus den Credits von {to} bezahlt}}}}",
+        "reviewersStay": "{own, select, true {Die anderen Reviewer bleiben als Gäste dabei} other {Die anderen Reviewer bleiben dabei, als Gäste, wo sie nicht in {to} sind}}",
+        "papersStay": "{own, select, true {Bereits gespeicherte Artikel bleiben, wo sie sind, und ab jetzt eingeschlossene Artikel werden in Ihrer eigenen Bibliothek gespeichert} other {Bereits gespeicherte Artikel bleiben, wo sie sind, und ab jetzt eingeschlossene Artikel werden in der Bibliothek von {to} gespeichert}}",
+        "sourcesStay": "{own, select, true {Die Quellen bleiben in Ihrem eigenen Arbeitsbereich, und das Screening fragt sie weiterhin dort ab} other {Die Quellen bleiben in {from}, und das Screening fragt sie weiterhin dort ab}}",
         "membersLose": "Mitglieder von {from}, die nicht seine Reviewer sind, sehen es nicht mehr",
         "nothingElse": "Sonst ändert sich nichts"
       },
@@ -8537,7 +8538,7 @@
       },
       "delete": {
         "title": "{name} löschen?",
-        "goes": "Seine Stimmen und Einstellungen werden mit gelöscht",
+        "goes": "Die Stimmen und Einstellungen werden mit gelöscht",
         "saved": "{count, plural, one {Der # in {collection} gespeicherte Artikel bleibt dort} other {Die # in {collection} gespeicherten Artikel bleiben dort}}",
         "final": "Dies lässt sich nicht rückgängig machen",
         "shut": "Nur {name} oder ein Admin dieses Arbeitsbereichs kann dieses Screening löschen."
@@ -8548,7 +8549,7 @@
         "votesCount": "{count, plural, one {Ihre # Stimme zählt weiter} other {Ihre # Stimmen zählen weiter}}",
         "noVotes": "Sie haben keine Stimme abgegeben",
         "papersGo": "{count, plural, one {Der # Artikel ohne Ihre Stimme geht an einen anderen Reviewer oder wird mit den Stimmen entschieden, die er schon hat} other {Die # Artikel ohne Ihre Stimme gehen an andere Reviewer oder werden mit den Stimmen entschieden, die sie schon haben}}",
-        "fromList": "Es verschwindet aus Ihrer Liste, und Sie können es erst wieder öffnen, wenn es erneut mit Ihnen geteilt wird"
+        "fromList": "Das Screening verschwindet aus Ihrer Liste. Sie können es nur wieder öffnen, wenn es erneut mit Ihnen geteilt wird"
       },
       "add": {
         "title": "{name} als Reviewer hinzufügen?",
@@ -8579,14 +8580,14 @@
       },
       "peopleDialog": {
         "helpTitle": "Wer an einem Screening beteiligt ist",
-        "personalIn": "{you, select, true {Dieses Screening ist in Ihrem eigenen Arbeitsbereich: Sie sehen es und können es ändern.} other {Dieses Screening ist im eigenen Arbeitsbereich von {workspace}, und diese Person kann es ändern.}}",
-        "personalElse": "Alle anderen haben es erst, wenn es mit ihnen geteilt wird: als Reviewer, der Artikel erhält und abstimmt, oder als Betrachter, der alle Artikel und alle Stimmen sieht.",
+        "personalIn": "{you, select, true {Dieses Screening ist in Ihrem eigenen Arbeitsbereich, daher sehen Sie es und können es ändern.} other {Dieses Screening ist im eigenen Arbeitsbereich von {workspace}, und diese Person kann es ändern.}}",
+        "personalElse": "Alle anderen haben es erst, wenn es mit ihnen geteilt wird, entweder als Reviewer, der Artikel erhält und abstimmt, oder als Betrachter, der alle Artikel und alle Stimmen sieht.",
         "membersSee": "Mitglieder von {workspace} sehen dieses Screening und können es ändern. Wer davon Reviewer ist, erhält Artikel und stimmt darüber ab.",
-        "outsideHas": "Jemand außerhalb von {workspace} hat es erst, wenn es mit dieser Person geteilt wird: als Reviewer, der Artikel erhält und abstimmt, oder als Betrachter, der alle Artikel und alle Stimmen sieht.",
-        "modelToo": "{you, select, true {Auch ein Modell ist ein Reviewer: Es liest jeden offenen Artikel und stimmt ab, bezahlt aus Ihren Credits.} other {Auch ein Modell ist ein Reviewer: Es liest jeden offenen Artikel und stimmt ab, bezahlt aus den Credits von {workspace}.}}",
+        "outsideHas": "Jemand außerhalb von {workspace} hat es erst, wenn es mit dieser Person geteilt wird, entweder als Reviewer, der Artikel erhält und abstimmt, oder als Betrachter, der alle Artikel und alle Stimmen sieht.",
+        "modelToo": "{you, select, true {Auch ein Modell ist ein Reviewer. Es liest jeden offenen Artikel und stimmt ab, bezahlt aus Ihren Credits.} other {Auch ein Modell ist ein Reviewer. Es liest jeden offenen Artikel und stimmt ab, bezahlt aus den Credits von {workspace}.}}",
         "close": "Schließen",
         "addAs": "Personen hinzufügen als",
-        "finishedAdds": "Dieses Screening ist abgeschlossen: Hier hinzugefügte Personen können es ansehen. Um einen Reviewer hinzuzufügen, öffnen Sie es wieder oder fügen Sie ihn unter Einstellungen hinzu, wo er abstimmt, sobald es wieder geöffnet ist.",
+        "finishedAdds": "Dieses Screening ist abgeschlossen, daher können hier hinzugefügte Personen es ansehen. Um einen Reviewer hinzuzufügen, öffnen Sie es wieder oder fügen Sie ihn unter Einstellungen hinzu, wo er abstimmt, sobald es wieder geöffnet ist.",
         "addModel": "Modell hinzufügen",
         "membersAdd": "Mitglieder von {workspace} fügen Personen hinzu und ändern, was jede tun darf.",
         "full": "Der Tarif von {workspace} erlaubt, ein Screening mit {count, plural, one {# Person} other {# Personen}} außerhalb zu teilen. Entfernen Sie jemanden, um eine weitere Person hinzuzufügen.",
@@ -8603,6 +8604,12 @@
         "reviewerCan": "Stimmt über die erhaltenen Artikel ab",
         "viewer": "Betrachter",
         "viewerCan": "Sieht alle Artikel und alle Stimmen"
+      },
+      "stopEmails": {
+        "title": "Keine E-Mails mehr von diesem Screening erhalten?",
+        "says": "Sie erhalten keine E-Mails mehr zu neuen Artikeln zum Abstimmen, zu Konflikten zum Entscheiden oder Erinnerungen. Die E-Mails anderer Personen ändern sich nicht. Sie können sie im Menü des Screenings wieder einschalten.",
+        "confirm": "Keine E-Mails mehr erhalten",
+        "cancel": "Weiter erhalten"
       }
     },
     "list": {
@@ -8654,10 +8661,10 @@
       "forYouToScreen": "{count, plural, other {# für Sie zu prüfen}}",
       "conflictsToSettle": "{count, plural, one {# Konflikt zu entscheiden} other {# Konflikte zu entscheiden}}",
       "questionsForYou": "{count, plural, one {# Frage an Sie} other {# Fragen an Sie}}",
-      "finishedIncluded": "{included} eingeschlossen, abgeschlossen {when}",
+      "finishedIncluded": "{included} eingeschlossen",
       "waitingForVotes": "{count} warten auf Stimmen",
       "inConflictFor": "{count} im Konflikt, {who} entscheidet",
-      "upToDate": "Aktuell, nächste Abfrage {day}",
+      "upToDate": "Aktuell",
       "allSettled": "Alle Artikel sind entschieden",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
@@ -8679,7 +8686,7 @@
       },
       "discussion": {
         "title": "Diskussion",
-        "about": "{models, select, true {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage: Sie bleibt auf deren Screening-Liste, bis sie antwortet. Ein Modell kann man nicht fragen: Klicken Sie auf eine seiner Markierungen in der Tabelle, um die gelesene Textstelle zu sehen.} other {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage: Sie bleibt auf deren Screening-Liste, bis sie antwortet.}}",
+        "about": "{models, select, true {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Liste, bis sie antwortet. Ein Modell kann man nicht fragen. Klicken Sie auf eine seiner Markierungen in der Tabelle, um die gelesene Textstelle zu sehen.} other {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Liste, bis sie antwortet.}}",
         "blind": "Dieses Screening verbirgt, was über einen Artikel geschrieben wurde, vor einem Reviewer nur, solange der Artikel noch auf dessen eigene Stimme wartet.",
         "shut": "Hier besprechen die Reviewer einen Artikel. Es bleibt verborgen, damit es Ihre Stimme nicht beeinflusst.",
         "notSent": "Das wurde nicht gesendet. Versuchen Sie es erneut.",
@@ -8712,10 +8719,10 @@
     "overview": {
       "notSaved": "Das hat nicht geklappt. Versuchen Sie es erneut.",
       "empty": {
-        "arriving": "Seine Artikel sind unterwegs",
-        "arrivingSays": "{reviewer, select, true {Sie erscheinen hier, sobald sie aus seinen Quellen ankommen. Sie können mit dem Prüfen beginnen, sobald die ersten da sind.} other {Sie erscheinen hier, sobald sie aus seinen Quellen ankommen.}}",
-        "noPaper": "{sources, select, true {Seine Quellen enthielten keinen Artikel, den es prüfen kann.} other {Dieses Screening hat keine Quelle, aus der es Artikel nehmen kann.}}",
-        "toSources": "{sources, select, true {Seine Quellen ansehen} other {Quelle hinzufügen}}"
+        "arriving": "Die Artikel sind unterwegs",
+        "arrivingSays": "{reviewer, select, true {Sie erscheinen hier, sobald sie aus den Quellen ankommen. Sie können mit dem Prüfen beginnen, sobald die ersten da sind.} other {Sie erscheinen hier, sobald sie aus den Quellen ankommen.}}",
+        "noPaper": "{sources, select, true {Die Quellen enthielten keinen Artikel, der geprüft werden kann.} other {Dieses Screening hat keine Quelle, aus der es Artikel nehmen kann.}}",
+        "toSources": "{sources, select, true {Quellen ansehen} other {Quelle hinzufügen}}"
       },
       "progress": {
         "title": "Fortschritt",
@@ -8730,7 +8737,7 @@
         "extract": "Aus den eingeschlossenen Artikeln extrahieren",
         "finish": "Als abgeschlossen markieren",
         "settledOf": "{total, plural, one {von # Artikel entschieden} other {von # Artikeln entschieden}}",
-        "leftOut": "{bare, select, true {{count, number} ausgelassen: kein Abstract} other {{count, number} ausgelassen}}",
+        "leftOut": "{bare, select, true {{count, number} ausgelassen, weil ein Abstract fehlt} other {{count, number} ausgelassen}}",
         "capped": "{personal, select, true {Am Artikel-Limit Ihres Tarifs gestoppt} other {Am Artikel-Limit des Tarifs von {workspace} gestoppt}}",
         "pdfsUnread": "{count, plural, one {Kein Reviewer liest # PDF} other {Kein Reviewer liest # PDFs}}",
         "merged": "{count, plural, one {# Duplikat zusammengeführt} other {# Duplikate zusammengeführt}}"
@@ -8797,8 +8804,8 @@
         "unreadLabel": "{count, plural, one {# Artikel, den es nicht lesen konnte} other {# Artikel, die es nicht lesen konnte}}",
         "unread": "{count, number} nicht lesbar",
         "unreadSays": "{count, plural, one {Es konnte diesen Artikel nicht lesen und hat darüber nicht mitzureden.} other {Es konnte diese # Artikel nicht lesen und hat darüber nicht mitzureden.}}",
-        "notGivenText": "{count, plural, one {Nicht beim PDF: Es liest nur Text} other {Nicht bei den # PDFs: Es liest nur Text}}",
-        "notGivenLong": "{count, plural, one {Nicht bei # PDF: länger, als es auf einmal liest} other {Nicht bei # PDFs: länger, als es auf einmal liest}}",
+        "notGivenText": "{count, plural, one {Bekommt das PDF nicht, da es nur Text liest} other {Bekommt die # PDFs nicht, da es nur Text liest}}",
+        "notGivenLong": "{count, plural, one {Bekommt # PDF nicht, das länger ist, als es auf einmal liest} other {Bekommt # PDFs nicht, die länger sind, als es auf einmal liest}}",
         "voted": "{decision, select, include {{count, number} für Einschließen gestimmt} maybe {{count, number} für Vielleicht gestimmt} other {{count, number} für Ausschließen gestimmt}}",
         "noOtherPerson": "Keine andere Person zum Vergleich",
         "noPeople": "Keine Personen zum Vergleich",
@@ -8812,7 +8819,7 @@
         "creditsShort": "{credits} Credits zu wenig",
         "remind": "Erinnerung senden",
         "moveAway": "Artikel an jemand anderen verschieben",
-        "takeOff": "{mine, select, true {Dieses Screening verlassen} other {Aus diesem Screening entfernen}}"
+        "takeOff": "{mine, select, true {Dieses Screening verlassen} other {Diese Person aus dem Screening entfernen}}"
       },
       "unread": {
         "earlier": "Früher",
@@ -8826,13 +8833,13 @@
           "above": "{from, number} und mehr"
         },
         "sameOf": "{share, number, percent} gleich bei {count, plural, one {# Artikel} other {# Artikeln}}",
-        "kept": "Wie weit die Reviewer übereinstimmen, zeigt sich, sobald Sie über alle Ihre Artikel abgestimmt haben: Vorher würde es verraten, wie die anderen gestimmt haben.",
+        "kept": "Wie weit die Reviewer übereinstimmen, zeigt sich, sobald Sie über alle Ihre Artikel abgestimmt haben. Vorher würde es verraten, wie die anderen gestimmt haben.",
         "none": "Wie weit die Reviewer übereinstimmen, zeigt sich hier, sobald zwei von ihnen über dieselben Artikel abgestimmt haben.",
         "mean": "Mittleres paarweises Cohen's Kappa",
         "across": "0 ist nicht besser als Zufall, 1 ist volle Übereinstimmung. Über {pairs, plural, one {# Paar} other {# Paare}} von Reviewern, {range, select, true {je {min, number} bis {max, number} Artikel} other {{min, plural, one {je # Artikel} other {je # Artikel}}}}",
         "splitMost": "Die Artikel, bei denen sie am meisten uneins sind",
         "noneYet": "Noch keine",
-        "cell": "{a} und {b}: Kappa {kappa}, gleiche Stimme bei {share, number, percent} von {papers, plural, one {# Artikel} other {# Artikeln}}"
+        "cell": "{a} und {b}, Kappa {kappa}, gleiche Stimme bei {share, number, percent} von {papers, plural, one {# Artikel} other {# Artikeln}}"
       },
       "kappa": {
         "title": "Cohen's Kappa",
@@ -8868,9 +8875,9 @@
         "spent": "<num>{count, number}</num> ausgegeben",
         "onceRead": "{credits}, sobald alle Artikel gelesen sind",
         "failed": "{count, plural, one {# Lesevorgang fehlgeschlagen} other {# Lesevorgänge fehlgeschlagen}}",
-        "arriving": "Seine Artikel kommen noch an",
+        "arriving": "Die Artikel kommen noch an",
         "allRead": "Alle Artikel sind gelesen",
-        "leftIn": "{credits} übrig in {workspace}",
+        "leftIn": "{own, select, true {{credits} übrig} other {{credits} übrig in {workspace}}}",
         "takenOff": "{credits} durch entfernte Modelle",
         "nothingToPay": "Nichts zu bezahlen"
       },
@@ -8883,7 +8890,7 @@
         "skips": "{count, plural, one {Überspringt # feste Quelle} other {Überspringt # feste Quellen}}",
         "means": "Eine Abfrage führt die Suche jeder Quelle erneut aus und fügt die Artikel hinzu, die dieses Screening noch nicht hat. Hochgeladene Dateien und eingefügte Listen ändern sich nie, daher überspringen Abfragen sie.",
         "checkNow": "Jetzt abfragen",
-        "every": "{every, select, day {Fragt jeden Tag ab} week {Fragt jede Woche ab} other {Fragt jeden Monat ab}}, nächste Abfrage {day}",
+        "every": "{every, select, day {Fragt jeden Tag ab} week {Fragt jede Woche ab} other {Fragt jeden Monat ab}}",
         "onlyWhenAsked": "Fragt nur auf Anfrage ab",
         "schedule": "Nach Zeitplan abfragen",
         "checkedBy": "{you, select, true {Von Ihnen abgefragt} other {Von {name} abgefragt}}",
@@ -8919,7 +8926,7 @@
     "papers": {
       "notSaved": "Das wurde nicht gespeichert. Versuchen Sie es erneut.",
       "noPapers": {
-        "gathering": "Seine Artikel sind unterwegs. Sie erscheinen hier, sobald sie ankommen.",
+        "gathering": "Die Artikel sind unterwegs. Sie erscheinen hier, sobald sie ankommen.",
         "none": "Dieses Screening hat noch keine Artikel."
       },
       "sort": {
@@ -8939,7 +8946,7 @@
         "source": "Quelle",
         "reviewer": "Reviewer",
         "reviewers": "Reviewer",
-        "reviewersLabel": "{anyone, select, true {Reviewer: alle} other {Reviewer: {names}}}",
+        "reviewersLabel": "{anyone, select, true {Alle Reviewer} other {Reviewer {names}}}",
         "anyone": "Alle",
         "people": "Personen",
         "models": "Modelle",
@@ -9027,8 +9034,8 @@
         "includedOnly": "Punkte nur bei eingeschlossenen Artikeln",
         "mostCommon": "Punkte aus der häufigsten Antwort",
         "stars": "1 bis {count, number} Sterne aus {points} Punkten",
-        "says": "Warum ein Artikel dort steht, wo er steht: das Kriterium, das ihn ausgeschlossen hat, das Kriterium, bei dem ein Vielleicht unklar ist, wie ein Konflikt verteilt ist oder auf wessen Stimme er wartet.",
-        "points": "Ein eingeschlossener Artikel zeigt seine Punkte und Sterne. Jedes Kriterium bringt Punkte für die Antwort, die die meisten Reviewer gegeben haben: Ein Ja bringt 1, sofern {canChange, select, true {die Einstellungen des Screenings nichts anderes festlegen} other {die Mitglieder von {workspace} nichts anderes festgelegt haben}}. Die Sterne folgen den Punkten."
+        "says": "Warum ein Artikel dort steht, wo er steht. Das ist das Kriterium, das ihn ausgeschlossen hat, das Kriterium, bei dem ein Vielleicht unklar ist, wie ein Konflikt verteilt ist oder auf wessen Stimme er wartet.",
+        "points": "Ein eingeschlossener Artikel zeigt seine Punkte und Sterne. Jedes Kriterium bringt Punkte für die Antwort, die die meisten Reviewer gegeben haben. Ein Ja bringt 1, sofern {canChange, select, true {die Einstellungen des Screenings nichts anderes festlegen} other {die Mitglieder von {workspace} nichts anderes festgelegt haben}}. Die Sterne folgen den Punkten."
       },
       "menu": {
         "papersVoted": "{you, select, true {Artikel, bei denen Sie für {decision} gestimmt haben} other {Artikel, bei denen {name} für {decision} gestimmt hat}}",
@@ -9051,7 +9058,7 @@
       },
       "pointsOf": "{points, number} von {max, plural, one {# Punkt} other {# Punkten}}",
       "note": {
-        "neededForOther": "Notiz, nötig bei einem anderen Grund",
+        "neededForOther": "Schreiben Sie den anderen Grund",
         "label": "Notiz",
         "writeReason": "Schreiben Sie den Grund in die Notiz",
         "forOthers": "Notiz für die anderen (optional)",
@@ -9063,7 +9070,7 @@
         "notInList": "Nicht in dieser Liste",
         "close": "Schließen",
         "paper": "Artikel",
-        "says": "Sein Abstract, seine Stimmen und sein Ergebnis",
+        "says": "Abstract, Stimmen und Ergebnis dieses Artikels",
         "yourVote": "Ihre Stimme",
         "youVoted": "Sie haben für {decision} gestimmt",
         "changeIt": "Ändern",
@@ -9075,7 +9082,7 @@
         "reopen": "Wieder öffnen",
         "waitingToSettle": "{you, select, true {Wartet auf Ihre Entscheidung} other {Wartet auf die Entscheidung von {name}}}",
         "everyConflict": "Alle Konflikte",
-        "override": "Ergebnis überschreiben",
+        "override": "Das Ergebnis überschreiben",
         "overrideTitle": "Ein Ergebnis überschreiben",
         "votesKept": "Stimmen bleiben erhalten",
         "canReopen": "Kann wieder geöffnet werden",
@@ -9119,7 +9126,7 @@
         "sources": "Keine Quelle erhält Artikel"
       },
       "notReviewer": {
-        "shared": "Dieses Screening ist zum Lesen mit Ihnen geteilt. Seine Reviewer stimmen ab.",
+        "shared": "Dieses Screening ist zum Lesen mit Ihnen geteilt. Nur seine Reviewer stimmen ab.",
         "finished": "Sie sind keiner seiner Reviewer, und das Screening ist abgeschlossen.",
         "join": "Sie sind keiner seiner Reviewer. Treten Sie als Reviewer bei, um über seine Artikel abzustimmen."
       },
@@ -9131,17 +9138,17 @@
         "conflict": "{count, number} im Konflikt",
         "waiting": "{count, number} warten auf Stimmen"
       },
-      "filterLabel": "{name}: {choice}",
+      "filterLabel": "{name}, {choice}",
       "tag": {
         "ai": "KI",
         "takenOff": "Entfernt"
       },
       "voteMark": {
-        "failed": "{who}: Artikel nicht lesbar",
-        "hidden": "{who}: abgestimmt, verborgen, bis Sie abstimmen",
-        "none": "{who}: keine Stimme",
-        "yet": "{who}: noch keine Stimme",
-        "cast": "{who}: {decision}"
+        "failed": "{who} konnte den Artikel nicht lesen",
+        "hidden": "{who} hat abgestimmt. Die Stimme ist verborgen, bis Sie abstimmen",
+        "none": "{who} hat keine Stimme",
+        "yet": "{who} hat noch nicht abgestimmt",
+        "cast": "{who} hat für {decision} gestimmt"
       },
       "votedHidden": "Abgestimmt, verborgen, bis Sie abstimmen",
       "reasonSign": {
@@ -9156,7 +9163,7 @@
         "no": "Nein",
         "unclear": "Unklar"
       },
-      "answerMark": "{label}: {answer}",
+      "answerMark": "{label}, {answer}",
       "votesHelp": {
         "title": "Die Stimmen lesen",
         "anAnswer": "Eine Antwort",
@@ -9164,7 +9171,7 @@
         "answersDiffer": "Antworten weichen ab",
         "answeredDifferently": "Die Reviewer haben unterschiedlich geantwortet",
         "opensAnswer": "Zeigt, was hinter der Antwort steht",
-        "body": "Jede Spalte ist ein Reviewer und jede Zeile ein Kriterium, in der letzten Zeile steht die Stimme. Klicken Sie auf ein Gesicht für die Stimme und Notiz dieses Reviewers. Klicken Sie auf eine Antwort für das, was dahinter steht: die Textstelle, die ein Modell gelesen hat, oder die Stimme und Notiz einer Person. Ein Modell, das einen Artikel nicht lesen konnte, hat darüber nicht mitzureden.",
+        "body": "Jede Spalte ist ein Reviewer und jede Zeile ein Kriterium, in der letzten Zeile steht die Stimme. Klicken Sie auf ein Gesicht für die Stimme und Notiz dieses Reviewers. Klicken Sie auf eine Antwort für das, was dahinter steht, also die Textstelle, die ein Modell gelesen hat, oder die Stimme und Notiz einer Person. Ein Modell, das einen Artikel nicht lesen konnte, hat darüber nicht mitzureden.",
         "lock": "Ein Schloss steht dort, wo eine Stimme verborgen ist."
       },
       "anotherReason": "Ein anderer Grund…",
@@ -9240,10 +9247,10 @@
         "settledBy": "{you, select, true {Von Ihnen entschieden} other {Von {name} entschieden}}"
       },
       "hint": {
-        "against": "Sie haben für {voted} gestimmt, und Ihre Antworten deuten auf {points}.",
-        "againstWhy": "Sie haben für {voted} gestimmt, und Ihre Antworten deuten auf {points}: Sie haben {answer, select, no {Nein} other {Unklar}} geantwortet bei {many, select, true {den Kriterien {numbers}, Muss-Kriterien} other {Kriterium {numbers}, einem Muss-Kriterium}}.",
-        "pointsWhy": "Ihre Antworten deuten auf <b>{points}</b>: Sie haben {answer, select, no {Nein} other {Unklar}} geantwortet bei {many, select, true {den Kriterien {numbers}, Muss-Kriterien} other {Kriterium {numbers}, einem Muss-Kriterium}}. Ihre Stimme ist noch nicht abgegeben.",
-        "allMet": "Ihre Antworten deuten auf <b>{points}</b>: Alle Muss-Kriterien sind erfüllt. Ihre Stimme ist noch nicht abgegeben.",
+        "against": "Sie haben für {voted} gestimmt, aber Ihre Antworten deuten auf {points}.",
+        "againstWhy": "Sie haben für {voted} gestimmt, aber Ihre Antworten deuten auf {points}. Sie haben {answer, select, no {Nein} other {Unklar}} geantwortet bei {many, select, true {den Kriterien {numbers}, die Muss-Kriterien sind} other {Kriterium {numbers}, einem Muss-Kriterium}}.",
+        "pointsWhy": "Ihre Antworten deuten auf <b>{points}</b>. Sie haben {answer, select, no {Nein} other {Unklar}} geantwortet bei {many, select, true {den Kriterien {numbers}, die Muss-Kriterien sind} other {Kriterium {numbers}, einem Muss-Kriterium}}. Ihre Stimme ist noch nicht abgegeben.",
+        "allMet": "Ihre Antworten deuten auf <b>{points}</b>, da alle Muss-Kriterien erfüllt sind. Ihre Stimme ist noch nicht abgegeben.",
         "againstLine": "Sie haben für {voted} gestimmt. Ihre Antworten deuten auf <b>{points}</b>.",
         "pointsLine": "Ihre Antworten deuten auf <b>{points}</b>. Noch nicht abgegeben."
       },
@@ -9257,17 +9264,17 @@
         "title": "Kriterien",
         "answered": "{answered, number} von {count, number} beantwortet",
         "mustHaveFact": "Muss-Kriterium",
-        "guidanceFact": "Hinweise: was zählt und was nicht",
-        "markedFact": "Markierte Wörter: die Wörter, nach denen ein Kriterium sucht",
+        "guidanceFact": "Hinweise sagen, was zählt und was nicht",
+        "markedFact": "Markierte Wörter sind die, nach denen ein Kriterium sucht",
         "showsFact": "<mark>Markiert</mark>So erscheinen sie im Abstract",
-        "helpAnswering": "Antworten sind freiwillig: Eine Stimme genügt. Ein Nein bei einem Muss-Kriterium deutet auf Ausschließen, und beim Ausschließen werden Sie gefragt, welches nicht erfüllt ist, sofern Ihre Antworten das nicht schon sagen.",
+        "helpAnswering": "Antworten sind freiwillig, und eine Stimme allein genügt. Ein Nein bei einem Muss-Kriterium deutet auf Ausschließen, und beim Ausschließen werden Sie gefragt, welches nicht erfüllt ist, sofern Ihre Antworten das nicht schon sagen.",
         "helpReading": "Die Fragen, die jeder Reviewer zu einem Artikel beantwortet, und unter jeder, wie sie beantwortet wurde. Ein Nein bei einem Muss-Kriterium deutet auf Ausschließen.",
-        "mustHave": "{answering, select, true {Ein Muss-Kriterium: Ein Nein dabei deutet auf Ausschließen. Antworten sind freiwillig und nicht Ihre Stimme.} other {Ein Muss-Kriterium: Ein Nein dabei deutet auf Ausschließen.}}",
+        "mustHave": "{answering, select, true {Ein Muss-Kriterium, daher deutet ein Nein auf Ausschließen. Antworten sind freiwillig und nicht Ihre Stimme.} other {Ein Muss-Kriterium, daher deutet ein Nein auf Ausschließen.}}",
         "guidance": "Hinweise",
         "markedWords": "Markierte Wörter",
         "markedFor": "Markierte Wörter für Kriterium {n, number}",
         "answerTo": "Ihre Antwort auf Kriterium {n, number}",
-        "differFor": "Kriterium {n, number}: abweichende Antwort anzeigen",
+        "differFor": "Abweichende Antwort bei Kriterium {n, number} anzeigen",
         "none": "Noch keine Kriterien",
         "add": "Kriterien hinzufügen"
       },
@@ -9313,11 +9320,11 @@
         "helpTitle": "Einen Konflikt entscheiden",
         "yourVote": "Ihre Stimme als Reviewer",
         "rule": "Regel",
-        "help": "Die Reviewer sind bei diesem Artikel uneins. Was Sie wählen, wird sein Ergebnis, egal wie sie gestimmt haben. Auch Vielleicht ist ein Ergebnis: Damit wird der Artikel als einer entschieden, den man sich noch einmal ansieht."
+        "help": "Die Reviewer sind bei diesem Artikel uneins. Was Sie wählen, wird sein Ergebnis, egal wie sie gestimmt haben. Auch Vielleicht ist ein Ergebnis. Damit wird der Artikel als einer entschieden, den man sich noch einmal ansieht."
       },
       "empty": {
         "noConflictPaper": "Kein Artikel ist im Konflikt",
-        "onTheirWay": "Seine Artikel sind unterwegs",
+        "onTheirWay": "Die Artikel sind unterwegs",
         "arrived": "{done, number} von {count, number} sind da",
         "noneYet": "Noch kein Artikel ist bei Ihnen angekommen",
         "noneYours": "Über keinen seiner Artikel stimmen Sie ab",
@@ -9337,8 +9344,8 @@
         "nameYou": "{name}, Sie",
         "theirVote": "Stimme von {name}",
         "on": "{name}, {criterion}",
-        "differFor": "{criterion}: abweichende Antwort anzeigen",
-        "show": "{who}, {criterion}: {kind, select, model {Textstelle anzeigen} you {Ihre Stimme und Notiz anzeigen} other {Stimme und Notiz anzeigen}}",
+        "differFor": "Abweichende Antwort bei {criterion} anzeigen",
+        "show": "{kind, select, model {Textstelle anzeigen, die {who} für {criterion} gelesen hat} you {Ihre Stimme und Notiz zu {criterion} anzeigen} other {Stimme und Notiz von {who} zu {criterion} anzeigen}}",
         "vote": "Stimme"
       },
       "said": {
@@ -9349,7 +9356,7 @@
         "helpTitle": "Wie sicher das Modell ist",
         "unsureBelow": "Unsicher unter 65 %",
         "help": "Das Modell bewertet jede seiner Antworten von 0 bis 100 %. Lesen Sie unter 65 % das Abstract, bevor Sie sich auf diese Antwort verlassen.",
-        "unsure": "Unsicher: {sure, number, percent} sicher",
+        "unsure": "Nur {sure, number, percent} sicher",
         "sure": "{sure, number, percent} sicher"
       }
     },
@@ -9362,7 +9369,7 @@
       "remove": "{name} entfernen",
       "dismiss": "Schließen",
       "columns": {
-        "needNaming": "Die Spalten müssen zugeordnet werden",
+        "needNaming": "Spalten noch nicht zugeordnet",
         "pickEach": "Wählen Sie die Spalte, die jeden Teil enthält. Darunter steht, was die erste der {count, plural, one {# Zeile} other {# Zeilen}} dort hat.",
         "label": {
           "title": "Titel",
@@ -9377,7 +9384,7 @@
         "untitledLeftOut": "{count, plural, one {# Zeile} other {# Zeilen}} ohne Titel ausgelassen",
         "noAbstract": "{count, number} ohne Abstract",
         "addRecords": "{count, plural, one {# Eintrag hinzufügen} other {# Einträge hinzufügen}}",
-        "addItsRecords": "Ihre Einträge hinzufügen"
+        "addItsRecords": "Einträge hinzufügen"
       },
       "upload": {
         "notSent": "Die Datei konnte nicht gesendet werden. Versuchen Sie es erneut.",
@@ -9385,11 +9392,11 @@
         "referenceFile": "Literaturdatei",
         "onePdf": "Ein PDF",
         "uploadedPdfs": "{count, plural, one {# hochgeladenes PDF} other {# hochgeladene PDFs}}",
-        "refused": "<file>{name}</file>: {why}",
+        "refused": "<file>{name}</file> wurde nicht hinzugefügt. {why}",
         "why": {
           "notReadable": "Keine Dateiart, die ein Screening liest",
           "twice": "Bereits eine Quelle",
-          "tooBig": "Über {mb, number} MB: Teilen Sie sie auf und fügen Sie jeden Teil hinzu",
+          "tooBig": "Über {mb, number} MB. Teilen Sie sie auf und fügen Sie jeden Teil hinzu",
           "noTable": "Keine Literaturtabelle darin",
           "noReferences": "Keine Literaturangaben darin",
           "unread": "Sie konnte nicht gelesen werden",
@@ -9402,9 +9409,9 @@
         "fileLimit": "Literaturdateien bis {mb, number} MB",
         "pdfLimit": "PDFs bis je {mb, number} MB",
         "aboutFiles": "Eine Literaturdatei ist das, was eine Datenbank oder ein Literaturverwaltungsprogramm exportiert. Jeder ihrer Einträge mit Titel und Abstract ist ein Artikel.",
-        "aboutPdfs": "Ein PDF wird gelesen, sobald es hinzugefügt ist, um Titel und DOI zu finden. Enthält der Index von Openscholar diese DOI, erscheint der Artikel mit Titel und Abstract aus dem Index. Sonst ist der Artikel das PDF: Eine Person, die ihn prüft, liest die Datei, und ebenso jedes KI-Modell, das PDFs liest, jede Seite davon. Ein Modell, das nur Text liest oder ein so langes PDF nicht aufnehmen kann, hat dazu keine Stimme. Ein Scan wird genauso gelesen. Eine Datei, die sich nicht öffnen lässt, wird ausgelassen.",
+        "aboutPdfs": "Ein PDF wird gelesen, sobald es hinzugefügt ist, um Titel und DOI zu finden. Enthält der Index von Openscholar diese DOI, erscheint der Artikel mit Titel und Abstract aus dem Index. Sonst ist der Artikel das PDF selbst. Eine Person, die ihn prüft, liest die Datei, und ebenso jedes KI-Modell, das PDFs liest, jede Seite davon. Ein Modell, das nur Text liest oder ein so langes PDF nicht aufnehmen kann, hat dazu keine Stimme. Ein Scan wird genauso gelesen. Eine Datei, die sich nicht öffnen lässt, wird ausgelassen.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF oder eine Textdatei mit DOIs, beliebig viele auf einmal",
-        "pdfCost": "Ein Modell liest die ersten Seiten jedes PDFs, um Titel und DOI zu finden: bis zu {credits} Credits pro PDF, bezahlt beim Hinzufügen",
+        "pdfCost": "Ein Modell liest die ersten Seiten jedes PDFs, um Titel und DOI zu finden. Das kostet bis zu {credits} Credits pro PDF, bezahlt beim Hinzufügen",
         "filesLabel": "Hochzuladende Dateien",
         "choose": "Dateien wählen",
         "sent": "{sent, number} von {total, number} gesendet",
@@ -9455,9 +9462,9 @@
         "includeSub": "Untersammlungen einbeziehen",
         "subHelpTitle": "Untersammlungen",
         "subTakenOnce": "Ein Artikel, der in zwei davon abgelegt ist, wird einmal übernommen",
-        "subAbout": "Zotero zählt nur die Einträge, die direkt in einer Sammlung abgelegt sind, und die Zahl hier ebenso. Ist dies aktiv, wird eine Sammlung mit den Artikeln aller Sammlungen darunter hinzugefügt: Zusammen enthalten sie etwa die Summe dessen, was Zotero in jeder zählt, und genau, sobald das Screening sie gelesen hat.",
-        "readingCount": "Sammlungen werden gelesen, {read, number} von {total, number}",
-        "reading": "Sammlungen werden gelesen",
+        "subAbout": "Zotero zählt nur die Einträge, die direkt in einer Sammlung abgelegt sind, und die Zahl hier ebenso. Ist dies aktiv, wird eine Sammlung mit den Artikeln aller Sammlungen darunter hinzugefügt. Zusammen enthalten sie etwa die Summe dessen, was Zotero in jeder zählt, und die Zahl ist genau, sobald das Screening sie gelesen hat.",
+        "readingCount": "Die Sammlungen werden gelesen, {read, number} von {total, number}",
+        "reading": "Die Sammlungen werden gelesen",
         "failed": "Zotero konnte nicht gelesen werden. Öffnen Sie die Bibliothek erneut.",
         "everyPaper": "Alle Artikel in {library}",
         "group": "Zotero-Gruppe",
@@ -9558,7 +9565,7 @@
         "why": "{many, select, true {Warum ausschließen?} other {Warum ausschließen?}}"
       },
       "notMet": "{name} nicht erfüllt",
-      "notMetInFull": "Nicht erfüllt: {name}",
+      "notMetInFull": "Erfüllt {name} nicht",
       "unclearOn": "{name} unklar",
       "includedIn": "Eingeschlossen in {name}",
       "every": {
@@ -9566,7 +9573,7 @@
         "week": "Jede Woche",
         "month": "Jeden Monat"
       },
-      "living": "{every, select, day {Fortlaufend, jeden Tag neue Artikel} week {Fortlaufend, jede Woche neue Artikel} other {Fortlaufend, jeden Monat neue Artikel}}",
+      "living": "{every, select, day {Jeden Tag} week {Jede Woche} other {Jeden Monat}}",
       "settle": {
         "label": {
           "all": "Alle einig",
@@ -9576,7 +9583,7 @@
         "means": {
           "all": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und alle gleich gestimmt haben. Jede Abweichung ist ein Konflikt.",
           "most": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und mehr als die Hälfte gleich gestimmt hat. Ohne eine solche Mehrheit ist es ein Konflikt.",
-          "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt."
+          "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt. Bekommt eine Person den Artikel, entscheidet ihn die Stimme der ersten Person. Die Stimme eines Modells entscheidet nur einen Artikel, den keine Person hat."
         },
         "says": {
           "all": "Entschieden, wenn alle einig sind",
