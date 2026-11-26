@@ -158,6 +158,8 @@ export const screeningJobPaperValidator = v.object({
  * Screening job lifecycle statuses.
  */
 export const screeningJobStatusValidator = v.union(
+  // A screening with reviewers that isn't started yet (./screenings.ts `sync`).
+  v.literal("draft"),
   v.literal("processing"),
   v.literal("completed"),
   v.literal("cancelled"),
@@ -367,6 +369,9 @@ export const sourceViewValidator = v.object({
   left: v.number(),
   // Of the ones left out, how many for having no abstract.
   bare: v.number(),
+  // Of the ones taken, how many are screened as their own PDF, and the pages those have.
+  filed: v.number(),
+  filePages: v.number(),
   // Its reading stopped at the most papers the workspace's plan gives one screening.
   capped: v.optional(v.literal(true)),
   checkedAt: v.optional(v.number()),

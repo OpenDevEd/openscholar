@@ -11,7 +11,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { screeningPaperCredits } from "@/lib/pricing/estimate";
+import { screeningPaperCredits, screeningPdfsCredits } from "@/lib/pricing/estimate";
 import type { Answer } from "@/lib/screening/setup";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { DAY, GROWS, keptOf, num, readBy, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
@@ -22,6 +22,18 @@ export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"]
 /** What a model costs for one paper, in credits: its price for the tokens that call takes at most, as the real estimate works it out. */
 export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) {
   return screeningPaperCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion });
+}
+/** The papers a screening's sources took that are screened as their own PDF, and the pages those have. */
+export const pdfsOf = (sources: Source[]) => sources.reduce((sum, source) => ({ papers: sum.papers + (source.read?.filed ?? 0), pages: sum.pages + (source.read?.filePages ?? 0) }), { papers: 0, pages: 0 });
+/**
+ * What a model's reading of `ahead` of a screening's `papers` costs at most. A paper read as its PDF costs by the
+ * page, far more than one read as an abstract: such papers are taken for the same share of the ones ahead as they
+ * are of them all.
+ */
+export function readingCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">, ahead: number, papers: number, pdfs: { papers: number; pages: number }) {
+  const share = pdfs.papers && papers ? Math.min(1, ahead / papers) : 0;
+  const filed = pdfs.papers * share;
+  return paperCredits(model) * Math.max(0, ahead - filed) + (filed ? screeningPdfsCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, filed, pdfs.pages * share) : 0);
 }
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
@@ -69,7 +81,7 @@ function toSource(source: View["sources"][number]): Source {
     duplicates: source.duplicates,
     set: source.set as Source["set"],
     ...(refOf(source.set as NonNullable<Source["set"]>) ? { ref: refOf(source.set as NonNullable<Source["set"]>) } : {}),
-    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
+    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, filed: source.filed, filePages: source.filePages, ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
     addedAt: source.addedAt,
   };
 }

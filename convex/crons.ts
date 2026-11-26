@@ -11,6 +11,14 @@ crons.interval(
   {},
 );
 
+// A screening given sources and never started goes after a week untouched (screening/screenings.ts).
+crons.interval(
+  "clear screenings never started",
+  { hours: 24 },
+  internal.screening.screenings.sweepDrafts,
+  {},
+);
+
 // The public directory's record counts (#1090): an import runs inside the community, which doesn't tell us.
 crons.interval(
   "refresh community record counts",

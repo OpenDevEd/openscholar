@@ -12,15 +12,16 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
+import type { Doc } from "../_generated/dataModel";
 import { MAX_QUESTIONS, MAX_STARS } from "../lib/listCaps";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { MAX_REVIEWERS, MAX_SOURCE_ROWS, reviewersOf, sourcesOf, touched } from "./dealing";
+import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, dealNew, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startWaitingVotes } from "./slots";
-import { startCheck } from "./gathering";
+import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
 import { destination } from "./mutations";
 import { NO_RESULTS } from "./settling";
@@ -104,14 +105,118 @@ const setup = {
 /** How long until a living screening's next check. */
 export { EVERY_MS };
 
+/** Whether a source's row is the source the form holds: the same thing read, and the same papers of it. */
+const stable = (value: unknown): string => (Array.isArray(value) ? `[${value.map(stable).join(",")}]` : value && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${key}:${stable((value as Record<string, unknown>)[key])}`).join(",")}}` : JSON.stringify(value) ?? "");
+const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput>) => row.removedAt === undefined && stable(row.set) === stable(sent.set) && row.first === sent.first && row.last === sent.last;
+
+/** A screening that isn't started yet, if it is this person's to go on with. */
+async function draftOf(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs"> | undefined) {
+  const job = jobId ? await ctx.db.get("screeningJobs", jobId) : null;
+  return job?.status === "draft" && job.createdBy === actor.userId && job.workspaceId === actor.workspaceId ? job : null;
+}
+
+/**
+ * Reads the sources a form that starts a screening holds, before it starts: the screening is made as one not
+ * started yet, with no reviewers, and its sources are read by the same look that reads a running screening's
+ * (./gathering.ts). So the form says what each source holds, what another source already brought and what is left
+ * out, as counted by the code that will take the papers, and starting it has nothing left to read.
+ *
+ * `draft` is the one this form made before. Sources added at the end are read on. Any other change, a source taken
+ * out or other papers of one, makes a new one from the start, and the old one goes: which source keeps a paper two
+ * of them hold depends on their order.
+ */
+export const sync = workspaceMutation({
+  args: { draft: v.optional(v.id("screeningJobs")), sources: v.array(sourceInput) },
+  returns: v.union(v.null(), v.object({ jobId: v.id("screeningJobs"), sources: v.array(v.id("screeningSources")) })),
+  handler: async (ctx, actor, { draft, sources }) => {
+    if (sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads up to ${MAX_SOURCES} sources.`);
+    const now = Date.now();
+    const was = await draftOf(ctx, actor, draft);
+    const rows = was ? await sourcesOf(ctx, was._id) : [];
+    if (was && sources.length >= rows.length && rows.length > 0 && rows.every((row, at) => sameSource(row, sources[at]!))) {
+      const added = [];
+      for (const source of sources.slice(rows.length)) added.push(await addSource(ctx, was._id, actor.userId, source, now));
+      if (added.length) {
+        await ctx.db.patch("screeningJobs", was._id, touched(now));
+        await readOn(ctx, was, actor.userId);
+      }
+      return { jobId: was._id, sources: [...rows.map((row) => row._id), ...added] };
+    }
+    if (was) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: was._id });
+    if (!sources.length) return null;
+    const stars = starsFrom(undefined, 0);
+    const jobId = await ctx.db.insert("screeningJobs", {
+      workspaceId: actor.workspaceId,
+      createdBy: actor.userId,
+      status: "draft",
+      totalPapers: 0,
+      reading: true,
+      shape: 2,
+      criteria: [],
+      stars,
+      rule: { each: "all", settle: "all", resolver: actor.userId, blind: "after" },
+      ...legacyOf([], stars),
+      screeningId: await ctx.db.insert("screenings", { workspaceId: actor.workspaceId, version: 0, createdAt: now }),
+      createdAt: now,
+      ...touched(now),
+    });
+    await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
+    const made = [];
+    for (const source of sources) made.push(await addSource(ctx, jobId, actor.userId, source, now));
+    await readOn(ctx, (await ctx.db.get("screeningJobs", jobId))!, actor.userId);
+    return { jobId, sources: made };
+  },
+});
+
+/** Papers one step gives to the reviewers of a screening that was read before it started. */
+const DEAL_STEP = 100;
+
+/**
+ * Gives the papers a screening read before it started to its reviewers, a step at a time, in their order: each by
+ * the sum that deals a paper as it arrives (./dealing.ts `dealNew`), so who gets which is what it would have been
+ * had the screening started first. A paper that arrived since has its places already.
+ */
+export const deal = internalMutation({
+  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, cursor }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job) return null;
+    const reviewers = await reviewersOf(ctx, jobId);
+    const dealt = new Map<Id<"screeningReviewers">, number>();
+    const page = await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).paginate({ cursor, numItems: DEAL_STEP });
+    for (const paper of page.page) if (!paper.withdrawn && !(await votesOf(ctx, paper._id)).length) await dealNew(ctx, job, paper, reviewers, dealt);
+    await countDealt(ctx, dealt);
+    if (dealt.size && reviewers.some(readingModel)) await startWaitingVotes(ctx, job.workspaceId);
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.screenings.deal, { jobId, cursor: page.continueCursor });
+    return null;
+  },
+});
+
+/** How long a screening that was never started is kept before it goes. */
+const DRAFT_KEPT_MS = 7 * 24 * 60 * 60 * 1000;
+const DRAFTS_A_SWEEP = 50;
+
+/** Takes away the screenings that were given sources and never started, once nobody has touched them for a week. */
+export const sweepDrafts = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const old = await ctx.db.query("screeningJobs").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "draft").lt("updatedAt", Date.now() - DRAFT_KEPT_MS)).take(DRAFTS_A_SWEEP);
+    for (const job of old) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: job._id });
+    return null;
+  },
+});
+
 /**
  * Makes a screening, with its sources, its reviewers and its first look in the sources. Whoever makes it starts it
- * and settles its conflicts unless someone else is named.
+ * and settles its conflicts unless someone else is named. Where the form read these sources before starting
+ * (`sync`), that one is started: its papers are there already, and are given to the reviewers.
  */
 export const open = internalMutation({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), ...setup, libraryDestination: v.optional(libraryDestinationValidator), pruneName: v.optional(v.string()) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), ...setup, draft: v.optional(v.id("screeningJobs")), libraryDestination: v.optional(libraryDestinationValidator), pruneName: v.optional(v.string()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, workspaceId, author, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, libraryDestination, pruneName }) => {
+  handler: async (ctx, { userId, workspaceId, author, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, draft, libraryDestination, pruneName }) => {
     const user = await requireActiveUser(ctx, userId);
     const writer = { userId, workspaceId };
     const title = name.trim();
@@ -140,13 +245,8 @@ export const open = internalMutation({
     // A new collection is made with the first paper that is included, so a screening that includes none leaves none behind.
     const later = saveTo.kind === "new" ? saveTo.name.trim() : undefined;
     if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
-    const jobId = await ctx.db.insert("screeningJobs", {
-      workspaceId,
-      createdBy: user._id,
-      status: "processing",
-      totalPapers: 0,
-      reading: true,
-      shape: 2,
+    const settings = {
+      status: "processing" as const,
       name: title,
       ...(question?.trim() ? { question: question.trim() } : {}),
       criteria,
@@ -154,19 +254,29 @@ export const open = internalMutation({
       rule: { each, settle: rule.settle, resolver, blind: rule.blind },
       ...(living ? { living: { every: living, next: now + EVERY_MS[living] } } : {}),
       ...legacyOf(criteria, stars),
-      screeningId: await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: now }),
       ...(later ? { newCollection: later } : await destination(ctx, writer, saveTo)),
       ...(libraryDestination ? { libraryDestination } : {}),
       ...(prune ? { prune: true as const } : {}),
       ...(pruneName ? { pruneName } : {}),
       createdAt: now,
       ...touched(now),
-    });
-    await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
-    for (const source of sources) await addSource(ctx, jobId, userId, source, now);
+    };
+    // The one the form read before starting is started where it holds these very sources, in this order. Any other is left to go, and the sources are read from the start.
+    const read = await draftOf(ctx, writer, draft);
+    const rows = read ? await sourcesOf(ctx, read._id) : [];
+    const adopted = read && rows.length === sources.length && rows.every((row, at) => sameSource(row, sources[at]!)) ? read : null;
+    if (read && !adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: read._id });
+    const jobId = adopted?._id ?? (await ctx.db.insert("screeningJobs", { workspaceId, createdBy: user._id, totalPapers: 0, reading: true, shape: 2, screeningId: await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: now }), ...settings }));
+    if (adopted) await ctx.db.patch("screeningJobs", jobId, settings);
+    else {
+      await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
+      for (const source of sources) await addSource(ctx, jobId, userId, source, now);
+    }
     for (const person of people) await ctx.db.insert("screeningReviewers", { jobId, kind: "person", userId: person, addedAt: now, addedBy: userId, dealt: 0 });
     for (const { model, effort } of picked) await ctx.db.insert("screeningReviewers", { jobId, kind: "model", modelId: model._id, ...(effort ? { effort } : {}), addedAt: now, addedBy: userId, dealt: 0 });
-    await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
+    // Papers read before it started are given out now. The ones still to arrive are dealt as they come, by the look that is reading them.
+    if (adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.deal, { jobId, cursor: null });
+    else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
     await logChange(ctx, { userId, author }, { _id: jobId, workspaceId }, "started", { detail: title, more: [{ code: "sources", count: sources.length }, ...(people.length ? [{ code: "people", count: people.length }] : []), ...(picked.length ? [{ code: "models", count: picked.length }] : [])] });
     return { jobId };
   },
@@ -187,7 +297,7 @@ export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, us
  * paper at a time; people's votes cost nothing.
  */
 export const create = workspaceAction({
-  args: setup,
+  args: { ...setup, draft: v.optional(v.id("screeningJobs")) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
   handler: async (ctx, actor, args): Promise<{ jobId: Id<"screeningJobs"> }> => {

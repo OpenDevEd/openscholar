@@ -257,7 +257,7 @@ export const fill = internalMutation({
     const reviewers = await reviewersOf(ctx, job._id);
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const now = Date.now();
-    let [taken, duplicates, left, bare, back] = [0, 0, 0, 0, 0];
+    let [taken, duplicates, left, bare, back, filed, filePages] = [0, 0, 0, 0, 0, 0, 0];
     // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
     let capped = false;
@@ -318,9 +318,10 @@ export const fill = internalMutation({
       });
       await dealNew(ctx, job, { _id: resultId, place }, reviewers, dealt);
       taken++;
+      if (!abstract) { filed++; filePages += paper.pages ?? 0; }
     }
     if (back) await bookkeepLater(ctx);
-    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
+    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(filed ? { filed: (source.filed ?? 0) + filed, filePages: (source.filePages ?? 0) + filePages } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
     await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);
@@ -344,6 +345,20 @@ export const end = internalMutation({
     return null;
   },
 });
+
+/**
+ * Has a screening that isn't started yet read the sources it was just given. They all belong to its first look: the
+ * one it has goes on where it ended, so none of its papers counts as one a later check brought.
+ */
+export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
+  const check = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).first();
+  if (!check) return void (await startCheck(ctx, job, by, 0));
+  if (check.state === "running") return;
+  await ctx.db.patch("screeningChecks", check._id, { state: "running", endedAt: undefined, beat: Date.now() });
+  await ctx.db.patch("screeningJobs", job._id, { reading: true });
+  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId: check._id });
+  await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId: check._id, restarts: 0 });
+}
 
 /** Starts a look in a screening's sources: every source that isn't taken out is read again from where it stands. */
 export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users"> | undefined, from: number) {

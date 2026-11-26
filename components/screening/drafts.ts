@@ -11,6 +11,8 @@ import type { Screening } from "./data";
 type Kept = {
   /** Unsaved settings by where they are made: a screening's ID, or `new:<the screening it copies>`. */
   drafts: Record<string, Screening>;
+  /** The screening the server made to read a new screening's sources before it starts, by the same key (convex/screening/screenings.ts `sync`). */
+  reads: Record<string, string>;
   /** The queue's pane on Screen is folded away, to give the paper its width. */
   folded: boolean;
   /** The criteria whose guidance is open on Screen, each as its screening and its key. A reviewer who wants a rule in front of them opens it once, and it stays open from paper to paper. */
@@ -28,6 +30,7 @@ export const useKept = create<Store>()(
   persist(
     (set) => ({
       drafts: {},
+      reads: {},
       folded: false,
       guides: [],
       paced: {},
@@ -39,6 +42,6 @@ export const useKept = create<Store>()(
         }),
       set: (patch) => set(patch),
     }),
-    { name: "screening:kept:1", storage: createJSONStorage(() => sessionStorage) },
+    { name: "screening:kept:2", storage: createJSONStorage(() => sessionStorage) },
   ),
 );

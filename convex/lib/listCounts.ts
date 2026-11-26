@@ -36,7 +36,7 @@ export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperatio
 
 /** A workspace's screenings with reviewers: the ones still open, and the ones finished, for the tabs of their list. */
 export const screeningsOf = (workspaceId: Id<"workspaces">, finished: boolean) => `screenings:${workspaceId}:${finished ? "finished" : "open"}`;
-export const screeningList = (job: Doc<"screeningJobs">) => (job.shape === 2 ? screeningsOf(job.workspaceId, job.finishedAt !== undefined) : null);
+export const screeningList = (job: Doc<"screeningJobs">) => (job.shape === 2 && job.status !== "draft" ? screeningsOf(job.workspaceId, job.finishedAt !== undefined) : null);
 
 /** A drop of PDFs handed to a screening, by where each stands: still to be read, a paper the index holds, screened as the file it is, or a file that doesn't open. */
 export type PdfStanding = "waiting" | "known" | "file" | "broken";

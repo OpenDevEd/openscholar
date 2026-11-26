@@ -220,7 +220,7 @@ export const listAction = defineUserQuery({
   run: async (ctx, actor, { show, sort, by, text, paginationOpts }) => {
     const { workspaceId } = actor;
     const needle = text?.trim() ?? "";
-    const keeps = (job: Doc<"screeningJobs">) => job.shape === 2 && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by);
+    const keeps = (job: Doc<"screeningJobs">) => job.shape === 2 && job.status !== "draft" && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by);
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const jobs = stream(ctx.db, schema).query("screeningJobs");
     const read = needle
@@ -425,7 +425,7 @@ export const getAction = defineUserQuery({
       stars: job.stars ?? [],
       each: rule.each,
       blind: rule.blind,
-      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
+      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, filed: source.filed ?? 0, filePages: source.filePages ?? 0, ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
       destination: job.libraryDestination
         ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true }
         : job.newCollection

@@ -1275,6 +1275,8 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     createdBy: v.id("users"),
     status: v.union(
+      // Not started yet: the form that starts it has given it sources, which it reads so the form can say what they hold (./screening/screenings.ts `sync`). Only whoever is filling the form sees it.
+      v.literal("draft"),
       v.literal("processing"),
       v.literal("completed"),
       v.literal("cancelled"),
@@ -1372,6 +1374,8 @@ export default defineSchema({
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
+    // The ones never started, oldest touched first, for the sweep that takes them away (./screening/screenings.ts `sweepDrafts`).
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
     // A search's screenings, which share its answers and move with it (#654).
     .index("by_screening", ["screeningId"]),
 
@@ -1657,6 +1661,9 @@ export default defineSchema({
     left: v.number(),
     // Of the ones left out, how many for having no abstract.
     bare: v.optional(v.number()),
+    // Of the ones taken, how many are screened as their own PDF, and the pages those have: what an AI reviewer is sent of them.
+    filed: v.optional(v.number()),
+    filePages: v.optional(v.number()),
     // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.

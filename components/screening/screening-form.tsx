@@ -10,7 +10,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -60,7 +60,7 @@ import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, m
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
-import { credits, paperCredits, perPaper, useOpenScreening } from "./store";
+import { credits, paperCredits, pdfsOf, perPaper, readingCredits, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -109,6 +109,10 @@ const criterionOf = (screening: Screening) => (criterion: Criterion) => {
   return { ...(criterion.key.startsWith("new:") ? {} : { key: criterion.key }), text: criterion.text, short: criterion.short, must: criterion.must, ...(criterion.note?.trim() ? { note: criterion.note.trim() } : {}), terms: criterion.terms, points: { yes, no, unclear } };
 };
 const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: screening.rule.each === "all" ? ("all" as const) : Number(screening.rule.each), settle: screening.rule.settle, blind: screening.rule.blind, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
+/** How long the form waits after the last change to a new screening's sources before the server reads them: a range being dragged, or a second source on its way, is one read and not several. */
+const SOURCES_SETTLE_MS = 1_200;
+/** A source the server hasn't read yet, as its row shows it. */
+const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
 const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
 const saveToOf = (screening: Screening) =>
   screening.destination.kind === "community" && screening.destination.community
@@ -340,6 +344,38 @@ export function ScreeningForm({ id }: { id?: string }) {
   const kept = useKept((store) => store.drafts[key]);
   const keep = useKept((store) => store.draft);
   const draft = kept ?? origin;
+  // A new screening's sources are read by the server as the form holds them, a moment after the last change to them
+  // (convex/screening/screenings.ts `sync`). So each row says what its source holds, what another source already
+  // brought and what is left out, as counted by what takes the papers, and starting has nothing left to read.
+  const readSources = useWorkspaceMutation(api.screening.screenings.sync);
+  // The form's own sources: none until what it starts from has loaded.
+  const drafted = draft?.sources ?? [];
+  const held = id ? "[]" : JSON.stringify(drafted.map(sourceOf));
+  const settled = useDebouncedValue(held, SOURCES_SETTLE_MS);
+  const readAhead = useSWR(
+    settled === "[]" ? null : ["screening-read-ahead", workspaceId, key, settled],
+    async () => {
+      const read = await readSources({ ...(useKept.getState().reads[key] ? { draft: useKept.getState().reads[key] as Id<"screeningJobs"> } : {}), sources: JSON.parse(settled) });
+      const { [key]: _was, ...others } = useKept.getState().reads;
+      useKept.getState().set({ reads: read ? { ...others, [key]: read.jobId } : others });
+      return read;
+    },
+    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false },
+  );
+  // What was read is of the sources as they are now: after a change, the rows wait for the next read.
+  const early = settled === held ? (readAhead.data ?? null) : null;
+  const earlyRead = useOpenScreening(early?.jobId ?? "")?.screening.sources;
+  /** A source's row on the server, where the server reads it: a running screening's own, or the early read's. */
+  const rowOf = (source: Source): { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources"> } | null => {
+    if (id) return saved?.sources.some((one) => one.id === source.id) ? { jobId: saved.id, sourceId: source.id as Id<"screeningSources"> } : null;
+    const at = drafted.findIndex((one) => one.id === source.id);
+    return early?.sources[at] ? { jobId: early.jobId, sourceId: early.sources[at] } : null;
+  };
+  /** The sources with how their reading stands. A new screening's wait as "reading" until the early read has them. */
+  const sources = id ? drafted : drafted.map((source) => {
+    const read = earlyRead?.find((one) => one.id === rowOf(source)?.sourceId)?.read;
+    return { ...source, read: read ?? READING, duplicates: read?.duplicates ?? 0 };
+  });
   // What the last save did, shown under Changes until the next edit.
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
@@ -420,8 +456,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Someone invited by email reads papers once they have joined.
   const { people: joined, each } = readersOf(draft);
   const models = modelsOf(draft);
-  const found = foundTotal(draft.sources);
-  const papers = paperTotal(draft.sources);
+  const found = foundTotal(sources);
+  const papers = paperTotal(sources);
+  const pdfs = pdfsOf(sources);
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
   const shareSays = (() => {
     if (!joined.length) return undefined;
@@ -432,7 +469,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   })();
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
   const ahead = (model: Reviewer) => (fresh ? papers : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0));
-  const due = (model: Reviewer) => paperCredits(model.model!) * ahead(model);
+  const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), papers, pdfs);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
   const added = Boolean(saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)));
   const atOnce = (model: Reviewer) => (saved ? (preview.models[model.id]?.atOnce ?? 0) * paperCredits(model.model!) : 0);
@@ -476,7 +513,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const unreadText = (count: number) => `${num(count)} couldn't be read`;
   // Why it can't start yet: it needs papers and a reviewer first.
   const stop: Block | null = !papers
-    ? { text: "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
+    ? { text: fresh && sources.some((source) => source.read?.state === "waiting" || source.read?.state === "reading") ? "Reading its papers" : "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
       : lacking;
@@ -575,7 +612,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   };
   const keepCriterion = (criterion: Criterion) => setDraft((d) => withCriteria(d, inSavedOrder([...d.criteria, criterion], saved?.criteria ?? []), { ...d.scoring.points, [criterion.key]: saved?.scoring.points[criterion.key] ?? [1, 0, 0] }));
   // What each list shows: on a running screening, what saving would remove stays in its place.
-  const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : draft.sources.map((source) => ({ source, gone: false }));
+  const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : sources.map((source) => ({ source, gone: false }));
   const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
   const reviewerRows = draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left) }));
 
@@ -585,7 +622,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     setBusy(true);
     const name = draft.name.trim() || draft.sources[0]?.name || "Untitled screening";
     try {
-      const { jobId } = await create(setupOf({ ...draft, name }));
+      const { jobId } = await create({ ...setupOf({ ...draft, name }), ...(early ? { draft: early.jobId } : {}) });
       // People from outside the workspace are given it, or invited to it, once it is there to share: to vote, or to look.
       const outside = [...activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).map((one) => ({ one, role: "editor" as const })), ...(draft.viewers ?? []).map((one) => ({ one, role: "viewer" as const }))];
       const sent = await Promise.allSettled(outside.map(({ one, role }) => (one.email ? invite({ kind: "screening", id: jobId, email: one.email, role }) : give({ kind: "screening", id: jobId, personId: one.id as Id<"users">, role }))));
@@ -761,8 +798,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             aside={
               <>
                 {/* What the sources held, what of that can't be screened, what two of them both held, and what is left. */}
-                <Chip><AnimatedNumber value={found + leftTotal(draft.sources)} /> found</Chip>
-                {leftTotal(draft.sources) ? <Chip><AnimatedNumber value={leftTotal(draft.sources)} /> left out</Chip> : null}
+                <Chip><AnimatedNumber value={found + leftTotal(sources)} /> found</Chip>
+                {leftTotal(sources) ? <Chip><AnimatedNumber value={leftTotal(sources)} /> left out</Chip> : null}
                 <Chip><AnimatedNumber value={found - papers} /> duplicates merged</Chip>
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved ? (
@@ -873,7 +910,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {open === "left" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
                                       {/* Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own. */}
-                                      <LeftOut jobId={saved!.id} sourceId={source.id as Id<"screeningSources">} total={leftOut} />
+                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} /> : null}
                                     </div>
                                   ) : (
                                   <div className="space-y-4 pb-4 ps-16 pe-4 max-sm:ps-4">
@@ -888,7 +925,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       label={`Papers of ${source.name}`}
                                       summary={<p className="text-xs text-muted-foreground">Every one of its {num(baseTotal(source))} papers.</p>}
                                     />
-                                    {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={saved?.sources.some((one) => one.id === source.id) ? (source.id as Id<"screeningSources">) : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
+                                    {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
                                     {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}
                                     {link && taken(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
@@ -1357,7 +1394,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               help={
                 <>
                   <Help title="Models and credits" side="left" facts={<><HelpFact>People are free</HelpFact>{setup ? <HelpFact>{setup.limits.atOnce} papers at once</HelpFact> : null}</>}>
-                    <p>Each model&apos;s cost is its credits for one paper times the papers to screen. The workspace&apos;s plan lets models read {setup?.limits.atOnce ?? "so many"} papers at once, so a screening started while another&apos;s models are reading waits its turn. People can vote from the start.</p>
+                    <p>Each model&apos;s cost is its credits for one paper times the papers to screen. A paper with no abstract is read as its PDF, every page of it, and costs by the page. The workspace&apos;s plan lets models read {setup?.limits.atOnce ?? "so many"} papers at once, so a screening started while another&apos;s models are reading waits its turn. People can vote from the start.</p>
                     {models.length && draft.living ? <p>A living screening also pays for each new paper a check finds.</p> : null}
                   </Help>
                   {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon} className="ms-1.5 h-5 px-1.5">{MODELS_SAY.paused.row}</StateChip> : null}
@@ -1375,6 +1412,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">No papers yet</span> : null}</span>
                   </JumpLink>
                 ))}
+                {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{plural(pdfs.papers, "paper is", "papers are")} read as {pdfs.papers === 1 ? "its PDF" : "their PDFs"}, {plural(pdfs.pages, "page", "pages")} in all.</span></p> : null}
                 {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? `Answering the new ${draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length === 1 ? "criterion" : "criteria"} on papers already read` : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Total, at most" : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>

@@ -29,7 +29,8 @@ export async function resultOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJo
 export type Standing = { job: Doc<"screeningJobs">; member: boolean; guest: "viewer" | "editor" | null; reviewer: Doc<"screeningReviewers"> | null };
 export async function standingOn(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">): Promise<Standing | null> {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job) return null;
+  // One not started yet is the business of whoever is filling its form.
+  if (!job || (job.status === "draft" && job.createdBy !== actor.userId)) return null;
   const member = job.workspaceId === actor.workspaceId;
   const guest = member ? null : await guestRole(ctx, actor, job);
   if (!member && !guest) return null;

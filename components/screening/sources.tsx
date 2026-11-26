@@ -323,7 +323,7 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   );
 }
 
-/** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: the papers the index holds, the ones screened as the PDF they are, the files that don't open. */
+/** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: the papers the index holds, and the ones screened as the PDF they are. The files that don't open are among what the row says it left out. */
 export function PdfFacts({ batch }: { batch: string }) {
   const drop = useProtectedQuery(api.screening.files.drop, inWorkspace(usePageWorkspace(), { batch })).data;
   if (!drop) return <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip>;
@@ -332,7 +332,6 @@ export function PdfFacts({ batch }: { batch: string }) {
       {drop.waiting ? <Chip><Spinner className="size-3" /><span className="tabular-nums">{num(drop.total - drop.waiting)} of {num(drop.total)} read</span></Chip> : null}
       {drop.known ? <Chip icon={Check}><span className="tabular-nums">{num(drop.known)}</span> in the index</Chip> : null}
       {drop.file ? <Chip icon={FileText}><span className="tabular-nums">{num(drop.file)}</span> screened as the PDF</Chip> : null}
-      {drop.broken ? <StateChip tone="warning" icon={FileX}>{num(drop.broken)} {drop.broken === 1 ? "doesn't" : "don't"} open</StateChip> : null}
     </>
   );
 }

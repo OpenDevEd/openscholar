@@ -89,10 +89,12 @@ export function screeningPaperCredits(pricing: Pricing): number {
 export const SCREENING_PDF_TOKENS = { page: 4_000, asked: 2_000, answer: 800 };
 /** The tokens a paper screened as its PDF takes at most: every page of it, with the criteria. */
 export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKENS.page + SCREENING_PDF_TOKENS.asked;
-/** What screening one paper as its PDF costs at most on a model: one call with the whole file. */
-export function screeningPdfCredits(pricing: Pricing, pages: number): number {
-  return estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer });
+/** What screening papers as their PDFs costs at most on a model: one call a paper with its whole file, `pages` in all. */
+export function screeningPdfsCredits(pricing: Pricing, papers: number, pages: number): number {
+  return estimateCredits(pricing, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer });
 }
+/** The same for one paper. */
+export const screeningPdfCredits = (pricing: Pricing, pages: number) => screeningPdfsCredits(pricing, 1, pages);
 
 /** Tokens a text takes at most: Claude counts about two characters a token, the fewest of the models measured. */
 export function tokensIn(text: string): number {
