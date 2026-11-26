@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Trash2, Download, Upload, ArrowUpDown } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ interface CommandCenterFiltersProps<TSort extends string> {
   searchFilter: string;
   onSearchChange: (value: string) => void;
   placeholder: string;
+  /** Held in place unseen while the page doesn't yet know whether it has anything to search. */
+  pending?: boolean;
 }
 
 interface CommandCenterFileActionsProps {
@@ -46,7 +49,7 @@ interface CommandCenterFileActionsProps {
   disabled?: boolean;
 }
 
-/** A command center's search and sort, as siblings so a page bar or card toolbar can lay them out. */
+/** A command center's search and sort, as siblings so a page bar or card toolbar can lay them out. Both are pills, as the tabs beside them are. */
 export function CommandCenterFilters<TSort extends string>({
   sortOptions,
   currentSort,
@@ -54,19 +57,21 @@ export function CommandCenterFilters<TSort extends string>({
   searchFilter,
   onSearchChange,
   placeholder,
+  pending = false,
 }: CommandCenterFiltersProps<TSort>) {
   const t = useTranslations("libraryPage");
+  const Frame = pending ? Unseen : Fragment;
   return (
-    <>
+    <Frame>
       <ListSearch
         aria-label={placeholder}
         placeholder={placeholder}
         value={searchFilter}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-56"
+        className="w-56 rounded-full"
       />
       <Select value={currentSort} onValueChange={(value) => onSortChange(value as TSort)}>
-        <SelectTrigger size="sm" aria-label={t("sortBy")} className={cn("w-40", LIST_FILTER)}>
+        <SelectTrigger size="sm" aria-label={t("sortBy")} className={cn("w-40 rounded-full px-3.5", LIST_FILTER)}>
           <ArrowUpDown className="size-3.5" />
           <SelectValue />
         </SelectTrigger>
@@ -78,8 +83,13 @@ export function CommandCenterFilters<TSort extends string>({
           ))}
         </SelectContent>
       </Select>
-    </>
+    </Frame>
   );
+}
+
+/** Its children keep their room in the bar's layout, unseen and out of reach of the keyboard. */
+function Unseen({ children }: { children: ReactNode }) {
+  return <div aria-hidden className="invisible contents">{children}</div>;
 }
 
 /** Import, export and clear-all, as icon buttons. */

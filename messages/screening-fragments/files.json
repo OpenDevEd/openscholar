@@ -37,6 +37,7 @@
     "votedInclude": "You voted Include",
     "yourOwn": "Your own",
     "seeAll": "See all {count} in Papers",
+    "loading": "Loading papers",
     "noneMine": "You haven't voted Include on a paper yet."
   },
   "votes": {

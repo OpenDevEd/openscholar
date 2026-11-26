@@ -7962,6 +7962,7 @@
         "votedInclude": "You voted Include",
         "yourOwn": "Your own",
         "seeAll": "See all {count} in Papers",
+        "loading": "Loading papers",
         "noneMine": "You haven't voted Include on a paper yet."
       },
       "votes": {
@@ -8228,6 +8229,7 @@
         "stoppedAfter": "{read, plural, other {Stopped after # of {total}}}",
         "notSaved": "Openscholar couldn't save the papers it read.",
         "readAgain": "Try again",
+        "loadingList": "Loading the list",
         "keep": "Keep",
         "range": "Papers {first} to {last}",
         "choose": "Choose papers",
@@ -8667,6 +8669,7 @@
         "text": "Each bar splits a screening's papers by where they stand now. Press a part of the bar to see those papers."
       },
       "loadingScreenings": "Loading screenings",
+      "loadingMenu": "Loading the menu",
       "needsYouNote": "Papers to screen, conflicts to settle and questions put to you",
       "startedBy": "<person>{who}</person> <at>{you, select, true {started it {when}} other {started it {when}}}</at>",
       "everyReviewer": "Every reviewer",
@@ -9438,7 +9441,8 @@
         "knownNoAbstract": "In the index, no abstract",
         "fileWithPages": "Read as its PDF, {count, plural, one {# page} other {# pages}}",
         "list": "The PDFs of this source",
-        "pager": "PDFs"
+        "pager": "PDFs",
+        "loading": "Loading the PDFs"
       },
       "dois": {
         "fromFile": "DOIs in a file",
@@ -9459,6 +9463,7 @@
       "zotero": {
         "myLibrary": "My library",
         "loading": "Loading Zotero",
+        "loadingCollections": "Loading the collections",
         "notConnected": "Zotero isn't connected",
         "connectWhy": "Connect it to pick from your library and the groups you are in.",
         "connect": "Connect Zotero",

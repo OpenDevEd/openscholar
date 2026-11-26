@@ -5,6 +5,7 @@ import { Search } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { cn } from "@/lib/utils";
 
 /** The icon tile at the start of a list row. */
@@ -69,6 +70,29 @@ export function ListLoading({ label, compact = false }: { label: string; compact
   return (
     <div className={LIST_STATE[compact ? "compact" : "regular"]}>
       <Spinner aria-label={label} className={compact ? "size-5 text-primary" : "size-6 text-primary"} />
+    </div>
+  );
+}
+
+/** Two lines' lengths for each placeholder row, so a column of them reads as a list and not as one block. */
+const ROW_LINES = [["w-2/5", "w-1/4"], ["w-1/2", "w-1/5"], ["w-1/3", "w-1/4"], ["w-3/5", "w-1/6"]] as const;
+
+/**
+ * A list's rows while they load, in the place the rows will take: as many as will come and each a real row's height,
+ * so the rows replace them without the list moving. `icon` draws the square a row starts with.
+ */
+export function ListRowsSkeleton({ rows, height, label, icon = true, className }: { rows: number; height: number; label: string; icon?: boolean; className?: string }) {
+  return (
+    <div role="status" aria-label={label} className={cn("divide-y divide-border-subtle", className)}>
+      {Array.from({ length: rows }, (_, at) => (
+        <div key={at} style={{ height }} className="flex items-center gap-3 px-4">
+          {icon ? <SkeletonBar className="size-8 shrink-0 rounded-lg" /> : null}
+          <div className="min-w-0 flex-1 space-y-2">
+            <SkeletonBar className={ROW_LINES[at % ROW_LINES.length]![0]} />
+            <SkeletonBar className={cn("h-2.5", ROW_LINES[at % ROW_LINES.length]![1])} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

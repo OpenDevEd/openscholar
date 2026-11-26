@@ -11,7 +11,8 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Chip } from "./parts";
 import { Segmented } from "@/components/settings/parts";
@@ -40,6 +41,7 @@ import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, Res
 import { toReviewers, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWords } from "./words";
+import { listedNames } from "./workspace";
 
 const PAGE = 25;
 const SORTS = ["you", "active", "newest", "oldest", "name"] as const;
@@ -82,7 +84,7 @@ export function ScreeningsIndex() {
   // What waits for the person, and what is shared with them from elsewhere: read whole, since both are theirs alone and few.
   const mine = useProtectedQuery(api.screening.view.mine, inWorkspace(here, {})).data;
   const tally = useProtectedQuery(api.screening.view.tally, inWorkspace(here, {})).data;
-  const elsewhere = useProtectedQuery(api.screening.view.elsewhere, inWorkspace(here, {})).data ?? [];
+  const elsewhere = useProtectedQuery(api.screening.view.elsewhere, inWorkspace(here, {})).data;
   // "Needs you first" is the newest first with what waits for the person above them.
   const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE);
 
@@ -95,7 +97,8 @@ export function ScreeningsIndex() {
   const pinned = sort === "you" && show !== "finished" && listed.page === 1 ? needs.filter((row) => show === "all" || !row.finishedAt) : [];
   const paged = show === "you" ? [] : listed.items.filter((row) => !(sort === "you" && show !== "finished" && waiting.has(row.id)));
   const rows = (show === "you" ? needs : [...pinned, ...paged, ...(show === "all" && listed.page === 1 ? shared.filter((row) => !waiting.has(row.id)) : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }));
-  const loading = mine === undefined || tally === undefined || (show !== "you" && listed.isLoading);
+  // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
+  const loading = mine === undefined || tally === undefined || elsewhere === undefined || (show !== "you" && listed.isLoading);
   const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt && needing(row)).length, finished: tally.finished } : undefined;
   const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
@@ -112,14 +115,17 @@ export function ScreeningsIndex() {
             wide
             icon={ListChecks}
             title={t("title")}
-            filters={empty ? undefined : <CommandCenterFilters sortOptions={SORTS.map((value) => ({ value, label: t(`sort.${value}`) }))} currentSort={sort} onSortChange={(next) => go({ sort: next, page: null })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder={t("find")} />}
+            // Until the counts say whether there is any screening, the search and the order hold their place unseen: a new account has neither.
+            filters={empty ? undefined : <CommandCenterFilters pending={counts === undefined} sortOptions={SORTS.map((value) => ({ value, label: t(`sort.${value}`) }))} currentSort={sort} onSortChange={(next) => go({ sort: next, page: null })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder={t("find")} />}
             actions={
               <Button asChild size="sm" className={BAR_ACTION}>
                 <NextLink href={newHref()}><Plus /><span className={BAR_LABEL}>{t("newScreening")}</span></NextLink>
               </Button>
             }
           >
-            <Elsewhere rows={elsewhere} />
+            {/* What waits elsewhere, the first-use block or the list: each slides to its height as the counts and the rows come. */}
+            <AutoHeight><Elsewhere rows={elsewhere ?? []} /></AutoHeight>
+            <AutoHeight>
             {empty ? (
               <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
                 <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>
@@ -129,7 +135,8 @@ export function ScreeningsIndex() {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border-subtle p-4 sm:px-6">
+                {/* Unseen until the counts are in: an account with no screening gets the first-use block in their place. */}
+                <div className={cn("flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border-subtle p-4 sm:px-6", !counts && "invisible")}>
                   {/* Four tabs don't fit a phone's width, and a row of tabs never runs off the screen: there they are one menu, with the same signs and counts. */}
                   <FilterMenu
                     name={t("showMenu")}
@@ -172,7 +179,7 @@ export function ScreeningsIndex() {
                   {runBy.filter}
                 </div>
                 {/* The column names stay under the page's bar while the list scrolls. */}
-                <div className={cn("sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 hidden items-center gap-x-5 border-b border-border-subtle bg-inset px-6 py-2 text-xs font-medium text-muted-foreground @5xl:grid", COLUMNS)}>
+                <div className={cn("sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 hidden items-center gap-x-5 border-b border-border-subtle bg-inset px-6 py-2 text-xs font-medium text-muted-foreground @5xl:grid", COLUMNS, !counts && "invisible")}>
                   <span>{t("column.screening")}</span>
                   <span>{t("column.reviewers")}</span>
                   <span className="flex items-center gap-1">
@@ -188,7 +195,7 @@ export function ScreeningsIndex() {
                 {/* The rows and what stands in for them while they are read are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
                 {loading && !rows.length ? (
-                  <ListLoading label={t("loadingScreenings")} />
+                  <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? PAGE, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
                 ) : (
                 <ul className={cn("divide-y divide-border-subtle", listed.isStale && "pointer-events-none opacity-60")}>
                   {rows.map(({ row, group }, i) => {
@@ -202,7 +209,8 @@ export function ScreeningsIndex() {
                     const resolver = row.resolver.id === me ? words.t("youInline") : words.firstName(row.resolver.name);
                     return (
                       <Group key={id} label={(grouped || show === "you") && (i === 0 || rows[i - 1]!.group !== group) ? t(`show.${SHOWS[group]!}`) : null} note={group === 0 ? t("needsYouNote") : undefined} count={group === 0 ? needs.length : undefined}>
-                        <li className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
+                        {/* Whatever in the row is pressed opens the screening: it opens under this name while the rest of it is read. */}
+                        <li onClickCapture={() => listedNames.set(id, row.name)} className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
                           {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}
                           <NextLink href={overviewHref(id)} tabIndex={-1} aria-hidden className="absolute inset-0" />
                           <TooltipHint label={row.name} onlyWhenClipped>
@@ -276,6 +284,7 @@ export function ScreeningsIndex() {
                 {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, total: searched || runBy.by || !tally ? undefined : show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished }} /> : null}
               </>
             )}
+            </AutoHeight>
           </LibraryPageShell>
           {/* On a phone the last row can scroll clear of the assistant's button in the corner. */}
           <div aria-hidden className="h-6 lg:hidden" />
@@ -301,7 +310,7 @@ function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: strin
       {rows.map((row) => {
         const there = (path: string) => workspaceHref(row.slug, path);
         return (
-          <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
+          <li key={row.id} onClickCapture={() => listedNames.set(row.id, row.name)} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
             <PlainLink dir="auto" href={there(overviewHref(row.id))} className={cn(ABOVE, "min-w-0 text-sm font-semibold hover:underline")}>{row.name}</PlainLink>
             <Chip className="h-5 px-1.5">{t("inWorkspace", { name: row.in })}</Chip>
             <span className="ms-auto flex flex-wrap items-center gap-1.5">
@@ -335,10 +344,13 @@ function Group({ label, note, count, children }: { label: string | null; /** Wha
 /** The row's menu: what the open screening's menu offers, under the same names and in the same order, after Settings, Export and Share. */
 function RowMenu({ id, name, onOpen }: { id: string; name: string; onOpen: (what: What) => void }) {
   const t = useTranslations("screening.list");
+  // The pointer over the button or the keyboard on it: the screening is read from then, so the menu opens with its items.
+  const [near, setNear] = useState(false);
   return (
     <DropdownMenu>
+      {near ? <ReadAhead id={id} /> : null}
       <TooltipHint label={t("more")}>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild onPointerEnter={() => setNear(true)} onFocus={() => setNear(true)}>
           <Button variant="ghost" size="icon" className="relative size-8 text-muted-foreground" aria-label={t("moreFor", { name })}><MoreHorizontal /></Button>
         </DropdownMenuTrigger>
       </TooltipHint>
@@ -349,10 +361,22 @@ function RowMenu({ id, name, onOpen }: { id: string; name: string; onOpen: (what
   );
 }
 
-/** The menu's items, worked out from the screening as the person sees it once the menu opens. */
+/** Reads the screening before its menu opens; the cache keeps it for the menu. */
+function ReadAhead({ id }: { id: string }) {
+  useOpenScreening(id);
+  return null;
+}
+
+/** The menu's items, worked out from the screening as the person sees it. Opened before it is read, rows hold their place. */
 function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void }) {
+  const t = useTranslations("screening.list");
   const open = useOpenScreening(id);
-  return open ? <ScreeningMenuItems open={open} show={onOpen} /> : null;
+  if (open) return <ScreeningMenuItems open={open} show={onOpen} />;
+  return (
+    <div role="status" aria-label={t("loadingMenu")} className="space-y-1 p-1">
+      {["w-20", "w-24", "w-16", "w-28", "w-24", "w-20"].map((width, at) => <div key={at} className="flex h-7 items-center gap-2 px-2"><SkeletonBar className="size-4 shrink-0" /><SkeletonBar className={width} /></div>)}
+    </div>
+  );
 }
 
 /**

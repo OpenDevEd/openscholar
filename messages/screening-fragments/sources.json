@@ -61,7 +61,8 @@
     "knownNoAbstract": "In the index, no abstract",
     "fileWithPages": "Read as its PDF, {count, plural, one {# page} other {# pages}}",
     "list": "The PDFs of this source",
-    "pager": "PDFs"
+    "pager": "PDFs",
+    "loading": "Loading the PDFs"
   },
   "dois": {
     "fromFile": "DOIs in a file",
@@ -82,6 +83,7 @@
   "zotero": {
     "myLibrary": "My library",
     "loading": "Loading Zotero",
+    "loadingCollections": "Loading the collections",
     "notConnected": "Zotero isn't connected",
     "connectWhy": "Connect it to pick from your library and the groups you are in.",
     "connect": "Connect Zotero",

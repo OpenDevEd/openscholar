@@ -10,8 +10,10 @@ import { usePresetModels, type MapModel } from "@/components/settings/model-map"
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
@@ -30,10 +32,12 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   const t = useTranslations("screening.list");
   const words = useWords();
   const [open, setOpen] = useState(false);
+  // The pointer over the button or the keyboard on it: the members are read from then, so the picker opens with them in it.
+  const [near, setNear] = useState(false);
   const [text, setText] = useState("");
   const workspaceId = useWorkspace();
-  // Read once the picker is open: the workspace's members whose name or email holds what was typed.
-  const found = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  // The workspace's members whose name or email holds what was typed.
+  const found = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
   const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
   const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
   // Someone typed as an address who is a member is added as that member, never invited.
@@ -45,13 +49,25 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />{t("addPerson")}</Button>}</PopoverTrigger>
+      <PopoverTrigger asChild onPointerEnter={() => setNear(true)} onFocus={() => setNear(true)}>{children ?? <Button variant="outline" size="sm"><UserPlus />{t("addPerson")}</Button>}</PopoverTrigger>
       <PopoverContent align="start" aria-label={t("addPerson")} className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
         <p className="px-3 pt-3 text-sm font-semibold">{t("addPerson")}</p>
         {/* The server finds the people: the list isn't narrowed again here. */}
         <Command shouldFilter={false}>
           <CommandInput value={text} onValueChange={setText} placeholder={t("findPerson")} />
           <CommandList className="max-h-72">
+            {/* Opened before the members are in, it keeps rows for them, and slides to the list that comes. */}
+            <AutoHeight>
+            {found === undefined ? (
+              <div aria-hidden className="space-y-1 p-1">
+                {[0, 1, 2].map((at) => (
+                  <div key={at} className="flex items-center gap-3 px-2 py-1.5">
+                    <SkeletonBar className="size-7 shrink-0 rounded-full" />
+                    <span className="min-w-0 flex-1 space-y-1.5"><SkeletonBar className="w-1/2" /><SkeletonBar className="h-2.5 w-2/3" /></span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <CommandEmpty>{email || found === undefined ? null : text.trim() ? t("nobodyByName") : t("nobodyElse")}</CommandEmpty>
             {left.length ? (
               <CommandGroup heading={words.t("person.member")}>
@@ -77,6 +93,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
                 </CommandItem>
               </CommandGroup>
             ) : null}
+            </AutoHeight>
           </CommandList>
         </Command>
       </PopoverContent>

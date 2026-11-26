@@ -38,6 +38,7 @@
     "text": "Each bar splits a screening's papers by where they stand now. Press a part of the bar to see those papers."
   },
   "loadingScreenings": "Loading screenings",
+  "loadingMenu": "Loading the menu",
   "needsYouNote": "Papers to screen, conflicts to settle and questions put to you",
   "startedBy": "<person>{who}</person> <at>{you, select, true {started it {when}} other {started it {when}}}</at>",
   "everyReviewer": "Every reviewer",

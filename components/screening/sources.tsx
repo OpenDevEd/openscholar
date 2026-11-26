@@ -11,11 +11,14 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources } from "./library-sources";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { FadeRow } from "@/components/ui/fade-row";
 import { HelpFact } from "@/components/ui/help";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -85,7 +88,7 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
         {trail ? (
           <div className="ps-7">{trail}</div>
         ) : second ? (
-          <p className="flex min-w-0 items-center gap-1.5 ps-7 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-xl:hidden">{chips}</span> : null}</p>
+          <p className="flex min-w-0 flex-wrap items-center gap-1.5 ps-7 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5">{chips}</span> : null}</p>
         ) : null}
       </div>
       {/* A row that says where it sits has that for its second line: what else it has to say stands where its count would. */}
@@ -122,7 +125,7 @@ export function ColumnMatch({ pending, onPick, onAdd, onRemove }: { pending: Pen
               <div key={key} className="min-w-0 space-y-1">
                 <label htmlFor={`${id}-${key}`} className="flex items-center gap-1 text-xs font-medium text-muted-foreground">{t(`columns.label.${key}`)}{key === "title" ? <RequiredMark /> : null}</label>
                 <Select value={picked[key] ?? (key === "title" ? "" : NONE)} onValueChange={(next) => onPick(key, next === NONE ? undefined : next)}>
-                  <SelectTrigger id={`${id}-${key}`} aria-invalid={missing || undefined} className="h-9 w-full min-w-0 bg-card"><SelectValue placeholder={t("columns.pick")} /></SelectTrigger>
+                  <SelectTrigger id={`${id}-${key}`} size="sm" aria-invalid={missing || undefined} className="w-full min-w-0 rounded-full bg-card px-3.5 text-xs"><SelectValue placeholder={t("columns.pick")} /></SelectTrigger>
                   <SelectContent>
                     {key === "title" ? null : <SelectItem value={NONE}>{t("columns.notInFile")}</SelectItem>}
                     {table.heads.map((head) => <SelectItem key={head} value={head}>{head}</SelectItem>)}
@@ -176,14 +179,20 @@ function useUpload() {
  * together are one source, of any size: they are sent several at once, and each is read as soon as it is in
  * (convex/screening/files.ts), so what the source holds shows while the rest are still on their way.
  */
-export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+export function UploadTab({ sources, onAdd, lookCredits: given }: {
+  sources: Source[];
+  onAdd: (added: Added) => void;
+  /** What one PDF's first reading costs, read by the form before the tab opens; null where no model reads PDFs. */
+  lookCredits?: number | null;
+}) {
   const t = useTranslations("screening.sources");
   const words = useWords();
   const upload = useUpload();
   const look = useWorkspaceAction(api.screening.held.look);
   const addDois = useAddDois(sources, onAdd);
-  // What one PDF's first reading costs, said before any is added.
-  const lookCredits = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(usePageWorkspace(), {})).data;
+  // What one PDF's first reading costs, said before any is added. Undefined while it is still being read.
+  const read = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(usePageWorkspace(), given === undefined ? {} : "skip")).data;
+  const lookCredits = given === undefined ? read : given;
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [reading, setReading] = useState<string[]>([]);
@@ -302,8 +311,8 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           </Help>
         </p>
         <p className="text-xs text-muted-foreground">{t("upload.kinds")}</p>
-        {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. */}
-        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.credits(lookCredits) })}</p> : null}
+        {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. Its line is held while the price is read. */}
+        {lookCredits === null || lookCredits === 0 ? null : <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", lookCredits === undefined && "invisible")}><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.credits(lookCredits ?? 0) })}</p>}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
         <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>
@@ -357,14 +366,19 @@ export function PdfFacts({ batch }: { batch: string }) {
 }
 
 const FILES_PAGE = 8;
+/** A PDF's row with its line. */
+const FILE_ROW = 45;
 /** A drop's PDFs a page at a time, each under the title its first pages print, with how it stands. */
 export function PdfFiles({ batch, total }: { batch: string; total: number }) {
   const t = useTranslations("screening.sources");
   const words = useWords();
   const rows = useCursorPage(api.screening.files.list, inWorkspace(usePageWorkspace(), { batch }), FILES_PAGE);
+  // The first page holds as many as the drop has, up to a page: its rows and its pager stand from the first frame.
+  const first = Math.min(total, FILES_PAGE);
   return (
     <div className="space-y-2">
-      <ul aria-label={t("pdf.list")} className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, FILES_PAGE) * 45 }}>
+      {rows.isLoading ? <ListRowsSkeleton rows={first} height={FILE_ROW} icon={false} label={t("pdf.loading")} className="*:px-0" /> : (
+      <ul aria-label={t("pdf.list")} className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: first * FILE_ROW }}>
         {rows.items.map((row) => {
           const stands = row.state === "read" ? (row.known ? "known" : "file") : row.state;
           return (
@@ -384,7 +398,8 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
           );
         })}
       </ul>
-      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total }} /> : null}
+      )}
+      {rows.hasPages || total > FILES_PAGE ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? first : rows.items.length, total }} /> : null}
     </div>
   );
 }
@@ -496,7 +511,19 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const found = useCursorPage(api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
   const listed = words ? found : level;
 
-  if (account === undefined) return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("zotero.loading")} className="size-5 text-primary" /></div>;
+  // The tab as it will stand once the account is known: the library's pill, the search and its switch, and the list.
+  if (account === undefined) {
+    return (
+      <div className="space-y-2">
+        <SkeletonBar className="h-8 w-full rounded-full" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <SkeletonBar className="h-8 min-w-[min(14rem,100%)] flex-1 rounded-full" />
+          <SkeletonBar className="h-4 w-44" />
+        </div>
+        <ListRowsSkeleton rows={PAGE + 1} height={ROW} icon={false} label={t("zotero.loading")} className="*:px-1" />
+      </div>
+    );
+  }
   if (!connected) {
     return (
       <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-border bg-card px-6 py-7 text-center">
@@ -510,6 +537,9 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const rows: ZoteroCollection[] = listed.items;
   // The library's collections are still on their way from Zotero: the list fills as they arrive, and says how far the reading is.
   const reading = tree === undefined || tree === null || tree.state === "reading";
+  const loading = reading || listed.isLoading;
+  // A collection opened says how many it holds, so its pager stands before its first page comes.
+  const pagerKnown = listed.hasPages || Boolean(!words && here && here.inside > PAGE);
   const go = (next: ZoteroCollection[]) => { setPath(next); setFind(""); };
   const pick = (next: ZoteroLibrary) => { setLibrary(next); setPicking(false); go([]); };
   const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
@@ -521,7 +551,8 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     onAdd({ ref: refOf(one, under(one)), name: one.name, detail: t("in", { name: library.name }), total: under(one) ? (one.under ?? one.papers) : one.papers, filters: [...(above.length ? [t("in", { name: above.map((step) => step.name).join(" › ") })] : []), ...(under(one) ? [t("zotero.withSubCollections")] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
   };
   // What a collection holds with everything under it is what Zotero counts in each, added up: a paper filed in two of them counts twice until the screening reads it, so it is "about".
-  const counted = (one: ZoteroCollection) => (under(one) ? { count: false, chips: one.under === undefined ? undefined : <Chip>{t("zotero.aboutUnder", { count: one.under })}</Chip> } : { count: true, chips: undefined });
+  // Until the library is counted, the chip's place is held, so the row doesn't grow when it comes.
+  const counted = (one: ZoteroCollection) => (under(one) ? { count: false, chips: <Chip className={cn(one.under === undefined && "invisible")}>{t("zotero.aboutUnder", { count: one.under ?? one.papers })}</Chip> } : { count: true, chips: undefined });
   const LibraryIcon = library.id ? Users : UserRound;
   const option = (one: ZoteroLibrary) => {
     const Icon = one.id ? Users : UserRound;
@@ -548,7 +579,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     <div className="space-y-2">
       <Popover open={picking} onOpenChange={setPicking}>
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label={t("zotero.library")} className="h-9 w-full min-w-0 justify-between gap-3 bg-card px-3 font-normal">
+          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label={t("zotero.library")} className="h-8 w-full min-w-0 justify-between gap-3 rounded-full bg-card px-3.5 text-xs font-normal">
             <span className="flex min-w-0 items-center gap-2"><LibraryIcon className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{library.name}</span></span>
             <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
           </Button>
@@ -569,17 +600,19 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           </p>
         </PopoverContent>
       </Popover>
-      <div className="relative">
-        <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="h-8 rounded-full bg-card ps-8 text-sm" />
-      </div>
-      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="flex items-center gap-1">
-          <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />{t("zotero.includeSub")}</label>
+      {/* The switch sits beside the search; where the row is narrow it moves under it whole. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="relative min-w-[min(14rem,100%)] flex-1">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="h-8 rounded-full bg-card ps-8 text-sm" />
+        </div>
+        <span className="flex shrink-0 items-center gap-1">
+          <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} size="sm" checked={deep} onCheckedChange={setDeep} />{t("zotero.includeSub")}</label>
           <Help title={t("zotero.subHelpTitle")} facts={<HelpFact>{t("zotero.subTakenOnce")}</HelpFact>}>{t("zotero.subAbout")}</Help>
         </span>
-        {reading ? <Chip className="ms-auto"><Spinner className="size-3" />{tree?.total ? <span className="tabular-nums">{t("zotero.readingCount", { read: tree.read, total: tree.total })}</span> : t("zotero.reading")}</Chip> : tree?.state === "failed" ? <StateChip tone="warning" icon={TriangleAlert} className="ms-auto">{t("zotero.failed")}</StateChip> : null}
-      </span>
+      </div>
+      {/* The list holds a page's height while it fills or pages, the rows still to come drawn in their place, and a change to its height slides. */}
+      <AutoHeight>
       <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isStale && "opacity-60")}>
         {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. A name being looked for is looked for in the whole library. */}
         {words ? null : here ? (
@@ -591,11 +624,20 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
             added={added()}
             // Zotero counts a library's items, attached files and notes among them: how many are papers is known once it is read.
             count={false}
-            chips={library.papers === undefined ? undefined : <Chip>{t("zotero.itemsInZotero", { count: library.papers })}</Chip>}
+            // How the reading stands is said where the count is, and the count takes its place once it is done.
+            chips={reading ? (
+              <Chip><Spinner className="size-3" />{tree?.total ? <span className="tabular-nums">{t("zotero.readingCount", { read: tree.read, total: tree.total })}</span> : t("zotero.reading")}</Chip>
+            ) : tree?.state === "failed" ? (
+              <StateChip tone="warning" icon={TriangleAlert}>{t("zotero.failed")}</StateChip>
+            ) : library.papers === undefined ? (
+              <Chip>{shared.count("collections", tree?.total ?? 0)}</Chip>
+            ) : (
+              <Chip>{t("zotero.itemsInZotero", { count: library.papers })}</Chip>
+            )}
             onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? t("zotero.group") : t("zotero.own"), total: library.papers ?? 0, filters: [t("zotero.wholeLibrary")], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
           />
         )}
-        <div className="divide-y divide-border-subtle" style={{ minHeight: (reading && !rows.length) || listed.hasPages ? PAGE * ROW : undefined }}>
+        <div className="divide-y divide-border-subtle" style={{ minHeight: loading || pagerKnown ? PAGE * ROW : undefined }}>
           {rows.map((one) => (
             <OfferRow
               key={one.key}
@@ -609,10 +651,12 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
               {...counted(one)}
             />
           ))}
+          {loading && rows.length < PAGE ? <ListRowsSkeleton rows={PAGE - rows.length} height={ROW} icon={false} label={t("zotero.loadingCollections")} className="*:px-1" /> : null}
           {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
         </div>
       </div>
-      {listed.hasPages ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
+      {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
+      </AutoHeight>
     </div>
   );
 }

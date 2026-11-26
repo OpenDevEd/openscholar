@@ -5,7 +5,7 @@
 // one is changed with the same form, which says what each change will do before it is saved.
 
 import { ButtonCredits } from "@/components/ui/button-credits";
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { LibrarySelect, useLibrarySources, useRowLabel } from "./library-sources";
@@ -59,7 +59,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useW
 import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
-import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
+import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
@@ -441,14 +441,6 @@ export function ScreeningForm({ id }: { id?: string }) {
       return saved && settingsOf(saved) === settingsOf(made) ? undefined : made;
     });
   };
-  // A link to a part of the form lands on it with a short tint, so the eye finds where it landed. The window's address and its hash changes are the outside system.
-  useEffect(() => {
-    const target = () => (window.location.hash ? document.getElementById(decodeURIComponent(window.location.hash.slice(1))) : null);
-    const tint = () => landOn(target());
-    tint();
-    window.addEventListener("hashchange", tint);
-    return () => window.removeEventListener("hashchange", tint);
-  }, []);
   const [kind, setKind] = useState<Kind>(fromHandoff && !id ? "evidenceLibrary" : "search");
   const [find, setFind] = useState("");
   const [recheck, setRecheck] = useState(false);
@@ -466,7 +458,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The workspace's newest screenings, whose criteria can be copied.
   const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const }), OFFER_PAGE);
   // The ones that have included a paper, a page at a time, for the Screening tab: the server pages only those, so a page never comes back empty with more behind it.
-  const withIncluded = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, kind === "screening" ? { show: "all" as const, sort: "newest" as const, included: true as const, ...(typed ? { text: typed } : {}) } : "skip"), OFFER_PAGE);
+  const withIncluded = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, included: true as const, ...(kind === "screening" && typed ? { text: typed } : {}) }), OFFER_PAGE);
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // The communities the person reads in, with their collections there: where included papers can go beside their own library.
   const communities = useLibrarySources();
@@ -480,7 +472,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   // What one PDF's first reading cost when it was added (./sources.tsx says the same before any is).
-  const lookCredits = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(workspaceId, id ? "skip" : {})).data;
+  // Read up front for the Upload tab too, whose line about it is then there when the tab opens.
+  const lookCredits = useProtectedQuery(api.screening.held.pdfLook, inWorkspace(workspaceId, {})).data;
 
   // What a save would do to a running screening, counted by the server for the change as it stands: the lines and the moves both read it.
   const change = saved && draft ? changeOf(say, saved, draft, recheck) : null;
@@ -777,6 +770,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const places = [
     ...(ownCollection ? [<Destination key="own" on={onOwn} onPick={() => set({ destination: { ...ownCollection, prune: draft.destination.prune } })} icon={Folder} name={words.collectionName(saved!) ?? t("goes.itsCollection")} facts={<Chip>{words.count("papers", open?.counts.include ?? 0)}</Chip>} />] : []),
     <Destination key="new" on={onAnother} onPick={() => { if (!onAnother) set({ destination: another }); }} icon={FolderPlus} name={t("goes.newCollection")} below={onAnother ? nameField(t("goes.collectionName"), suggested) : null} />,
+    // The workspace's collections are read after the page: two rows hold their place, and the list slides to its length.
+    ...(destinations.isLoading ? [<ListRowsSkeleton key="loading" rows={2} height={57} label={t("papers.loadingList")} />] : []),
     ...destinations.items.filter((collection) => collection._id !== ownCollection?.collection).map((collection) => (
       <Destination key={collection._id} on={draft.destination.collection === collection._id} onPick={() => set({ destination: { ...draft.destination, kind: "collection", name: collection.name, collection: collection._id } })} icon={Folder} name={t("goes.addTo", { name: collection.name })} facts={<Chip>{words.count("papers", collection.itemCount)}</Chip>} />
     )),
@@ -905,8 +900,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </>
             }
           >
-            {/* Two columns only where the well beside the sources is wide enough for its seven tabs on one line. */}
-            <div className="@container"><div className="grid items-start gap-4 @[88rem]:grid-cols-2 @[88rem]:grid-rows-[auto_1fr]">
+            <div className="grid items-start gap-4">
               <div className="min-w-0 space-y-3">
                 {/* The list and what stands in for it when it is empty are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
@@ -1073,7 +1067,7 @@ export function ScreeningForm({ id }: { id?: string }) {
 
               {handoffProblem ? <p role="alert" className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">{t("papers.handoffGone")}</p> : null}
               {/* What can be added sits in a well of its own, under its own title: it never looks like what is already in. */}
-              <Panel className="@container min-w-0 space-y-3 @[88rem]:col-start-2 @[88rem]:row-span-2 @[88rem]:row-start-1">
+              <Panel className="@container min-w-0 space-y-3">
                 <h3 className="text-sm font-semibold">{t("papers.addFrom")}</h3>
                 <Tabs value={kind} onValueChange={(next) => { setKind(next as Kind); setFind(""); }} className="gap-3">
                   <ScrollArea axis="x" shades className="rounded-[1.375rem] bg-card ring-1 ring-border-subtle">
@@ -1086,7 +1080,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </TabsList>
                   </ScrollArea>
                   <TabsContent value={kind}>
-                    {kind === "upload" ? <UploadTab sources={draft.sources} onAdd={pick} />
+                    {/* The tabs are different heights: the frame slides from one to the next, and what is under it moves with it. */}
+                    <AutoHeight>
+                    {kind === "upload" ? <UploadTab sources={draft.sources} onAdd={pick} {...(lookCredits === undefined ? {} : { lookCredits })} />
                     : kind === "dois" ? <DoiTab sources={draft.sources} onAdd={pick} />
                     : kind === "zotero" ? <ZoteroTab sources={draft.sources} onAdd={pick} />
                     : kind === "evidenceLibrary" ? <CommunityTab sources={draft.sources} onAdd={pick} />
@@ -1102,6 +1098,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       {/* While a list is read, and while it runs to more than a page, it keeps a page's height, so a short last page moves nothing under it. A list that turns out shorter slides to its own height. */}
                       <AutoHeight>
                       <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
+                        {offered.loading && !offered.rows.length ? <ListRowsSkeleton rows={OFFER_PAGE} height={57} label={t("papers.loadingList")} /> : null}
                         {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
                       </div>
@@ -1109,12 +1106,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                       </AutoHeight>
                     </div>
                     )}
+                    </AutoHeight>
                   </TabsContent>
                 </Tabs>
               </Panel>
 
               {/* A living screening: its sources are checked again on a schedule, and only what is new is screened. */}
-              <div id="new-papers" className={cn(LIST, BELOW_HEADER, "min-w-0 bg-card @[88rem]:col-start-1")}>
+              <div id="new-papers" className={cn(LIST, BELOW_HEADER, "min-w-0 bg-card")}>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                   <p className="flex min-w-48 flex-1 items-center gap-1 text-sm font-medium">
                     {t("living.title")}
@@ -1140,7 +1138,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   )
                 ) : null}
               </div>
-            </div></div>
+            </div>
           </Section>
 
           <Section
@@ -1158,7 +1156,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   ) : null}
                   {copyable.length ? (
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="h-7 text-xs"><Copy />{t("criteria.copyFrom")}<ChevronDown /></Button></DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="fade-enter h-7 text-xs"><Copy />{t("criteria.copyFrom")}<ChevronDown /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-80">
                         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t("criteria.copyAdds")}</DropdownMenuLabel>
                         {copyable.map((one) => (
@@ -1399,7 +1397,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Chip icon={Check}>{t("decided.noConflicts")}</Chip>
                 ) : joined.length ? (
                   <Select value={joined.some((person) => person.id === draft.rule.resolver) ? draft.rule.resolver : joined[0]!.id} onValueChange={(next) => set({ rule: { ...draft.rule, resolver: next } })}>
-                    <SelectTrigger aria-label={t("decided.whoSettles")} className="h-9 w-56"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={t("decided.whoSettles")} className="h-8 w-56 rounded-full px-3.5 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {joined.map((person) => <SelectItem key={person.id} value={person.id}><span className="flex items-center gap-2"><ReviewerMark reviewer={person} className="size-5" /><ReviewerName reviewer={person} you={person.id === me} /></span></SelectItem>)}
                     </SelectContent>
@@ -1427,13 +1425,13 @@ export function ScreeningForm({ id }: { id?: string }) {
             id="goes-to"
             title={t("part.goesTo")}
             help={<><Help title={t("part.goesTo")}>{t("goesHelp")}</Help>{changed("goes-to")}</>}
-            aside={communities.libraries.length || there ? <Segmented label={t("part.goesTo")} value={there ? "community" : "openscholar"} onChange={(next) => (next === "openscholar" ? toOwn() : community ? toCommunity(community.libraryId) : undefined)} options={[{ id: "openscholar" as const, label: t("goes.yourLibrary") }, { id: "community" as const, label: t("goes.aCommunity") }]} /> : undefined}
+            aside={communities.libraries.length || there ? <Segmented className="fade-enter" label={t("part.goesTo")} value={there ? "community" : "openscholar"} onChange={(next) => (next === "openscholar" ? toOwn() : community ? toCommunity(community.libraryId) : undefined)} options={[{ id: "openscholar" as const, label: t("goes.yourLibrary") }, { id: "community" as const, label: t("goes.aCommunity") }]} /> : undefined}
           >
             {there && community ? <LibrarySelect libraries={communities.libraries} value={community.libraryId} onChange={(libraryId) => toCommunity(libraryId)} /> : null}
             {/* The collections arrive after the page: the list slides to its length instead of pushing what is under it. */}
             <AutoHeight>
             <div className={cn(LIST, "bg-card")} role="radiogroup" aria-label={t("part.goesTo")}>
-              {there ? (communities.loaded ? communityPlaces : <ListLoading compact label={t("goes.readingCommunity")} />) : places}
+              {there ? (communities.loaded ? communityPlaces : <ListRowsSkeleton rows={3} height={57} label={t("goes.readingCommunity")} />) : places}
             </div>
             </AutoHeight>
             {fromCollection ? (
@@ -1729,7 +1727,7 @@ function MarkedWords({ criterion, n, onChange }: { criterion: Criterion; n: numb
   const t = useTranslations("screening.form");
   const read = (text: string) => [...new Set(text.split(",").map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
   return (
-    <div className="flex items-start gap-1 ps-1 text-muted-foreground">
+    <div className="mt-1.5 flex items-start gap-1 ps-1 text-muted-foreground">
       <Highlighter aria-hidden className="mt-1 size-3.5 shrink-0" />
       <Textarea rows={1} value={typing ?? criterion.terms.join(", ")} onChange={(event) => { setTyping(event.target.value); onChange(read(event.target.value)); }} onBlur={() => setTyping(null)} aria-label={t("criteria.wordsFor", { n })} placeholder={t("criteria.wordsPlaceholder")} className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content placeholder-shown:border-dashed placeholder-shown:border-border hover:border-border-subtle" />
     </div>
@@ -1778,6 +1776,7 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
   return (
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
+      {rows.isLoading ? <ListRowsSkeleton rows={Math.min(total, LEFT_PAGE)} height={45} icon={false} label={t("papers.loadingList")} className="[&>div]:px-0" /> : (
       <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => {
           // The source that brought the paper this record is the same as: another one, or this one where it lists the paper more than once.
@@ -1790,7 +1789,9 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
           );
         })}
       </ul>
-      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerMerged")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
+      )}
+      {/* Its pager is there from the first frame where the count says there is more than a page. */}
+      {rows.hasPages || (rows.isLoading && total > LEFT_PAGE) ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerMerged")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? Math.min(total, LEFT_PAGE) : rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
     </div>
   );
 }
@@ -1802,6 +1803,7 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
   return (
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
+      {rows.isLoading ? <ListRowsSkeleton rows={Math.min(total, LEFT_PAGE)} height={45} icon={false} label={t("papers.loadingList")} className="[&>div]:px-0" /> : (
       <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => (
           <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
@@ -1811,7 +1813,8 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
           </li>
         ))}
       </ul>
-      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerLeftOut")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
+      )}
+      {rows.hasPages || (rows.isLoading && total > LEFT_PAGE) ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerLeftOut")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? Math.min(total, LEFT_PAGE) : rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
     </div>
   );
 }

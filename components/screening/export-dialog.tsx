@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpFact } from "@/components/ui/help";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { showStyledToast } from "@/components/ui/sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
@@ -217,6 +219,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <div className="space-y-3">
                   {/* The list keeps its rows' room while they are read: how many there are is known before they are. */}
                   <ul className={LIST} style={{ minHeight: Math.min(included, 8) * 57 }}>
+                    {first.isLoading ? <li><ListRowsSkeleton rows={Math.min(included, 8)} height={56} icon={false} label={t("papers.loading")} /></li> : null}
                     {first.items.map((paper) => (
                       <li key={paper.id}>
                         <NextLink href={papersHref(id, { paper: paper.id })} onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
@@ -248,6 +251,10 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                       <tr>{VOTE_COLUMNS.map((column) => <th key={column} scope="col" className="whitespace-nowrap px-3 py-2 text-start font-medium">{t(`votes.column.${column}`)}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
+                      {/* Until the first votes are read, a row for each of the three papers the file's first rows show. */}
+                      {voted.isLoading ? Array.from({ length: Math.min(3, votes) }, (_, at) => (
+                        <tr key={at} aria-hidden className="h-10">{VOTE_COLUMNS.map((column) => <td key={column} className="px-3"><SkeletonBar className={column === "paper" ? "w-3/5" : "w-12"} /></td>)}</tr>
+                      )) : null}
                       {sample.map((row) => (
                         <tr key={`${row.paper.id}:${row.reviewer.id}`}>
                           <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
@@ -266,7 +273,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ScrollArea>
                 {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
                 <p className="text-xs text-muted-foreground">
-                  {sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
+                  {/* How many the table shows is said once they are read: until then its room is held. */}
+                  {voted.isLoading ? (votes > 3 ? <span className="invisible">{`${t("votes.shown", { shown: words.num(3), votes })} `}</span> : "") : sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
                   {blind && state.toDo ? `${t("votes.hiddenRows")} ` : ""}
                   {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [screening.finishedAt ? t("votes.emptyWhy.finished") : t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
                 </p>

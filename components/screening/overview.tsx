@@ -5,6 +5,7 @@
 // section asks for.
 
 import { AutoHeight } from "@/components/ui/auto-height";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
@@ -696,7 +697,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
         </span>
       }
     >
-      {overall === null ? (
+      {/* The figures arrive after the page: until they do a block holds the note's room, and the frame slides to what comes. */}
+      <AutoHeight>
+      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : overall === null ? (
         // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
         kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{t("agreement.none")}</EmptyNote>
       ) : (
@@ -763,6 +766,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           </ul>
         </div>
       )}
+      </AutoHeight>
     </Section>
   );
 }
@@ -1000,7 +1004,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   // Its excluded papers by the reason, the most common first.
   const reasons = Object.entries(figures?.reasons ?? {}).sort((x, y) => y[1] - x[1]);
   const neutral = "bg-foreground/25";
-  const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[] }> = [
+  // `loading`: rows the figures bring, held as placeholders until they come.
+  const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[]; loading?: number }> = [
     { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
     {
       title: t("flow.removed"),
@@ -1028,6 +1033,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       total: counts.include,
       tone: "include",
       href: papersHref(id, { result: "include" }),
+      // Each source with an included paper is a row: until the figures say which, every source holds one.
+      ...(figures === undefined && counts.include ? { loading: screening.sources.length } : {}),
       rows: screening.sources.flatMap((source) => {
         const value = figures?.included[source.id] ?? 0;
         return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar, tone: "include" as const }] : [];
@@ -1062,8 +1069,11 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
                 <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", step.tone && step.total ? TONE[RESULT_STYLE[step.tone].tone].ink : undefined)}><AnimatedNumber value={step.total} /></p>
               </div>
             )}
-            {step.rows.length ? null : <p className="text-xs text-muted-foreground">{t("flow.none")}</p>}
+            {step.rows.length || step.loading ? null : <p className="text-xs text-muted-foreground">{t("flow.none")}</p>}
             <ul className="-mx-2 space-y-0.5">
+              {Array.from({ length: step.loading ?? 0 }, (_, at) => (
+                <li key={at} aria-hidden className="space-y-1 px-2 py-1.5"><SkeletonBar className="my-0.5 w-2/3" /><SkeletonBar className="h-1 w-full" /></li>
+              ))}
               {step.rows.map((row) => {
                 const inner = (
                   <>

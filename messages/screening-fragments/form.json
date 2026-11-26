@@ -164,6 +164,7 @@
     "stoppedAfter": "{read, plural, other {Stopped after # of {total}}}",
     "notSaved": "Openscholar couldn't save the papers it read.",
     "readAgain": "Try again",
+    "loadingList": "Loading the list",
     "keep": "Keep",
     "range": "Papers {first} to {last}",
     "choose": "Choose papers",

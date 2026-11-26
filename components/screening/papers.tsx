@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
-import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -43,7 +43,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { inOrder, bylineOf, awaitedOn, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { inOrder, growing, bylineOf, awaitedOn, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
 import { VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
@@ -65,6 +65,8 @@ type CountArgs = Omit<(typeof api.screening.paperViews.counts)["_args"], "worksp
 /** Papers settled at once where many are settled together. */
 const SETTLED_AT_ONCE = 10;
 const ROW = 57;
+/** A button in the papers' bar, the pill its filter menus and its search are. */
+const PILL = "h-8 rounded-full px-3.5 text-xs";
 /** The checks for new papers the Added filter offers: the latest of them. */
 const CHECKS = 30;
 type PapersT = ReturnType<typeof useTranslations<"screening.papers">>;
@@ -200,6 +202,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const tabCounts = anyNarrow ? (countable ? (under ?? undefined) : undefined) : open.counts;
   const countOf = (result: Result | "all") => (!tabCounts ? undefined : result === "all" ? (anyNarrow ? RESULTS.reduce((sum, one) => sum + tabCounts[one], 0) : open.total) : tabCounts[result]);
   const total = countOf(filter);
+  // A count the server is still reading holds a digit's room, so the tabs don't widen when it arrives. Where none will come the tab has no number.
+  const pending = countable && !under ? <span aria-hidden className="invisible tabular-nums">0</span> : undefined;
   // Every paper the table is narrowed to, read for a selection of them all: the pages after this one, a page at a time.
   const convex = useConvex();
   const [takingAll, setTakingAll] = useState(false);
@@ -211,6 +215,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // When papers joined after the start: the latest checks that brought some.
   const checks = useCursorPage(api.screening.view.checks, inWorkspace(workspaceId, { jobId: id }), CHECKS);
   const arrivals = checks.items.filter((check) => !check.first && check.added > 0);
+  // The Added filter keeps its place while the checks are read wherever papers can have come in after the start.
+  const mayHaveArrivals = checks.isLoading && (Boolean(screening.living) || growing(screening).length > 0);
   const newest = open.latest?.id;
 
   // The open paper is read by itself, so a link to one shows it whatever page the table is on. A step onto another page names it by its place there until that page is read.
@@ -397,7 +403,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           ]}
         />
       ) : null}
-      {arrivals.length ? (
+      {arrivals.length || mayHaveArrivals ? (
         <FilterMenu
           name={t("filter.added")}
           value={added}
@@ -448,8 +454,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             value={filter}
             onChange={(next) => go({ result: next === "all" ? null : next })}
             options={[
-              { id: "all" as const, label: t("filter.all"), detail: countOf("all") === undefined ? undefined : <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={countOf("all")!} /></span> },
-              ...RESULTS.map((result) => ({ id: result, label: words.result(result), icon: RESULT_ICON[result], detail: !tabCounts ? undefined : <span className={cn("tabular-nums", tabCounts[result] ? TONE[RESULT_STYLE[result].tone].ink : "text-muted-foreground")}><AnimatedNumber value={tabCounts[result]} /></span> })),
+              { id: "all" as const, label: t("filter.all"), detail: countOf("all") === undefined ? pending : <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={countOf("all")!} /></span> },
+              ...RESULTS.map((result) => ({ id: result, label: words.result(result), icon: RESULT_ICON[result], detail: !tabCounts ? pending : <span className={cn("tabular-nums", tabCounts[result] ? TONE[RESULT_STYLE[result].tone].ink : "text-muted-foreground")}><AnimatedNumber value={tabCounts[result]} /></span> })),
             ]}
           />
         </div>
@@ -459,10 +465,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className="h-8 rounded-full ps-8 text-sm" />
           </div>
           {/* The included papers can go to extraction from the list that shows them, whether or not every other paper is settled: the Overview offers the same once they all are. */}
-          {filter === "include" && open.counts.include ? <Button asChild variant="outline" size="sm" className="h-8 shrink-0"><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, open.screening, open.counts.include)}><FileSearch />{t("extractIncluded")}</NextLink></Button> : null}
+          {filter === "include" && open.counts.include ? <Button asChild variant="outline" size="sm" className={cn(PILL, "shrink-0")}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, open.screening, open.counts.include)}><FileSearch />{t("extractIncluded")}</NextLink></Button> : null}
           {/* Under a wide window the bar's Export is in its menu: here it is beside the list it exports. */}
-          <Button variant="outline" size="sm" className="h-8 max-sm:hidden xl:hidden" onClick={() => onExport("papers")}><Download />{t("export")}</Button>
-          <Button variant="outline" size="sm" className="h-8 @2xl/papers:hidden" onClick={() => setFiltering(true)}>
+          <Button variant="outline" size="sm" className={cn(PILL, "max-sm:hidden xl:hidden")} onClick={() => onExport("papers")}><Download />{t("export")}</Button>
+          <Button variant="outline" size="sm" className={cn(PILL, "@2xl/papers:hidden")} onClick={() => setFiltering(true)}>
             <SlidersHorizontal />{t("filters")}
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
           </Button>
@@ -550,7 +556,13 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           {/* While the page is read it keeps the height of the rows it will hold, as many as the filter counts up to a page; what is left over slides. */}
           <AutoHeight>
           <Wide fits={fits} style={{ minHeight: listed.isLoading ? (Math.min(total ?? PAGE, PAGE) + 2) * ROW : listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
-            {listed.isLoading ? <ListLoading label={t("table.loading")} /> : shown.length ? (
+            {listed.isLoading ? (
+              <>
+                {/* The table's two head rows, then as many rows as the page will hold. */}
+                <div aria-hidden style={{ height: 2 * ROW }} className="border-b border-border-subtle @max-2xl/papers:hidden" />
+                <ListRowsSkeleton rows={Math.min(total ?? PAGE, PAGE)} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2" />
+              </>
+            ) : shown.length ? (
               <>
                 {/* As wide as the column and no wider: the frame around it scrolls sideways for the table, and would let a long title stretch the list. */}
                 <ul className="w-[100cqw] divide-y divide-border-subtle @2xl/papers:hidden">
