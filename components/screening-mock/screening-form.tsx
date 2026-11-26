@@ -10,7 +10,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -54,7 +54,7 @@ import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
-import { OfferRow } from "./sources";
+import { CommunityTab, DoiTab, OfferRow, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
 import { credits, paperCredits, perPaper, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
@@ -62,11 +62,16 @@ import { useFrame } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // The whole library and its collections are one place to a person, so they share a tab.
-type Kind = "search" | "collection" | "screening";
+type Kind = "search" | "upload" | "collection" | "screening" | "evidenceLibrary" | "zotero" | "dois";
 const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = [
   { id: "search", label: "Search", icon: SOURCE_ICON.search },
+  // A file follows a search: the two ways most people bring papers. On a phone the row shows its first three or four, and someone who came with a file looks for it there.
+  { id: "upload", label: "Upload", icon: Upload },
   { id: "collection", label: "Library", icon: SOURCE_ICON.saved, find: "Find a collection" },
   { id: "screening", label: "Screening", icon: SOURCE_ICON.screening },
+  { id: "evidenceLibrary", label: "Community", icon: SOURCE_ICON.evidenceLibrary },
+  { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero },
+  { id: "dois", label: "DOIs", icon: Hash },
 ];
 const OFFER_PAGE = 5;
 /** Collections one page of the places included papers can go holds. */
@@ -844,6 +849,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </TabsList>
                   </ScrollArea>
                   <TabsContent value={kind}>
+                    {kind === "upload" ? <UploadTab sources={draft.sources} onAdd={pick} />
+                    : kind === "dois" ? <DoiTab sources={draft.sources} onAdd={pick} />
+                    : kind === "zotero" ? <ZoteroTab sources={draft.sources} onAdd={pick} />
+                    : kind === "evidenceLibrary" ? <CommunityTab sources={draft.sources} onAdd={pick} />
+                    : (
                     <div className="space-y-2">
                       {/* A search is found by its words and a screening by its name. The library's collections are few enough to page through. */}
                       {kind !== "collection" ? (
@@ -861,6 +871,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       </AutoHeight>
                       {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel="sources" steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length }} /> : null}
                     </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </Panel>

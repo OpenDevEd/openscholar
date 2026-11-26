@@ -46,9 +46,11 @@ const MODELS_A_SCREENING = 5;
 /** How many models one screening in the workspace may have reading: its plan's number (lib/billing/plans.ts `screening_models`). */
 export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
 
-/** Criteria as a screening keeps them, from what a form sent: checked, trimmed, each with a key that never changes. */
+/** A model votes by answering the criteria: with none it would include every paper it reads. People vote without them. */
+export const NEEDS_CRITERIA = "A model votes by answering the criteria. Add a criterion, or take the models off.";
+
+/** Criteria as a screening keeps them, from what a form sent: checked, trimmed, each with a key that never changes. People alone can screen with none. */
 export function criteriaFrom(sent: Infer<typeof criterionInput>[], kept: Criterion[] = [], now = Date.now()): Criterion[] {
-  if (!sent.length) throw createError("VALIDATION_ERROR", "Add at least one criterion.");
   if (sent.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_QUESTIONS} criteria.`);
   const keys = new Set<string>();
   return sent.map((one) => {
@@ -123,6 +125,7 @@ export const open = internalMutation({
     if (people.length + models.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
     const now = Date.now();
     const criteria = criteriaFrom(sent, [], now);
+    if (!criteria.length && models.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
     const stars = starsFrom(sentStars, criteria.length);
     const each = rule.each === "all" ? ("all" as const) : Math.floor(rule.each);
     if (each !== "all" && (each < 0 || each > MAX_REVIEWERS)) throw createError("VALIDATION_ERROR", "Pick how many people read each paper.");

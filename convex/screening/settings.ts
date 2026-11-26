@@ -22,7 +22,7 @@ import { check } from "./living";
 import { logChange, type Line } from "./log";
 import { destination } from "./mutations";
 import { addModel, addPerson, takeOff } from "./reviewers";
-import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, ruleInput, sourceInput, starsFrom } from "./screenings";
+import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, NEEDS_CRITERIA, ruleInput, sourceInput, starsFrom } from "./screenings";
 import { startWaitingVotes } from "./slots";
 import { everyValidator, prunable, saveToValidator, SCREENING_TEXT } from "./validators";
 
@@ -60,6 +60,7 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   const stars = change.criteria || change.stars ? starsFrom(change.stars ?? (job.stars?.length === 5 ? job.stars : undefined), criteria.length) : (job.stars ?? []);
   const leaving = (change.remove ?? []).flatMap(({ reviewerId, discard }) => { const reviewer = reviewers.find((one) => one._id === reviewerId && one.left === undefined); return reviewer ? [{ reviewer, discard: discard === true }] : []; });
   const gone = new Set(leaving.map(({ reviewer }) => reviewer._id));
+  if (!criteria.length && (change.addModels?.length || reviewers.some((one) => readingModel(one) && !gone.has(one._id)))) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
   const staying = reviewers.filter((one) => !gone.has(one._id));
   const people = staying.filter(dealable);
   // Each person who joins, with how many people there were before them: what their even share is counted from.

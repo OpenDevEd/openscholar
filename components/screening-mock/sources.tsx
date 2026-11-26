@@ -1,39 +1,51 @@
 "use client";
 
-// The places a screening's papers come from that take more than a list to pick from: a Zotero
-// account's libraries and their collections, pasted DOIs, a table whose columns have to be named,
-// and the list of what a source held and the screening doesn't take.
+// The places a screening's papers come from that take more than a list to pick from: files and PDFs a
+// person hands over, pasted DOIs, a Zotero library or one of its collections, and a community. Each
+// hands the form what it adds as a source: the thing the server reads (`set`), under a name, with how
+// many papers it holds.
 
-import { useId, useState, type ReactNode } from "react";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { useId, useRef, useState, type ReactNode } from "react";
+import useSWR from "swr";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronsUpDown, Copy, FileSpreadsheet, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Undo2, UserRound, Users, type AppIcon } from "@/components/icons";
+import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
+import { LibrarySources, useLibrarySources } from "@/components/screening/library-sources";
 import { Chip, RequiredMark } from "@/components/screening/parts";
-import { Segmented, pagerOf } from "@/components/settings/parts";
+import { pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { FadeRow } from "@/components/ui/fade-row";
 import { HelpFact } from "@/components/ui/help";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { rowKey, setOfRow } from "@/lib/evidence-libraries/reader-sources";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
+import { COLUMN_KEYS, COLUMN_LABEL, FILE_MAX_BYTES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { num, plural, type Source } from "./data";
-import { ZOTERO, zoteroDeep, zoteroInside, zoteroPath, zoteroUnder, type Offer, type ZoteroCollection, type ZoteroLibrary } from "./form-data";
-import { Help, INLINE_LINK, StateChip, type Tone } from "./parts";
-import { COLUMN_KEYS, COLUMN_LABEL, doisIn, tableCounts, type ColumnKey, type TableRead } from "./upload-read";
+import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { hash, num, plural, type Source, type SourceSet } from "./data";
+import { Help, INLINE_LINK, StateChip } from "./parts";
 
 const PAGE = 5;
 /** A row's height with its line: a list keeps its page's height on a last page that holds fewer. */
 const ROW = 57;
 
-/** Something that can be added as a source: what it is, how many papers it holds, and the button that adds it. */
-export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen }: {
+/** What a tab hands the form to add as a source: what the server reads, under the name its list gave it, with how many papers it holds and what tells it from another of the same name. */
+export type Added = { ref: string; name: string; detail: string; total: number; set: SourceSet; filters?: string[] };
+type Offer = Pick<Added, "name" | "detail" | "total" | "filters">;
+
+export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
   offer: Offer;
   icon: AppIcon;
   /** What else tells this row from the others, after its detail. */
@@ -44,6 +56,8 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
   onAdd: () => void;
   /** Where it holds more to pick from: its name is then the way in. */
   onOpen?: () => void;
+  /** Whether how many papers it holds is known before it is read. Where it isn't, no count shows, and it can be added whatever the number says. */
+  count?: boolean;
 }) {
   const name = "truncate max-sm:line-clamp-2 max-sm:whitespace-normal";
   const second = Boolean(trail || offer.detail || offer.filters?.length || chips);
@@ -68,202 +82,12 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
           <p className="flex min-w-0 items-center gap-1.5 ps-7 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-xl:hidden">{chips}</span> : null}</p>
         ) : null}
       </div>
-      <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip>
-      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
+      {count ? <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip> : null}
+      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || (count && !offer.total)} onClick={onAdd}>{added ? <><Check />Added</> : count && !offer.total ? "Empty" : <><Plus />Add</>}</Button>
     </div>
   );
 }
 
-/** What picking from Zotero adds: the whole of a library, or one collection of it with or without the ones under it. */
-export type ZoteroPick = { ref: string; name: string; detail: string; total: number; filters: string[]; /** How many in a hundred of the library's papers carry an abstract. */ abstracts: number };
-
-const libraryIcon = (library: ZoteroLibrary) => (library.group ? Users : UserRound);
-const inWords = (path: ZoteroCollection[]) => path.map((one) => one.name).join(" › ");
-
-/**
- * A Zotero account's libraries: the person's own and each group they are in. One is picked, then all of
- * it or any of its collections is added, a collection at a time. The list's first row is where it
- * stands, the library or a collection opened from it, with the way back up; under it are the
- * collections there. A collection's count takes in those under it while "Include sub-collections" is on.
- */
-export function ZoteroTab({ connected, account, onConnect, sources, onAdd }: { connected: boolean; /** The Zotero account's name. */ account: string; onConnect: () => void; sources: Source[]; onAdd: (pick: ZoteroPick) => void }) {
-  const [at, setAt] = useState(ZOTERO[0]!.id);
-  const [inside, setInside] = useState<string>();
-  const [find, setFind] = useState("");
-  const [page, setPage] = useState(1);
-  const [order, setOrder] = useState<"name" | "papers">("name");
-  const [deep, setDeep] = useState(true);
-  const [picking, setPicking] = useState(false);
-  const deepId = useId();
-
-  if (!connected) {
-    return (
-      <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-border bg-card px-6 py-7 text-center">
-        <p className="text-sm font-medium">Zotero isn&apos;t connected</p>
-        <p className="text-xs text-muted-foreground">Connect it to pick from your library and the groups you are in.</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={onConnect}><ZoteroIcon />Connect Zotero</Button>
-      </div>
-    );
-  }
-
-  const library = ZOTERO.find((one) => one.id === at)!;
-  const here = library.collections.find((one) => one.key === inside);
-  const words = find.trim().toLowerCase();
-  const count = (one: ZoteroCollection) => (deep ? zoteroDeep(library, one) : one.papers);
-  // A search looks through every level under where the list stands.
-  const listed = (words ? (here ? zoteroUnder(library, here.key) : library.collections).filter((one) => one.name.toLowerCase().includes(words)) : zoteroInside(library, inside)).sort(
-    (a, b) => (order === "papers" ? count(b) - count(a) : 0) || a.name.localeCompare(b.name, "en", { numeric: true }),
-  );
-  const pager = pagerOf(listed.length, PAGE, page, setPage);
-  const go = (key?: string) => { setInside(key); setFind(""); setPage(1); };
-  const LibraryIcon = libraryIcon(library);
-  const option = (one: ZoteroLibrary) => {
-    const Icon = libraryIcon(one);
-    return (
-      <CommandItem key={one.id} value={one.name} onSelect={() => { setAt(one.id); setPicking(false); go(); }} className="gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate">{one.name}</span>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{plural(one.papers, "paper", "papers")}</span>
-        {one.id === at ? <Check className="size-4 shrink-0 text-primary" /> : null}
-      </CommandItem>
-    );
-  };
-  const refOf = (one?: ZoteroCollection) => `zotero:${library.id}${one ? `:${one.key}` : ""}`;
-  const added = (one?: ZoteroCollection) => sources.some((source) => source.ref === refOf(one));
-  const add = (one: ZoteroCollection) => {
-    const under = zoteroUnder(library, one.key).length;
-    const path = zoteroPath(library, one);
-    onAdd({ ref: refOf(one), name: one.name, detail: `In ${library.name}`, total: count(one), filters: [library.name, ...(path.length ? [`In ${inWords(path)}`] : []), ...(deep && under ? [`With ${plural(under, "sub-collection", "sub-collections")}`] : [])], abstracts: library.abstracts });
-  };
-  const step = "rounded-sm underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:text-foreground hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
-
-  return (
-    <div className="space-y-2">
-      <Popover open={picking} onOpenChange={setPicking}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label="Zotero library" className="h-9 w-full min-w-0 justify-between gap-3 bg-card px-3 font-normal">
-            <span className="flex min-w-0 items-center gap-2"><LibraryIcon className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{library.name}</span></span>
-            <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-muted-foreground">{plural(library.papers, "paper", "papers")}<ChevronsUpDown className="size-3.5" /></span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" aria-label="Zotero library" className="w-(--radix-popover-trigger-width) p-0">
-          <Command>
-            <CommandInput placeholder="Find a library or a group" />
-            <CommandList className="max-h-72">
-              <CommandEmpty>No library or group by that name.</CommandEmpty>
-              <CommandGroup heading="Yours">{ZOTERO.filter((one) => !one.group).map(option)}</CommandGroup>
-              <CommandGroup heading="Groups">{ZOTERO.filter((one) => one.group).map(option)}</CommandGroup>
-            </CommandList>
-          </Command>
-          <p className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2 text-xs text-muted-foreground">
-            <span className="flex min-w-0 items-center gap-1.5"><ZoteroIcon className="size-3.5 shrink-0" /><span className="truncate">Connected as {account}</span></span>
-            <NextLink href="/settings/connections" className={cn(INLINE_LINK, "shrink-0")}>Connections</NextLink>
-          </p>
-        </PopoverContent>
-      </Popover>
-      {/* The tools for a list of collections are there where there is one: a library with none offers only itself, and one whose collections hold no others has nothing to include. */}
-      {library.collections.length ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="relative min-w-40 flex-1">
-            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={find} onChange={(event) => { setFind(event.target.value); setPage(1); }} placeholder={here ? `Find a collection in ${here.name}` : "Find a collection"} aria-label={`Find a collection in ${here?.name ?? library.name}`} className="h-8 rounded-full bg-card ps-8 text-sm" />
-          </div>
-          <Segmented label="Order" className="bg-card" value={order} onChange={(next) => { setOrder(next); setPage(1); }} options={[{ id: "name" as const, label: "Name" }, { id: "papers" as const, label: "Most papers" }]} />
-          {library.collections.some((one) => one.parent) ? (
-            <span className="flex shrink-0 items-center gap-1">
-              <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />Include sub-collections</label>
-              <Help title="Sub-collections" facts={<HelpFact>A paper filed in two of them is taken once</HelpFact>}>Zotero counts only the papers filed directly in a collection. With this on, a collection is added with the papers of every collection under it, and its count here takes them in.</Help>
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="divide-y divide-border-subtle">
-        {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. */}
-        {here ? (
-          <OfferRow
-            offer={{ name: here.name, detail: "", total: count(here) }}
-            icon={Folder}
-            trail={
-              <FadeRow scrolls scrollbar="none" className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                <button type="button" onClick={() => go()} className={cn(step, "shrink-0")}>{library.name}</button>
-                {zoteroPath(library, here).map((one) => (
-                  <span key={one.key} className="flex shrink-0 items-center gap-1"><ChevronRight aria-hidden className="size-3" /><button type="button" onClick={() => go(one.key)} className={step}>{one.name}</button></span>
-                ))}
-              </FadeRow>
-            }
-            added={added(here)}
-            onAdd={() => add(here)}
-          />
-        ) : (
-          <OfferRow
-            offer={{ name: `Every paper in ${library.name}`, detail: library.loose && library.collections.length ? `${num(library.loose)} of them in no collection` : library.group ? "Zotero group" : "Your Zotero library", total: library.papers }}
-            icon={Library}
-            added={added()}
-            onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.group ? "Zotero group" : "Your Zotero library", total: library.papers, filters: ["Whole library"], abstracts: library.abstracts })}
-          />
-        )}
-        <div className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * ROW : undefined }}>
-          {listed.slice((pager.page - 1) * PAGE, pager.page * PAGE).map((one) => {
-            const under = zoteroUnder(library, one.key).length;
-            // A search's results sit at any depth: each says where, from the place the list stands.
-            const path = zoteroPath(library, one).filter((above) => !here || zoteroUnder(library, here.key).includes(above));
-            return (
-              <OfferRow
-                key={one.key}
-                offer={{ name: one.name, detail: words && path.length ? `In ${inWords(path)}` : under ? plural(under, "sub-collection", "sub-collections") : "", total: count(one) }}
-                icon={Folder}
-                added={added(one)}
-                onOpen={under ? () => go(one.key) : undefined}
-                onAdd={() => add(one)}
-              />
-            );
-          })}
-          {!listed.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? `No collection by that name in ${here?.name ?? library.name}.` : `${library.name} has no collections.`}</p> : null}
-        </div>
-      </div>
-      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={listed.length} itemsPerPage={PAGE} itemLabel="collections" /> : null}
-    </div>
-  );
-}
-
-type Missed = { none: number; bare: number; blank: number };
-/** A box to paste DOIs into, in any form, and the button that looks them up. A lookup that brings nothing leaves what was pasted and says why under the box: how many don't exist, have no record or have no abstract, or that the same DOIs are a source already. */
-export function DoiTab({ onLookUp }: { /** Null when some can be screened; else how many don't exist (`none`), how many exist with no record (`bare`) and how many have a record with no abstract (`blank`). */ onLookUp: (dois: string[]) => Missed | "twice" | null }) {
-  const [text, setText] = useState("");
-  const [missed, setMissed] = useState<Missed | "twice" | null>(null);
-  const { dois, repeats } = doisIn(text);
-  return (
-    <div className="space-y-2">
-      <span className="flex items-center gap-1">
-        <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is looked up once</HelpFact></>}>Openscholar looks each DOI up in its index, then with Crossref and DataCite, which issue DOIs, and takes the title and the abstract from the first that has them. The ones it can&apos;t find, and the ones whose record has no abstract, are left out and listed on the source&apos;s row, to copy and check.</Help>
-      </span>
-      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setMissed(null); }} rows={5} aria-invalid={Boolean(missed) || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
-      <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <span className="flex flex-wrap items-center gap-1.5">
-          {missed === "twice" ? (
-            <StateChip tone="warning" icon={TriangleAlert}>{dois.length === 1 ? "This DOI is already a source" : "These DOIs are already a source"}</StateChip>
-          ) : missed ? (
-            // Why none became a paper, as the list on a source's row would say it.
-            <>
-              {missed.none ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.none === 1 ? "1 DOI doesn't exist" : `${num(missed.none)} DOIs don't exist`}</StateChip> : null}
-              {missed.bare ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.bare === 1 ? "1 DOI has no record" : `${num(missed.bare)} DOIs have no record`}</StateChip> : null}
-              {missed.blank ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.blank === 1 ? "1 paper has no abstract" : `${num(missed.blank)} papers have no abstract`}</StateChip> : null}
-            </>
-          ) : dois.length ? (
-            <Chip icon={Hash}>{plural(dois.length, "DOI", "DOIs")}</Chip>
-          ) : text.trim() ? (
-            <StateChip tone="warning" icon={TriangleAlert}>No DOI in what you pasted</StateChip>
-          ) : null}
-          {repeats && !missed ? <Chip>{num(repeats)} pasted more than once</Chip> : null}
-        </span>
-        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length} onClick={() => { const none = onLookUp(dois); if (none) setMissed(none); else setText(""); }}><Plus />Look up {dois.length ? plural(dois.length, "DOI", "DOIs") : "DOIs"}</Button>
-      </div>
-    </div>
-  );
-}
-
-/** A table that was read and can't be added yet: which of its columns holds the title, and which the abstract, is for a person to say. */
 export type PendingTable = { name: string; /** What it reads, which tells two files of one name apart. */ ref: string; table: TableRead; picked: TableRead["picked"]; /** Add was pressed with no title column picked. */ untitled?: boolean };
 const NONE = "-";
 
@@ -314,55 +138,347 @@ export function ColumnMatch({ pending, onPick, onAdd, onRemove }: { pending: Pen
   );
 }
 
-/** One thing a source held, as its list shows it: what it is, what it was told as or why it isn't taken, and what can be done about it. */
-export type ItemRow = { key: string; name: string; detail?: string; chip: string; tone: Tone; icon?: AppIcon; /** Which of the list's kinds it is, where the list can be narrowed to one. */ kind?: string; action?: ReactNode };
+// ── Files ────────────────────────────────────────────────────────────────────────────────────────
+
+const REFERENCE_ENDINGS = ["ris", "bib", "enw", "nbib", "xml", "ciw", "csv", "tsv", "txt"];
+const TABLE_FILES = /\.(csv|tsv)$/i;
+const REFERENCE_FILES = new RegExp(`\\.(${REFERENCE_ENDINGS.join("|")})$`, "i");
+const PDF_FILES = /\.pdf$/i;
+const UPLOAD_ACCEPT = [...REFERENCE_ENDINGS, "pdf"].map((ending) => `.${ending}`).join(",");
+/** The most PDFs one source holds (convex/screening/validators.ts `sourceSetValidator`). */
+const PDFS_MAX = 200;
+const MB = 1024 * 1024;
+
+/** Sends a file to storage and answers with where it is kept. */
+function useUpload() {
+  const uploadUrl = useWorkspaceMutation(api.screening.held.uploadUrl);
+  return async (body: Blob) => {
+    const response = await fetch(await uploadUrl({}), { method: "POST", headers: { "Content-Type": body.type || "application/octet-stream" }, body });
+    if (!response.ok) throw new Error("The file couldn't be sent. Try again.");
+    return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
+  };
+}
 
 /**
- * What a source held, a page at a time: the DOIs or records it left out and why, or a PDF source's
- * files, each as it was told. Where the rows are of more than one kind the list narrows to one, and
- * what it shows can be copied.
+ * Reference files, tables and PDFs, dropped or chosen. A reference file is read by the server, which counts its
+ * records. A table is read here, and waits for its columns to be named where its headings don't say. PDFs chosen
+ * together are one source: each is read when the screening starts, and one with no abstract is left out then.
  */
-export function SourceItems({ rows, more, label, kinds, start, copied, help }: { rows: ItemRow[]; /** Rows after the named ones that are made only as their page is shown: a source can leave out tens of thousands. */ more?: { count: number; at: (place: number) => ItemRow }; /** What the rows are, as the count under the list names them: "files". */ label: string; kinds?: Array<{ id: string; label: string }>; /** The kind it opens on. */ start?: string; /** What the copied lines are called: with it, the list can be copied. */ copied?: [one: string, many: string]; help?: ReactNode }) {
-  const [kind, setKind] = useState(start ?? "all");
-  const [page, setPage] = useState(1);
-  const of = (id: string) => (id === "all" ? rows : rows.filter((row) => row.kind === id));
-  const listed = of(kind);
-  const total = listed.length + (more?.count ?? 0);
-  const pager = pagerOf(total, PAGE, page, setPage);
-  const shown = Array.from({ length: Math.min(PAGE, total - (pager.page - 1) * PAGE) }, (_, at) => { const place = (pager.page - 1) * PAGE + at; return listed[place] ?? more!.at(place - listed.length); });
-  const copy = () => void navigator.clipboard.writeText(listed.map((row) => row.name).join("\n")).then(() => toast(`Copied ${plural(listed.length, copied![0], copied![1])}`));
+export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const upload = useUpload();
+  const look = useWorkspaceAction(api.screening.held.look);
+  const input = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [reading, setReading] = useState<string[]>([]);
+  const [pending, setPending] = useState<Array<PendingTable & { file: File }>>([]);
+  const [refused, setRefused] = useState<Array<{ name: string; why: string }>>([]);
+  const refuse = (name: string, why: string) => setRefused((now) => [...now.filter((one) => one.name !== name), { name, why }]);
+  const has = (ref: string) => sources.some((source) => source.ref === ref);
+  /** A file by its name, size and last change: the same file chosen twice is the same source. */
+  const refOf = (file: File) => `upload:${hash(`${file.name}:${file.size}:${file.lastModified}`)}`;
+
+  const addTable = async (file: File, table: TableRead, picked: TableRead["picked"]) => {
+    const kept = await upload(file);
+    onAdd({ ref: refOf(file), name: file.name, detail: "Table", total: tableCounts(table, picked).records, set: { kind: "upload", file: kept, columns: picked as Record<string, string> } });
+  };
+  const take = async (list: FileList) => {
+    const files = [...list];
+    setRefused([]);
+    const [pdfs, references] = [files.filter((file) => PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
+    for (const file of files) if (!pdfs.includes(file) && !references.includes(file)) refuse(file.name, "Not a kind of file a screening reads");
+    const reads = [...references.map((file) => file.name), ...(pdfs.length ? [pdfs.length === 1 ? pdfs[0]!.name : `${num(pdfs.length)} PDFs`] : [])];
+    setReading((now) => [...now, ...reads]);
+    await Promise.all(references.map(async (file) => {
+      try {
+        if (has(refOf(file))) return refuse(file.name, "Already a source");
+        if (file.size > FILE_MAX_BYTES) return refuse(file.name, `Over ${FILE_MAX_BYTES / MB} MB: split it and add each part`);
+        if (TABLE_FILES.test(file.name)) {
+          const table = readTable(await file.text());
+          if (!table) return refuse(file.name, "No table of references in it");
+          if (table.ask) return setPending((now) => [...now.filter((one) => one.ref !== refOf(file)), { name: file.name, ref: refOf(file), table, picked: table.picked, file }]);
+          return await addTable(file, table, table.picked);
+        }
+        const kept = await upload(file);
+        const held = await look({ file: kept });
+        // A text file that is a table after all: its columns are named here, as any table's are.
+        if (held.table) {
+          const table = readTable(await file.text());
+          if (table) return setPending((now) => [...now.filter((one) => one.ref !== refOf(file)), { name: file.name, ref: refOf(file), table, picked: table.picked, file }]);
+        }
+        if (!held.records) return refuse(file.name, "No references in it");
+        onAdd({ ref: refOf(file), name: file.name, detail: "Reference file", total: held.records, set: { kind: "upload", file: kept } });
+      } catch (error) {
+        refuse(file.name, getErrorMessage(error, "It couldn't be read"));
+      }
+    }));
+    if (pdfs.length) {
+      try {
+        const sized = pdfs.filter((file) => file.size <= MAX_PDF_BYTES).slice(0, PDFS_MAX);
+        for (const file of pdfs) if (!sized.includes(file)) refuse(file.name, file.size > MAX_PDF_BYTES ? `Over ${MAX_PDF_MB} MB` : `One source holds up to ${PDFS_MAX} PDFs: add the rest as another`);
+        const ref = `pdf:${hash(sized.map((file) => `${file.name}:${file.size}`).sort().join("|"))}`;
+        if (has(ref)) for (const file of sized) refuse(file.name, "Already a source");
+        else if (sized.length) {
+          const kept = await Promise.all(sized.map(async (file) => ({ file: await upload(file), name: file.name })));
+          onAdd({ ref, name: `${sized[0]!.name}${sized.length > 1 ? ` and ${num(sized.length - 1)} more` : ""}`, detail: sized.length === 1 ? "A PDF" : "PDFs", total: sized.length, set: { kind: "pdf", files: kept } });
+        }
+      } catch (error) {
+        refuse(pdfs.length === 1 ? pdfs[0]!.name : `${num(pdfs.length)} PDFs`, getErrorMessage(error, "They couldn't be sent"));
+      }
+    }
+    setReading((now) => now.filter((name) => !reads.includes(name)));
+  };
+  const addPending = async (table: PendingTable & { file: File }) => {
+    if (!table.picked.title) return setPending((now) => now.map((one) => (one.ref === table.ref ? { ...one, untitled: true } : one)));
+    setPending((now) => now.filter((one) => one.ref !== table.ref));
+    await addTable(table.file, table.table, table.picked).catch((error) => refuse(table.name, getErrorMessage(error, "It couldn't be sent")));
+  };
+
   return (
     <div className="space-y-2">
-      {kinds || copied || help ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {kinds ? <Segmented label="Show" className="bg-card" value={kind} onChange={(next) => { setKind(next); setPage(1); }} options={[{ id: "all", label: "All", detail: num(rows.length) }, ...kinds.map((one) => ({ ...one, detail: num(of(one.id).length) }))]} /> : null}
-          {help}
-          {copied ? <Button variant="ghost" size="sm" className="ms-auto h-8 text-xs text-muted-foreground" disabled={!listed.length} onClick={copy}><Copy />Copy the list</Button> : null}
+      <div
+        onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(event) => { event.preventDefault(); setDragging(false); void take(event.dataTransfer.files); }}
+        className={cn("flex flex-col items-center gap-1.5 rounded-2xl border border-dashed bg-card px-6 py-7 text-center transition-colors", dragging ? "border-primary bg-primary/5" : "border-border")}
+      >
+        <p className="flex items-center gap-1 text-sm font-medium">
+          Drop reference files or PDFs here
+          <Help title="Files" facts={<><HelpFact>Reference files up to {FILE_MAX_BYTES / MB} MB</HelpFact><HelpFact>PDFs up to {MAX_PDF_MB} MB each</HelpFact></>}>
+            <p>A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.</p>
+            <p>A PDF is read when the screening starts: its title and its abstract are taken from Openscholar&apos;s index where the file prints its DOI, and from its own first pages otherwise. A PDF that prints no abstract, a scan with no text and a file that doesn&apos;t open are left out, each named with why.</p>
+          </Help>
+        </p>
+        <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
+        <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />Choose files</Button>
+      </div>
+      {reading.length || pending.length ? (
+        <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
+          {reading.map((name) => (
+            <div key={name} className="flex min-h-14 items-center gap-3 px-4 py-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium">{name}</p>
+              <Chip>Reading it</Chip>
+            </div>
+          ))}
+          {pending.map((table) => (
+            <ColumnMatch key={table.ref} pending={table} onPick={(key, head) => setPending((now) => now.map((one) => (one.ref === table.ref ? { ...one, picked: { ...one.picked, [key]: head }, untitled: false } : one)))} onAdd={() => void addPending(table)} onRemove={() => setPending((now) => now.filter((one) => one.ref !== table.ref))} />
+          ))}
         </div>
       ) : null}
-      <ul className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * 45 : undefined }}>
-        {shown.map((row) => (
-          <li key={row.key} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
-            <div className="min-w-0 flex-1 max-sm:basis-full">
-              <p className="truncate text-sm">{row.name}</p>
-              {row.detail ? <p className="truncate text-xs text-muted-foreground">{row.detail}</p> : null}
-            </div>
-            <StateChip tone={row.tone} icon={row.icon}>{row.chip}</StateChip>
-            {row.action}
-          </li>
-        ))}
-        {!total ? <li className="py-5 text-center text-sm text-muted-foreground">None.</li> : null}
-      </ul>
-      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={total} itemsPerPage={PAGE} itemLabel={label} /> : null}
+      {refused.length ? (
+        <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
+          <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <div className="min-w-0 flex-1 space-y-1">{refused.map((one) => <p key={one.name}><span className="font-medium">{one.name}</span>: {one.why}</p>)}</div>
+          <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRefused([])}><X /></Button></TooltipHint>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** The button on a matched PDF that sets its match aside, and takes that back. */
-export function WrongPaper({ wrong, onToggle, name }: { wrong: boolean; onToggle: () => void; name: string }) {
-  return wrong ? (
-    <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" aria-label={`Take the match back for ${name}`} onClick={onToggle}><Undo2 />Undo</Button>
-  ) : (
-    <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs text-muted-foreground" aria-label={`${name} is not this paper`} onClick={onToggle}>Not this paper</Button>
+// ── Pasted DOIs ──────────────────────────────────────────────────────────────────────────────────
+
+/** Pasted DOIs: found in whatever text holds them, looked up in the index, and added as one source. What the lookup didn't find, and what it found with no abstract, is said before anything is added. */
+export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const lookUp = useWorkspaceAction(api.screening.held.lookDois);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [missed, setMissed] = useState<{ missing: number; bare: number } | "twice" | null>(null);
+  const { dois, repeats } = doisIn(text);
+  // The same DOIs are the same source, in whatever order they were pasted.
+  const ref = `dois:${hash([...dois].sort().join())}`;
+  const run = async () => {
+    if (sources.some((source) => source.ref === ref)) return setMissed("twice");
+    setBusy(true);
+    try {
+      const { file, found, bare, missing } = await lookUp({ dois });
+      // None of them can be screened: there is no source to add, and why is said here.
+      if (!found) return setMissed({ missing, bare });
+      onAdd({ ref, name: `${dois[0]}${dois.length > 1 ? ` and ${num(dois.length - 1)} more` : ""}`, detail: "Pasted DOIs", total: found + bare + missing, set: { kind: "dois", file }, filters: [...(bare ? [`${num(bare)} with no abstract`] : []), ...(missing ? [`${num(missing)} not found`] : [])] });
+      setText("");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "The DOIs couldn't be looked up. Try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <span className="flex items-center gap-1">
+        <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
+        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is looked up once</HelpFact></>}>Openscholar looks each DOI up in its index and takes the paper&apos;s title and abstract from there. The ones it has no record of, and the ones whose record has no abstract, are left out and listed on the source&apos;s row once the screening has read it.</Help>
+      </span>
+      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setMissed(null); }} rows={5} aria-invalid={Boolean(missed) || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <span className="flex flex-wrap items-center gap-1.5">
+          {missed === "twice" ? (
+            <StateChip tone="warning" icon={TriangleAlert}>{dois.length === 1 ? "This DOI is already a source" : "These DOIs are already a source"}</StateChip>
+          ) : missed ? (
+            <>
+              {missed.missing ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.missing === 1 ? "1 DOI has no record" : `${num(missed.missing)} DOIs have no record`}</StateChip> : null}
+              {missed.bare ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.bare === 1 ? "1 paper has no abstract" : `${num(missed.bare)} papers have no abstract`}</StateChip> : null}
+            </>
+          ) : dois.length ? (
+            <Chip icon={Hash}>{plural(dois.length, "DOI", "DOIs")}</Chip>
+          ) : text.trim() ? (
+            <StateChip tone="warning" icon={TriangleAlert}>No DOI in what you pasted</StateChip>
+          ) : null}
+          {repeats && !missed ? <Chip>{num(repeats)} pasted more than once</Chip> : null}
+        </span>
+        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length || busy} onClick={() => void run()}>{busy ? <Spinner className="size-4" /> : <Plus />}Look up {dois.length ? plural(dois.length, "DOI", "DOIs") : "DOIs"}</Button>
+      </div>
+    </div>
   );
+}
+
+// ── Zotero ───────────────────────────────────────────────────────────────────────────────────────
+
+type ZoteroLibrary = { id?: string; name: string; papers?: number };
+type ZoteroCollection = { key: string; name: string; papers: number; inside: number };
+/** The person's own library, which their account has without asking. */
+const OWN: ZoteroLibrary = { name: "My library" };
+
+/**
+ * A Zotero account's libraries: the person's own and each group they are in. One is picked, then all of it or any
+ * of its collections is added, a collection at a time. The list's first row is where it stands, the library or a
+ * collection opened from it, with the way back up; under it are the collections there, a page of Zotero's at a time.
+ */
+export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {}).data;
+  const readGroups = useWorkspaceAction(api.screening.zoteroSources.groups);
+  const readCollections = useWorkspaceAction(api.screening.zoteroSources.collections);
+  const [library, setLibrary] = useState<ZoteroLibrary>(OWN);
+  // The collections opened on the way to where the list stands, the last of them the one it stands in.
+  const [path, setPath] = useState<ZoteroCollection[]>([]);
+  const [page, setPage] = useState(1);
+  const [deep, setDeep] = useState(true);
+  const [picking, setPicking] = useState(false);
+  const deepId = useId();
+  const connected = account?.connected === true;
+  const groups = useSWR(connected ? ["zotero-groups"] : null, () => readGroups({}), { revalidateOnFocus: false });
+  const here = path.at(-1);
+  const listed = useSWR(connected ? ["zotero-collections", library.id ?? "", here?.key ?? ""] : null, () => readCollections({ ...(library.id ? { groupId: library.id } : {}), ...(here ? { parent: here.key } : {}) }), { revalidateOnFocus: false, keepPreviousData: true });
+
+  if (account === undefined) return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading Zotero" className="size-5 text-primary" /></div>;
+  if (!connected) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-border bg-card px-6 py-7 text-center">
+        <p className="text-sm font-medium">Zotero isn&apos;t connected</p>
+        <p className="text-xs text-muted-foreground">Connect it to pick from your library and the groups you are in.</p>
+        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href="/settings/connections"><ZoteroIcon />Connect Zotero</NextLink></Button>
+      </div>
+    );
+  }
+
+  const rows = listed.data?.page ?? [];
+  const pager = pagerOf(rows.length, PAGE, page, setPage);
+  const go = (next: ZoteroCollection[]) => { setPath(next); setPage(1); };
+  const pick = (next: ZoteroLibrary) => { setLibrary(next); setPicking(false); go([]); };
+  const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
+  const under = (one: ZoteroCollection) => deep && one.inside > 0;
+  const added = (one?: ZoteroCollection) => sources.some((source) => source.ref === refOf(one) || source.ref === refOf(one, true));
+  const add = (one: ZoteroCollection, above: ZoteroCollection[]) =>
+    onAdd({ ref: refOf(one, under(one)), name: one.name, detail: `In ${library.name}`, total: one.papers, filters: [...(above.length ? [`In ${above.map((step) => step.name).join(" › ")}`] : []), ...(under(one) ? ["With its sub-collections"] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
+  const LibraryIcon = library.id ? Users : UserRound;
+  const option = (one: ZoteroLibrary) => {
+    const Icon = one.id ? Users : UserRound;
+    return (
+      <CommandItem key={one.id ?? "me"} value={one.name} onSelect={() => pick(one)} className="gap-2.5">
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate">{one.name}</span>
+        {one.papers === undefined ? null : <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{plural(one.papers, "item", "items")}</span>}
+        {one.id === library.id ? <Check className="size-4 shrink-0 text-primary" /> : null}
+      </CommandItem>
+    );
+  };
+  const step = "rounded-sm underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:text-foreground hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
+
+  return (
+    <div className="space-y-2">
+      <Popover open={picking} onOpenChange={setPicking}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label="Zotero library" className="h-9 w-full min-w-0 justify-between gap-3 bg-card px-3 font-normal">
+            <span className="flex min-w-0 items-center gap-2"><LibraryIcon className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{library.name}</span></span>
+            <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" aria-label="Zotero library" className="w-(--radix-popover-trigger-width) p-0">
+          <Command>
+            <CommandList className="max-h-72">
+              <CommandGroup heading="Yours">{option(OWN)}</CommandGroup>
+              {groups.data?.page.length ? <CommandGroup heading="Groups">{groups.data.page.map(option)}</CommandGroup> : null}
+            </CommandList>
+          </Command>
+          <p className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2 text-xs text-muted-foreground">
+            <span className="flex min-w-0 items-center gap-1.5"><ZoteroIcon className="size-3.5 shrink-0" /><span className="truncate">Connected{account.username ? ` as ${account.username}` : ""}</span></span>
+            <NextLink href="/settings/connections" className={cn(INLINE_LINK, "shrink-0")}>Connections</NextLink>
+          </p>
+        </PopoverContent>
+      </Popover>
+      <span className="flex items-center gap-1">
+        <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />Include sub-collections</label>
+        <Help title="Sub-collections" facts={<HelpFact>A paper filed in two of them is taken once</HelpFact>}>Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it, which are counted as the screening reads them.</Help>
+      </span>
+      <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isValidating && listed.data && "opacity-60")}>
+        {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. */}
+        {here ? (
+          <OfferRow
+            offer={{ name: here.name, detail: "", total: here.papers }}
+            icon={Folder}
+            trail={
+              <FadeRow scrolls scrollbar="none" className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <button type="button" onClick={() => go([])} className={cn(step, "shrink-0")}>{library.name}</button>
+                {path.slice(0, -1).map((one, at) => (
+                  <span key={one.key} className="flex shrink-0 items-center gap-1"><ChevronRight aria-hidden className="size-3" /><button type="button" onClick={() => go(path.slice(0, at + 1))} className={step}>{one.name}</button></span>
+                ))}
+              </FadeRow>
+            }
+            added={added(here)}
+            onAdd={() => add(here, path.slice(0, -1))}
+            count={here.papers > 0 || !under(here)}
+          />
+        ) : (
+          <OfferRow
+            offer={{ name: `Every paper in ${library.name}`, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0 }}
+            icon={Library}
+            added={added()}
+            count={library.papers !== undefined}
+            onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0, filters: ["Whole library"], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
+          />
+        )}
+        <div className="divide-y divide-border-subtle" style={{ minHeight: !listed.data || pager.pages > 1 ? PAGE * ROW : undefined }}>
+          {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map((one) => (
+            <OfferRow
+              key={one.key}
+              offer={{ name: one.name, detail: one.inside ? plural(one.inside, "sub-collection", "sub-collections") : "", total: one.papers }}
+              icon={Folder}
+              added={added(one)}
+              count={one.papers > 0 || !under(one)}
+              onOpen={one.inside ? () => go([...path, one]) : undefined}
+              onAdd={() => add(one, path)}
+            />
+          ))}
+          {listed.data && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{here ? `${here.name} holds no collections.` : `${library.name} has no collections.`}</p> : null}
+          {listed.error ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{getErrorMessage(listed.error, "Zotero couldn't be read. Try again.")}</p> : null}
+        </div>
+      </div>
+      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={rows.length} itemsPerPage={PAGE} itemLabel="collections" /> : null}
+      {/* ponytail: a level shows Zotero's first hundred collections; read on with `next` when a level that large is met. */}
+      {listed.data?.next !== undefined ? <p className="text-xs text-muted-foreground">Showing the first {num(rows.length)} collections here.</p> : null}
+    </div>
+  );
+}
+
+// ── Communities ──────────────────────────────────────────────────────────────────────────────────
+
+/** A community's collections, searches and records, picked from the list every other form of the app uses for them. */
+export function CommunityTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const libraries = useLibrarySources();
+  const added = (ref: string) => sources.some((source) => source.ref === ref);
+  const add = (row: Parameters<typeof rowKey>[0] & { label: string; records: number; what: string }, library: { name: string }) => {
+    const ref = `evidenceLibrary:${rowKey(row)}`;
+    if (!added(ref)) onAdd({ ref, name: row.label, detail: `In ${library.name}`, total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
+  };
+  return <LibrarySources state={libraries} isOn={(row) => added(`evidenceLibrary:${rowKey(row)}`)} onToggle={(row, library) => add(row, library)} onPasted={(held) => add(held.row, held.library)} scope={() => null} />;
 }

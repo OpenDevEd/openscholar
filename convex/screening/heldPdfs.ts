@@ -51,7 +51,8 @@ export const read = internalAction({
       try {
         if (!blob) throw new Error("No such file");
         text = (await extractPdfJsTextPages(await blob.arrayBuffer())).pages.slice(0, PAGES).map((page) => page.text).join("\n");
-      } catch {
+      } catch (error) {
+        console.error("[screening] A PDF couldn't be opened", { name, error: String(error).slice(0, 300) });
         out("broken");
         continue;
       }

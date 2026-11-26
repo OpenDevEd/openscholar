@@ -12,7 +12,7 @@ import { pricingOf, resolveTaskPick } from "../ai/serverModel";
 import { createError } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
-import { PAGE_ORDERED_SORT, readSearchPage, readWork } from "../paperSets/openalex";
+import { readSearchPage, readWork } from "../paperSets/openalex";
 import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from "../paperSets/search";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
 import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
@@ -24,6 +24,8 @@ const TRANSLATION_URL = process.env.ZOTERO_TRANSLATION_URL ?? "https://bib.opend
 /** DOIs asked of the index in one request, and PDFs read in one step. */
 const DOIS_A_REQUEST = 50;
 export const PDFS_A_STEP = 10;
+/** The order a lookup by DOI asks for: any the index takes without words to rank by, since every DOI asked for comes back in the one page. */
+const BY_DOI_SORT = "cited_by_count:desc";
 /** Titles a file's preview shows. */
 const SAMPLE = 3;
 
@@ -100,7 +102,7 @@ export async function byDois(dois: string[], spend: Spend): Promise<Map<string, 
     for (let at = 0; at < missing.length; at += DOIS_A_REQUEST) {
       const chunk = missing.slice(at, at + DOIS_A_REQUEST);
       try {
-        const { works } = await readSearchPage<Work>({ filter: `doi:${chunk.map((doi) => `https://doi.org/${doi}`).join("|")}`, sort: PAGE_ORDERED_SORT, source }, { page: 1, size: DOIS_A_REQUEST, select: SCREENING_FIELDS }, spend);
+        const { works } = await readSearchPage<Work>({ filter: `doi:${chunk.map((doi) => `https://doi.org/${doi}`).join("|")}`, sort: BY_DOI_SORT, source }, { page: 1, size: DOIS_A_REQUEST, select: SCREENING_FIELDS }, spend);
         works.forEach(keep);
       } catch (error) {
         // One index down or refusing the filter leaves the other to answer. An allowance spent is the person's to hear.
