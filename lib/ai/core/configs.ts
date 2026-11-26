@@ -177,7 +177,7 @@ export function getTranslatePaperContentConfig(
 export function getScreeningResponsesConfig(
   input: GenerateScreeningResponsesInput
 ): OperationConfig<GenerateScreeningResponsesInput, any> {
-  const schema = createScreeningResponsesSchema(input.questions)
+  const schema = createScreeningResponsesSchema(input.questions, input.passages)
   return {
     schema,
     buildPrompts: (input) => buildScreeningResponsesPrompts(input),

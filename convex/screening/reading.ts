@@ -11,6 +11,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
 import type { ScreeningReadData } from "../../lib/ai/core/batch-types";
+import { sentencesOf } from "../../lib/screening/passages";
 import { answerOf } from "../../lib/screening/setup";
 import { screeningPaperCredits } from "../../lib/pricing";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
@@ -40,7 +41,7 @@ export const readPaper = internalAction({
         { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: screeningPaperCredits(pricing), hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
         pricing,
         async () => {
-          const batch = await processScreeningBatch({ model: await openRouterModel(context.model.slug), effort: context.effort, decisionsKey: process.env.OPENROUTER_API_KEY, sessionId: String(context.jobId), papers: [{ id: voteId, title: context.paper.title, abstract: context.paper.abstract ?? "" }], questions });
+          const batch = await processScreeningBatch({ model: await openRouterModel(context.model.slug), effort: context.effort, decisionsKey: process.env.OPENROUTER_API_KEY, sessionId: String(context.jobId), papers: [{ id: voteId, title: context.paper.title, abstract: context.paper.abstract ?? "" }], questions, passages: true });
           const totalUsage = batch.usages[0] ?? { inputTokens: 0, outputTokens: 0 };
           const tracking = batch.trackingByItemId[voteId];
           const trackingEntries: AITrackingEntry[] = tracking ? [{ feature: "workpool_screening", usage: { inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0, outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0 }, latencyMs: tracking.latencyMs, temperature: tracking.temperature }] : [];
@@ -53,7 +54,10 @@ export const readPaper = internalAction({
       // By criterion, in the order they were asked.
       const answers = Object.fromEntries(context.criteria.map((criterion, i) => [criterion.key, answerOf(result.responses[questions[i]!] ?? null)]));
       const confidences = Object.fromEntries(context.criteria.flatMap((criterion, i) => (result.confidences[questions[i]!] === undefined ? [] : [[criterion.key, result.confidences[questions[i]!]!]])));
-      const passages = result.passages ? Object.fromEntries(context.criteria.flatMap((criterion, i) => (typeof result.passages![questions[i]!] === "number" ? [[criterion.key, result.passages![questions[i]!]!]] : []))) : undefined;
+      // A sentence it named is kept where the abstract has one at that number, as the page cuts it (lib/screening/passages.ts).
+      const sentences = sentencesOf(context.paper.abstract ?? "").length;
+      const named = (at: number | null | undefined): at is number => typeof at === "number" && Number.isInteger(at) && at >= 0 && at < sentences;
+      const passages = result.passages ? Object.fromEntries(context.criteria.flatMap((criterion, i) => (named(result.passages![questions[i]!]) ? [[criterion.key, result.passages![questions[i]!]!]] : []))) : undefined;
       return { read: true, answers, confidences, ...(passages && Object.keys(passages).length ? { passages } : {}), credits };
     } catch (error) {
       // The workspace can't pay for this paper: its screening's models stop where they are until it can.

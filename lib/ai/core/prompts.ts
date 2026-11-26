@@ -1,3 +1,4 @@
+import { sentencesOf } from '../../screening/passages'
 import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, SuggestSearchesInput } from './types'
 import { getLanguageName } from './languages'
 
@@ -250,7 +251,7 @@ export function buildScreeningResponsesPrompts(input: GenerateScreeningResponses
   return {
     system: `You are an expert systematic review researcher conducting literature screening.
 
-CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects.
+CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects${input.passages ? ', and a "passages" object' : ''}.
 
 Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
 
@@ -265,12 +266,15 @@ CRITICAL INSTRUCTIONS:
 RESPONSE FORMAT:
 Return a JSON object with:
 - responses: Object mapping each question to boolean|null
-- confidences: Object mapping each question to your confidence in that response (0-1)`,
+- confidences: Object mapping each question to your confidence in that response (0-1)${input.passages ? `
+- passages: Object mapping each question to the number of the one sentence of the abstract your response rests on most, or null where it rests on no sentence` : ''}`,
     prompt: `Please screen this academic paper by answering the following questions:
 
 PAPER TITLE: "${input.title}"
 
-ABSTRACT: "${input.abstract || 'No abstract available'}"
+${input.passages
+  ? `ABSTRACT, a sentence a line, each after its number:\n${sentencesOf(input.abstract || 'No abstract available').map((sentence, i) => `[${i}] ${sentence}`).join('\n')}`
+  : `ABSTRACT: "${input.abstract || 'No abstract available'}"`}
 
 SCREENING QUESTIONS:
 ${input.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}

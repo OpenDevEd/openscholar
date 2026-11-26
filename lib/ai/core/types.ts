@@ -37,6 +37,8 @@ export interface GenerateScreeningResponsesInput {
   title: string
   abstract: string
   questions: string[]
+  /** Ask, with each answer, for the sentence of the abstract it rests on (lib/screening/passages.ts). */
+  passages?: boolean
 }
 
 export interface Usage {

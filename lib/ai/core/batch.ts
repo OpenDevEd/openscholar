@@ -124,7 +124,7 @@ async function settleBatch<TItem, TResult>(
 // ═══════════════════════════════════════════════════════════════
 
 import { getScreeningResponsesConfig } from './configs'
-import type { ScreeningResultData } from './batch-types'
+import type { ScreeningReadData, ScreeningResultData } from './batch-types'
 import type { GenerateScreeningResponsesInput } from './types'
 
 export interface ScreeningBatchConfig {
@@ -137,6 +137,8 @@ export interface ScreeningBatchConfig {
   /** Groups a job's Jev calls in OpenRouter's logs. */
   sessionId?: string
   failure?: Failure
+  /** Ask a text model, with each answer, for the sentence of the abstract it rests on. A decision model names none. */
+  passages?: boolean
 }
 
 /** A paper's screening, keeping the confidence in each answer; the overall figure is their mean. */
@@ -147,8 +149,8 @@ function screeningResult(responses: Record<string, boolean | null>, confidences:
 
 export async function processScreeningBatch(
   config: ScreeningBatchConfig
-): Promise<BatchProcessorResult<ScreeningResultData>> {
-  const { model, effort, papers, questions, decisionsKey, sessionId, failure } = config
+): Promise<BatchProcessorResult<ScreeningReadData>> {
+  const { model, effort, papers, questions, decisionsKey, sessionId, failure, passages } = config
   const modelSlug = typeof model === 'string' ? model : model.modelId
 
   // Jev answers every question about a paper in one decisions call.
@@ -173,8 +175,8 @@ export async function processScreeningBatch(
   return processBatch<
     BatchPaper,
     GenerateScreeningResponsesInput,
-    { responses: Record<string, boolean | null>; confidences: Record<string, number> },
-    ScreeningResultData
+    { responses: Record<string, boolean | null>; confidences: Record<string, number>; passages?: Record<string, number | null> },
+    ScreeningReadData
   >(
     papers,
     {
@@ -184,9 +186,10 @@ export async function processScreeningBatch(
         title: paper.title,
         abstract: paper.abstract,
         questions,
+        ...(passages ? { passages } : {}),
       }),
       getOperationConfig: getScreeningResponsesConfig,
-      formatResult: (output) => screeningResult(output.responses, output.confidences),
+      formatResult: (output) => ({ ...screeningResult(output.responses, output.confidences), ...(output.passages ? { passages: output.passages } : {}) }),
       getItemId: (paper) => paper.id,
       failure,
     }

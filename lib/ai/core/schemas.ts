@@ -46,15 +46,17 @@ export const toWrittenCriteria = (criteria: z.infer<typeof screeningCriteriaSche
   })),
 })
 
-export function createScreeningResponsesSchema(questions: string[]) {
+export function createScreeningResponsesSchema(questions: string[], passages = false) {
   const responseProperties: Record<string, z.ZodTypeAny> = {}
   const confidenceProperties: Record<string, z.ZodTypeAny> = {}
+  const passageProperties: Record<string, z.ZodTypeAny> = {}
 
   for (const question of questions) {
     responseProperties[question] = z.union([z.boolean(), z.null()]).describe(
       `Response to: "${question}" (true=yes, false=no, null=unclear)`
     )
     confidenceProperties[question] = z.number().min(0).max(1).describe(`Confidence in the response to: "${question}" (0-1)`)
+    passageProperties[question] = z.union([z.number().int().min(0), z.null()]).describe(`The number of the one sentence of the abstract the response to "${question}" rests on most, or null where it rests on none`)
   }
 
   return z.object({
@@ -64,6 +66,9 @@ export function createScreeningResponsesSchema(questions: string[]) {
     confidences: z.object(confidenceProperties).describe(
       'An object where keys are the same screening questions and values are the confidence in each response (0-1)'
     ),
+    ...(passages
+      ? { passages: z.object(passageProperties).describe('An object where keys are the same screening questions and values are the number of the abstract sentence each response rests on, or null') }
+      : {}),
   })
 }
 
