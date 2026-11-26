@@ -31,10 +31,10 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { passageAt, plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName, modelsOf } from "./data";
+import { passageAt, plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, NO_VOTE, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -335,7 +335,7 @@ function Screen({ open }: { open: Open }) {
   // The criterion Y, N and U answer: the one being looked at, or the first still unanswered.
   const toAnswer = answering ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined)) : undefined;
   // A criterion has a passage where the abstract is on the page in the language the criteria are written in: the sentence that speaks to it, as the models quote it.
-  const readable = paper ? paper.sentences.length > 0 && !(paper.original && !translated) : false;
+  const readable = paper ? !(paper.original && !translated) : false;
   const sentenceOf = (criterion: Criterion) => (paper && readable ? passageAt(paper, criterion, criteria) : -1);
   /** Looks at a criterion, or away from it when it is the one being looked at. Its passage opens under the question and is marked in the abstract. The paper is never scrolled to it: whoever is reading the votes further down keeps their place, and the passage under the question is the sentence itself. */
   const light = (criterion: Criterion) => {
@@ -679,9 +679,7 @@ function Screen({ open }: { open: Open }) {
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
                         {discussion && said ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
                       </div>
-                      {!paper.sentences.length ? (
-                        <NoAbstract models={modelsOf(screening).length > 0} />
-                      ) : paper.original && !translated ? (
+                      {paper.original && !translated ? (
                         <div className="space-y-3">
                           <p lang="fr" className="text-[0.95rem] leading-7">{paper.original.text}</p>
                           <Button variant="outline" size="sm" onClick={() => setTranslated(true)}><TranslateIcon />Translate from {paper.original.language}</Button>

@@ -226,25 +226,29 @@ export function ZoteroTab({ connected, account, onConnect, sources, onAdd }: { c
   );
 }
 
-/** A box to paste DOIs into, in any form, and the button that looks them up. A lookup that finds none leaves what was pasted and says under the box how many don't exist and how many have no record. */
-export function DoiTab({ onLookUp }: { /** Null when some were found; else how many don't exist (`none`) and how many exist with no record (`bare`). */ onLookUp: (dois: string[]) => { none: number; bare: number } | null }) {
+type Missed = { none: number; bare: number; blank: number };
+/** A box to paste DOIs into, in any form, and the button that looks them up. A lookup that brings nothing leaves what was pasted and says why under the box: how many don't exist, have no record or have no abstract, or that the same DOIs are a source already. */
+export function DoiTab({ onLookUp }: { /** Null when some can be screened; else how many don't exist (`none`), how many exist with no record (`bare`) and how many have a record with no abstract (`blank`). */ onLookUp: (dois: string[]) => Missed | "twice" | null }) {
   const [text, setText] = useState("");
-  const [missed, setMissed] = useState<{ none: number; bare: number } | null>(null);
+  const [missed, setMissed] = useState<Missed | "twice" | null>(null);
   const { dois, repeats } = doisIn(text);
   return (
     <div className="space-y-2">
       <span className="flex items-center gap-1">
         <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is looked up once</HelpFact></>}>Openscholar looks each DOI up in its index, then with Crossref and DataCite, which issue DOIs, and takes the title and the abstract from the first that has them. The ones it can&apos;t find are left out and listed on the source&apos;s row, to copy and check.</Help>
+        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is looked up once</HelpFact></>}>Openscholar looks each DOI up in its index, then with Crossref and DataCite, which issue DOIs, and takes the title and the abstract from the first that has them. The ones it can&apos;t find, and the ones whose record has no abstract, are left out and listed on the source&apos;s row, to copy and check.</Help>
       </span>
       <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setMissed(null); }} rows={5} aria-invalid={Boolean(missed) || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="flex flex-wrap items-center gap-1.5">
-          {missed ? (
+          {missed === "twice" ? (
+            <StateChip tone="warning" icon={TriangleAlert}>{dois.length === 1 ? "This DOI is already a source" : "These DOIs are already a source"}</StateChip>
+          ) : missed ? (
             // Why none became a paper, as the list on a source's row would say it.
             <>
               {missed.none ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.none === 1 ? "1 DOI doesn't exist" : `${num(missed.none)} DOIs don't exist`}</StateChip> : null}
               {missed.bare ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.bare === 1 ? "1 DOI has no record" : `${num(missed.bare)} DOIs have no record`}</StateChip> : null}
+              {missed.blank ? <StateChip tone="destructive" icon={TriangleAlert}>{missed.blank === 1 ? "1 paper has no abstract" : `${num(missed.blank)} papers have no abstract`}</StateChip> : null}
             </>
           ) : dois.length ? (
             <Chip icon={Hash}>{plural(dois.length, "DOI", "DOIs")}</Chip>
@@ -301,7 +305,7 @@ export function ColumnMatch({ pending, onPick, onAdd, onRemove }: { pending: Pen
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <span className="flex flex-wrap gap-1.5">
             {counts.untitled.length ? <Chip>{plural(counts.untitled.length, "row", "rows")} without a title left out</Chip> : null}
-            {picked.title && counts.noAbstract ? <StateChip tone="warning">{num(counts.noAbstract)} without an abstract</StateChip> : null}
+            {picked.title && counts.bare.length ? <StateChip tone="warning">{num(counts.bare.length)} without an abstract</StateChip> : null}
           </span>
           <Button size="sm" className="ms-auto" onClick={onAdd}><Plus />Add {picked.title ? plural(counts.records, "record", "records") : "its records"}</Button>
         </div>
@@ -318,12 +322,14 @@ export type ItemRow = { key: string; name: string; detail?: string; chip: string
  * files, each as it was told. Where the rows are of more than one kind the list narrows to one, and
  * what it shows can be copied.
  */
-export function SourceItems({ rows, label, kinds, start, copied, help }: { rows: ItemRow[]; /** What the rows are, as the count under the list names them: "files". */ label: string; kinds?: Array<{ id: string; label: string }>; /** The kind it opens on. */ start?: string; /** What the copied lines are called: with it, the list can be copied. */ copied?: [one: string, many: string]; help?: ReactNode }) {
+export function SourceItems({ rows, more, label, kinds, start, copied, help }: { rows: ItemRow[]; /** Rows after the named ones that are made only as their page is shown: a source can leave out tens of thousands. */ more?: { count: number; at: (place: number) => ItemRow }; /** What the rows are, as the count under the list names them: "files". */ label: string; kinds?: Array<{ id: string; label: string }>; /** The kind it opens on. */ start?: string; /** What the copied lines are called: with it, the list can be copied. */ copied?: [one: string, many: string]; help?: ReactNode }) {
   const [kind, setKind] = useState(start ?? "all");
   const [page, setPage] = useState(1);
   const of = (id: string) => (id === "all" ? rows : rows.filter((row) => row.kind === id));
   const listed = of(kind);
-  const pager = pagerOf(listed.length, PAGE, page, setPage);
+  const total = listed.length + (more?.count ?? 0);
+  const pager = pagerOf(total, PAGE, page, setPage);
+  const shown = Array.from({ length: Math.min(PAGE, total - (pager.page - 1) * PAGE) }, (_, at) => { const place = (pager.page - 1) * PAGE + at; return listed[place] ?? more!.at(place - listed.length); });
   const copy = () => void navigator.clipboard.writeText(listed.map((row) => row.name).join("\n")).then(() => toast(`Copied ${plural(listed.length, copied![0], copied![1])}`));
   return (
     <div className="space-y-2">
@@ -335,7 +341,7 @@ export function SourceItems({ rows, label, kinds, start, copied, help }: { rows:
         </div>
       ) : null}
       <ul className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * 45 : undefined }}>
-        {listed.slice((pager.page - 1) * PAGE, pager.page * PAGE).map((row) => (
+        {shown.map((row) => (
           <li key={row.key} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
             <div className="min-w-0 flex-1 max-sm:basis-full">
               <p className="truncate text-sm">{row.name}</p>
@@ -345,9 +351,9 @@ export function SourceItems({ rows, label, kinds, start, copied, help }: { rows:
             {row.action}
           </li>
         ))}
-        {!listed.length ? <li className="py-5 text-center text-sm text-muted-foreground">None.</li> : null}
+        {!total ? <li className="py-5 text-center text-sm text-muted-foreground">None.</li> : null}
       </ul>
-      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={listed.length} itemsPerPage={PAGE} itemLabel={label} /> : null}
+      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={total} itemsPerPage={PAGE} itemLabel={label} /> : null}
     </div>
   );
 }

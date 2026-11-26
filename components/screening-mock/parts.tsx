@@ -643,16 +643,6 @@ export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
   return <p {...rest} className={cn("rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground", className)} />;
 }
 
-/** A paper that came without an abstract says so in the abstract's place, with what to do about it behind its "?". */
-export function NoAbstract({ models = false }: { /** The screening has models, which read such a paper too. */ models?: boolean }) {
-  return (
-    <EmptyNote className="flex items-center gap-1.5 text-start">
-      No abstract
-      <Help title="Papers without an abstract" facts={models ? <HelpFact>Models vote on the title alone</HelpFact> : undefined}>Reviewers vote on the title, or vote Maybe where the title can&apos;t settle the paper.</Help>
-    </EmptyNote>
-  );
-}
-
 /**
  * The facts under a paper's title, the same on Screen and in the Papers drawer: where it came from, when it was added
  * if that was after the start, how often it is cited, and the way to its full text. The first two open the papers that

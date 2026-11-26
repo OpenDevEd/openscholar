@@ -40,6 +40,9 @@ import {
   type Screening,
   type Standing,
   PDF_LEFT,
+  bareOf,
+  leftOf,
+  leftTotal,
   pdfAdded,
   pdfStands,
 } from "./data";
@@ -150,7 +153,7 @@ export const risOf = (papers: Paper[]) =>
         `PY  - ${paper.year}`,
         `JO  - ${paper.venue}`,
         ...(doi ? [`DO  - ${doi}`, `UR  - https://doi.org/${doi}`] : []),
-        ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []),
+        `AB  - ${paper.sentences.join(" ")}`,
         ...(paper.original ? [`LA  - ${paper.original.language}`] : []),
         ...(cutShort(paper) ? ["N1  - The source gave an incomplete list of authors."] : []),
         "ER  - ",
@@ -175,7 +178,7 @@ export const bibOf = (papers: Paper[], every: Paper[] = papers) => {
       const doi = doiOf(paper);
       // "and others" is BibTeX's own way to end a list it doesn't have all of.
       const authors = [...authorsOf(paper), ...(cutShort(paper) ? ["others"] : [])].join(" and ");
-      const words = [["title", paper.title], ["author", authors], ["journal", paper.venue], ...(paper.sentences.length ? [["abstract", paper.sentences.join(" ")]] : []), ...(paper.original ? [["language", paper.original.language]] : [])].map(([name, value]) => [name, bibText(value!)]);
+      const words = [["title", paper.title], ["author", authors], ["journal", paper.venue], ["abstract", paper.sentences.join(" ")], ...(paper.original ? [["language", paper.original.language]] : [])].map(([name, value]) => [name, bibText(value!)]);
       // An identifier is written as it is: a DOI's own signs are not text.
       const fields = [...words.slice(0, 2), ["year", String(paper.year)], ...words.slice(2, 3), ...(doi ? [["doi", doi]] : []), ...words.slice(3), ["paperid", paper.id]];
       return `@article{${keys.get(paper.id)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
@@ -246,12 +249,14 @@ export function flowOf(out: Taken): FlowRow[] {
   const { screening, state } = out;
   const { counts } = state;
   const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
+  // What the sources held and the screening never took: papers with no abstract, and what couldn't be read or found.
+  const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
   const looks = screening.updates ?? [];
   const later = looks.reduce((sum, look) => sum + look.found, 0);
   return [
     {
-      main: { title: "Records identified", n: found, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) })), ...(later ? [{ label: looks.length === 1 ? `Of these, by the later search on ${fullDay(looks[0]!.at)}` : `Of these, by ${looks.length} later searches, the last on ${fullDay(looks.at(-1)!.at)}`, n: later }] : [])] },
-      side: [{ title: "Records removed before screening", n: found - kept, lines: [{ label: "Duplicates", n: found - kept }] }],
+      main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(later ? [{ label: looks.length === 1 ? `Of these, by the later search on ${fullDay(looks[0]!.at)}` : `Of these, by ${looks.length} later searches, the last on ${fullDay(looks.at(-1)!.at)}`, n: later }] : [])] },
+      side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: "Duplicates", n: found - kept }, ...(bare ? [{ label: "No abstract", n: bare }] : []), ...(left - bare ? [{ label: "Could not be read or found", n: left - bare }] : [])] }],
     },
     {
       main: { title: open ? "Records in screening on title and abstract" : "Records screened on title and abstract", n: kept },
@@ -305,6 +310,7 @@ export function methodsOf(out: Taken) {
   const { screening, state, me } = out;
   const { papers, votes, counts } = state;
   const [found, kept, open] = [foundTotal(screening.sources), paperTotal(screening.sources), openIn(out)];
+  const [left, bare] = [leftTotal(screening.sources), screening.sources.reduce((sum, source) => sum + bareOf(source), 0)];
   const looks = screening.updates ?? [];
   const later = looks.reduce((sum, look) => sum + look.found, 0);
   const { people, each } = readersOf(screening);
@@ -317,7 +323,6 @@ export function methodsOf(out: Taken) {
   // Who reads each record, said the way a methods section says it.
   const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${names[0]})` : people.length === 2 ? `Both human reviewers (${names.join(" and ")})` : `All ${people.length} human reviewers (${names.join(", ")})`) : `${numberWord(each)} of the ${people.length} human reviewers (${names.join(", ")})`;
   const unread = count(papers, (paper) => votes[paper.id]!.some((one) => one.failed));
-  const untitled = count(papers, (paper) => !paper.sentences.length);
   const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
   // What changed its settings or its reviewers after it began. Asking a reviewer, reminding one, pausing the models, sharing, moving and finishing are in its activity too, and change neither.
   const changed = screening.changes.filter((change) => change.at > screening.createdAt && change.by !== SCHEDULE && !/^(Asked|Sent|Paused|Resumed|Moved|Marked|Reopened|Shared|Checked|Started)\b/.test(change.what)).length;
@@ -332,10 +337,10 @@ export function methodsOf(out: Taken) {
   const late = people.filter((person) => person.addedAt > screening.createdAt);
   return [
     !open ? "" : running ? `Screening was still in progress when this was written: ${num(kept - open)} of ${num(kept)} records had been settled.` : `The screening was marked finished with ${plural(open, "record", "records")} still open: ${num(kept - open)} of ${num(kept)} records had been settled.`,
-    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found)}) were brought into Openscholar. ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
+    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
     looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${fullDay(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
-    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}${untitled ? `; ${plural(untitled, "record", "records")} had no abstract, so only ${untitled === 1 ? "its title was" : "their titles were"} available` : ""}.`,
+    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.`,
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer and a quoted passage for every criterion${unread ? `; ${plural(unread, "record", "records")} could not be read by a model and ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",
@@ -386,7 +391,7 @@ export function recordOf(out: Taken, at: number) {
       return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
-    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, facts: source.facts ?? [], filters: source.filters ?? [], left_out: source.files ? source.files.filter((file) => !pdfAdded(file)).map((file) => ({ name: file.name, why: PDF_LEFT[pdfStands(file) as keyof typeof PDF_LEFT] })) : (source.left ?? []), added_at: since(source.addedAt), found: taken(source), after_duplicates: keptOf(source), checks: (source.updates ?? []).map((update) => ({ at: iso(update.at), found: update.added, duplicates: update.duplicates })) })),
+    sources: screening.sources.map((source) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, facts: source.facts ?? [], filters: source.filters ?? [], left_out: source.files ? source.files.filter((file) => !pdfAdded(file)).map((file) => ({ name: file.name, why: PDF_LEFT[pdfStands(file) as keyof typeof PDF_LEFT] })) : (source.left ?? []), left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source), checks: (source.updates ?? []).map((update) => ({ at: iso(update.at), found: update.added, duplicates: update.duplicates })) })),
     papers: paperRows(out, state.papers).map((row, i) => ({ ...row, source_id: state.papers[i]!.source })),
     // The votes that were cast and show, each with what a model read for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

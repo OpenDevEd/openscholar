@@ -34,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { PDF_HOW, PDF_LEFT, paperAt, pdfAdded, pdfStands, type PdfFile, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder, standsTo, startedSays } from "./data";
+import { NO_ABSTRACT, PDF_HOW, PDF_LEFT, bareOf, leftOf, leftTotal, paperAt, pdfAdded, pdfStands, type PdfFile, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder, standsTo, startedSays } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
@@ -61,8 +61,8 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = 
 ];
 const OFFER_PAGE = 5;
 /** Why a file became no source: not a kind it reads, nothing in it to read, or a PDF that can't be screened. */
-type Refusal = "type" | "empty" | "twice" | keyof typeof PDF_LEFT;
-const REFUSALS: Refusal[] = ["type", "empty", "twice", "abstract", "scan", "broken"];
+type Refusal = "type" | "empty" | "bare" | "twice" | keyof typeof PDF_LEFT;
+const REFUSALS: Refusal[] = ["type", "empty", "bare", "twice", "abstract", "scan", "broken"];
 /** A batch of PDFs with the ones another source already holds marked: the last so many of those taken, as the count of duplicates is made up. */
 const twinned = (files: PdfFile[], count: number) => { let left = count; return [...files].reverse().map((file) => (left > 0 && pdfAdded(file) ? (left--, { ...file, twin: true }) : file)).reverse(); };
 function refusalSays(why: Refusal, names: string[]) {
@@ -70,20 +70,34 @@ function refusalSays(why: Refusal, names: string[]) {
   const files = listed(names);
   if (why === "type") return `Couldn't read ${files}. It reads ${UPLOAD_FORMATS} files.`;
   if (why === "empty") return `Found no references in ${files}.`;
+  if (why === "bare") return `${files} ${many ? "hold" : "holds"} no record with an abstract.`;
   if (why === "twice") return `${files} ${many ? "are" : "is"} already in this screening.`;
   if (why === "abstract") return `${files} ${many ? "have" : "has"} no abstract, in the file or in any index, and ${many ? "were" : "was"} left out.`;
   if (why === "scan") return `${files} ${many ? "are scans" : "is a scan"} with no text to read, and ${many ? "were" : "was"} left out.`;
   return `${files} ${many ? "aren't PDFs that open" : "isn't a PDF that opens"}.`;
 }
-/** What a reference file's records give the screening, with the lookups made up in the shares measured: nine in ten records with a DOI are in the index, a third of the others, and a lookup fills a fifth of the missing abstracts. */
-function recordFacts({ records, untitled, noAbstract, withDoi }: { records: number; untitled: number[]; noAbstract: number; withDoi: number }) {
-  const matched = Math.min(records, Math.round(withDoi * 0.93 + (records - withDoi) * 0.35));
-  const bare = Math.round(noAbstract * 0.8);
+/**
+ * What a reference file's records give the screening. A record with no abstract is left out, unless a lookup finds one, as a
+ * record with no title is. The lookups are made up in the shares measured: nine in ten records with a DOI are in the index and
+ * a third of the others, and a lookup finds an abstract for a fifth of the records that came without one.
+ */
+function recordFacts({ records, untitled, bare, withDoi }: { records: number; untitled: number[]; bare: string[]; withDoi: number }) {
+  const out = bare.filter((title) => hash(title) % 5 !== 0);
+  const total = records - out.length;
+  const matched = Math.min(total, Math.round(withDoi * 0.93 + (records - withDoi) * 0.35));
   return {
-    facts: [...(matched ? [`${num(matched)} found in Openscholar's index`] : []), ...(records - matched ? [`${num(records - matched)} not in the index`] : []), ...(bare ? [`${num(bare)} without an abstract`] : [])],
-    left: untitled.map((place) => ({ name: `Record ${num(place)} of the file`, why: "No title" })),
+    total,
+    facts: [...(matched ? [`${num(matched)} found in Openscholar's index`] : []), ...(total - matched ? [`${num(total - matched)} not in the index`] : [])],
+    left: [...untitled.map((place) => ({ name: `Record ${num(place)} of the file`, why: "No title" })), ...out.map((title) => ({ name: title, why: NO_ABSTRACT }))],
   };
 }
+/** How many in a hundred of a source's papers have no abstract, made up by where they come from: an index holds an abstract for most of what it lists, a community's records are whatever its sources gave, and another screening's included papers all had one. */
+const BARE_SHARE: Partial<Record<SourceKind, number>> = { search: 14, collection: 9, saved: 9, evidenceLibrary: 27 };
+/** What a community source's row says where nothing checks it again. */
+const AS_IT_STOOD = "As the community stood when it was added";
+/** A place far past any source's run of made-up papers: the papers it left out are told from there on, so none is one it took. */
+const LEFT_FROM = 1_000_000;
+
 /**
  * What happened on a running screening while its settings were open, which a save keeps: the votes, how far each
  * model has read, what was settled, the results held and let go, the papers moved between reviewers, the places of
@@ -402,11 +416,12 @@ export function ScreeningForm({ id }: { id?: string }) {
   const patchSource = (id: string, patch: Partial<Source> | ((source: Source) => Partial<Source>)) =>
     setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.id === id ? { ...source, ...(typeof patch === "function" ? patch(source) : patch) } : source)) }));
   const refuse = (names: string[], why: Refusal) => setRejected((now) => [...now.filter((one) => !names.includes(one.name)), ...names.map((name) => ({ name, why }))]);
-  // A file's records as a source: how many the index knows, how many have no abstract, and the ones with no title, which are left out.
+  // A file's records as a source: how many the index knows, and the ones with no title or no abstract, which are left out.
   const addRecords = (name: string, detail: string, counts: Parameters<typeof recordFacts>[0], ref: string) => {
     if (!counts.records) return refuse([name], "empty");
-    const { facts, left } = recordFacts(counts);
-    addSource("upload", name, detail, counts.records, facts, { ref, ...(left.length ? { left } : {}) });
+    const { total, facts, left } = recordFacts(counts);
+    if (!total) return refuse([name], "bare");
+    addSource("upload", name, detail, total, facts, { ref, ...(left.length ? { left } : {}) });
   };
   // What a file holds is counted from the file itself. A reference file becomes a source of its own, a table waits for its columns where it can't name them, and PDFs join one source between them. The same file a second time is turned away.
   const take = async (list: FileList | File[]) => {
@@ -448,28 +463,37 @@ export function ScreeningForm({ id }: { id?: string }) {
       else for (const why of ["abstract", "scan", "broken"] as const) { const files = read.filter((file) => file.how === why).map((file) => file.name); if (files.length) refuse(files, why); }
     }
   };
-  // Pasted DOIs are looked up: the ones found are the source, and the rest are listed on its row with why. The source holds what the lookup gives from the start, and its row shows "Looking up" over it for as long as a lookup takes, so nothing arrives later that removing the source or throwing the changes away could miss. When none is found there is no source: what comes back says how many don't exist and how many have no record.
+  // Pasted DOIs are looked up: the ones found with an abstract are the source, and the rest are listed on its row with why. The source holds what the lookup gives from the start, and its row shows "Looking up" over it for as long as a lookup takes, so nothing arrives later that removing the source or throwing the changes away could miss. When none can be screened there is no source: what comes back says how many don't exist, how many have no record, and how many have no abstract.
   const lookUp = (dois: string[]) => {
     const outcomes = dois.map((doi) => ({ doi, ...doiOutcome(doi) }));
-    const found = outcomes.flatMap((one) => (one.found ? [one] : []));
-    const left = outcomes.flatMap((one) => (one.found ? [] : [{ name: one.doi, why: one.why }]));
-    if (!found.length) return { none: left.filter((one) => one.why === NOT_A_DOI).length, bare: left.filter((one) => one.why !== NOT_A_DOI).length };
-    const name = `${found[0]!.doi}${found.length > 1 ? ` and ${num(found.length - 1)} more` : ""}`;
+    const taken = outcomes.flatMap((one) => (one.found && one.abstract ? [one.doi] : []));
+    const left = outcomes.flatMap((one) => (one.found ? (one.abstract ? [] : [{ name: one.doi, why: NO_ABSTRACT }]) : [{ name: one.doi, why: one.why }]));
+    const said = (why: string) => left.filter((one) => one.why === why).length;
+    if (!taken.length) return { none: said(NOT_A_DOI), bare: left.length - said(NOT_A_DOI) - said(NO_ABSTRACT), blank: said(NO_ABSTRACT) };
+    // The same DOIs are the same source, in whatever order they were pasted.
+    const ref = `dois:${hash([...dois].sort().join())}`;
+    if (draft.sources.some((source) => source.ref === ref)) return "twice" as const;
+    const name = `${taken[0]}${taken.length > 1 ? ` and ${num(taken.length - 1)} more` : ""}`;
     const id = sourceId(draft.sources, name);
-    const bare = found.filter((one) => !one.abstract).length;
-    addSource("dois", name, "Pasted DOIs", found.length, bare ? [`${num(bare)} without an abstract`] : [], { ref: `dois:${hash(dois.join())}`, ...(left.length ? { left } : {}) });
+    addSource("dois", name, "Pasted DOIs", taken.length, undefined, { ref, ...(left.length ? { left } : {}) });
     setLooking((now) => [...now, id]);
     setTimeout(() => setLooking((now) => now.filter((one) => one !== id)), 1100);
     return null;
   };
-  // A library or a collection of Zotero's is added at once. How many of its papers lack an abstract is known once they are read: the row shows "Counting abstracts" over the count for that long. A made-up fifth of the missing ones is filled by a lookup.
+  // A library or a collection of Zotero's is added at once. Which of its papers have an abstract is known once they are read: the row shows "Counting abstracts" over its counts for that long. The ones with none are left out, less a made-up fifth that a lookup finds an abstract for.
   const addZotero = (pick: ZoteroPick) => {
     const id = sourceId(draft.sources, pick.name);
     const bare = Math.round(pick.total * (1 - pick.abstracts / 100) * 0.8);
-    openAdded(pick.name, pick.total);
-    addSource("zotero", pick.name, pick.detail, pick.total, [bare ? `${num(bare)} without an abstract` : "Every paper has an abstract"], { ref: pick.ref, filters: pick.filters });
+    openAdded(pick.name, pick.total - bare);
+    addSource("zotero", pick.name, pick.detail, pick.total - bare, undefined, { ref: pick.ref, filters: pick.filters, ...(bare ? { bare } : {}) });
     setCounting((now) => [...now, id]);
     setTimeout(() => setCounting((now) => now.filter((one) => one !== id)), 1400);
+  };
+  // A source picked from a list, less its papers with no abstract: a search's index, a library and a community each say which those are as they are asked.
+  const addHeld = (kind: SourceKind, name: string, detail: string, held: number, more?: Partial<Source>) => {
+    const bare = held > 3 ? Math.min(held - 1, Math.round((held * (BARE_SHARE[kind] ?? 0)) / 100) + (hash(name) % 3 === 0 && BARE_SHARE[kind] ? 1 : 0)) : 0;
+    openAdded(name, held - bare);
+    addSource(kind, name, detail, held - bare, undefined, { ...(bare ? { bare } : {}), ...more });
   };
   const pickColumn = (name: string, key: ColumnKey, head: string | undefined) => setPending((now) => now.map((one) => (one.name === name ? { ...one, picked: { ...one.picked, [key]: head }, untitled: false } : one)));
   const addTable = (table: PendingTable) => {
@@ -709,7 +733,9 @@ export function ScreeningForm({ id }: { id?: string }) {
             action: matched && !fixed ? <WrongPaper wrong={Boolean(file.wrong)} name={file.name} onToggle={() => setWrong(source.id, file.name)} /> : undefined,
           };
         })
-      : (source.left ?? []).map((one, at) => ({ key: `${at}:${one.name}`, name: one.name, kind: one.why === NOT_A_DOI ? "none" : "bare", chip: one.why, tone: "warning" as const, icon: FileX }));
+      : (source.left ?? []).map((one, at) => ({ key: `${at}:${one.name}`, name: one.name, kind: one.why === NOT_A_DOI ? "none" : one.why === NO_ABSTRACT ? "blank" : "bare", chip: one.why, tone: "warning" as const, icon: FileX }));
+  // The papers a source left out for having no abstract, where it doesn't name them: made up from past the end of its own run, a page at a time.
+  const bareRows = (source: Source) => (source.bare ? { count: source.bare, at: (place: number): ItemRow => ({ key: `bare:${place}`, name: paperAt(draft.seed, source.slot, LEFT_FROM + place, draft.theme ?? "edtech").title, chip: NO_ABSTRACT, tone: "warning", icon: FileX }) } : undefined);
 
   // The summary beside the form: one line for each part, which opens it.
   const resolver = joined.find((person) => person.id === draft.rule.resolver) ?? joined[0];
@@ -776,10 +802,12 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="papers"
             title="Papers"
-            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A record that Openscholar&apos;s index knows takes its abstract and details from there. One with a title and no abstract is still screened, on its title.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a PDF with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
+            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A screening reads a title and an abstract. A record that Openscholar&apos;s index knows takes both from there.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a paper with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
             aside={
               <>
-                <Chip><AnimatedNumber value={found} /> found</Chip>
+                {/* What the sources held, what of that can't be screened, what two of them both held, and what is left. */}
+                <Chip><AnimatedNumber value={found + leftTotal(draft.sources)} /> found</Chip>
+                {leftTotal(draft.sources) ? <Chip><AnimatedNumber value={leftTotal(draft.sources)} /> left out</Chip> : null}
                 <Chip><AnimatedNumber value={found - papers} /> duplicates merged</Chip>
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved ? (
@@ -803,8 +831,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const open = openSource?.id === source.id && !gone ? openSource.part : null;
                         const isOpen = open === "papers";
                         // What it held and doesn't take: a PDF source's files that can't be screened, a file's records with no title, the DOIs that weren't found.
-                        const leftOut = source.files ? source.files.filter((file) => !pdfAdded(file)).length : (source.left?.length ?? 0);
-                        const itemsLabel = source.files ? (leftOut ? `${num(leftOut)} of ${plural(source.files.length, "file", "files")} left out` : plural(source.files.length, "file", "files")) : leftOut ? `${num(leftOut)} left out` : null;
+                        const leftOut = leftOf(source);
+                        // While a lookup or a count runs, the row says only that: what the source holds isn't known yet.
+                        const busy = looking.includes(source.id) ? `Looking up ${plural(source.total + leftOut, "DOI", "DOIs")}` : counting.includes(source.id) ? `Counting abstracts in ${plural(source.total + leftOut, "paper", "papers")}` : null;
+                        const itemsLabel = source.files ? (leftOut ? `${num(leftOut)} of ${plural(source.files.length, "file", "files")} left out` : plural(source.files.length, "file", "files")) : leftOut ? (bareOf(source) === leftOut ? `${num(leftOut)} with no abstract left out` : `${num(leftOut)} left out`) : null;
                         const link = sourceLink(source, store.screenings);
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own another source already had.
                         const grew = grown(source);
@@ -840,19 +870,23 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {gone ? <StateChip tone="warning" icon={Trash2}>Removed when you save</StateChip> : null}
-                                  {/* Until a lookup is back the row says only that: what the source holds isn't known yet, and its counts take this chip's place. */}
-                                  {looking.includes(source.id) ? <Chip key="looking"><Spinner className="size-3" />Looking up {plural(source.total + (source.left?.length ?? 0), "DOI", "DOIs")}</Chip> : <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>}
-                                  {doubled > 0 && taken(source) && !looking.includes(source.id) ? <Chip>{num(doubled)} already in another source</Chip> : null}
-                                  {grew > 0 && own && !gone ? (
-                                    <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
-                                  ) : grew > 0 ? (
-                                    <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
-                                  ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Checked {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
-                                  {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
-                                  {/* What a lookup or a count will say stays under its chip until it is back: the count then takes the place the chip holds, so the row keeps its height. */}
-                                  {counting.includes(source.id) ? <Chip key="counting"><Spinner className="size-3" />Counting abstracts</Chip> : looking.includes(source.id) ? null : source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : /not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                  {/* Its counts take the place the chip holds once the lookup or the count is back, so the row keeps its height. */}
+                                  {busy ? <Chip key="busy"><Spinner className="size-3" />{busy}</Chip> : (
+                                    <>
+                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
+                                      {doubled > 0 && taken(source) ? <Chip>{num(doubled)} already in another source</Chip> : null}
+                                      {grew > 0 && own && !gone ? (
+                                        <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
+                                      ) : grew > 0 ? (
+                                        <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
+                                      ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Checked {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
+                                      {/* A living screening checks a community again: the chip that says it is taken as it stood is for one that doesn't. */}
+                                      {source.filters?.filter((filter) => !(draft.living && filter === AS_IT_STOOD)).map((filter) => <Chip key={filter}>{filter}</Chip>)}
+                                      {source.facts?.map((fact) => (/not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                    </>
+                                  )}
                                   {/* What it left out opens from the chip that counts it: the list says why for each. */}
-                                  {itemsLabel && !gone && !looking.includes(source.id) ? (
+                                  {itemsLabel && !gone && !busy ? (
                                     <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className="flex rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
                                       <StateChip tone={leftOut ? "warning" : "neutral"} icon={leftOut ? FileX : undefined}>{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} /></StateChip>
                                     </button>
@@ -895,12 +929,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                                           key={source.id}
                                           rows={itemsOf(source, true)}
                                           label="DOIs"
-                                          kinds={new Set(source.left?.map((one) => one.why)).size > 1 ? [{ id: "none", label: "No such DOI" }, { id: "bare", label: "No record" }] : undefined}
+                                          kinds={new Set(source.left?.map((one) => one.why)).size > 1 ? [{ id: "blank", label: NO_ABSTRACT }, { id: "none", label: "No such DOI" }, { id: "bare", label: "No record" }].filter((kind) => itemsOf(source, true).some((row) => row.kind === kind.id)) : undefined}
                                           copied={["DOI", "DOIs"]}
-                                          help={<Help title="DOIs left out">A DOI is left out when no DOI by that name exists, which is nearly always a typing slip, or when it exists and neither Openscholar&apos;s index nor the registry that issued it holds a title for it.</Help>}
+                                          help={<Help title="DOIs left out">A screening reads a title and an abstract, so a DOI whose record has no abstract is left out. So is one that doesn&apos;t exist, which is nearly always a typing slip, and one that exists while neither Openscholar&apos;s index nor the registry that issued it holds a record of it.</Help>}
                                         />
                                       ) : (
-                                        <SourceItems key={source.id} rows={itemsOf(source, true)} label="records" />
+                                        // Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own.
+                                        <SourceItems key={source.id} rows={itemsOf(source, true)} more={bareRows(source)} label={source.kind === "upload" ? "records" : "papers"} />
                                       )}
                                     </div>
                                   ) : (
@@ -1046,7 +1081,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </>
                               }
                               added={draft.sources.some((source) => source.kind === "evidenceLibrary" && source.name === row.name)}
-                              onAdd={() => { openAdded(row.name, row.total); addSource("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As the community stood when it was added"] } : source)) })); }}
+                              onAdd={() => addHeld("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total, { filters: [inCommunity.name, AS_IT_STOOD] })}
                             />
                           ))}
                           {!communityRows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : group === "yours" ? `You have no collections in ${inCommunity.name}.` : group === "shared" ? `Nobody has shared a collection in ${inCommunity.name} with you.` : `Nothing to read in ${inCommunity.name} yet.`}</p> : null}
@@ -1062,7 +1097,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </div>
                         ) : null}
                         <div className="divide-y divide-border-subtle" style={{ minHeight: offerPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
-                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={kindIcon(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { openAdded(offer.name, offer.total); addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
+                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={kindIcon(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => addHeld(as, offer.name, offer.detail, offer.total, offer.filters ? { filters: offer.filters } : undefined)} />; })}
                           {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : kind === "screening" ? "No other screening has included a paper yet." : "Nothing here yet."}</p> : null}
                         </div>
                         {offerPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={offerPager.page} totalPages={offerPager.pages} onPageChange={setOfferPage} totalItems={offers.length} itemsPerPage={OFFER_PAGE} itemLabel="sources" /> : null}

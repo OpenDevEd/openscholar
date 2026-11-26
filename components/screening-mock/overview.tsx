@@ -22,7 +22,7 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
+import { DAY, PERSON_SAYS, inOrder, num, plural, excludedBy, bareOf, leftOf, leftTotal, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText, collectionName } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -903,22 +903,25 @@ function Checks({ open }: { open: Open }) {
 
 type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; /** The result the count is of, which gives it that result's colour as in Progress. */ tone?: Result; indent?: boolean; /** The question a reason stands for. */ question?: string; /** A reason for excluding, which is drawn where the label would be. */ reason?: string };
 
-/** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
+/** The counts a PRISMA diagram is drawn from, left to right: found, removed before screening (duplicates, and what a source left out), the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, settled, counts } = open;
   const id = screening.id;
-  const found = foundTotal(screening.sources);
+  // What the sources held: the papers they brought, and what they left out for having no abstract or nothing to read.
+  const left = leftTotal(screening.sources);
+  const bare = screening.sources.reduce((sum, source) => sum + bareOf(source), 0);
+  const found = foundTotal(screening.sources) + left;
   const kept = paperTotal(screening.sources);
   const arriving = open.gathering ? kept - papers.length : 0;
   const reasons = excludedBy(open);
   const neutral = "bg-foreground/25";
   const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[] }> = [
-    { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
+    { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
     {
-      title: "Duplicates merged",
+      title: "Removed before screening",
       total: found - kept,
       href: settingsHref(id, "papers"),
-      rows: screening.sources.flatMap((source) => (taken(source) - keptOf(source) ? [{ key: source.id, label: source.name, value: taken(source) - keptOf(source), href: settingsHref(id, "papers"), fill: neutral }] : [])),
+      rows: [{ key: "duplicates", label: "Duplicates merged", value: found - left - kept }, { key: "bare", label: "No abstract", value: bare }, { key: "unread", label: "Couldn't be read or found", value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
     },
     {
       title: "Papers",

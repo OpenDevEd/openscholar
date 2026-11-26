@@ -124,7 +124,14 @@ export const shortOf = (text: string) => {
 
 export type SourceKind = "search" | "collection" | "saved" | "screening" | "evidenceLibrary" | "zotero" | "upload" | "pdf" | "dois";
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
-export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number; /** The thing it reads, where two can share a name: a Zotero library or one of its collections, a pasted list. */ ref?: string; /** What it held and the screening doesn't take, each with why. */ left?: LeftOut[]; /** A PDF source's files, each as it was told or why it can't be screened. `total` counts the ones taken. */ files?: PdfFile[] };
+export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number; /** The thing it reads, where two can share a name: a Zotero library or one of its collections, a pasted list. */ ref?: string; /** What it held and the screening doesn't take, each with why. */ left?: LeftOut[]; /** A PDF source's files, each as it was told or why it can't be screened. `total` counts the ones taken. */ files?: PdfFile[]; /** How many of the papers it held have no abstract, where they aren't named in `left`: left out, as a screening reads a title and an abstract. `total` counts none of them. */ bare?: number };
+/** Why a paper that was found isn't screened. */
+export const NO_ABSTRACT = "No abstract";
+/** How many things a source held that the screening doesn't take. */
+export const leftOf = (source: Source) => (source.files ? source.files.filter((file) => !pdfAdded(file)).length : (source.left?.length ?? 0)) + (source.bare ?? 0);
+/** How many of those are papers with no abstract. */
+export const bareOf = (source: Source) => (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length + (source.files ?? []).filter((file) => pdfStands(file) === "abstract").length;
+export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + leftOf(source), 0);
 /** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
 export type LeftOut = { name: string; why: string };
 /** How a PDF's paper was told. */
@@ -613,9 +620,8 @@ export function paperAt(seed: number, slot: number, i: number, themeId: ThemeId)
     tested === "yes" ? theme.measured(topic.outcome, effect) : tested === "no" ? `Changes in ${topic.outcome} were described in interviews, and were not measured.` : `Results for ${topic.outcome} are discussed.`,
     theme.flagged(topic.means, topic.flag),
   ];
-  // A few papers arrive without an abstract, and a few in French: both are states a reviewer meets.
-  const bare = n % 23 === 17;
-  const french = !bare && n % 19 === 7;
+  // A few papers arrive in French: a state a reviewer meets. None arrives without an abstract: a source leaves those out.
+  const french = n % 19 === 7;
   return {
     id: `p${seed}-${slot}-${i}`,
     title: pick(rand, [`${topic.title} in ${place}: ${design.name}`, `${topic.title} and ${topic.outcome}: evidence from ${place}`, `Does ${topic.means} change ${topic.outcome}? ${design.name.charAt(0).toUpperCase()}${design.name.slice(1)} in ${place}`, `${topic.outcome.charAt(0).toUpperCase()}${topic.outcome.slice(1)} after ${topic.means} in ${place}`]),
@@ -623,7 +629,7 @@ export function paperAt(seed: number, slot: number, i: number, themeId: ThemeId)
     year: 2012 + Math.floor(rand() * 14),
     venue: pick(rand, VENUES),
     cited: Math.floor(rand() * rand() * 400),
-    sentences: bare ? [] : sentences,
+    sentences,
     ...(french ? { original: { language: "French", text: `Nous présentons ${design.name === "a systematic review" ? "une revue systématique" : "une évaluation"} menée sur ${sites} sites (${place}). L'étude a suivi les participants pendant deux ans et en mesure les résultats.` } } : {}),
     truth: { design: design.answer, age: who.answer, place: african ? "yes" : "no", outcome: tested, digital: topic.flag ? "yes" : "no" },
   };
@@ -743,16 +749,12 @@ function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since:
   // A person voted on the criteria there were: one added later is the models' to answer, and their vote stands.
   const criteria = reviewer.kind === "person" ? every.filter((criterion) => criterion.addedAt <= since) : every;
   const answers = Object.fromEntries(criteria.map((criterion) => [criterion.key, truthOf(paper, criterion)]));
-  // With no abstract there is little to go on: a model can't tell, and says so.
-  if (!paper.sentences.length && reviewer.kind === "model") for (const criterion of criteria.slice(0, 2)) answers[criterion.key] = "unclear";
-  else {
-    // A reviewer misreads a criterion now and then. Each criterion is misread or not by itself, so one added later changes
-    // no earlier answer, and a fact on the record, like the year, is never misread.
-    const rate = noiseOf(reviewer) / 3;
-    for (const criterion of criteria) {
-      const roll = hash(`${paper.id}${reviewer.id}${criterion.key}`);
-      if (byYear(paper, criterion) === undefined && (roll % 1000) / 1000 < rate) answers[criterion.key] = OTHER[answers[criterion.key]!][(roll >> 10) % 2]!;
-    }
+  // A reviewer misreads a criterion now and then. Each criterion is misread or not by itself, so one added later changes
+  // no earlier answer, and a fact on the record, like the year, is never misread.
+  const rate = noiseOf(reviewer) / 3;
+  for (const criterion of criteria) {
+    const roll = hash(`${paper.id}${reviewer.id}${criterion.key}`);
+    if (byYear(paper, criterion) === undefined && (roll % 1000) / 1000 < rate) answers[criterion.key] = OTHER[answers[criterion.key]!][(roll >> 10) % 2]!;
   }
   // Cast some time between the screening's start and its end (now, while it runs), never after: a finished screening's last vote is not from this morning.
   const span = Math.max(until - since - 45 * 60_000, 60_000);
@@ -915,9 +917,9 @@ function voteOf(screening: Screening, paper: Paper, reviewer: Reviewer): Vote | 
  */
 const failedRead = (screening: Screening, paper: Paper, reviewer: Reviewer) => cantRead(screening, paper.id, reviewer) && placeOf(screening, paper) < (screening.reached[reviewer.id] ?? 0);
 
-/** How sure a model is of one answer, from 0 to 1: less with no abstract to read, and where it couldn't tell. */
+/** How sure a model is of one answer, from 0 to 1: less where it couldn't tell. */
 export const confidenceOf = (paper: Paper, reviewer: Reviewer, criterion: Criterion, answer: Answer) => {
-  const base = !paper.sentences.length ? 0.38 : answer === "unclear" ? 0.52 : 0.8;
+  const base = answer === "unclear" ? 0.52 : 0.8;
   return Math.min(0.99, base + (hash(`${paper.id}${reviewer.id}${criterion.key}`) % 19) / 100);
 };
 
@@ -1018,13 +1020,13 @@ function standingOf(screening: Screening): Standing {
   return { papers, votes, settled, counts };
 }
 
-/** Which sentence of the abstract is a criterion's passage: its place in the list, or the last sentence where the abstract is shorter. Minus one where there is no abstract. */
+/** Which sentence of the abstract is a criterion's passage: its place in the list, or the last sentence where the abstract is shorter. */
 export const passageAt = (paper: Paper, criterion: Criterion, criteria: Criterion[]) => Math.min(criteria.indexOf(criterion), paper.sentences.length - 1);
 
 /** The passage a model quotes for its answer to a criterion, and why. */
 export function evidence(paper: Paper, criterion: Criterion, criteria: Criterion[], answer: Answer) {
   const quote = paper.sentences[passageAt(paper, criterion, criteria)] ?? paper.title;
-  const why = !paper.sentences.length ? "There is no abstract, so only the title could be read." : answer === "yes" ? "It reads this passage as meeting the criterion." : answer === "no" ? "It reads this passage as failing the criterion." : "It finds nothing in the text that settles this.";
+  const why = answer === "yes" ? "It reads this passage as meeting the criterion." : answer === "no" ? "It reads this passage as failing the criterion." : "It finds nothing in the text that settles this.";
   return { quote, why };
 }
 
@@ -1201,9 +1203,9 @@ export function startingScreenings(): Screening[] {
     1,
     [
       // This morning's weekly check found nine papers in the two searches, two of which the screening had already.
-      { ...source("s1", "search", "tablet OR software AND literacy AND primary school", "Openscholar search", 81, 0), updates: [{ at: THIS_MORNING, added: 6, duplicates: 1 }] },
-      { ...source("s2", "search", "EdTech numeracy sub-Saharan Africa", "Openscholar search", 41, 6), updates: [{ at: THIS_MORNING, added: 3, duplicates: 1 }] },
-      { ...source("s3", "upload", "pubmed-export-2026-11.ris", "RIS file", 25, 5, ["22 found in Openscholar's index", "3 not in the index", "2 without an abstract"]), left: [{ name: "Record 14 of the file", why: "No title" }] },
+      { ...source("s1", "search", "tablet OR software AND literacy AND primary school", "Openscholar search", 81, 0), bare: 11, updates: [{ at: THIS_MORNING, added: 6, duplicates: 1 }] },
+      { ...source("s2", "search", "EdTech numeracy sub-Saharan Africa", "Openscholar search", 41, 6), bare: 6, updates: [{ at: THIS_MORNING, added: 3, duplicates: 1 }] },
+      { ...source("s3", "upload", "pubmed-export-2026-11.ris", "RIS file", 25, 5, ["22 found in Openscholar's index", "3 not in the index"]), left: [{ name: "Record 14 of the file", why: "No title" }, { name: "Tablets in the classroom: a programme note", why: NO_ABSTRACT }, { name: "Editorial: reading in the early grades", why: NO_ABSTRACT }] },
       // Nine files were uploaded: seven are screened, each from its own place in the run of papers, and two could not be.
       {
         ...source("s4", "pdf", "tarl-botswana-brief.pdf and 8 more", "PDFs", 7, 2),
@@ -1262,7 +1264,7 @@ export function startingScreenings(): Screening[] {
   return [
     edtech,
     tvet,
-    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
+    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), { ...source("g2", "zotero", "CCT review 2026", "Zotero group", 96, 22), bare: 4, filters: ["Whole library"] }], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
     // In another workspace, shared with the person the mock starts as: they vote, and its settings are that workspace's.
     made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab" }),
     made("teachers", "Teacher professional development", "teachers", 4, [source("d1", "search", "teacher professional development AND learning outcomes", "Openscholar search", 640, 0)], [], 3, { model: 1 }, { createdBy: "kwame", createdAt: NOW - 15 * DAY, rule: { each: "1", settle: "all", resolver: "kwame", blind: "after" } }),
