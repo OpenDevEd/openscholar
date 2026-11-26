@@ -18,6 +18,7 @@ import { rerateOnMembership } from "../ratings";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
+import { keepCard } from "../screening/cards";
 import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, screeningFileList, screeningList, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
@@ -87,6 +88,7 @@ triggers.register("screeningJobs", followShared("screening"));
 // A workspace's screenings with reviewers, the open ones and the finished ones, for its list's tabs.
 triggers.register("screeningJobs", countList(screeningList));
 triggers.register("screeningFiles", countList(screeningFileList));
+triggers.register("screeningResults", keepCard);
 // A guest who edits a screening is one of its reviewers, and one who only looks, or has it no more, is not (../screening/reviewers.ts).
 triggers.register("itemAccess", async (ctx, change) => {
   const grant = change.newDoc ?? change.oldDoc;

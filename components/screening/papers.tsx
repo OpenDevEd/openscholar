@@ -10,6 +10,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSP
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { useConvex } from "convex/react";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -45,7 +47,7 @@ import { VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, H
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
-import { risOf, save, votesCsv } from "./export";
+import { everyPaper, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -54,6 +56,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const PaperPdf = dynamic(() => import("./paper-pdf"), { ssr: false });
 
 const PAGE = 20;
+/** What the count of a narrowed table is asked with: what narrows it, less what the count leaves to the list. */
+type CountArgs = Omit<(typeof api.screening.paperViews.counts)["_args"], "workspaceId">;
+/** Papers settled at once where many are settled together. */
+const SETTLED_AT_ONCE = 10;
 const ROW = 57;
 /** The checks for new papers the Added filter offers: the latest of them. */
 const CHECKS = 30;
@@ -167,29 +173,32 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   // The table is read from the server a page at a time, narrowed and ordered there: a screening holds more papers than a page should.
   const others = everyone.filter((one) => one !== who);
-  const listed = useCursorPageAt(
-    "page",
-    api.screening.paperViews.list,
-    inWorkspace(workspaceId, {
-      jobId: id,
-      ...(filter !== "all" ? { result: filter } : {}),
-      ...(from !== "all" ? { source: from as Id<"screeningSources"> } : {}),
-      ...(added !== "all" ? { check: added === "start" ? ("start" as const) : (added as Id<"screeningChecks">) } : {}),
-      ...(reason ? { reason } : {}),
-      ...(who ? { reviewer: who } : {}),
-      ...(who && voted !== "any" ? { voted } : {}),
-      ...(others.length ? { also: others } : {}),
-      ...(words ? { text: words } : {}),
-      ...(sort !== "added" ? { sort } : {}),
-    }),
-    PAGE,
-    { scroll: false },
-  );
+  // What the table is narrowed to, beside the result its tab keeps: the list, the tabs' counts and "Select all" are all of these papers.
+  const narrowed = {
+    ...(from !== "all" ? { source: from as Id<"screeningSources"> } : {}),
+    ...(added !== "all" ? { check: added === "start" ? ("start" as const) : (added as Id<"screeningChecks">) } : {}),
+    ...(reason ? { reason } : {}),
+    ...(who ? { reviewer: who } : {}),
+    ...(who && voted !== "any" ? { voted } : {}),
+  };
+  const matching = { jobId: id, ...(filter !== "all" ? { result: filter } : {}), ...narrowed, ...(others.length ? { also: others } : {}), ...(words ? { text: words } : {}) };
+  const listed = useCursorPageAt("page", api.screening.paperViews.list, inWorkspace(workspaceId, { ...matching, ...(sort !== "added" ? { sort } : {}) }), PAGE, { scroll: false });
   const shown = listed.items;
-  // How many papers stand each way is counted for the whole screening. Narrowed, the table can't say how many it holds before it has read them, so its tabs carry no number then.
+  // How many papers stand each way is kept for the whole screening. Narrowed to a source, a check, a reason or a reviewer, the server counts them (convex/screening/paperViews.ts `counts`). Words looked for, the papers two reviewers share and the conflicts one person settled are found a page at a time, and their tabs carry no number.
   const anyNarrow = from !== "all" || Boolean(who) || Boolean(reason) || added !== "all" || Boolean(words);
-  const countOf = (result: Result | "all") => (anyNarrow ? undefined : result === "all" ? open.total : open.counts[result]);
+  const countable = anyNarrow && !words && !others.length && voted !== "settled";
+  const under = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, countable ? ({ jobId: id, ...narrowed } as CountArgs) : "skip")).data;
+  const tabCounts = anyNarrow ? (countable ? (under ?? undefined) : undefined) : open.counts;
+  const countOf = (result: Result | "all") => (!tabCounts ? undefined : result === "all" ? (anyNarrow ? RESULTS.reduce((sum, one) => sum + tabCounts[one], 0) : open.total) : tabCounts[result]);
   const total = countOf(filter);
+  // Every paper the table is narrowed to, read for a selection of them all: the pages after this one, a page at a time.
+  const convex = useConvex();
+  const [takingAll, setTakingAll] = useState(false);
+  const selectAll = () => {
+    if (!workspaceId || takingAll) return;
+    setTakingAll(true);
+    everyPaper(convex, { workspaceId, ...matching }).then(setPicked).catch(notSaved).finally(() => setTakingAll(false));
+  };
   // When papers joined after the start: the latest checks that brought some.
   const checks = useCursorPage(api.screening.view.checks, inWorkspace(workspaceId, { jobId: id }), CHECKS);
   const arrivals = checks.items.filter((check) => !check.first && check.added > 0);
@@ -277,11 +286,13 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   }, [tableWidth, open.total > 0]);
 
   const conflictsPicked = pickedPapers.filter((one) => one.result === "conflict");
+  // Many papers are settled a few at a time: hundreds of saves at once would each wait on the others.
+  const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => { for (let at = 0; at < papers.length; at += SETTLED_AT_ONCE) await Promise.all(papers.slice(at, at + SETTLED_AT_ONCE).map(save)); };
   const settleAll = (decision: Decision, why?: { reason: string; note?: string }) => {
     const settling = conflictsPicked;
-    Promise.all(settling.map((one) => open.resolve(one.id, decision, why?.note, why?.reason))).catch(notSaved);
+    each(settling, (one) => open.resolve(one.id, decision, why?.note, why?.reason)).catch(notSaved);
     setPicked([]);
-    toast(`Settled ${settling.length} as ${RESULT_LABEL[decision]}`, { action: { label: "Undo", onClick: () => void Promise.all(settling.map((one) => open.resolve(one.id, null))).catch(notSaved) } });
+    toast(`Settled ${settling.length} as ${RESULT_LABEL[decision]}`, { action: { label: "Undo", onClick: () => void each(settling, (one) => open.resolve(one.id, null)).catch(notSaved) } });
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
@@ -426,8 +437,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             value={filter}
             onChange={(next) => go({ result: next === "all" ? null : next })}
             options={[
-              { id: "all" as const, label: "All", detail: anyNarrow ? undefined : <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={open.total} /></span> },
-              ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_ICON[result], detail: anyNarrow ? undefined : <span className={cn("tabular-nums", open.counts[result] ? TONE[RESULT_STYLE[result].tone].ink : "text-muted-foreground")}><AnimatedNumber value={open.counts[result]} /></span> })),
+              { id: "all" as const, label: "All", detail: countOf("all") === undefined ? undefined : <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={countOf("all")!} /></span> },
+              ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_ICON[result], detail: !tabCounts ? undefined : <span className={cn("tabular-nums", tabCounts[result] ? TONE[RESULT_STYLE[result].tone].ink : "text-muted-foreground")}><AnimatedNumber value={tabCounts[result]} /></span> })),
             ]}
           />
         </div>
@@ -488,6 +499,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <motion.div key="chosen" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2, ease: EASE }} className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4 max-lg:bottom-24">
             <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-border-subtle bg-card px-3 py-2 shadow-lg">
               <span className="px-1 text-sm font-medium tabular-nums">{num(chosen.length)} selected</span>
+              {/* Every paper on the page is selected and the table has more pages: the rest are one press away. */}
+              {allShown && listed.hasPages && (total === undefined || chosen.length < total) ? <Button variant="outline" size="sm" className="h-7" disabled={takingAll} onClick={selectAll}>{takingAll ? <Spinner className="size-3.5" /> : null}{total === undefined ? "Select every page" : `Select all ${num(total)}`}</Button> : null}
               {conflictsPicked.length && open.canResolve ? (
                 <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
                   <span className="text-xs text-muted-foreground">Settle {conflictsPicked.length} in conflict as</span>

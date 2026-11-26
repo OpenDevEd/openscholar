@@ -17,7 +17,8 @@ import { standingOn, type Standing } from "./access";
 import { reviewersOf, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
-import { askedOf } from "./view";
+import { progressRow } from "./bookkeeping";
+import { askedOf, keepsVotes } from "./view";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;
@@ -121,6 +122,57 @@ export const pdf = workspaceQuery({
     const looking = await lookingAt(ctx, actor, jobId);
     const paper = looking ? await ctx.db.get("screeningResults", paperId) : null;
     return paper?.jobId === jobId && paper.file ? await ctx.storage.getUrl(paper.file) : null;
+  },
+});
+
+/** Papers one count looks through: more than any plan gives one screening. Past it, no count is given. */
+const COUNTED = 8_192;
+
+/**
+ * How many of a screening's papers stand each way under what the Papers page is narrowed to: a source, a check, a
+ * reason, or the papers one reviewer is on or voted one way. Counted from the papers' cards (./cards.ts) in one read,
+ * so the page's tabs say how many each holds before any is opened. Null where it can't be said: the papers someone
+ * else voted one way, for a person from whom votes are still kept.
+ */
+export const counts = workspaceQuery({
+  args: {
+    ...byJob,
+    source: v.optional(v.id("screeningSources")),
+    check: v.optional(v.union(v.id("screeningChecks"), v.literal("start"))),
+    reason: v.optional(v.string()),
+    reviewer: v.optional(v.string()),
+    voted: v.optional(v.union(decisionValidator, v.literal("none"), v.literal("failed"))),
+  },
+  returns: v.union(v.null(), v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number(), waiting: v.number() })),
+  handler: async (ctx, actor, { jobId, source, check: asked, reason, reviewer, voted }) => {
+    const looking = await lookingAt(ctx, actor, jobId);
+    if (!looking) return null;
+    const check = asked === "start" ? looking.first : asked;
+    if (asked === "start" && !check) return null;
+    const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? "other") === reason));
+    const tally = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
+    if (!reviewer) {
+      const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
+      if (cards.length > COUNTED) return null;
+      for (const card of cards) if (keeps(card)) tally[card.result]++;
+      return tally;
+    }
+    const row = [...looking.reviewers.values()].find((one) => viewId(one) === reviewer || one._id === reviewer);
+    if (!row) return null;
+    // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
+    const others = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
+    if (others && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers)) return null;
+    const votes = ctx.db.query("screeningVotes");
+    const theirs = await (voted === "none" || voted === "failed"
+      ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
+      : voted
+        ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
+        : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
+    ).take(COUNTED + 1);
+    if (theirs.length > COUNTED) return null;
+    const cards = await Promise.all(theirs.map((vote) => ctx.db.query("screeningCards").withIndex("by_result", (q) => q.eq("resultId", vote.resultId)).unique()));
+    for (const card of cards) if (card && keeps(card)) tally[card.result]++;
+    return tally;
   },
 });
 

@@ -1670,6 +1670,20 @@ export default defineSchema({
     checkedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
+  // The few facts of a paper that a screening's lists are narrowed by, a small row beside each paper, kept in step by
+  // a trigger (./screening/cards.ts): how many papers stand each way under any narrowing is counted from these.
+  screeningCards: defineTable({
+    jobId: v.id("screeningJobs"),
+    resultId: v.id("screeningResults"),
+    result: paperResultValidator,
+    sourceId: v.optional(v.id("screeningSources")),
+    checkId: v.optional(v.id("screeningChecks")),
+    reason: v.optional(v.string()),
+    withdrawn: v.optional(v.literal(true)),
+  })
+    .index("by_result", ["resultId"])
+    .index("by_job", ["jobId"]),
+
   // A person's Zotero libraries as last read, and each library's collections, a row each (./zotero/tree.ts): the
   // form that starts a screening pages through them and finds one by name here. `under`: what a collection holds
   // with everything under it, by Zotero's own counts. `parent` is "" at the top, and `library` "" for their own.
