@@ -56,7 +56,7 @@
       "voted": "Voted"
     },
     "none": "None",
-    "shown": "These are {shown} of the {votes, plural, other {# votes}} cast.",
+    "shown": "These are {shown} of the {votes, plural, one {# vote} other {# votes}} cast.",
     "hiddenRows": "The file has a row for each vote hidden from you, without the vote.",
     "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
     "emptyWhy": {

@@ -7832,7 +7832,7 @@
       "living": {
         "checks": "The screening checks {which, select, all {{all, plural, one {its source} other {its # sources}}} other {{sources, number} of its {all, number} sources}} for new papers{when, select, save { as soon as this is saved, then} other {}} {every, select, day {every day} week {every week} other {every month}}",
         "nothingToCheck": "The screening has no source that gains papers, so there is nothing to check yet",
-        "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {, at more for one read as its PDF} other {}}",
+        "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
         "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
         "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
         "reopens": "The screening is open again, and stays open to new papers",
@@ -7845,7 +7845,7 @@
       },
       "collection": {
         "renamed": "Its collection is renamed {name}, with the papers in it",
-        "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. The {count, plural, one {# one} other {# ones}} in {from} stay there} other {}}",
+        "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. {count, plural, one {The one in {from} stays there} other {The # in {from} stay there}}} other {}}",
         "added": "The {count, plural, one {# paper} other {# papers}} included so far {count, plural, one {is} other {are}} added to {to}{was, select, true {. They stay in {from}} other {}}",
         "prune": "Excluded papers are taken out of the collection they came from",
         "keep": "Excluded papers stay in the collection they came from"
@@ -7976,7 +7976,7 @@
           "voted": "Voted"
         },
         "none": "None",
-        "shown": "These are {shown} of the {votes, plural, other {# votes}} cast.",
+        "shown": "These are {shown} of the {votes, plural, one {# vote} other {# votes}} cast.",
         "hiddenRows": "The file has a row for each vote hidden from you, without the vote.",
         "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
         "emptyWhy": {
@@ -8110,7 +8110,7 @@
       "thisWorkspace": "this workspace",
       "share": {
         "readsAll": "{you, select, true {You read every paper} other {{name} reads every paper}}",
-        "about": "{more, select, true {{count, plural, other {About # papers for each person, and a share of the new ones}}} other {{count, plural, other {About # papers for each person}}}}",
+        "about": "{more, select, true {{count, plural, one {About # paper for each person, and a share of the new ones} other {About # papers for each person, and a share of the new ones}}} other {{count, plural, one {About # paper for each person} other {About # papers for each person}}}}",
         "range": "{more, select, true {{least} to {most} papers for each person, and a share of the new ones} other {{least} to {most} papers for each person}}"
       },
       "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
@@ -8119,8 +8119,8 @@
       "block": {
         "emptyCriterion": "Write a question for the empty criterion",
         "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
-        "overPapers": "{count, plural, other {Your plan screens up to # papers at once}}",
-        "overModels": "{count, plural, other {A screening runs up to # models}}",
+        "overPapers": "{count, plural, one {Your plan screens # paper at once} other {Your plan screens up to # papers at once}}",
+        "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
         "creditsShort": "{credits} credits short",
         "reading": "Reading its papers",
@@ -8224,7 +8224,7 @@
         "remove": "Remove {name}",
         "of": "Papers of {name}",
         "everyDeep": "Every paper in it and in the collections under it.",
-        "everyOne": "{count, plural, other {Every one of its # papers.}}",
+        "everyOne": "{count, plural, one {Its one paper.} other {Every one of its # papers.}}",
         "zoteroOrder": "Oldest added to Zotero first",
         "handoffGone": "What the community handed over can't be read any more. Pick its records again under Community.",
         "addFrom": "Add papers from",
@@ -8375,7 +8375,7 @@
         "title": "Cost",
         "helpTitle": "Models and credits",
         "factPeople": "People are free",
-        "factAtOnce": "{count, plural, other {# papers at once}}",
+        "factAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
         "help": "Each model's cost is its credits for one paper times the papers to screen. A paper with no abstract is read as its PDF, every page of it, and costs by the page. The workspace's plan lets models read {atOnce, select, none {so many} other {{atOnce}}} papers at once, so a screening started while another's models are reading waits its turn. People can vote from the start.",
         "helpLiving": "A living screening also pays for each new paper a check finds.",
         "people": "People",
@@ -8479,17 +8479,17 @@
         "counting": "<done></done> of {of, number}",
         "modelPrice": "{name}, {price}",
         "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once you add credits.} other {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {workspace} adds credits.}}",
-        "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, other {# papers}}",
+        "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, one {# paper} other {# papers}}",
         "finishedOn": "Finished on {day}",
         "finishedAgo": "Finished {ago}",
         "finishedTitle": "Finished screening",
         "finishedHelp": "{member, select, true {Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.} other {Its models stop reading and it stops checking for new papers. You can still read and export it. A member of {workspace} can reopen it.}}",
         "pausedTitle": "Paused models",
         "pausedHelp": "{member, select, true {Paused models read nothing and spend no credits. People can keep voting. Resume the models to have them read on.} other {Paused models read nothing and spend no credits. People can keep voting. A member of {workspace} can resume them.}}",
-        "papersRead": "{done, number} of {of, plural, other {# papers}} read",
+        "papersRead": "{done, number} of {of, plural, one {# paper} other {# papers}} read",
         "turnsTitle": "Models take turns",
-        "atATime": "{count, plural, other {# papers at a time}}",
-        "turnsHelp": "{workspace}'s models read {count, plural, other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+        "atATime": "{count, plural, one {# paper at a time} other {# papers at a time}}",
+        "turnsHelp": "{workspace}'s models read {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
         "modelReading": "<model>{name}</model> reading",
         "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
         "read": "{done, number} of {of, number}"
@@ -8522,7 +8522,7 @@
       "delete": {
         "title": "Delete {name}?",
         "goes": "Its votes and its settings go with it",
-        "saved": "The {count, plural, one {# paper} other {# papers}} saved to {collection} stay there",
+        "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
         "final": "This can't be undone"
       },
       "leave": {
@@ -8552,7 +8552,7 @@
       },
       "credits": {
         "inWorkspace": "{credits} credits in the workspace now",
-        "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, other {# papers}}. It stops there until credits are added.}}"
+        "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.}}"
       },
       "activitySheet": {
         "says": "Every change to this screening, newest first",
@@ -8710,7 +8710,7 @@
         "exportIncluded": "Export included papers",
         "extract": "Extract from the included papers",
         "finish": "Mark as finished",
-        "settledOf": "{total, plural, one {of # papers settled} other {of # papers settled}}",
+        "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
         "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
         "capped": "Stopped at your plan's paper limit",
         "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
@@ -8777,7 +8777,7 @@
         "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
         "unread": "{count, number} couldn't be read",
         "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it. The other reviewers settle it.} other {It couldn't read these # papers, so it has no say in them. The other reviewers settle them.}}",
-        "notGivenText": "{count, plural, one {Not on the # PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
+        "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
         "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
         "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
         "noOtherPerson": "No other person to compare with",
@@ -8812,7 +8812,7 @@
         "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}",
         "splitMost": "The papers they split on most",
         "noneYet": "None yet",
-        "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# papers} other {# papers}}"
+        "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
       },
       "kappa": {
         "title": "Cohen's kappa",
@@ -8940,7 +8940,7 @@
       "chip": {
         "source": "Source {name}",
         "removed": "removed",
-        "sourceFact": "{kept, number} papers, {merged, plural, one {# duplicate} other {# duplicates}} merged",
+        "sourceFact": "{kept, plural, one {# paper} other {# papers}}, {merged, plural, one {# duplicate} other {# duplicates}} merged",
         "votedOnBy": "Voted on by {names}",
         "waitingFor": "{you, select, true {Waiting for your vote} other {Waiting for {name}'s vote}}",
         "couldNotRead": "{you, select, true {You couldn't read it} other {{name} couldn't read it}}",
@@ -9026,7 +9026,7 @@
         "waitingOnYou": "Waiting on you",
         "waitingOn": "Waiting on"
       },
-      "pointsOf": "{points, number} of {max, plural, other {# points}}",
+      "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
       "note": {
         "neededForOther": "Note, needed for another reason",
         "label": "Note",

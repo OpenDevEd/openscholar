@@ -18,7 +18,7 @@
     "exportIncluded": "Export included papers",
     "extract": "Extract from the included papers",
     "finish": "Mark as finished",
-    "settledOf": "{total, plural, one {of # papers settled} other {of # papers settled}}",
+    "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
     "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
     "capped": "Stopped at your plan's paper limit",
     "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
@@ -85,7 +85,7 @@
     "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
     "unread": "{count, number} couldn't be read",
     "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it. The other reviewers settle it.} other {It couldn't read these # papers, so it has no say in them. The other reviewers settle them.}}",
-    "notGivenText": "{count, plural, one {Not on the # PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
+    "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
     "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
     "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
     "noOtherPerson": "No other person to compare with",
@@ -120,7 +120,7 @@
     "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}",
     "splitMost": "The papers they split on most",
     "noneYet": "None yet",
-    "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# papers} other {# papers}}"
+    "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
   },
   "kappa": {
     "title": "Cohen's kappa",

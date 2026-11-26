@@ -58,17 +58,17 @@
     "counting": "<done></done> of {of, number}",
     "modelPrice": "{name}, {price}",
     "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once you add credits.} other {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {workspace} adds credits.}}",
-    "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, other {# papers}}",
+    "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, one {# paper} other {# papers}}",
     "finishedOn": "Finished on {day}",
     "finishedAgo": "Finished {ago}",
     "finishedTitle": "Finished screening",
     "finishedHelp": "{member, select, true {Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.} other {Its models stop reading and it stops checking for new papers. You can still read and export it. A member of {workspace} can reopen it.}}",
     "pausedTitle": "Paused models",
     "pausedHelp": "{member, select, true {Paused models read nothing and spend no credits. People can keep voting. Resume the models to have them read on.} other {Paused models read nothing and spend no credits. People can keep voting. A member of {workspace} can resume them.}}",
-    "papersRead": "{done, number} of {of, plural, other {# papers}} read",
+    "papersRead": "{done, number} of {of, plural, one {# paper} other {# papers}} read",
     "turnsTitle": "Models take turns",
-    "atATime": "{count, plural, other {# papers at a time}}",
-    "turnsHelp": "{workspace}'s models read {count, plural, other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+    "atATime": "{count, plural, one {# paper at a time} other {# papers at a time}}",
+    "turnsHelp": "{workspace}'s models read {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
     "modelReading": "<model>{name}</model> reading",
     "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
     "read": "{done, number} of {of, number}"
@@ -101,7 +101,7 @@
   "delete": {
     "title": "Delete {name}?",
     "goes": "Its votes and its settings go with it",
-    "saved": "The {count, plural, one {# paper} other {# papers}} saved to {collection} stay there",
+    "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
     "final": "This can't be undone"
   },
   "leave": {
@@ -131,7 +131,7 @@
   },
   "credits": {
     "inWorkspace": "{credits} credits in the workspace now",
-    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, other {# papers}}. It stops there until credits are added.}}"
+    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.}}"
   },
   "activitySheet": {
     "says": "Every change to this screening, newest first",

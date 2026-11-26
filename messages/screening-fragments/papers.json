@@ -43,7 +43,7 @@
   "chip": {
     "source": "Source {name}",
     "removed": "removed",
-    "sourceFact": "{kept, number} papers, {merged, plural, one {# duplicate} other {# duplicates}} merged",
+    "sourceFact": "{kept, plural, one {# paper} other {# papers}}, {merged, plural, one {# duplicate} other {# duplicates}} merged",
     "votedOnBy": "Voted on by {names}",
     "waitingFor": "{you, select, true {Waiting for your vote} other {Waiting for {name}'s vote}}",
     "couldNotRead": "{you, select, true {You couldn't read it} other {{name} couldn't read it}}",
@@ -129,7 +129,7 @@
     "waitingOnYou": "Waiting on you",
     "waitingOn": "Waiting on"
   },
-  "pointsOf": "{points, number} of {max, plural, other {# points}}",
+  "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
   "note": {
     "neededForOther": "Note, needed for another reason",
     "label": "Note",

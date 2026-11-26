@@ -52,7 +52,7 @@
   "thisWorkspace": "this workspace",
   "share": {
     "readsAll": "{you, select, true {You read every paper} other {{name} reads every paper}}",
-    "about": "{more, select, true {{count, plural, other {About # papers for each person, and a share of the new ones}}} other {{count, plural, other {About # papers for each person}}}}",
+    "about": "{more, select, true {{count, plural, one {About # paper for each person, and a share of the new ones} other {About # papers for each person, and a share of the new ones}}} other {{count, plural, one {About # paper for each person} other {About # papers for each person}}}}",
     "range": "{more, select, true {{least} to {most} papers for each person, and a share of the new ones} other {{least} to {most} papers for each person}}"
   },
   "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
@@ -61,8 +61,8 @@
   "block": {
     "emptyCriterion": "Write a question for the empty criterion",
     "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
-    "overPapers": "{count, plural, other {Your plan screens up to # papers at once}}",
-    "overModels": "{count, plural, other {A screening runs up to # models}}",
+    "overPapers": "{count, plural, one {Your plan screens # paper at once} other {Your plan screens up to # papers at once}}",
+    "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
     "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
     "creditsShort": "{credits} credits short",
     "reading": "Reading its papers",
@@ -166,7 +166,7 @@
     "remove": "Remove {name}",
     "of": "Papers of {name}",
     "everyDeep": "Every paper in it and in the collections under it.",
-    "everyOne": "{count, plural, other {Every one of its # papers.}}",
+    "everyOne": "{count, plural, one {Its one paper.} other {Every one of its # papers.}}",
     "zoteroOrder": "Oldest added to Zotero first",
     "handoffGone": "What the community handed over can't be read any more. Pick its records again under Community.",
     "addFrom": "Add papers from",
@@ -317,7 +317,7 @@
     "title": "Cost",
     "helpTitle": "Models and credits",
     "factPeople": "People are free",
-    "factAtOnce": "{count, plural, other {# papers at once}}",
+    "factAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
     "help": "Each model's cost is its credits for one paper times the papers to screen. A paper with no abstract is read as its PDF, every page of it, and costs by the page. The workspace's plan lets models read {atOnce, select, none {so many} other {{atOnce}}} papers at once, so a screening started while another's models are reading waits its turn. People can vote from the start.",
     "helpLiving": "A living screening also pays for each new paper a check finds.",
     "people": "People",

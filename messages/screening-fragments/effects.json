@@ -59,7 +59,7 @@
   "living": {
     "checks": "The screening checks {which, select, all {{all, plural, one {its source} other {its # sources}}} other {{sources, number} of its {all, number} sources}} for new papers{when, select, save { as soon as this is saved, then} other {}} {every, select, day {every day} week {every week} other {every month}}",
     "nothingToCheck": "The screening has no source that gains papers, so there is nothing to check yet",
-    "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {, at more for one read as its PDF} other {}}",
+    "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
     "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
     "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
     "reopens": "The screening is open again, and stays open to new papers",
@@ -72,7 +72,7 @@
   },
   "collection": {
     "renamed": "Its collection is renamed {name}, with the papers in it",
-    "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. The {count, plural, one {# one} other {# ones}} in {from} stay there} other {}}",
+    "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. {count, plural, one {The one in {from} stays there} other {The # in {from} stay there}}} other {}}",
     "added": "The {count, plural, one {# paper} other {# papers}} included so far {count, plural, one {is} other {are}} added to {to}{was, select, true {. They stay in {from}} other {}}",
     "prune": "Excluded papers are taken out of the collection they came from",
     "keep": "Excluded papers stay in the collection they came from"
