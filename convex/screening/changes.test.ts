@@ -122,7 +122,7 @@ async function voteAround({ t, as, workspaceId }: Team, jobId: Id<"screeningJobs
 
 type Change = (typeof api.screening.settings.save)["_args"]["change"];
 /** The changes made mid-course, each built for the screening as it stands. */
-const CHANGES: Array<{ name: string; make: (made: Team, at: { ben: Id<"screeningReviewers">; each: Each; settle: Settle; criteria: NonNullable<Change["criteria"]> }) => Change | null }> = [
+const CHANGES: Array<{ name: string; /** A change saved first, that this one follows. */ first?: (made: Team, at: { ben: Id<"screeningReviewers"> }) => Change; make: (made: Team, at: { ben: Id<"screeningReviewers">; each: Each; settle: Settle; criteria: NonNullable<Change["criteria"]> }) => Change | null }> = [
   { name: "one person a paper", make: (_, { each, settle }) => (each === 1 ? null : { rule: { each: 1, settle, blind: "after" } }) },
   { name: "two people a paper", make: (_, { each, settle }) => (each === 2 ? null : { rule: { each: 2, settle, blind: "after" } }) },
   { name: "everyone on each paper", make: (_, { each, settle }) => (each === "all" ? null : { rule: { each: "all", settle, blind: "after" } }) },
@@ -134,16 +134,22 @@ const CHANGES: Array<{ name: string; make: (made: Team, at: { ben: Id<"screening
   { name: "a person is taken off, votes thrown out", make: (_, { ben }) => ({ remove: [{ reviewerId: ben, discard: true }] }) },
   { name: "a criterion becomes a must-have", make: (_, { criteria }) => ({ criteria: criteria.map((criterion) => ({ ...criterion, must: true })) }) },
   { name: "another rule, with the settled papers checked again", make: (_, { each, settle }) => ({ rule: { each, settle: settle === "one" ? "all" : "one", blind: "after" }, recheck: true }) },
+  { name: "a person taken off with their votes kept is put back", first: (_, { ben }) => ({ remove: [{ reviewerId: ben }] }), make: ({ ids }) => ({ addPeople: [ids.ben!] }) },
   { name: "a person joins and everyone reads every paper", make: ({ ids }, { settle }) => ({ addPeople: [ids.dan!], rule: { each: "all", settle, blind: "after" } }) },
 ];
 
 describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"] as const).map((each) => ({ rule, each }))))("settled when $rule, $each on each paper", ({ rule, each }) => {
-  it.each(CHANGES)("holds together through: $name", async ({ make }) => {
+  it.each(CHANGES)("holds together through: $name", async ({ first, make }) => {
     const made = await team(["ann", "ben", "cat", "dan"]);
     const { jobId } = await started(made, ["ann", "ben", "cat"], PAPERS, { rule: { each, settle: rule, blind: "after" } });
     await run(made.t);
     await voteAround(made, jobId);
     await run(made.t);
+    const benRow = await made.t.run(async (ctx) => (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.userId === made.ids.ben)!._id);
+    if (first) {
+      await made.as.ann!.mutation(api.screening.settings.save, { workspaceId: made.workspaceId, jobId, change: first(made, { ben: benRow }) });
+      await run(made.t);
+    }
     const before = await audit(made.t, jobId);
     expect(before.problems).toEqual([]);
 
@@ -176,14 +182,15 @@ describe.each((["all", "most", "one"] as const).flatMap((rule) => ([1, 2, "all"]
     for (const move of told) expect(moved.get(`${move.from} to ${move.to}`) ?? 0).toBeGreaterThanOrEqual(move.count);
     expect(hers.moves.every((move) => move.hidden === 0 || (move.from === "waiting" && move.to === "waiting" && move.hidden === move.count))).toBe(true);
 
-    // Whoever it put on the screening got the open papers it said they would, and whoever it took off had the votes it said they had.
+    // Whoever it put on the screening, new or back again, got the open papers to vote on it said they would, and whoever it took off had the votes it said they had.
+    const joiner = change.addPeople?.[0] ?? made.ids.dan!;
     const dealt = await made.t.run(async (ctx) => {
-      const dan = (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.userId === made.ids.dan);
-      if (!dan) return null;
-      const places = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", dan._id)).collect();
+      const row = (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.userId === joiner);
+      if (!row) return null;
+      const places = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", "waiting")).collect();
       return places.filter((vote) => !isFinal((after.stands[vote.resultId] ?? "waiting") as Result)).length;
     });
-    expect(said.joining[made.ids.dan!]?.dealt ?? null).toEqual(change.addPeople ? dealt : null);
+    expect(said.joining[joiner]?.dealt ?? null).toEqual(change.addPeople ? dealt : null);
     if (change.remove) expect(said.leaving[at.ben]?.cast).toBe(before.cast.ben);
   });
 });

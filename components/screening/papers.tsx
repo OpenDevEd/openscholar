@@ -146,8 +146,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const narrow = useNarrow(id, open.me);
   const { result: filter, by: columns, source: from, reviewer, voted, with: also, reason, added, q: query, paper: opened } = place;
   // While the others' votes are kept from the person on the papers they have yet to vote on (convex/screening/view.ts `keepsVotes`), an order worked out from those votes is shut: the server gives the papers as they were added.
-  const keepsVotes = screening.rule.blind === "after" && !screening.finishedAt && open.isReviewer && open.toDo > 0;
-  const sort = keepsVotes && (place.sort === "split" || place.sort === "points") ? "added" : place.sort;
+  const sort = open.keepsVotes && (place.sort === "split" || place.sort === "points") ? "added" : place.sort;
   /** Narrows or reorders the table. A list read another way is another list, which starts from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next);
   const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
@@ -305,8 +304,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
-    if (as === "csv") save(fileName(open, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(screening, open.me, pickedPapers));
-    else save(fileName(open, "selected-papers", "ris", Date.now()), "application/x-research-info-systems", risOf(pickedPapers));
+    if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, open.me, pickedPapers));
+    else save(fileName({ ...open, screening: open.filed }, "selected-papers", "ris", Date.now()), "application/x-research-info-systems", risOf(pickedPapers));
   };
 
   // What narrows the table, each as a chip that takes it away.
@@ -413,7 +412,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";

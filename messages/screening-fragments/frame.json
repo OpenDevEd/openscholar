@@ -40,7 +40,7 @@
     "visibleFinished": "Votes visible now it is finished",
     "conflictsGoTo": "Conflicts go to {who}",
     "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
-    "chips": "Each paper gets the votes named in these chips, and is settled once they are in.",
+    "chips": "These chips say who votes on each paper, what settles it, and who sees the other votes.",
     "conflictOpen": "{you, select, true {A paper in conflict stays open until you settle it.} other {A paper in conflict stays open until {name} settles it.}}",
     "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.",
     "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
@@ -114,7 +114,7 @@
     "confirm": "Leave",
     "votesCount": "{count, plural, one {Your # vote keeps counting} other {Your # votes keep counting}}",
     "noVotes": "You have cast no vote",
-    "papersGo": "{count, plural, one {The # paper you had not voted on goes to the other reviewers} other {The # papers you had not voted on go to the other reviewers}}",
+    "papersGo": "{count, plural, one {The # paper you had not voted on goes to another reviewer, or is settled on the votes it already has} other {The # papers you had not voted on go to other reviewers, or are settled on the votes they already have}}",
     "fromList": "It leaves your list, and you can open it again only once it is shared with you again"
   },
   "add": {
@@ -153,7 +153,7 @@
     "modelToo": "{you, select, true {A model is a reviewer too: it reads every open paper and votes, paid from your credits.} other {A model is a reviewer too: it reads every open paper and votes, paid from {workspace}'s credits.}}",
     "close": "Close",
     "addAs": "Add people as",
-    "finishedAdds": "This screening is finished: people added now can look at it. Reopen it to add reviewers.",
+    "finishedAdds": "This screening is finished: people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",
     "addModel": "Add a model",
     "membersAdd": "Members of {workspace} add people and change what each may do.",
     "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",

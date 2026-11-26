@@ -8,7 +8,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
 import { project } from "../../lib/screening/project";
-import { SOMEONE } from "../../lib/screening/rules";
+import { SOMEONE, gotThrough, theirsOf } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { readsPdfOf } from "../../lib/pricing/estimate";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
@@ -46,7 +46,7 @@ export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progres
   Math.max(0, (check ? check.from + check.added : job.totalPapers) - (progress?.withdrawn ?? 0));
 
 /** The papers that still wait for a reviewer: the ones they were given, less the ones they voted on, a model couldn't read, and the ones settled without them. */
-export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, reviewer.dealt - (tally?.cast ?? 0) - (tally?.failed ?? 0) - (tally?.closed ?? 0));
+export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, theirsOf({ dealt: reviewer.dealt, closed: tally?.closed }) - gotThrough(tally));
 
 /** How many of the papers a check brought still wait for one reviewer's vote, counted up to `most`. */
 export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "from" | "added">, most: number) {

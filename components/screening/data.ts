@@ -8,11 +8,13 @@ import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DECISIONS, OTHER_REASONS as OTHER_KEYS, RESULTS, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+// The English a file is written in: the same messages the pages read in English, so a file and a page never name a result two ways.
+import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
 export type { Decision, Result };
-export const DECISION_LABEL: Record<Decision, string> = { include: "Include", maybe: "Maybe", exclude: "Exclude" };
-export const RESULT_LABEL: Record<Result, string> = { include: "Included", maybe: "Maybe", exclude: "Excluded", conflict: "In conflict", waiting: "Waiting for votes" };
+export const DECISION_LABEL: Record<Decision, string> = FILE_WORDS.decision;
+export const RESULT_LABEL: Record<Result, string> = FILE_WORDS.result;
 
 // ── People and models ────────────────────────────────────────────────────────────────────────────
 
@@ -134,7 +136,7 @@ export function termsPattern(terms: string[]) {
 }
 
 /** Why a paper that was found isn't screened. */
-export const NO_ABSTRACT = "No abstract";
+const NO_ABSTRACT = "No abstract";
 /** How many things a source held that the screening doesn't take. */
 export const leftOf = (source: Source) => source.read?.left ?? (source.left?.length ?? 0) + (source.bare ?? 0);
 /** How many of those are papers with no abstract. */
@@ -173,21 +175,21 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
-const OTHER_LABEL: Record<(typeof OTHER_KEYS)[number], string> = { duplicate: "A duplicate of another paper", other: "Another reason" };
+const OTHER_LABEL: Record<(typeof OTHER_KEYS)[number], string> = FILE_WORDS.otherReason;
 const OTHER_REASONS: Array<{ key: string; label: string }> = OTHER_KEYS.map((key) => ({ key, label: OTHER_LABEL[key] }));
 /** Whether someone wrote a criterion's short name. One nobody wrote is its question cut short, which names nothing: the question stands in for it. */
 export const isNamed = (criterion: Pick<Criterion, "short" | "text">) => criterion.short !== shortOf(criterion.text);
 /** A criterion as a line names it: the name someone wrote, or else its question. Every sentence, chip and file that names one takes it from here, in whichever language. */
 export const criterionLabel = (criterion: Pick<Criterion, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
 /** A reason in words: the criterion as a line names it, or one of the others. */
-export const reasonLabel = (key: string, criteria: Criterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
+const reasonLabel = (key: string, criteria: Criterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
 /**
  * A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met,
  * by the name someone gave it or by its question, or one of the other reasons. On a page it is drawn, by `Reason`.
  */
 export const failedLabel = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
-  return criterion ? (isNamed(criterion) ? `${criterion.short} not met` : `Not met: ${criterionLabel(criterion)}`) : reasonLabel(key, criteria);
+  return criterion ? (isNamed(criterion) ? FILE_WORDS.notMet.replace("{name}", criterion.short) : FILE_WORDS.notMetInFull.replace("{name}", criterionLabel(criterion))) : reasonLabel(key, criteria);
 };
 /**
  * The question a criterion's name stands for, where what a line shows of it isn't already the question's own words:
@@ -232,10 +234,10 @@ export const settledOf = (paper: Pick<Paper, "result" | "resolved" | "reason">):
 export type Message = FunctionReturnType<typeof api.screening.discussion.thread>["page"][number];
 export type Every = "day" | "week" | "month";
 /** The name a screening's own collection of included papers has, unless it is given another. A source made from a screening's included papers carries the same name. */
-export const includedIn = (name: string) => `Included in ${name}`;
-export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Every week", month: "Every month" };
+export const includedIn = (name: string) => FILE_WORDS.includedIn.replace("{name}", name);
+export const EVERY_LABEL: Record<Every, string> = FILE_WORDS.every;
 /** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
-export const SETTLE_LABEL: Record<Rule["settle"], string> = { all: "All agree", most: "Most agree", one: "First vote decides" };
+export const SETTLE_LABEL: Record<Rule["settle"], string> = FILE_WORDS.settle.label;
 
 export type Screening = {
   id: Id<"screeningJobs">;

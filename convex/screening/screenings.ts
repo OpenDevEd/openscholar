@@ -227,7 +227,7 @@ export const open = internalMutation({
     if (!people.length && !models.length) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
     if (new Set(people).size !== people.length || new Set(models.map((one) => `${one.model}:${one.effort ?? ""}`)).size !== models.length) throw createError("VALIDATION_ERROR", "Each reviewer is on a screening once.");
     const most = await modelsLimit(ctx, workspaceId);
-    if (models.length > most) throw createError("VALIDATION_ERROR", `Your plan runs up to ${most} models on a screening.`);
+    if (models.length > most) throw createError("VALIDATION_ERROR", `This workspace's plan runs up to ${most} models on a screening.`);
     if (people.length + models.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
     const now = Date.now();
     const criteria = criteriaFrom(sent, [], now);

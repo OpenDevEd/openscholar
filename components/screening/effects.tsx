@@ -264,8 +264,6 @@ export const previewText = (line: EffectLine) => line.text;
 /** The same lines as plain sentences, for a confirmation that asks before the change is made. */
 export const effectLines = (say: EffectsSay, before: Screening, after: Screening, counted: Preview, opts?: EffectFor) => effectItems(say, before, after, counted, opts).map((line) => withCredits(say, line, previewText(line)));
 const withCredits = ({ words, t }: EffectsSay, line: EffectLine, text: string) => (line.credits ? t("withCredits", { text, credits: words.credits(line.credits), each: String(Boolean(line.each)) }) : text);
-/** One line as the activity log keeps it, once the change is made: what it did, without "as soon as this is saved". */
-export const lineText = (say: EffectsSay, line: EffectLine) => withCredits(say, line, line.done ?? line.text);
 
 /** The sources a change brings more papers from, each with how many more its range promises: a source it adds, and one whose range it widens. */
 const bringing = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) =>

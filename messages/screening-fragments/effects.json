@@ -1,6 +1,6 @@
 {
   "criterionUnwritten": "the criterion with no question yet",
-  "reopens": "The screening opens again for {count, plural, one {# paper} other {# papers}}",
+  "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
   "model": {
     "startsLater": "{name} starts once the papers arrive",
     "nothingToRead": "{name} has no papers left to read",
@@ -15,13 +15,13 @@
   "votesStay": "Votes already cast stay as they are",
   "conflict": {
     "all": "Once every vote on a paper is in, votes that differ put it in conflict",
-    "most": "Once every vote on a paper is in, an even split puts it in conflict"
+    "most": "Once every vote on a paper is in, a paper with no majority is in conflict"
   },
   "leaving": {
     "noVote": "{you, select, true {You have cast no vote} other {{name} has cast no vote}}",
     "votesStop": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote stays on record and stops counting} other {# votes stay on record and stop counting}}",
     "votesKept": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote keeps} other {# votes keep}} counting",
-    "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where that vote {thrown, select, true {stops counting} other {keeps counting}}",
+    "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where {voted, plural, one {that vote {thrown, select, true {stops counting} other {keeps counting}}} other {those votes {thrown, select, true {stop counting} other {keep counting}}}}",
     "unvotedGo": "The {count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {goes} other {go}} to {takers}",
     "settled": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {is} other {are}} settled on the other votes",
     "waiting": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {waits} other {wait}} for the others' votes"
@@ -62,7 +62,7 @@
     "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
     "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
     "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
-    "reopens": "The screening is open again, and stays open to new papers",
+    "reopens": "A first check runs as soon as this is saved. If it finds new papers, the screening opens again. If not, it stays finished and isn't checked until it is reopened",
     "stops": "The screening stops checking for new papers. The ones it has stay",
     "every": "The screening checks for new papers {every, select, day {every day} week {every week} other {every month}} from now on"
   },

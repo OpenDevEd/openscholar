@@ -7771,7 +7771,7 @@
   "screening": {
     "effects": {
       "criterionUnwritten": "the criterion with no question yet",
-      "reopens": "The screening opens again for {count, plural, one {# paper} other {# papers}}",
+      "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
       "model": {
         "startsLater": "{name} starts once the papers arrive",
         "nothingToRead": "{name} has no papers left to read",
@@ -7786,13 +7786,13 @@
       "votesStay": "Votes already cast stay as they are",
       "conflict": {
         "all": "Once every vote on a paper is in, votes that differ put it in conflict",
-        "most": "Once every vote on a paper is in, an even split puts it in conflict"
+        "most": "Once every vote on a paper is in, a paper with no majority is in conflict"
       },
       "leaving": {
         "noVote": "{you, select, true {You have cast no vote} other {{name} has cast no vote}}",
         "votesStop": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote stays on record and stops counting} other {# votes stay on record and stop counting}}",
         "votesKept": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote keeps} other {# votes keep}} counting",
-        "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where that vote {thrown, select, true {stops counting} other {keeps counting}}",
+        "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where {voted, plural, one {that vote {thrown, select, true {stops counting} other {keeps counting}}} other {those votes {thrown, select, true {stop counting} other {keep counting}}}}",
         "unvotedGo": "The {count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {goes} other {go}} to {takers}",
         "settled": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {is} other {are}} settled on the other votes",
         "waiting": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {waits} other {wait}} for the others' votes"
@@ -7833,7 +7833,7 @@
         "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
         "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
         "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
-        "reopens": "The screening is open again, and stays open to new papers",
+        "reopens": "A first check runs as soon as this is saved. If it finds new papers, the screening opens again. If not, it stays finished and isn't checked until it is reopened",
         "stops": "The screening stops checking for new papers. The ones it has stay",
         "every": "The screening checks for new papers {every, select, day {every day} week {every week} other {every month}} from now on"
       },
@@ -8118,7 +8118,7 @@
       "block": {
         "emptyCriterion": "Write a question for the empty criterion",
         "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
-        "overPapers": "{count, plural, one {Your plan screens # paper at once} other {Your plan screens up to # papers at once}}",
+        "overPapers": "{personal, select, true {{count, plural, one {Your plan screens # paper at once} other {Your plan screens up to # papers at once}}} other {{count, plural, one {The plan of {workspace} screens # paper at once} other {The plan of {workspace} screens up to # papers at once}}}}",
         "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
         "creditsShort": "{credits} credits short",
@@ -8250,7 +8250,7 @@
         "factFixed": "Uploaded files and pasted DOIs never gain papers",
         "factEmail": "Reviewers are told by email",
         "factCharge": "Models charge for each new paper",
-        "help": "Openscholar checks the screening's searches, collections and communities for new papers on the schedule you pick. Only papers that are new are added and go to reviewers.",
+        "help": "Openscholar checks the screening's searches, collections, communities, Zotero libraries and other screenings for new papers on the schedule you pick. Only papers that are new are added and go to reviewers.",
         "check": "Check for new papers",
         "off": "Off",
         "checksAll": "{count, plural, one {Checks its source} other {Checks its # sources}}",
@@ -8259,8 +8259,8 @@
         "firstCheck": "First check {day}",
         "firstOnSave": "First check as soon as this is saved",
         "perNew": "{credits} credits a new paper{pdf, select, true {, more for one read as its PDF} other {}}{last, select, true {, {spent} for the last {count}} other {}}",
-        "noneGrow": "None of these sources gains papers. Add a search, a collection or a community to check.",
-        "addToCheck": "Add a search, a collection or a community to check."
+        "noneGrow": "None of these sources gains papers. Add a search, a collection, a community, a Zotero library or another screening to check.",
+        "addToCheck": "Add a search, a collection, a community, a Zotero library or another screening to check."
       },
       "criteria": {
         "helpTitle": "Must-have and nice to have",
@@ -8383,7 +8383,7 @@
         "helpTitle": "Models and credits",
         "factPeople": "People are free",
         "factAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
-        "help": "Each model's cost is its credits for one paper times the papers to screen. A paper with no abstract is read as its PDF, every page of it, and costs by the page. The workspace's plan lets models read {atOnce, select, none {so many} other {{atOnce}}} papers at once, so a screening started while another's models are reading waits its turn. People can vote from the start.",
+        "help": "Each model's cost is its credits for one paper times the papers to screen. A paper that came with its PDF and has no abstract is read from the PDF, every page of it, and costs by the page. {atOnce, select, none {} other {The workspace's plan lets models read {atOnce} papers at once, so a screening started while another's models are reading waits its turn. }}People can vote from the start.",
         "helpLiving": "A living screening also pays for each new paper a check finds.",
         "people": "People",
         "free": "Free",
@@ -8469,7 +8469,7 @@
         "visibleFinished": "Votes visible now it is finished",
         "conflictsGoTo": "Conflicts go to {who}",
         "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
-        "chips": "Each paper gets the votes named in these chips, and is settled once they are in.",
+        "chips": "These chips say who votes on each paper, what settles it, and who sees the other votes.",
         "conflictOpen": "{you, select, true {A paper in conflict stays open until you settle it.} other {A paper in conflict stays open until {name} settles it.}}",
         "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.",
         "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
@@ -8543,7 +8543,7 @@
         "confirm": "Leave",
         "votesCount": "{count, plural, one {Your # vote keeps counting} other {Your # votes keep counting}}",
         "noVotes": "You have cast no vote",
-        "papersGo": "{count, plural, one {The # paper you had not voted on goes to the other reviewers} other {The # papers you had not voted on go to the other reviewers}}",
+        "papersGo": "{count, plural, one {The # paper you had not voted on goes to another reviewer, or is settled on the votes it already has} other {The # papers you had not voted on go to other reviewers, or are settled on the votes they already have}}",
         "fromList": "It leaves your list, and you can open it again only once it is shared with you again"
       },
       "add": {
@@ -8582,7 +8582,7 @@
         "modelToo": "{you, select, true {A model is a reviewer too: it reads every open paper and votes, paid from your credits.} other {A model is a reviewer too: it reads every open paper and votes, paid from {workspace}'s credits.}}",
         "close": "Close",
         "addAs": "Add people as",
-        "finishedAdds": "This screening is finished: people added now can look at it. Reopen it to add reviewers.",
+        "finishedAdds": "This screening is finished: people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",
         "addModel": "Add a model",
         "membersAdd": "Members of {workspace} add people and change what each may do.",
         "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",
@@ -8726,7 +8726,7 @@
         "finish": "Mark as finished",
         "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
         "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
-        "capped": "Stopped at your plan's paper limit",
+        "capped": "{personal, select, true {Stopped at your plan's paper limit} other {Stopped at the paper limit of {workspace}'s plan}}",
         "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
         "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}"
       },
@@ -8791,7 +8791,7 @@
         "idle": "No votes in 3 days",
         "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
         "unread": "{count, number} couldn't be read",
-        "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it. The other reviewers settle it.} other {It couldn't read these # papers, so it has no say in them. The other reviewers settle them.}}",
+        "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
         "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
         "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
         "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
@@ -8871,7 +8871,7 @@
       },
       "checks": {
         "title": "Checks for new papers",
-        "shut": "{change, select, true {A check looks in a search, a collection or a community for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Add a search, a collection or a community as a source to get new papers.} other {A check looks in a search, a collection or a community for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Nothing is checked until a search, a collection or a community is added as a source.}}",
+        "shut": "{change, select, true {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Add a search, a collection, a community, a Zotero library or another screening as a source to get new papers.} other {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Nothing is checked until a search, a collection, a community, a Zotero library or another screening is added as a source.}}",
         "helpTitle": "Checking for new papers",
         "next": "Next check {day}",
         "onlyAsked": "Only when asked",
@@ -8895,7 +8895,8 @@
         "later": "Later ones",
         "earlier": "Earlier ones",
         "atStart": "At the start",
-        "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}"
+        "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}",
+        "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
       },
       "flow": {
         "title": "PRISMA flow",
@@ -9398,7 +9399,7 @@
         "fileLimit": "Reference files up to {mb, number} MB",
         "pdfLimit": "PDFs up to {mb, number} MB each",
         "aboutFiles": "A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.",
-        "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI reviewer, every page of it. A scan is read the same way. A file that doesn't open is left out.",
+        "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, or a text file of DOIs, any number at once",
         "pdfCost": "A model reads each PDF's first pages for its title and DOI: up to {credits} credits a PDF, paid as it is added",
         "filesLabel": "Files to upload",

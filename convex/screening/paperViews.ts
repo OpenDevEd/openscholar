@@ -12,7 +12,7 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../l
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
-import { isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
+import { isFinal, nameHas, seesVotes, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
 import { askedOf, reviewersOf, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
@@ -94,7 +94,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
 }
 
 /** Whether a paper's title and authors hold every word looked for. The search index finds a paper by any one of them, best match first: someone who types two words means both. */
-const holdsAll = (paper: Paper, needle: string) => { const text = (paper.searchText ?? "").toLowerCase(); return needle.toLowerCase().split(/\s+/).filter(Boolean).every((word) => text.includes(word)); };
+const holdsAll = (paper: Paper, needle: string) => nameHas(paper.searchText ?? "", needle);
 const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOf(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
 const byJob = { jobId: v.id("screeningJobs") };

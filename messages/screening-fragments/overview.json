@@ -20,7 +20,7 @@
     "finish": "Mark as finished",
     "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
     "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
-    "capped": "Stopped at your plan's paper limit",
+    "capped": "{personal, select, true {Stopped at your plan's paper limit} other {Stopped at the paper limit of {workspace}'s plan}}",
     "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
     "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}"
   },
@@ -85,7 +85,7 @@
     "idle": "No votes in 3 days",
     "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
     "unread": "{count, number} couldn't be read",
-    "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it. The other reviewers settle it.} other {It couldn't read these # papers, so it has no say in them. The other reviewers settle them.}}",
+    "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
     "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
     "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
     "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
@@ -165,7 +165,7 @@
   },
   "checks": {
     "title": "Checks for new papers",
-    "shut": "{change, select, true {A check looks in a search, a collection or a community for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Add a search, a collection or a community as a source to get new papers.} other {A check looks in a search, a collection or a community for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Nothing is checked until a search, a collection or a community is added as a source.}}",
+    "shut": "{change, select, true {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Add a search, a collection, a community, a Zotero library or another screening as a source to get new papers.} other {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Nothing is checked until a search, a collection, a community, a Zotero library or another screening is added as a source.}}",
     "helpTitle": "Checking for new papers",
     "next": "Next check {day}",
     "onlyAsked": "Only when asked",
@@ -189,7 +189,8 @@
     "later": "Later ones",
     "earlier": "Earlier ones",
     "atStart": "At the start",
-    "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}"
+    "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}",
+    "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
   },
   "flow": {
     "title": "PRISMA flow",

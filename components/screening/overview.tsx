@@ -30,7 +30,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
-import { DAY, pairOf, inOrder, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
+import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
@@ -169,7 +169,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
             {!open.gathering && removed.left ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
             {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
-            {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">{t("progress.capped")}</LinkChip> : null}
+            {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">{t("progress.capped", { workspace: screening.workspace.name, personal: String(screening.workspace.kind === "personal") })}</LinkChip> : null}
             {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
             {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText} className="self-center">{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
             {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
@@ -403,7 +403,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
         </div>
         </div>
       ) : (
-        <EmptyNote>{t("reviewers.nobody", { change: String(open.canChange) })}</EmptyNote>
+        <EmptyNote>{t("reviewers.nobody", { change: String(open.canChange && !screening.finishedAt) })}</EmptyNote>
       )}
       <TakeOff open={open} reviewer={leaving} onConfirm={(reviewer, discard) => open.takeOff(reviewer, discard)} onClose={() => setLeaving(null)} />
       {/* Made anew for each move, so it starts from the person it was opened for. */}
@@ -892,7 +892,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       id="new-papers"
       title={t("checks.title")}
       help={
-        <Help title={t("checks.helpTitle")} facts={<>{screening.living ? <><HelpFact icon={RefreshCw}>{words.t(`every.${screening.living.every}`)}</HelpFact><HelpFact>{t("checks.next", { day: words.day(screening.living.next) })}</HelpFact></> : <HelpFact>{t("checks.onlyAsked")}</HelpFact>}{fixed ? <HelpFact>{t("checks.skips", { count: fixed })}</HelpFact> : null}</>}>
+        <Help title={t("checks.helpTitle")} facts={<>{screening.living && screening.finishedAt ? <HelpFact icon={RefreshCw}>{t("checks.finished", { every: screening.living.every })}</HelpFact> : screening.living ? <><HelpFact icon={RefreshCw}>{words.t(`every.${screening.living.every}`)}</HelpFact><HelpFact>{t("checks.next", { day: words.day(screening.living.next) })}</HelpFact></> : <HelpFact>{t("checks.onlyAsked")}</HelpFact>}{fixed ? <HelpFact>{t("checks.skips", { count: fixed })}</HelpFact> : null}</>}>
           <p>{t("checks.means")}</p>
         </Help>
       }
@@ -901,7 +901,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
           {screening.living ? (
-            <Chip icon={RefreshCw}>{t("checks.every", { every: screening.living.every, day: words.day(screening.living.next) })}</Chip>
+            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every, day: words.day(screening.living.next) })}</Chip>
           ) : (
             <>
               <Chip>{t("checks.onlyWhenAsked")}</Chip>
@@ -990,7 +990,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const id = screening.id;
   // What the sources held: the papers they brought, and what they left out for having no abstract or nothing to read.
   const { left, bare, merged } = removedOf(screening.sources);
-  const kept = paperTotal(screening.sources);
+  const kept = open.total;
   const found = kept + merged + left;
   const arriving = open.gathering ? Math.max(0, open.gathering.of - open.gathering.done) : 0;
   // Its excluded papers by the reason, the most common first.

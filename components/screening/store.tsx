@@ -76,8 +76,6 @@ export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 }
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
-/** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
-export const credits = (words: Words, n: number) => words.credits(n);
 /** What a model charges to read one paper, as every page says it. */
 export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => t("perPaper", { credits: words.credits(paperCredits(model)) });
 
@@ -129,6 +127,9 @@ function toSource(source: View["sources"][number]): Source {
   };
 }
 
+/** Reviewers as a file names them, in English: someone whose account is gone as the server says it, and one model at two efforts by each effort. */
+const FILE_NAMES: Pick<Words, "modelAtEffort" | "person"> = { person: (name) => name, modelAtEffort: (name, effort) => `${name}, ${effort} effort` };
+
 /** The screening in the shape its pages share. */
 function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">): Screening {
   const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt }) => ({ key, text, short, must, terms, addedAt, ...(note ? { note } : {}) }));
@@ -170,6 +171,8 @@ export function useOpenScreening(id: string) {
   const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), id ? { jobId } : "skip")).data;
   const words = useWords();
   const screening = useMemo(() => (view ? toScreening(view, words) : null), [view, words]);
+  // The same screening with its reviewers named as a file names them: a file's words are English whoever takes it out (./export.ts).
+  const filed = useMemo(() => (view ? toScreening(view, FILE_NAMES) : null), [view]);
   const vote = useWorkspaceMutation(api.screening.voting.vote);
   const voteMany = useWorkspaceMutation(api.screening.voting.voteMany);
   const resolve = useWorkspaceMutation(api.screening.voting.resolve);
@@ -187,17 +190,20 @@ export function useOpenScreening(id: string) {
   const move = useWorkspaceMutation(api.screening.reviewers.move);
   const takeOff = useWorkspaceMutation(api.screening.reviewers.remove);
   if (view === undefined) return undefined;
-  if (!view || !screening) return null;
+  if (!view || !screening || !filed) return null;
   const models = screening.reviewers.filter((one) => one.kind === "model" && !one.left);
   const reading = models.filter((model) => (model.tally?.waiting ?? 0) > 0);
   return {
     screening,
+    filed,
     counts: view.counts as Record<Result, number>,
     total: view.total,
     me: view.me as string,
     /** Whether the person looking votes here, may settle a split, and may change the screening. */
     isReviewer: view.isReviewer,
     canResolve: view.canResolve,
+    /** How the others voted is kept from the person looking (convex/screening/view.ts `keepsVotes`). */
+    keepsVotes: view.keeps,
     /** Its workspace's members change it. Someone it is shared with from outside votes or looks. */
     canChange: view.member,
     /** The person's place on it where they are a guest. */
@@ -283,6 +289,5 @@ export function useFigures(id: Id<"screeningJobs">) {
 }
 export type Figures = NonNullable<ReturnType<typeof useFigures>["figures"]>;
 
-/** How far a screening's models have read: the place of the slowest of them, as the meters show it. */
 /** How far these models have read, the one furthest behind (lib/screening/rules.ts `modelsProgress`): where none has a paper left, all of `total`. */
 export const modelsRead = (models: Reviewer[], total: number) => modelsProgress(models.flatMap((model) => model.tally ?? [])) ?? { done: total, of: total };

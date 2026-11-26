@@ -134,24 +134,37 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const [root, held] = [frame.current, strip.current];
     if (!root || !held) return;
-    // A link to a part of the page is followed before the strip's height is known, and the strip can still settle after that (its notice arriving). Until the person first touches the page, the part the address names lands again under the strip as it is now.
+    // A link to a part of the page is followed before the strip's height is known, and the strip can still settle after that (its notice arriving): until the person first touches the page they came to, the part the address names lands again under the strip as it is now. Anything else above it that settles (a list arriving shorter than the room kept for it) leaves the part where it landed, in the same frame, so it holds still.
     let untouched = true;
+    let landedAt: number | undefined;
     const touched = () => { untouched = false; };
+    // Where it stands in the page, leaving out the page's own slide in as it opens.
+    const placeOf = (element: HTMLElement) => { let y = 0; for (let at: HTMLElement | null = element; at; at = at.offsetParent as HTMLElement | null) y += at.offsetTop; return y; };
+    const part = () => (untouched && window.location.hash ? document.getElementById(decodeURIComponent(window.location.hash.slice(1))) : null);
     const write = () => {
       root.style.setProperty("--screening-frame", held.parentElement && getComputedStyle(held.parentElement).position === "sticky" ? `${held.offsetHeight}px` : "0px");
-      if (untouched && window.location.hash) document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView();
+      const target = part();
+      target?.scrollIntoView();
+      landedAt = target ? placeOf(target) : undefined;
+    };
+    const hold = () => {
+      const target = part();
+      if (target && landedAt !== undefined) { window.scrollBy(0, placeOf(target) - landedAt); landedAt = placeOf(target); }
     };
     write();
     const observer = new ResizeObserver(write);
     observer.observe(held);
+    const settling = new ResizeObserver(hold);
+    settling.observe(document.body);
     window.addEventListener("resize", write);
     for (const kind of ["wheel", "keydown", "pointerdown", "touchstart"]) window.addEventListener(kind, touched, { once: true, passive: true });
     return () => {
       observer.disconnect();
+      settling.disconnect();
       window.removeEventListener("resize", write);
       for (const kind of ["wheel", "keydown", "pointerdown", "touchstart"]) window.removeEventListener(kind, touched);
     };
-  }, [found]);
+  }, [found, view]);
 
   // While it is read the frame holds its place: the bar with the list's name, and the room a screening's pages take.
   if (read === undefined) {
@@ -269,7 +282,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           facts={
             <>
               {screening.rule.settle !== "one" ? <HelpFact icon={Users}>{t("rule.conflictsGoTo", { who: words.whoIs(screening, screening.rule.resolver, open.me) })}</HelpFact> : null}
-              {screening.living ? <HelpFact icon={RefreshCw}>{t("rule.checks", { every: screening.living.every })}</HelpFact> : null}
+              {screening.living && !screening.finishedAt ? <HelpFact icon={RefreshCw}>{t("rule.checks", { every: screening.living.every })}</HelpFact> : null}
             </>
           }
         >

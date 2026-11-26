@@ -47,7 +47,7 @@
     "fileLimit": "Reference files up to {mb, number} MB",
     "pdfLimit": "PDFs up to {mb, number} MB each",
     "aboutFiles": "A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.",
-    "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI reviewer, every page of it. A scan is read the same way. A file that doesn't open is left out.",
+    "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
     "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, or a text file of DOIs, any number at once",
     "pdfCost": "A model reads each PDF's first pages for its title and DOI: up to {credits} credits a PDF, paid as it is added",
     "filesLabel": "Files to upload",

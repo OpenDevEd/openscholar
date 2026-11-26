@@ -72,6 +72,8 @@ const summaryFields = {
   member: v.boolean(),
   isReviewer: v.boolean(),
   canResolve: v.boolean(),
+  // How the others voted is kept from the person looking (`keepsVotes`).
+  keeps: v.boolean(),
   reviewers: reviewerViewsValidator,
   total: v.number(),
   counts: countsValidator,
@@ -194,6 +196,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     member,
     isReviewer: reviewer !== null,
     canResolve,
+    keeps,
     reviewers,
     total,
     counts,

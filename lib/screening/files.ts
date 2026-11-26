@@ -17,7 +17,6 @@ export const REFERENCES = /^(?:TY {1,2}- |PMID-|%0 |FN |PT [A-Z]\s*$)|<record>|^
 /** The parts of a record a table can hold, and the names databases and reference managers give their columns. */
 export const COLUMN_KEYS = ["title", "abstract", "doi", "year", "authors"] as const;
 export type ColumnKey = (typeof COLUMN_KEYS)[number];
-export const COLUMN_LABEL: Record<ColumnKey, string> = { title: "Title", abstract: "Abstract", doi: "DOI", year: "Year", authors: "Authors" };
 const KNOWN: Record<ColumnKey, string[]> = {
   title: ["title", "primary_title", "article title", "document title", "ti"],
   abstract: ["abstract", "abstract note", "notes_abstract", "abstract_text", "ab"],

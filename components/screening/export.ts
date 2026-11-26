@@ -29,7 +29,6 @@ import {
   nameOn,
   num,
   numberWord,
-  paperTotal,
   plural,
   pointsMax,
   readersOf,
@@ -60,6 +59,8 @@ const doiOf = (paper: Pick<Paper, "doi">) => paper.doi?.replace(/^https?:\/\/(dx
 const authorsOf = (paper: Pick<Paper, "authors">) => paper.authors ?? [];
 /** The papers still open: in conflict, or waiting for votes, the ones still on their way from a source among them. */
 const openIn = ({ counts }: Taken) => counts.conflict + counts.waiting;
+// Its papers as the server counts them, which the Overview's progress counts too: what the sources took can run ahead of it while a removed source's papers are taken out.
+const totalIn = ({ counts }: Pick<Taken, "counts">) => counts.include + counts.maybe + counts.exclude + counts.conflict + counts.waiting;
 const kindOf = (reviewer: { kind: "person" | "model" }) => (reviewer.kind === "model" ? "AI model" : "Person");
 /** The records that are read as their own PDF, having no abstract. */
 const filedOf = (sources: Screening["sources"]) => sources.reduce((sum, source) => sum + (source.read?.filed ?? 0), 0);
@@ -271,7 +272,7 @@ export type FlowRow = { main: FlowBox; side: FlowBox[] };
 /** The flow of records, counted the way a PRISMA 2020 diagram counts them. */
 export function flowOf(out: Taken): FlowRow[] {
   const { screening, counts, figures } = out;
-  const [kept, open] = [paperTotal(screening.sources), openIn(out)];
+  const [kept, open] = [totalIn(out), openIn(out)];
   // What the sources held and the screening never took: the duplicates merged, papers with no abstract, and what couldn't be read or found.
   const { left, bare, merged } = removedOf(screening.sources);
   const found = kept + merged;
@@ -334,7 +335,7 @@ export function flowSvg(out: Taken, at: number) {
 /** A paragraph for a review's methods section: what was done, in the past tense for what is done and the present for a screening still running. */
 export function methodsOf(out: Taken) {
   const { screening, counts, figures } = out;
-  const [kept, open] = [paperTotal(screening.sources), openIn(out)];
+  const [kept, open] = [totalIn(out), openIn(out)];
   const { left, bare, merged } = removedOf(screening.sources);
   const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };

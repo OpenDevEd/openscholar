@@ -47,14 +47,23 @@ export const step = internalQuery({
     const byId = new Map(plan.reviewers.map((one) => [one._id, one]));
     const discards = new Map(plan.leaving.map(({ reviewer, discard }) => [reviewer._id as string, discard]));
     const staying = plan.reviewers.filter((one) => !discards.has(one._id));
-    const joiners = plan.joining.map(({ userId: id, before }) => ({ id: id as string, before }));
-    const [readers, newModels] = [staying.filter(readingModel).map((one) => one._id as string), plan.models.map(keyOf)];
+    // Someone put back on it takes their old row again, as the save does (./reviewers.ts `addPerson`, `addModel`): the places they had on its papers are still theirs, and are counted as theirs here.
+    const rows = new Map(await Promise.all(plan.models.map(async (model) => [keyOf(model), await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", model.model)).first()] as const)));
+    const back = new Map<string, string>([
+      ...plan.joining.flatMap(({ userId: id }): Array<[string, string]> => { const old = plan.reviewers.find((one) => one.kind === "person" && one.userId === id); return old ? [[id, old._id]] : []; }),
+      ...plan.models.flatMap((model): Array<[string, string]> => { const row = rows.get(keyOf(model)); const old = row && plan.reviewers.find((one) => one.kind === "model" && one.modelId === row._id && one.effort === model.effort); return old ? [[keyOf(model), old._id]] : []; }),
+    ]);
+    const idOf = (key: string) => back.get(key) ?? key;
+    // The form names a person by their account, and a model put back by its row.
+    const keyOfRow = new Map(plan.joining.flatMap(({ userId: id }): Array<[string, string]> => (back.has(id) ? [[back.get(id)!, id]] : [])));
+    const joiners = plan.joining.map(({ userId: id, before }) => ({ id: idOf(id), before }));
+    const [readers, newModels] = [staying.filter(readingModel).map((one) => one._id as string), plan.models.map((model) => idOf(keyOf(model)))];
     // Who papers go to once the change is made: the people dealt to, in the order they joined, the ones who join last, and the models that read.
     const team = { people: [...staying.filter(dealable).map((one) => one._id as string), ...joiners.map((one) => one.id)], models: [...readers, ...newModels] };
     const mine = plan.reviewers.find((one) => one.userId === userId && one.left === undefined)?._id;
     // What each model, on it already or about to join, can be given: a paper that is only its PDF goes to the ones that take files.
     const reads = await readsOf(ctx, staying);
-    for (const model of plan.models) reads.set(keyOf(model), readOf(await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", model.model)).first()));
+    for (const model of plan.models) reads.set(idOf(keyOf(model)), readOf(rows.get(keyOf(model)) ?? null));
 
     const joining: Preview["joining"] = Object.fromEntries([...joiners.map((one) => [one.id, { dealt: 0 }]), ...newModels.map((key) => [key, { reads: 0 }])]);
     const leaving: Preview["leaving"] = Object.fromEntries([...discards.keys()].map((id) => [id, { cast: 0, unvoted: 0, voted: 0, to: [] as string[], settled: 0, waiting: 0 }]));
@@ -84,7 +93,7 @@ export const step = internalQuery({
       const after = kept ? null : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, onIt, plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
       const now = after?.result ?? was;
       const open = after ? !isFinal(now) : true;
-      const ends: Place[] = after?.places ?? [...places, ...newModels.filter((key) => onIt.models.includes(key)).map((key): Place => ({ reviewer: key, kind: "model", status: "waiting" }))];
+      const ends: Place[] = after?.places ?? [...places, ...newModels.filter((key) => onIt.models.includes(key) && !places.some((place) => place.reviewer === key)).map((key): Place => ({ reviewer: key, kind: "model", status: "waiting" }))];
 
       if (kept ? plan.moves : now !== was) {
         const [from, to] = kept ? (["waiting", "waiting"] as const) : [was, now];
@@ -122,7 +131,9 @@ export const step = internalQuery({
         else if (place.status === "waiting") leaving[id] = { ...gone, ...(open ? { waiting: gone.waiting + 1 } : { settled: gone.settled + 1 }) };
       }
     }
-    return { counted: { ...nothing(), reopened, eachChanged, joining, leaving, models, moves: [...moves.values()] }, loads, cursor: page.isDone ? null : page.continueCursor };
+    // Whoever joins is named as the form names them.
+    const joined = Object.fromEntries(Object.entries(joining).map(([id, counts]) => [keyOfRow.get(id) ?? id, counts]));
+    return { counted: { ...nothing(), reopened, eachChanged, joining: joined, leaving, models, moves: [...moves.values()] }, loads, cursor: page.isDone ? null : page.continueCursor };
   },
 });
 

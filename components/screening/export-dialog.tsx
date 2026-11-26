@@ -54,7 +54,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const { figures } = useFigures(id);
 
   // Every file is built by export.ts, from the screening as it stands and from the papers as the server gives them to whoever takes the file out: what is hidden from them on a page is hidden from them in the file.
-  const out: Taken = { screening, counts, me: state.me, figures };
+  const out: Taken = { screening: state.filed, counts, me: state.me, figures };
   const blind = screening.rule.blind === "after";
   const reviewers = inOrder(votingReviewers(screening), state.me);
   // The papers by where they stand, as the server has counted them.
@@ -317,7 +317,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 { key: `ris:${group}`, format: "RIS", run: async () => save(fileName(out, GROUP_FILE[group], "ris", Date.now()), "application/x-research-info-systems", risOf(await every(papersOf(group)))), off: !included },
               ]
             : tab === "votes"
-              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(screening, whose))}`, "csv", Date.now()), "text/csv", votesCsv(screening, state.me, await every({}), whose === "all" ? undefined : whose)), off: !total }]
+              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), "text/csv", votesCsv(state.filed, state.me, await every({}), whose === "all" ? undefined : whose)), off: !total }]
               : tab === "flow"
                 ? [
                     { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: false },
