@@ -472,6 +472,7 @@ import type * as screening_queries from "../screening/queries.js";
 import type * as screening_reading from "../screening/reading.js";
 import type * as screening_readings from "../screening/readings.js";
 import type * as screening_reviewers from "../screening/reviewers.js";
+import type * as screening_sampling from "../screening/sampling.js";
 import type * as screening_scoring from "../screening/scoring.js";
 import type * as screening_screenings from "../screening/screenings.js";
 import type * as screening_settings from "../screening/settings.js";
@@ -1020,6 +1021,7 @@ declare const fullApi: ApiFromModules<{
   "screening/reading": typeof screening_reading;
   "screening/readings": typeof screening_readings;
   "screening/reviewers": typeof screening_reviewers;
+  "screening/sampling": typeof screening_sampling;
   "screening/scoring": typeof screening_scoring;
   "screening/screenings": typeof screening_screenings;
   "screening/settings": typeof screening_settings;

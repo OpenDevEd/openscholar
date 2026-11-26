@@ -12,7 +12,7 @@ import { give, holds, roomFor } from "../sharing/access";
 import { grantOf, itemGuestsOf, type Shared } from "../sharing/items";
 import { workspaceName } from "../workspaces/personal";
 import { progressRow } from "./bookkeeping";
-import { dealable, modelsFree, readingModel, reviewersOf, waitingOf } from "./dealing";
+import { dealable, modelsFree, readingModel, reviewersOf, sourcesOf, waitingOf } from "./dealing";
 
 /** Why a screening can't move yet, in words for whoever asked, or null. */
 export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">): Promise<string | null> {
@@ -29,7 +29,8 @@ export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJob
  * Puts a screening in `to`. Its reviewers who aren't in that workspace keep it as its guests, voting as before, where
  * its plan has room for them. Conflicts go to whoever moved it when the person who settled them has no place on it
  * there. Papers it has saved stay in the collection they went to, and the ones it includes from now on go to a
- * collection of that name in the workspace it is in.
+ * collection of that name in the workspace it is in. Its sources stay where they are and go on being read there, by
+ * whoever added them, for as long as that person is in that workspace.
  */
 export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeningJobs">, to: Id<"workspaces">) {
   const shared: Shared<"screening"> = { kind: "screening", id: job._id, workspaceId: to, name: job.name ?? "Screening", size: job.totalPapers, createdBy: job.createdBy };
@@ -54,5 +55,6 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
     ...(job.rule && !settlesThere ? { rule: { ...job.rule, resolver: by } } : {}),
   });
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
+  for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });
   for (const person of outside) await give(ctx, shared, person, "editor", { userId: by, author: "user" });
 }

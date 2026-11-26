@@ -304,6 +304,7 @@ it("moves a screening with reviewers while it runs, once no model is reading: a 
     const kept = await newCollection(ctx, { userId: users.alice, workspaceId: labId }, "Kept");
     const job = await ctx.db.insert("screeningJobs", { workspaceId: labId, createdBy: users.alice, screeningId, status: "processing", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1, shape: 2, name: "Tutoring", rule: { each: 2, settle: "all", resolver: users.bob, blind: "after" }, targetCollectionId: kept });
     for (const userId of [users.alice, users.bob]) await ctx.db.insert("screeningReviewers", { jobId: job, kind: "person", userId, addedAt: 1, addedBy: users.alice, dealt: 0 });
+    await ctx.db.insert("screeningSources", { jobId: job, set: { kind: "saved" }, name: "Saved papers", addedAt: 1, addedBy: users.alice, state: "done", read: 1, taken: 1, duplicates: 0, left: 0 });
     const model = await ctx.db.insert("screeningReviewers", { jobId: job, kind: "model", addedAt: 1, addedBy: users.alice, dealt: 1 });
     const paper = await ctx.db.insert("screeningResults", { jobId: job, ...paperOf("https://openalex.org/W1"), title: "W1", authors: [], citedByCount: 0, status: "processing", createdAt: 1 });
     // A reading under way: it holds one of the lab's slots.
@@ -325,6 +326,8 @@ it("moves a screening with reviewers while it runs, once no model is reading: a 
   const moved = (await t.run((ctx) => ctx.db.get("screeningJobs", job)))!;
   expect(moved).toMatchObject({ workspaceId: aliceOwn, status: "processing", newCollection: "Kept" });
   expect(moved.targetCollectionId).toBeUndefined();
+  // The lab's library it reads stays the lab's, and is read there.
+  expect(await t.run((ctx) => ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", job)).collect())).toMatchObject([{ workspaceId: labId }]);
   // Bob settled its conflicts and still does: he is on it, as its guest now.
   expect(moved.rule?.resolver).toBe(users.bob);
   expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", job).eq("userId", users.bob)).unique())).toMatchObject({ kind: "screening", role: "editor" });

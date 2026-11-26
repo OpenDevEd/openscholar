@@ -121,6 +121,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
                 ...(modelsOf(screening).length ? [`Its ${modelsOf(screening).length === 1 ? "model is" : "models are"} paid from ${own ? "your own" : `${to.name}'s`} credits from now on`] : []),
                 ...(peopleOf(screening).some((one) => one.id !== state.me) ? [own ? "Its other reviewers keep it, as its guests" : `Its other reviewers keep it, as its guests where they aren't in ${to.name}`] : []),
                 ...(collection && screening.destination.kind !== "community" ? [`Papers it has saved stay where they are, and the ones it includes from now on are saved in ${own ? "your own" : `${to.name}'s`} library`] : []),
+                ...(screening.living && from ? [`Its sources stay in ${from.kind === "personal" ? "your own workspace" : from.name}, and it goes on checking them there`] : []),
                 ...(from?.kind === "organization" ? [`Members of ${from.name} who aren't its reviewers no longer see it`] : []),
               ]}
               none="Nothing else changes"

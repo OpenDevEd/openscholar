@@ -10,7 +10,7 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "../lib/functions";
-import { readConvexErrorData } from "../lib/errors";
+import { createError, readConvexErrorData } from "../lib/errors";
 import { identityOf } from "../lib/paperRef";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -20,6 +20,7 @@ import { requirePaperKey } from "../library/find";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
+import { actorIn } from "../workspaces/actor";
 import { ZOTERO_PAGE } from "../zotero/libraryValidators";
 import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
@@ -50,12 +51,12 @@ const FAILURE_SHOWN = 600;
 export const doiKeyOf = (doi: string | undefined | null) => normalDoi(doi) ?? undefined;
 export const titleKeyOf = (title: string, year: number | undefined) => `${title.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "")}|${year ?? ""}`;
 
-type Reading = { sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
+type Reading = { gone?: true; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
 /** The next of a check's sources that still has papers to read, with where its reading stands. Null once every source is read, or the check has ended. */
 export const next = internalQuery({
   args: { checkId: v.id("screeningChecks") },
-  returns: v.union(v.null(), v.object({ sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces") })),
+  returns: v.union(v.null(), v.object({ sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces"), gone: v.optional(v.literal(true)) })),
   handler: async (ctx, { checkId }): Promise<Reading | null> => {
     const check = await ctx.db.get("screeningChecks", checkId);
     const job = check?.state === "running" ? await ctx.db.get("screeningJobs", check.jobId) : null;
@@ -65,7 +66,10 @@ export const next = internalQuery({
     const source = sources[part];
     if (!source) return null;
     // Read as whoever added it: a Zotero library is theirs, and a community's records are the ones they may read.
-    return { sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: job.workspaceId };
+    // Where its screening has moved, it is read in the workspace it was added from, while that person is still in it.
+    const adder = source.workspaceId ? await ctx.db.get("users", source.addedBy) : null;
+    const gone = source.workspaceId !== undefined && !(adder && (await actorIn(ctx, adder, source.workspaceId)));
+    return { ...(gone ? { gone: true as const } : {}), sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: source.workspaceId ?? job.workspaceId };
   },
 });
 
@@ -112,6 +116,7 @@ export const gather = internalAction({
       if (!source) return void (await ctx.runMutation(internal.screening.gathering.end, { checkId }));
       if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId }));
       try {
+        if (source.gone) throw createError("FORBIDDEN", "Whoever added this source is no longer in the workspace it is in. Add it again from this workspace.");
         await step(ctx, checkId, source);
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);

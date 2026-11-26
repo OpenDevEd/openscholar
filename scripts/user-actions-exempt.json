@@ -125,6 +125,7 @@
     "screening/living:checkNow": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/discussion:say": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/settings:save": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
+    "screening/sampling:sample": "The screening form's preview of the first papers a source's range takes. The assistant starts no screening, and reads a source's papers with the tools for searches, collections and Zotero.",
     "screening/settings:saveToCommunity": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/effects:preview": "The settings page counting what a change would do before it is saved. The assistant changes nothing in a screening, so it has nothing to preview.",
     "screening/reviewers:movable": "The Overview's move of one reviewer's papers to another, which the assistant doesn't make: how many could move.",

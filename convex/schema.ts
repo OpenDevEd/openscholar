@@ -1637,6 +1637,8 @@ export default defineSchema({
     last: v.optional(v.number()),
     addedAt: v.number(),
     addedBy: v.id("users"),
+    // The workspace it is read in, once its screening has moved to another: a search, a collection, a library and a screening stay where they were (./screening/moving.ts).
+    workspaceId: v.optional(v.id("workspaces")),
     // Taken out of the screening: its papers nobody voted on went with it.
     removedAt: v.optional(v.number()),
     state: v.union(v.literal("waiting"), v.literal("reading"), v.literal("done"), v.literal("failed")),

@@ -108,6 +108,10 @@ export const saveToValidator = v.union(
 export const prunable = (set: Infer<typeof paperSetValidator> | undefined) => set?.kind === "collection" || (set?.kind === "evidenceLibrary" && "readerCollection" in set.source && !("search" in set.source));
 
 /** Where a job's included papers go in an Evidence Library: one of the person's collections there, by its ID and name. */
+/** The papers shown under a source's range before it is read (./sampling.ts). */
+export const SAMPLE_PAPERS = 3;
+export const sampleValidator = capped(v.array(v.object({ title: v.string(), year: v.optional(v.number()) })), SAMPLE_PAPERS);
+
 export const libraryDestinationValidator = v.object({ libraryId: v.id("evidenceLibraries"), collection: v.string(), name: v.string() });
 
 /** How a paper went to a library collection: put in, or not, because the library holds no record of it. */

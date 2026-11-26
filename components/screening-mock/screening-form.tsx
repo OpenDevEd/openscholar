@@ -872,6 +872,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       label={`Papers of ${source.name}`}
                                       summary={<p className="text-xs text-muted-foreground">Every one of its {num(baseTotal(source))} papers.</p>}
                                     />
+                                    {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={saved?.sources.some((one) => one.id === source.id) ? (source.id as Id<"screeningSources">) : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
                                     {link && taken(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
                                         <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">See all {num(taken(source))} {link.where}<ExternalLink aria-hidden className="size-3" /></a>
@@ -1534,6 +1535,34 @@ function MarkedWords({ criterion, n, onChange }: { criterion: Criterion; n: numb
 }
 
 /** Rows one page of what a source left out holds. */
+/** The kinds of source whose first papers can be read from any place in them before the screening is (convex/screening/sampling.ts). */
+const SAMPLED = new Set<Source["kind"]>(["search", "collection", "saved", "screening", "zotero", "evidenceLibrary"]);
+const SAMPLE = 3;
+/**
+ * The first papers a source's range takes, read from the source as the range is set: which papers these are is what
+ * a range is picked by. The list keeps its lines' height from the first frame, and the titles fade in over it.
+ */
+function SampleTitles({ set, sourceId, first, taken }: { set: NonNullable<Source["set"]>; /** The source's row, once the screening reads it. */ sourceId?: Id<"screeningSources">; first: number; taken: number }) {
+  const read = useWorkspaceAction(api.screening.sampling.sample);
+  // A range dragged by its slider is read once it rests.
+  const at = useDebouncedValue(first, 400);
+  const lines = Math.min(SAMPLE, taken);
+  const titles = useSWR(["screening-sample", JSON.stringify(set), at], () => read({ set: set as never, first: at, ...(sourceId ? { sourceId } : {}) }), { revalidateOnFocus: false, keepPreviousData: true });
+  // A source that can't be read at this place shows none, and takes no room for them.
+  if (titles.data && !titles.data.length) return null;
+  if (titles.error) return null;
+  return (
+    <ul aria-label="The first papers of this range" className={cn("space-y-1 border-t border-border-subtle pt-3 transition-opacity duration-300", (!titles.data || at !== first) && "opacity-50")} style={{ minHeight: `calc(${lines + (taken > lines ? 1 : 0)} * 1.25rem + 0.5rem)` }}>
+      {(titles.data ?? []).slice(0, lines).map((paper, i) => (
+        <li key={i} className="flex min-w-0 animate-in fade-in text-xs duration-300">
+          <span className="truncate text-muted-foreground">{paper.title}{paper.year ? ` (${paper.year})` : ""}</span>
+        </li>
+      ))}
+      {titles.data && taken > titles.data.length ? <li className="text-xs text-muted-foreground">and {num(taken - Math.min(lines, titles.data.length))} more</li> : null}
+    </ul>
+  );
+}
+
 const LEFT_PAGE = 8;
 /** What one of a running screening's sources held and didn't take, a page at a time, each with why. */
 function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number }) {
