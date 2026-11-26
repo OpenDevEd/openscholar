@@ -35,7 +35,7 @@ export function screeningNoticeMessage({ origin, path, name, about, count, by }:
         : [`${papers(count)} to screen in "${name}"`, `${count === 1 ? "A new paper" : `${papers(count)} new`} arrived in "${name}" and ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"];
   return {
     subject,
-    text: `${line}\n\n${open}\n\nTo stop emails from this screening, open:\n${off}`,
+    text: `${line}\n\n${open}\n\nStop receiving emails from this screening\n${off}`,
     html: renderLibraryEmail({
       identity,
       title: subject,

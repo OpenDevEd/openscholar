@@ -8508,10 +8508,10 @@
         "read": "{done, number} of {of, number}"
       },
       "menu": {
-        "emailsOff": "This screening won't email you any more",
-        "emailsOn": "This screening emails you again",
-        "stopEmails": "Stop its emails to me",
-        "emailAgain": "Its emails to me are off: turn them on",
+        "emailsOff": "You won't receive emails from this screening",
+        "emailsOn": "You'll receive emails from this screening again",
+        "stopEmails": "Stop receiving emails",
+        "emailAgain": "Start receiving emails",
         "pauseModels": "Pause models",
         "duplicate": "Duplicate as a new screening",
         "move": "Move to another workspace",
@@ -8602,6 +8602,12 @@
         "reviewerCan": "Votes on the papers they get",
         "viewer": "Viewer",
         "viewerCan": "Sees every paper and every vote"
+      },
+      "stopEmails": {
+        "title": "Stop receiving emails from this screening?",
+        "says": "You won't get emails about new papers to vote on, conflicts to settle or reminders. Other people's emails don't change. You can start them again from the screening's menu.",
+        "confirm": "Stop receiving emails",
+        "cancel": "Keep receiving"
       }
     },
     "list": {
