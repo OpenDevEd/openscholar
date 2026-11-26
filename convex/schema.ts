@@ -1670,6 +1670,32 @@ export default defineSchema({
     checkedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
+  // A person's Zotero libraries as last read, and each library's collections, a row each (./zotero/tree.ts): the
+  // form that starts a screening pages through them and finds one by name here. `under`: what a collection holds
+  // with everything under it, by Zotero's own counts. `parent` is "" at the top, and `library` "" for their own.
+  zoteroTrees: defineTable({
+    userId: v.id("users"),
+    library: v.string(),
+    state: v.union(v.literal("reading"), v.literal("counting"), v.literal("done"), v.literal("failed")),
+    readAt: v.number(),
+    total: v.number(),
+    read: v.number(),
+  }).index("by_user_and_library", ["userId", "library"]),
+  zoteroCollections: defineTable({
+    userId: v.id("users"),
+    library: v.string(),
+    key: v.string(),
+    name: v.string(),
+    parent: v.string(),
+    items: v.number(),
+    inside: v.number(),
+    under: v.number(),
+    readAt: v.number(),
+  })
+    .index("by_user_and_library_and_key", ["userId", "library", "key"])
+    .index("by_user_and_library_and_parent_and_name", ["userId", "library", "parent", "name"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId", "library"] }),
+
   // A PDF handed to a screening, one of a drop of them in the form. A cheap model reads its first pages once, when it
   // is added (./screening/heldPdfs.ts), and what it found is kept here for the screening's source to take.
   screeningFiles: defineTable({

@@ -8,14 +8,13 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
+import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources } from "./library-sources";
 import { Chip, Meter, RequiredMark } from "./parts";
-import { pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FadeRow } from "@/components/ui/fade-row";
 import { HelpFact } from "@/components/ui/help";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +34,8 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { Input } from "@/components/ui/input";
 import { PDF_STANDS, hash, num, plural, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip } from "./pieces";
 
@@ -323,7 +324,7 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   );
 }
 
-/** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: the papers the index holds, and the ones screened as the PDF they are. The files that don't open are among what the row says it left out. */
+/** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: how many are read, and how many are papers the index holds. The ones screened as the PDF they are, and the files that don't open, are counted by the row itself, as for any source. */
 export function PdfFacts({ batch }: { batch: string }) {
   const drop = useProtectedQuery(api.screening.files.drop, inWorkspace(usePageWorkspace(), { batch })).data;
   if (!drop) return <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip>;
@@ -331,7 +332,6 @@ export function PdfFacts({ batch }: { batch: string }) {
     <>
       {drop.waiting ? <Chip><Spinner className="size-3" /><span className="tabular-nums">{num(drop.total - drop.waiting)} of {num(drop.total)} read</span></Chip> : null}
       {drop.known ? <Chip icon={Check}><span className="tabular-nums">{num(drop.known)}</span> in the index</Chip> : null}
-      {drop.file ? <Chip icon={FileText}><span className="tabular-nums">{num(drop.file)}</span> screened as the PDF</Chip> : null}
     </>
   );
 }
@@ -419,8 +419,9 @@ export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: A
 // ── Zotero ───────────────────────────────────────────────────────────────────────────────────────
 
 type ZoteroLibrary = { id?: string; name: string; papers?: number };
-type ZoteroCollection = { key: string; name: string; papers: number; inside: number };
-/** The person's own library, which their account has without asking. */
+/** A collection as the list shows it. `under`: what it holds with everything under it, once the library is counted. `above`: where it sits, for one found by its name. */
+type ZoteroCollection = { key: string; name: string; papers: number; inside: number; under?: number; above?: Array<{ key: string; name: string }> };
+
 const OWN: ZoteroLibrary = { name: "My library" };
 
 /**
@@ -429,20 +430,33 @@ const OWN: ZoteroLibrary = { name: "My library" };
  * collection opened from it, with the way back up; under it are the collections there, a page of Zotero's at a time.
  */
 export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const workspaceId = usePageWorkspace();
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {}).data;
   const readGroups = useWorkspaceAction(api.screening.zoteroSources.groups);
-  const readCollections = useWorkspaceAction(api.screening.zoteroSources.collections);
+  const openTree = useWorkspaceMutation(api.zotero.tree.open);
   const [library, setLibrary] = useState<ZoteroLibrary>(OWN);
   // The collections opened on the way to where the list stands, the last of them the one it stands in.
   const [path, setPath] = useState<ZoteroCollection[]>([]);
-  const [page, setPage] = useState(1);
   const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
+  const [find, setFind] = useState("");
+  const words = useDebouncedValue(find.trim(), 300);
   const deepId = useId();
   const connected = account?.connected === true;
+  const of = library.id ? { groupId: library.id } : {};
+  // The groups, a page of Zotero's at a time: the next is read when the person asks for more.
+  const [more, setMore] = useState<{ groups: ZoteroLibrary[]; next?: number }>({ groups: [] });
   const groups = useSWR(connected ? ["zotero-groups"] : null, () => readGroups({}), { revalidateOnFocus: false });
+  const listedGroups = [...(groups.data?.page ?? []), ...more.groups];
+  const nextGroups = more.groups.length ? more.next : groups.data?.next;
+  const moreGroups = async () => { const read = await readGroups({ start: nextGroups }); setMore((now) => ({ groups: [...now.groups, ...read.page], next: read.next })); };
+  // The library's collections are kept on the server as rows, read again from Zotero where what is kept is old (convex/zotero/tree.ts): opening the library asks for that, and the list below pages and searches what is kept.
+  useSWR(connected ? ["zotero-open", library.id ?? ""] : null, () => openTree(of), { revalidateOnFocus: false });
+  const tree = useProtectedQuery(api.zotero.tree.state, inWorkspace(workspaceId, connected ? of : "skip")).data;
   const here = path.at(-1);
-  const listed = useSWR(connected ? ["zotero-collections", library.id ?? "", here?.key ?? ""] : null, () => readCollections({ ...(library.id ? { groupId: library.id } : {}), ...(here ? { parent: here.key } : {}) }), { revalidateOnFocus: false, keepPreviousData: true });
+  const level = useCursorPage(api.zotero.tree.level, inWorkspace(workspaceId, connected && !words ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
+  const found = useCursorPage(api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
+  const listed = words ? found : level;
 
   if (account === undefined) return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading Zotero" className="size-5 text-primary" /></div>;
   if (!connected) {
@@ -455,20 +469,26 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     );
   }
 
-  const rows = listed.data?.page ?? [];
-  const pager = pagerOf(rows.length, PAGE, page, setPage);
-  const go = (next: ZoteroCollection[]) => { setPath(next); setPage(1); };
+  const rows: ZoteroCollection[] = listed.items;
+  // The library's collections are still on their way from Zotero: the list fills as they arrive, and says how far the reading is.
+  const reading = tree === undefined || tree === null || tree.state === "reading";
+  const go = (next: ZoteroCollection[]) => { setPath(next); setFind(""); };
   const pick = (next: ZoteroLibrary) => { setLibrary(next); setPicking(false); go([]); };
   const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
   const under = (one: ZoteroCollection) => deep && one.inside > 0;
+  const aboveOf = (one: ZoteroCollection): ZoteroCollection[] => one.above?.map((step) => ({ ...step, papers: 0, inside: 1 })) ?? (path.some((step) => step.key === one.key) ? path.slice(0, path.findIndex((step) => step.key === one.key)) : path);
   const added = (one?: ZoteroCollection) => sources.some((source) => source.ref === refOf(one) || source.ref === refOf(one, true));
-  const add = (one: ZoteroCollection, above: ZoteroCollection[]) =>
-    onAdd({ ref: refOf(one, under(one)), name: one.name, detail: `In ${library.name}`, total: one.papers, filters: [...(above.length ? [`In ${above.map((step) => step.name).join(" › ")}`] : []), ...(under(one) ? ["With its sub-collections"] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
+  const add = (one: ZoteroCollection) => {
+    const above = aboveOf(one);
+    onAdd({ ref: refOf(one, under(one)), name: one.name, detail: `In ${library.name}`, total: under(one) ? (one.under ?? one.papers) : one.papers, filters: [...(above.length ? [`In ${above.map((step) => step.name).join(" › ")}`] : []), ...(under(one) ? ["With its sub-collections"] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
+  };
+  // What a collection holds with everything under it is what Zotero counts in each, added up: a paper filed in two of them counts twice until the screening reads it, so it is "about".
+  const counted = (one: ZoteroCollection) => (under(one) ? { count: false, chips: one.under === undefined ? undefined : <Chip>About {num(one.under)} with what is under it</Chip> } : { count: true, chips: undefined });
   const LibraryIcon = library.id ? Users : UserRound;
   const option = (one: ZoteroLibrary) => {
     const Icon = one.id ? Users : UserRound;
     return (
-      <CommandItem key={one.id ?? "me"} value={one.name} onSelect={() => pick(one)} className="gap-2.5">
+      <CommandItem key={one.id ?? "me"} value={`${one.name} ${one.id ?? ""}`} onSelect={() => pick(one)} className="gap-2.5">
         <Icon className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate">{one.name}</span>
         {one.papers === undefined ? null : <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{plural(one.papers, "item", "items")}</span>}
@@ -477,6 +497,14 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     );
   };
   const step = "rounded-sm underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:text-foreground hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
+  const trailOf = (above: ZoteroCollection[]) => (
+    <FadeRow scrolls scrollbar="none" className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+      <button type="button" onClick={() => go([])} className={cn(step, "shrink-0")}>{library.name}</button>
+      {above.map((one, at) => (
+        <span key={one.key} className="flex shrink-0 items-center gap-1"><ChevronRight aria-hidden className="size-3" /><button type="button" onClick={() => go(above.slice(0, at + 1))} className={step}>{one.name}</button></span>
+      ))}
+    </FadeRow>
+  );
 
   return (
     <div className="space-y-2">
@@ -489,9 +517,12 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
         </PopoverTrigger>
         <PopoverContent align="start" aria-label="Zotero library" className="w-(--radix-popover-trigger-width) p-0">
           <Command>
+            {/* Someone in dozens of groups finds one by its name. */}
+            {listedGroups.length > 8 ? <CommandInput placeholder="Find a group" /> : null}
             <CommandList className="max-h-72">
               <CommandGroup heading="Yours">{option(OWN)}</CommandGroup>
-              {groups.data?.page.length ? <CommandGroup heading="Groups">{groups.data.page.map(option)}</CommandGroup> : null}
+              {listedGroups.length ? <CommandGroup heading="Groups">{listedGroups.map(option)}</CommandGroup> : null}
+              {nextGroups === undefined ? null : <CommandGroup><CommandItem value="more groups" onSelect={() => void moreGroups()} className="justify-center text-muted-foreground">More groups</CommandItem></CommandGroup>}
             </CommandList>
           </Command>
           <p className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2 text-xs text-muted-foreground">
@@ -500,28 +531,21 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           </p>
         </PopoverContent>
       </Popover>
-      <span className="flex items-center gap-1">
-        <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />Include sub-collections</label>
-        <Help title="Sub-collections" facts={<HelpFact>A paper filed in two of them is taken once</HelpFact>}>Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it, which are counted as the screening reads them.</Help>
+      <div className="relative">
+        <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder="Find a collection" aria-label={`Find a collection in ${library.name}`} className="h-8 rounded-full bg-card ps-8 text-sm" />
+      </div>
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="flex items-center gap-1">
+          <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />Include sub-collections</label>
+          <Help title="Sub-collections" facts={<HelpFact>A paper filed in two of them is taken once</HelpFact>}>Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it: what they hold together is about what Zotero counts in each, added up, and exact once the screening has read them.</Help>
+        </span>
+        {reading ? <Chip className="ms-auto"><Spinner className="size-3" />{tree?.total ? <span className="tabular-nums">Reading its collections, {num(tree.read)} of {num(tree.total)}</span> : "Reading its collections"}</Chip> : tree?.state === "failed" ? <StateChip tone="warning" icon={TriangleAlert} className="ms-auto">Zotero couldn&apos;t be read. Open the library again.</StateChip> : null}
       </span>
-      <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isValidating && listed.data && "opacity-60")}>
-        {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. */}
-        {here ? (
-          <OfferRow
-            offer={{ name: here.name, detail: "", total: here.papers }}
-            icon={Folder}
-            trail={
-              <FadeRow scrolls scrollbar="none" className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                <button type="button" onClick={() => go([])} className={cn(step, "shrink-0")}>{library.name}</button>
-                {path.slice(0, -1).map((one, at) => (
-                  <span key={one.key} className="flex shrink-0 items-center gap-1"><ChevronRight aria-hidden className="size-3" /><button type="button" onClick={() => go(path.slice(0, at + 1))} className={step}>{one.name}</button></span>
-                ))}
-              </FadeRow>
-            }
-            added={added(here)}
-            onAdd={() => add(here, path.slice(0, -1))}
-            count={here.papers > 0 || !under(here)}
-          />
+      <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isStale && "opacity-60")}>
+        {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. A name being looked for is looked for in the whole library. */}
+        {words ? null : here ? (
+          <OfferRow offer={{ name: here.name, detail: "", total: here.papers }} icon={Folder} trail={trailOf(path.slice(0, -1))} added={added(here)} onAdd={() => add(here)} {...counted(here)} />
         ) : (
           <OfferRow
             offer={{ name: `Every paper in ${library.name}`, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0 }}
@@ -531,25 +555,24 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
             onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0, filters: ["Whole library"], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
           />
         )}
-        <div className="divide-y divide-border-subtle" style={{ minHeight: !listed.data || pager.pages > 1 ? PAGE * ROW : undefined }}>
-          {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map((one) => (
+        <div className="divide-y divide-border-subtle" style={{ minHeight: (reading && !rows.length) || listed.hasPages ? PAGE * ROW : undefined }}>
+          {rows.map((one) => (
             <OfferRow
               key={one.key}
               offer={{ name: one.name, detail: one.inside ? plural(one.inside, "sub-collection", "sub-collections") : "", total: one.papers }}
               icon={Folder}
+              // A collection found by its name says where it sits.
+              trail={words && one.above?.length ? trailOf(aboveOf(one)) : undefined}
               added={added(one)}
-              count={one.papers > 0 || !under(one)}
-              onOpen={one.inside ? () => go([...path, one]) : undefined}
-              onAdd={() => add(one, path)}
+              onOpen={one.inside ? () => go([...aboveOf(one), one]) : undefined}
+              onAdd={() => add(one)}
+              {...counted(one)}
             />
           ))}
-          {listed.data && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{here ? `${here.name} holds no collections.` : `${library.name} has no collections.`}</p> : null}
-          {listed.error ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{getErrorMessage(listed.error, "Zotero couldn't be read. Try again.")}</p> : null}
+          {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? `No collection of ${library.name} has “${find.trim()}” in its name.` : here ? `${here.name} holds no collections.` : `${library.name} has no collections.`}</p> : null}
         </div>
       </div>
-      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={rows.length} itemsPerPage={PAGE} itemLabel="collections" /> : null}
-      {/* ponytail: a level shows Zotero's first hundred collections; read on with `next` when a level that large is met. */}
-      {listed.data?.next !== undefined ? <p className="text-xs text-muted-foreground">Showing the first {num(rows.length)} collections here.</p> : null}
+      {listed.hasPages ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel="collections" steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
     </div>
   );
 }

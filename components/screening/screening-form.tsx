@@ -111,6 +111,12 @@ const criterionOf = (screening: Screening) => (criterion: Criterion) => {
 const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: screening.rule.each === "all" ? ("all" as const) : Number(screening.rule.each), settle: screening.rule.settle, blind: screening.rule.blind, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
 /** How long the form waits after the last change to a new screening's sources before the server reads them: a range being dragged, or a second source on its way, is one read and not several. */
 const SOURCES_SETTLE_MS = 1_200;
+/**
+ * The papers a source holds, for the row that takes them all. A Zotero collection added with everything under it is
+ * counted, until it is read, by what Zotero files in each collection, where a paper filed in two counts twice: once
+ * it is read, it holds the papers that were found.
+ */
+const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.deep && source.read?.state === "done" ? source.read.taken + source.read.duplicates + source.read.left : baseTotal(source));
 /** A source the server hasn't read yet, as its row shows it. */
 const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
 const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
@@ -865,7 +871,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {/* Its counts take the place the chip holds once the lookup or the count is back, so the row keeps its height. */}
                                   {busy ? <Chip key="busy"><Spinner className="size-3" />{busy}</Chip> : (
                                     <>
-                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
+                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(heldBy(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
+                                      {source.read?.filed ? <Chip icon={FileText}>{num(source.read.filed)} screened as the PDF</Chip> : null}
                                       {doubled > 0 && taken(source) ? <Chip>{num(doubled)} already in another source</Chip> : null}
                                       {grew > 0 && own && !gone ? (
                                         <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
@@ -923,7 +930,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
                                       total={baseTotal(source)}
                                       label={`Papers of ${source.name}`}
-                                      summary={<p className="text-xs text-muted-foreground">Every one of its {num(baseTotal(source))} papers.</p>}
+                                      summary={<p className="text-xs text-muted-foreground">Every one of its {num(heldBy(source))} papers.</p>}
                                     />
                                     {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
                                     {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}

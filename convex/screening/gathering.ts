@@ -21,7 +21,7 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { actorIn } from "../workspaces/actor";
-import { ZOTERO_PAGE } from "../zotero/libraryValidators";
+import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
@@ -46,8 +46,6 @@ const QUIET_MS = 15 * 60_000;
 const RESTARTS = 3;
 /** How long a check waits before it looks again at PDFs whose first reading hasn't ended. */
 const PDFS_WAIT_MS = 3_000;
-/** Collections read for one Zotero source that takes the ones under a collection too. ponytail: past this many, and past the first hundred inside any one collection, the rest are not read; page the walk if a tree that large is ever added whole. */
-const DEEP_COLLECTIONS = 500;
 /** How much of why a source couldn't be read is kept. */
 const FAILURE_SHOWN = 600;
 
@@ -165,8 +163,13 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       await keepLibraryKeys(ctx, (await ctx.runQuery(internal.screening.gathering.jobOf, { checkId }))!, keys, { part: source.part });
       return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, total: source.first - 1 + keys.length }));
     }
-    // With the collections under it: they are read one after another, each adding the ones inside it to those still to read. `resume` keeps them, and how far into the first the reading is.
-    if (set.kind === "zotero" && set.deep && set.collectionKey) return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, resume: JSON.stringify({ keys: [set.collectionKey], at: 0, seen: 1 }) }));
+    // With the collections under it: the library's collections are kept as rows (../zotero/tree.ts), and the check comes back while they are still being read. `resume` keeps the collections still to read, this one first, and how far into the first the reading is. What it holds with everything under it is what Zotero counts in each, so a paper filed in two of them is counted twice until it is read.
+    if (set.kind === "zotero" && set.deep && set.collectionKey) {
+      const library = { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}) };
+      if (!(await ctx.runMutation(internal.zotero.tree.ready, library))) return "wait";
+      const root: { under: number } | null = await ctx.runQuery(internal.zotero.tree.one, { ...library, key: set.collectionKey });
+      return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, ...(root ? { total: root.under } : {}), resume: JSON.stringify({ keys: [set.collectionKey], at: 0 }) }));
+    }
     const total: number | null = await ctx.runQuery(internal.screening.gathering.heldTotal, { ...reader, set });
     return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, ...(total === null ? {} : { total }) }));
   }
@@ -193,21 +196,50 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     return void (await give(papers, to - from + 1, to >= last));
   }
   if (set.kind === "zotero") {
-    const deep: { keys: string[]; at: number; seen: number } | null = set.deep && source.resume ? JSON.parse(source.resume) : null;
-    if (deep && !deep.keys.length) return void (await give([], 0, true));
-    const through = Math.min(to, from + ZOTERO_PAGE - 1);
-    // One collection is read by its papers' places in it. One with those under it is read a collection at a time, each from its own start.
-    const [first, upTo] = deep ? [deep.at + 1, deep.at + ZOTERO_PAGE] : [from, through];
-    const read: { papers: Array<{ paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: source.userId, ...(deep ? { collectionKey: deep.keys[0]! } : set.collectionKey ? { collectionKey: set.collectionKey } : {}), ...(set.groupId ? { groupId: set.groupId } : {}), first, last: upTo });
-    const papers = read.papers.map(({ paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+    type Page = { papers: Array<{ key: string; paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean };
+    const page = (collectionKey: string | undefined, first: number): Promise<Page> => ctx.runAction(internal.zotero.actions.papersOf, { userId: source.userId, ...(collectionKey ? { collectionKey } : {}), ...(set.groupId ? { groupId: set.groupId } : {}), first, last: first + ZOTERO_LIST_PAGE - 1 });
+    const asPapers = (read: Page): Array<SearchPaper & { key: string }> => read.papers.map(({ key, paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ key, paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+    // An item Zotero holds no abstract for is screened as the PDF attached to it, where it has one: the file is fetched as its adder, for the items this screening doesn't have yet.
+    const withFiles = async (read: Array<SearchPaper & { key: string }>): Promise<SearchPaper[]> => {
+      const bare = read.filter((one) => !one.abstract?.trim());
+      const fresh: string[] = bare.length ? await ctx.runQuery(internal.screening.gathering.lacking, { checkId, papers: bare.map((one) => one.paper) }) : [];
+      const files: Array<{ key: string; file: Id<"_storage">; pages: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key) }) : [];
+      return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages } : paper; });
+    };
+    // A step's papers go to `fill` a step of an index's at a time, the reading's end with the last of them.
+    // Where the reading goes on is kept with the last of them only: one cut short before that reads these collections again, and the papers it gave already are passed over.
+    const hand = async (papers: SearchPaper[], ended: boolean, resume?: string) => {
+      for (let at = 0; at === 0 || at < papers.length; at += READ_STEP) {
+        const lastOne = at + READ_STEP >= papers.length;
+        await give(papers.slice(at, at + READ_STEP), Math.min(READ_STEP, papers.length - at), ended && lastOne, lastOne ? resume : source.resume);
+      }
+    };
+    const room = last - from + 1;
+    // The collections still to read, in a line. One is a collection's key, or a key with where the list of the collections inside it goes on, for one that has more of them than a page.
+    type Waiting = string | [key: string, inside: string];
+    const deep: { keys: Waiting[]; at: number } | null = set.deep && source.resume ? JSON.parse(source.resume) : null;
     if (deep) {
-      // A collection read to its end hands on to the next, with the ones inside it added: one page of them, which is every one for all but the largest.
-      const inside: { page: Array<{ key: string }> } = read.ended && deep.seen < DEEP_COLLECTIONS ? await ctx.runAction(internal.zotero.actions.collectionsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), start: 0, under: deep.keys[0]! }) : { page: [] };
-      const more = inside.page.map((one) => one.key).slice(0, DEEP_COLLECTIONS - deep.seen);
-      const next = read.ended ? { keys: [...deep.keys.slice(1), ...more], at: 0, seen: deep.seen + more.length } : { ...deep, at: upTo };
-      return void (await give(papers, read.papers.length, !next.keys.length || from + read.papers.length > last, JSON.stringify(next)));
+      if (!deep.keys.length) return void (await give([], 0, true));
+      const library = { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}) };
+      const front = deep.keys.slice(0, ZOTERO_AT_ONCE).map((one) => (typeof one === "string" ? { key: one, inside: null, own: true } : { key: one[0], inside: one[1], own: false }));
+      // The next ones are read at once, each from its own start, and an empty one is asked nothing. They are taken in their order as far as the first that has more than a page: that one is read on in the next step, and the ones after it again.
+      const kept: Array<{ items: number } | null> = await Promise.all(front.map((one) => (one.own ? ctx.runQuery(internal.zotero.tree.one, { ...library, key: one.key }) : null)));
+      const reads = await Promise.all(front.map((one, at): Promise<Page> => (one.own && kept[at]?.items ? page(one.key, (at === 0 ? deep.at : 0) + 1) : Promise.resolve({ papers: [], ended: true }))));
+      const open = reads.findIndex((read) => !read.ended);
+      const papers = await withFiles((open === -1 ? reads : reads.slice(0, open + 1)).flatMap(asPapers).slice(0, room));
+      // A collection read to its end hands on to the ones inside it, which join the end of the line.
+      const ended = open === -1 ? front : front.slice(0, open);
+      const under: Array<{ page: Array<{ key: string }>; isDone: boolean; continueCursor: string }> = await Promise.all(ended.map((one) => ctx.runQuery(internal.zotero.tree.inside, { ...library, parent: one.key, paginationOpts: { cursor: one.inside, numItems: ZOTERO_LIST_PAGE } })));
+      const joining = under.flatMap((found, at): Waiting[] => [...found.page.map((one) => one.key), ...(found.isDone ? [] : [[ended[at]!.key, found.continueCursor] as [string, string]])]);
+      const next = { keys: [...deep.keys.slice(ended.length), ...joining], at: open === -1 ? 0 : (open === 0 ? deep.at : 0) + ZOTERO_LIST_PAGE };
+      return void (await hand(papers, !next.keys.length || papers.length >= room, JSON.stringify(next)));
     }
-    return void (await give(papers, through - from + 1, read.ended || through >= last));
+    // A library or one collection is read by its papers' places in it, several pages at once: each is asked for by where it starts, so they come back in order.
+    const starts = Array.from({ length: Math.min(ZOTERO_AT_ONCE, Math.ceil(room / ZOTERO_LIST_PAGE)) }, (_, at) => from + at * ZOTERO_LIST_PAGE);
+    const reads = await Promise.all(starts.map((first) => page(set.collectionKey, first)));
+    const ends = reads.findIndex((read) => read.ended);
+    const papers = await withFiles((ends === -1 ? reads : reads.slice(0, ends + 1)).flatMap(asPapers).slice(0, room));
+    return void (await hand(papers, ends !== -1 || papers.length >= room));
   }
   if (set.kind === "collection" || set.kind === "saved" || set.kind === "screening") {
     const { papers, resume } = await heldPapers(ctx, reader, set, { first: from, last: to }, source.resume);
@@ -215,6 +247,18 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   }
   throw new Error(`No reading for a source of this kind: ${set.kind}`);
 }
+
+/** Which of these papers, by their keys, the screening a check is of doesn't have yet. */
+export const lacking = internalQuery({
+  args: { checkId: v.id("screeningChecks"), papers: v.array(v.string()) },
+  returns: v.array(v.string()),
+  handler: async (ctx, { checkId, papers }) => {
+    const jobId = (await ctx.db.get("screeningChecks", checkId))?.jobId;
+    if (!jobId) return [];
+    const held = await Promise.all(papers.slice(0, READ_STEP * ZOTERO_AT_ONCE).map((paperKey) => ctx.db.query("screeningResults").withIndex("by_job_paperKey", (q) => q.eq("jobId", jobId).eq("paperKey", paperKey)).first()));
+    return papers.filter((_, at) => !held[at]);
+  },
+});
 
 /** The screening a check is of. */
 export const jobOf = internalQuery({
