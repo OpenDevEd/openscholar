@@ -519,7 +519,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <Wide fits={fits} style={{ minHeight: listed.isLoading || listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
             {listed.isLoading ? <ListLoading label="Loading papers" /> : shown.length ? (
               <>
-                <ul className="divide-y divide-border-subtle @2xl/papers:hidden">
+                {/* As wide as the column and no wider: the frame around it scrolls sideways for the table, and would let a long title stretch the list. */}
+                <ul className="w-[100cqw] divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
                     const isOpen = paper?.id === one.id;
                     return (
