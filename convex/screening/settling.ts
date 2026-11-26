@@ -24,6 +24,7 @@ type Reviewer = Doc<"screeningReviewers">;
 type Counts = Infer<typeof reviewerCountsValidator>;
 type Counted = NonNullable<Vote["counted"]>;
 
+const ACTIVE_EVERY_MS = 60_000;
 const NO_COUNTS: Counts = { cast: 0, include: 0, maybe: 0, exclude: 0, failed: 0, closed: 0, spent: 0 };
 export const NO_RESULTS = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
 
@@ -152,6 +153,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     ...withMoved(progress, moved),
   });
   await countDealt(ctx, dealt);
+  // When something last happened in it, kept to within a minute: whatever reads the screening's row is seldom run again for it.
+  if (Date.now() - (job.activeAt ?? 0) > ACTIVE_EVERY_MS) await ctx.db.patch("screeningJobs", job._id, { activeAt: Date.now() });
   for (const { a, b, cells } of pairs.values()) {
     if (cells.every((n) => n === 0)) continue;
     const row = await ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", job._id).eq("a", a).eq("b", b)).unique();

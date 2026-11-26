@@ -18,7 +18,7 @@ import { rerateOnMembership } from "../ratings";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
-import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
+import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, screeningList, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
 import { recountOnGrant, recountOnMembership, recountOnOrganizationGrant } from "../evidenceLibraries/peopleCount";
@@ -84,6 +84,14 @@ triggers.register("itemAccess", countList((grant) => (grant.kind === "library" ?
 triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId, grant.kind)));
 triggers.register("collections", followShared("collection"));
 triggers.register("screeningJobs", followShared("screening"));
+// A workspace's screenings with reviewers, the open ones and the finished ones, for its list's tabs.
+triggers.register("screeningJobs", countList(screeningList));
+// A guest who edits a screening is one of its reviewers, and one who only looks, or has it no more, is not (../screening/reviewers.ts).
+triggers.register("itemAccess", async (ctx, change) => {
+  const grant = change.newDoc ?? change.oldDoc;
+  if (grant.kind !== "screening" || (change.operation === "update" && change.oldDoc.role === change.newDoc.role)) return;
+  await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { item: string; userId: Id<"users"> }, null>("screening/reviewers:guestChanged"), { item: grant.item, userId: grant.userId });
+});
 triggers.register("extractionJobs", followShared("extraction"));
 triggers.register("searches", followShared("search"));
 triggers.register("authorProfiles", followShared("author"));

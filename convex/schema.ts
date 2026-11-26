@@ -1355,6 +1355,8 @@ export default defineSchema({
     paused: v.optional(v.literal(true)),
     // When its settings last changed without its settled papers being checked again: a paper settled by then keeps its result (convex/screening/settling.ts).
     heldAt: v.optional(v.number()),
+    // When something last happened in it, to within a minute: what its list orders by.
+    activeAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1363,6 +1365,10 @@ export default defineSchema({
     .index("by_workspace_status", ["workspaceId", "status"])
     // The living screenings whose next check is due.
     .index("by_living_next", ["living.next"])
+    // A workspace's screenings by name, and by when something last happened in them.
+    .index("by_workspace_and_name", ["workspaceId", "name"])
+    .index("by_workspace_and_activeAt", ["workspaceId", "activeAt"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId"] })
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
@@ -1664,7 +1670,8 @@ export default defineSchema({
     .index("by_job_and_to_and_open", ["jobId", "to", "open"]),
 
   // A person's settings on one screening: its emails turned off.
-  screeningNotices: defineTable({ jobId: v.id("screeningJobs"), userId: v.id("users"), off: v.boolean() }).index("by_job_and_user", ["jobId", "userId"]),
+  // `conflictsAt`: when they were last told conflicts wait for them, which is at most once a day.
+  screeningNotices: defineTable({ jobId: v.id("screeningJobs"), userId: v.id("users"), off: v.boolean(), conflictsAt: v.optional(v.number()) }).index("by_job_and_user", ["jobId", "userId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make

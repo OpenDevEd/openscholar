@@ -1,11 +1,6 @@
-import { ScreeningPage } from "@/components/screening/screening-page";
-import { SubscriptionStateProvider } from "@/lib/auth/use-subscription-state";
+import { ScreeningsIndex } from "@/components/screening-mock/index-page";
 
-// The form's model picker reads the person's plan the way the settings pages do.
-export default function Page() {
-  return (
-    <SubscriptionStateProvider>
-      <ScreeningPage />
-    </SubscriptionStateProvider>
-  );
+// The workspace's screenings, the ones waiting on the person first.
+export default function ScreeningsPage() {
+  return <ScreeningsIndex />;
 }

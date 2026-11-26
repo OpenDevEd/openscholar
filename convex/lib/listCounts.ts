@@ -34,6 +34,10 @@ export const personWaitingApplicationsOf = (userId: Id<"users">) => `personWaiti
 export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperations">) =>
   isVersionOperation(operation) ? libraryVersionsOf(operation.libraryId) : null;
 
+/** A workspace's screenings with reviewers: the ones still open, and the ones finished, for the tabs of their list. */
+export const screeningsOf = (workspaceId: Id<"workspaces">, finished: boolean) => `screenings:${workspaceId}:${finished ? "finished" : "open"}`;
+export const screeningList = (job: Doc<"screeningJobs">) => (job.shape === 2 ? screeningsOf(job.workspaceId, job.finishedAt !== undefined) : null);
+
 /** The trigger that keeps a table's rows counted, each under the list `listOf` puts it in, if any. */
 export const countList =
   <Table extends TableNames>(listOf: (row: Doc<Table>) => string | null) =>
