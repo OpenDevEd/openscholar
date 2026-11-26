@@ -8053,7 +8053,7 @@
         "methods": "Redactado a partir del cribado tal como está ahora. Cópielo cuando describa los resultados que quiere comunicar."
       },
       "download": "<wide>Descargar </wide>{format}",
-      "downloaded": "{format}<sr> descargado</sr>",
+      "downloaded": "<wide>Descargado </wide>{format}",
       "copy": "Copiar",
       "copied": "Copiado",
       "copyToast": {
@@ -8330,6 +8330,7 @@
         "factModels": "Los modelos cuestan créditos",
         "help": "Cada revisor vota incluir, quizá o excluir en los artículos que recibe. Una persona lee el título y el resumen y vota. Un modelo responde todos los criterios en cada artículo que lee, y sus respuestas forman su voto.",
         "aiModel": "Modelo de IA",
+        "aiModelAt": "Modelo de IA con esfuerzo {effort}",
         "votesKeep": "{count, plural, one {# voto sigue contando} other {# votos siguen contando}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {No puede leer PDF, así que # artículo no recibe su voto} other {No puede leer PDF, así que # artículos no reciben su voto}}} other {{count, plural, one {No puede leer los PDF más largos, así que # artículo no recibe su voto} other {No puede leer los PDF más largos, así que # artículos no reciben su voto}}}}",
         "creditsFor": "{credits} créditos por {count, plural, one {# artículo} other {# artículos}}",
@@ -8483,6 +8484,7 @@
         "add": "{you, select, true {Añadirse al filtro} other {Añadir a {name} al filtro}}"
       },
       "rule": {
+        "advice": "Los votos de la IA son consejo",
         "title": "Cómo se decide un artículo",
         "eachPaper": "{who, select, both {{people, plural, one {# persona} other {# personas}} y {models, plural, one {# modelo de IA} other {# modelos de IA}}} people {{people, plural, one {# persona} other {# personas}}} other {{models, plural, one {# modelo de IA} other {# modelos de IA}}}} en cada artículo",
         "noReviewer": "Todavía no hay revisores",
@@ -8649,7 +8651,12 @@
       },
       "showMenu": "Mostrar",
       "whichScreenings": "Qué cribados",
+      "draft": {
+        "says": "{named, select, true {{name} aún no se ha empezado} other {Un cribado nuevo aún no se ha empezado}}",
+        "continue": "Continuar"
+      },
       "firstUse": {
+        "noneHere": "Aún no hay cribados en este espacio de trabajo",
         "title": "Decida qué artículos entran en su revisión",
         "text": "Traiga artículos de búsquedas, colecciones o sus propios archivos, defina sus criterios y críbelos usted, con colegas, con modelos de IA o combinando las tres formas."
       },

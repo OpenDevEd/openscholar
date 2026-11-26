@@ -8053,7 +8053,7 @@
         "methods": "Geskryf uit die siftering soos dit nou staan. Kopieer dit wanneer dit die uitslae beskryf wat jy wil rapporteer."
       },
       "download": "<wide>Aflaai </wide>{format}",
-      "downloaded": "{format}<sr> afgelaai</sr>",
+      "downloaded": "<wide>Afgelaai </wide>{format}",
       "copy": "Kopieer",
       "copied": "Gekopieer",
       "copyToast": {
@@ -8330,6 +8330,7 @@
         "factModels": "Modelle kos krediete",
         "help": "Elke beoordelaar stem Sluit in, Miskien of Sluit uit op die artikels wat hulle kry. ’n Persoon lees die titel en opsomming en stem. ’n Model beantwoord elke kriterium op elke artikel wat dit lees, en sy antwoorde maak sy stem.",
         "aiModel": "KI-model",
+        "aiModelAt": "KI-model met {effort} inspanning",
         "votesKeep": "{count, plural, one {# stem tel steeds} other {# stemme tel steeds}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Kan nie PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie PDF’e lees nie, so # artikels kry geen stem daarvan nie}}} other {{count, plural, one {Kan nie die langste PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie die langste PDF’e lees nie, so # artikels kry geen stem daarvan nie}}}}",
         "creditsFor": "{credits} krediete vir {count, plural, one {# artikel} other {# artikels}}",
@@ -8483,6 +8484,7 @@
         "add": "{you, select, true {Voeg jouself by die filter} other {Voeg {name} by die filter}}"
       },
       "rule": {
+        "advice": "KI-stemme is advies",
         "title": "Hoe oor ’n artikel besluit word",
         "eachPaper": "{who, select, both {{people, plural, one {# persoon} other {# mense}} en {models, plural, one {# KI-model} other {# KI-modelle}}} people {{people, plural, one {# persoon} other {# mense}}} other {{models, plural, one {# KI-model} other {# KI-modelle}}}} op elke artikel",
         "noReviewer": "Nog geen beoordelaar nie",
@@ -8649,7 +8651,12 @@
       },
       "showMenu": "Wys",
       "whichScreenings": "Watter sifterings",
+      "draft": {
+        "says": "{named, select, true {{name} is nog nie begin nie} other {’n Nuwe siftering is nog nie begin nie}}",
+        "continue": "Gaan voort"
+      },
       "firstUse": {
+        "noneHere": "Nog geen sifterings in hierdie werkruimte nie",
         "title": "Besluit watter artikels in jou oorsig hoort",
         "text": "Bring artikels uit soektogte, versamelings of jou eie lêers, stel jou kriteria op en sif hulle self, saam met kollegas, met KI-modelle, of met enige mengsel van die drie."
       },

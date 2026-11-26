@@ -8053,7 +8053,7 @@
         "methods": "Escrito a partir da triagem tal como está agora. Copie-o quando descrever os resultados que quer relatar."
       },
       "download": "<wide>Descarregar </wide>{format}",
-      "downloaded": "{format}<sr> descarregado</sr>",
+      "downloaded": "<wide>Descarregado </wide>{format}",
       "copy": "Copiar",
       "copied": "Copiado",
       "copyToast": {
@@ -8330,6 +8330,7 @@
         "factModels": "Os modelos custam créditos",
         "help": "Cada revisor vota incluir, talvez ou excluir nos artigos que recebe. Uma pessoa lê o título e o resumo e vota. Um modelo responde a todos os critérios em cada artigo que lê, e as respostas formam o seu voto.",
         "aiModel": "Modelo de IA",
+        "aiModelAt": "Modelo de IA com esforço {effort}",
         "votesKeep": "{count, plural, one {# voto continua a contar} other {# votos continuam a contar}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Não lê PDF, por isso # artigo fica sem o seu voto} other {Não lê PDF, por isso # artigos ficam sem o seu voto}}} other {{count, plural, one {Não lê os PDF mais longos, por isso # artigo fica sem o seu voto} other {Não lê os PDF mais longos, por isso # artigos ficam sem o seu voto}}}}",
         "creditsFor": "{credits} créditos por {count, plural, one {# artigo} other {# artigos}}",
@@ -8483,6 +8484,7 @@
         "add": "{you, select, true {Adicionar-se ao filtro} other {Adicionar {name} ao filtro}}"
       },
       "rule": {
+        "advice": "Os votos da IA são conselho",
         "title": "Como um artigo é decidido",
         "eachPaper": "{who, select, both {{people, plural, one {# pessoa} other {# pessoas}} e {models, plural, one {# modelo de IA} other {# modelos de IA}}} people {{people, plural, one {# pessoa} other {# pessoas}}} other {{models, plural, one {# modelo de IA} other {# modelos de IA}}}} em cada artigo",
         "noReviewer": "Ainda sem revisor",
@@ -8649,7 +8651,12 @@
       },
       "showMenu": "Mostrar",
       "whichScreenings": "Que triagens",
+      "draft": {
+        "says": "{named, select, true {{name} ainda não foi iniciada} other {Uma nova triagem ainda não foi iniciada}}",
+        "continue": "Continuar"
+      },
       "firstUse": {
+        "noneHere": "Ainda não há triagens neste espaço de trabalho",
         "title": "Decida que artigos entram na sua revisão",
         "text": "Traga artigos de pesquisas, coleções ou dos seus próprios ficheiros, defina os critérios e faça a triagem sozinho, com colegas, com modelos de IA, ou combinando os três."
       },

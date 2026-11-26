@@ -8052,7 +8052,7 @@
         "methods": "スクリーニングの現時点の状態から書いています。報告したい結果を表しているときにコピーしてください。"
       },
       "download": "{format}<wide> をダウンロード</wide>",
-      "downloaded": "{format}<sr> をダウンロードしました</sr>",
+      "downloaded": "{format}<wide> をダウンロードしました</wide>",
       "copy": "コピー",
       "copied": "コピーしました",
       "copyToast": {
@@ -8329,6 +8329,7 @@
         "factModels": "モデルはクレジットを使います",
         "help": "各レビュアーは、割り当てられた論文に採用、保留、除外のいずれかで投票します。人はタイトルと要約を読んで投票します。モデルは読んだ論文ごとにすべての基準に答え、その回答で投票が決まります。",
         "aiModel": "AI モデル",
+        "aiModelAt": "推論の強さ {effort} の AI モデル",
         "votesKeep": "{count, plural, other {# 票は引き続き数えられます}}",
         "pdfsMissed": "{why, select, text {{count, plural, other {PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}} other {{count, plural, other {最も長い PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}}}",
         "creditsFor": "{count, plural, other {論文 # 件}}で {credits} クレジット",
@@ -8482,6 +8483,7 @@
         "add": "{you, select, true {自分をフィルターに加える} other {{name} をフィルターに加える}}"
       },
       "rule": {
+        "advice": "AI の投票は参考です",
         "title": "論文の結果の決まり方",
         "eachPaper": "各論文に{who, select, both {{people, plural, other {# 人}}と{models, plural, other {AI モデル # 個}}} people {{people, plural, other {# 人}}} other {{models, plural, other {AI モデル # 個}}}}",
         "noReviewer": "レビュアーはまだいません",
@@ -8648,7 +8650,12 @@
       },
       "showMenu": "表示",
       "whichScreenings": "表示するスクリーニング",
+      "draft": {
+        "says": "{named, select, true {{name} はまだ開始されていません} other {新しいスクリーニングはまだ開始されていません}}",
+        "continue": "続ける"
+      },
       "firstUse": {
+        "noneHere": "このワークスペースにはまだスクリーニングがありません",
         "title": "レビューに含める論文を決めましょう",
         "text": "検索、コレクション、手元のファイルから論文を集め、基準を設定してスクリーニングします。自分で、同僚と、AI モデルで、またはそれらを組み合わせて行えます。"
       },

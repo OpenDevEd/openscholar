@@ -8052,7 +8052,7 @@
         "methods": "根据筛选的当前状态撰写。当它描述的是你要报告的结果时再复制。"
       },
       "download": "<wide>下载 </wide>{format}",
-      "downloaded": "{format}<sr> 已下载</sr>",
+      "downloaded": "<wide>已下载 </wide>{format}",
       "copy": "复制",
       "copied": "已复制",
       "copyToast": {
@@ -8329,6 +8329,7 @@
         "factModels": "模型消耗积分",
         "help": "每位审核人对分到的论文投入选、待定或排除。人员阅读标题和摘要后投票。模型回答其读取的每篇论文的每条标准，由答案得出投票。",
         "aiModel": "AI 模型",
+        "aiModelAt": "{effort}推理强度的 AI 模型",
         "votesKeep": "{count, plural, other {# 票仍然计入}}",
         "pdfsMissed": "{why, select, text {{count, plural, other {无法读取 PDF，因此 # 篇论文得不到它的投票}}} other {{count, plural, other {无法读取最长的 PDF，因此 # 篇论文得不到它的投票}}}}",
         "creditsFor": "{count, plural, other {# 篇论文}} {credits} 积分",
@@ -8482,6 +8483,7 @@
         "add": "{you, select, true {把自己加入筛选条件} other {把 {name} 加入筛选条件}}"
       },
       "rule": {
+        "advice": "AI 投票仅作参考",
         "title": "论文如何定案",
         "eachPaper": "每篇论文由{who, select, both {{people, plural, other {# 人}}和{models, plural, other {# 个 AI 模型}}} people {{people, plural, other {# 人}}} other {{models, plural, other {# 个 AI 模型}}}}投票",
         "noReviewer": "还没有审核人",
@@ -8648,7 +8650,12 @@
       },
       "showMenu": "显示",
       "whichScreenings": "哪些筛选",
+      "draft": {
+        "says": "{named, select, true {{name}尚未开始} other {新的筛选尚未开始}}",
+        "continue": "继续"
+      },
       "firstUse": {
+        "noneHere": "此工作区中还没有筛选",
         "title": "决定哪些论文纳入你的综述",
         "text": "从搜索、合集或你自己的文件中导入论文，设定标准，然后筛选：自己筛选、与同事一起、使用 AI 模型，或将三者结合。"
       },

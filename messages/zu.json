@@ -8052,7 +8052,7 @@
         "methods": "Sibhalwe ngokuskrini njengoba kunjalo manje. Sikopishe uma sichaza imiphumela ofuna ukuyibika."
       },
       "download": "<wide>Landa </wide>{format}",
-      "downloaded": "{format}<sr> ilandiwe</sr>",
+      "downloaded": "<wide>Ilandiwe </wide>{format}",
       "copy": "Kopisha",
       "copied": "Kukopishiwe",
       "copyToast": {
@@ -8329,6 +8329,7 @@
         "factModels": "Amamodeli abiza amakhredithi",
         "help": "Umbuyekezi ngamunye uvota ngokuthi faka, mhlawumbe noma khipha kumaphepha awatholayo. Umuntu ufunda isihloko nesifingqo bese evota. Imodeli iphendula yonke imibandela kuwo wonke amaphepha eyifundayo, futhi izimpendulo zayo zenza ivoti layo.",
         "aiModel": "Imodeli ye-AI",
+        "aiModelAt": "Imodeli ye-AI ngomzamo we-{effort}",
         "votesKeep": "{count, plural, one {# ivoti liqhubeka libalwa} other {# amavoti aqhubeka ebalwa}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Ayikwazi ukufunda ama-PDF, ngakho # iphepha alitholi voti kuyo} other {Ayikwazi ukufunda ama-PDF, ngakho # amaphepha awatholi voti kuyo}}} other {{count, plural, one {Ayikwazi ukufunda ama-PDF amade kakhulu, ngakho # iphepha alitholi voti kuyo} other {Ayikwazi ukufunda ama-PDF amade kakhulu, ngakho # amaphepha awatholi voti kuyo}}}}",
         "creditsFor": "{credits} amakhredithi {count, plural, one {e-# iphepha} other {ama-# amaphepha}}",
@@ -8482,6 +8483,7 @@
         "add": "{you, select, true {Zengeze esihlungini} other {Engeza u-{name} esihlungini}}"
       },
       "rule": {
+        "advice": "Amavoti e-AI ayiseluleko",
         "title": "Indlela iphepha elinqunywa ngayo",
         "eachPaper": "{who, select, both {{people, plural, one {# umuntu} other {# abantu}} kanye {models, plural, one {ne-# modeli ye-AI} other {nama-# amamodeli e-AI}}} people {{people, plural, one {# umuntu} other {# abantu}}} other {{models, plural, one {# imodeli ye-AI} other {# amamodeli e-AI}}}} ephepheni ngalinye",
         "noReviewer": "Akukho mbuyekezi okwamanje",
@@ -8648,7 +8650,12 @@
       },
       "showMenu": "Bonisa",
       "whichScreenings": "Yiziphi izinkuskrini",
+      "draft": {
+        "says": "{named, select, true {{name} akukaqalwa} other {Ukuskrina okusha akukaqalwa}}",
+        "continue": "Qhubeka"
+      },
       "firstUse": {
+        "noneHere": "Azikabi khona izinkuskrini kulesi sikhala sokusebenzela",
         "title": "Nquma ukuthi yimaphi amaphepha angena ekubuyekezeni kwakho",
         "text": "Letha amaphepha avela ezisesheni, emaqoqweni noma emafayeleni akho, misa imibandela yakho, bese uwaskrina wena, nozakwenu, ngamamodeli e-AI, noma ngokuhlanganisa kokuthathu."
       },

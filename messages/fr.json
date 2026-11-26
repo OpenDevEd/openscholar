@@ -8052,7 +8052,7 @@
         "methods": "Rédigé à partir du criblage dans son état actuel. Copiez-le s'il décrit les résultats que vous voulez rapporter."
       },
       "download": "<wide>Télécharger </wide>{format}",
-      "downloaded": "{format}<sr> téléchargé</sr>",
+      "downloaded": "<wide>Téléchargé </wide>{format}",
       "copy": "Copier",
       "copied": "Copié",
       "copyToast": {
@@ -8329,6 +8329,7 @@
         "factModels": "Les modèles coûtent des crédits",
         "help": "Chaque évaluateur vote inclure, peut-être ou exclure sur les articles qu'il reçoit. Une personne lit le titre et le résumé et vote. Un modèle répond à chaque critère sur chaque article qu'il lit, et ses réponses font son vote.",
         "aiModel": "Modèle d'IA",
+        "aiModelAt": "Modèle d'IA, effort {effort}",
         "votesKeep": "{count, plural, one {# vote continue de compter} other {# votes continuent de compter}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Ne lit pas les PDF, donc # article ne reçoit pas son vote} other {Ne lit pas les PDF, donc # articles ne reçoivent pas son vote}}} other {{count, plural, one {Ne lit pas les PDF les plus longs, donc # article ne reçoit pas son vote} other {Ne lit pas les PDF les plus longs, donc # articles ne reçoivent pas son vote}}}}",
         "creditsFor": "{credits} crédits pour {count, plural, one {# article} other {# articles}}",
@@ -8482,6 +8483,7 @@
         "add": "{you, select, true {Vous ajouter au filtre} other {Ajouter {name} au filtre}}"
       },
       "rule": {
+        "advice": "Les votes de l'IA servent d'avis",
         "title": "Comment un article est décidé",
         "eachPaper": "{who, select, both {{people, plural, one {# personne} other {# personnes}} et {models, plural, one {# modèle d'IA} other {# modèles d'IA}}} people {{people, plural, one {# personne} other {# personnes}}} other {{models, plural, one {# modèle d'IA} other {# modèles d'IA}}}} sur chaque article",
         "noReviewer": "Pas encore d'évaluateur",
@@ -8648,7 +8650,12 @@
       },
       "showMenu": "Afficher",
       "whichScreenings": "Quels criblages",
+      "draft": {
+        "says": "{named, select, true {{name} n'est pas encore démarré} other {Un nouveau criblage n'est pas encore démarré}}",
+        "continue": "Continuer"
+      },
       "firstUse": {
+        "noneHere": "Aucun criblage dans cet espace de travail pour l'instant",
         "title": "Décidez quels articles entrent dans votre revue",
         "text": "Importez des articles depuis des recherches, des collections ou vos propres fichiers, fixez vos critères et criblez-les vous-même, avec des collègues, avec des modèles d'IA, ou en combinant les trois."
       },
