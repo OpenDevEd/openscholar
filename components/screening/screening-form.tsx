@@ -406,7 +406,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       useKept.getState().set({ reads: read ? { ...others, [key]: read.jobId } : others });
       return read;
     },
-    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false },
+    // Sources that come back to what they were before (a range widened again, a source put back) are read again: the screening that read them then is gone, replaced by the one read since. So what is kept under a key is asked for again whenever the key comes back, and the same sources answer with the same screening.
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
   // What was read is of the sources as they are now: after a change, the rows wait for the next read.
   const early = settled === held ? (readAhead.data ?? null) : null;
