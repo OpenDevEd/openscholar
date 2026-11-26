@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
+import { AiIcon, CircleCheck, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Plus, RefreshCw, MessagesSquare } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -16,7 +16,7 @@ import { Chip } from "@/components/screening/parts";
 import { Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import PlainLink from "next/link";
@@ -30,9 +30,9 @@ import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, growing, modelsOf, type Result, lookerLabel, inQuotes } from "./data";
-import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
-import { useScreeningOverlays } from "./overlays";
+import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, type Result, lookerLabel, inQuotes } from "./data";
+import { newHref, overviewHref, papersHref, screenHref } from "./links";
+import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
 import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, RESULT_STYLE, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
 import { toReviewer, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -69,7 +69,7 @@ const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'
 /** A link inside a row sits above the link the whole row is, and shows that it is one. */
 const ABOVE = "relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-type What = "export" | "people" | "finish" | "move" | "delete";
+type What = Over;
 
 export function ScreeningsIndex() {
   // Another tab, order or page is a step Back returns from. Typing in the search box changes the address in place.
@@ -362,43 +362,7 @@ function RowMenu({ id, name, onOpen }: { id: string; name: string; onOpen: (what
 /** The menu's items, worked out from the screening as the person sees it once the menu opens. */
 function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void }) {
   const open = useOpenScreening(id);
-  if (!open) return null;
-  const { screening } = open;
-  // Someone it is shared with from outside can start their own from it, and change nothing.
-  const member = open.canChange;
-  return (
-    <>
-      {/* Settings are its workspace's members' to open: nobody is offered a page that would turn them away. */}
-      {member ? <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem> : null}
-      <DropdownMenuItem onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => onOpen("people")}><Users />People</DropdownMenuItem>
-      <DropdownMenuSeparator />
-      {member ? (
-        screening.finishedAt ? (
-          <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />Reopen</DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onSelect={() => onOpen("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
-        )
-      ) : null}
-      {member && modelsOf(screening).length && !screening.finishedAt ? (
-        screening.paused ? (
-          <DropdownMenuItem onSelect={() => void open.resume()}><Play />Resume models</DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>
-        )
-      ) : null}
-      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={() => void open.check()}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
-      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
-      {member ? <DropdownMenuItem onSelect={() => onOpen("move")}><Move />Move to another workspace</DropdownMenuItem> : null}
-      {member && !open.isReviewer && !screening.finishedAt ? <DropdownMenuItem onSelect={() => void open.join()}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
-      {member ? (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => onOpen("delete")}><Trash2 />Delete</DropdownMenuItem>
-        </>
-      ) : null}
-    </>
-  );
+  return open ? <ScreeningMenuItems open={open} show={onOpen} /> : null;
 }
 
 /**

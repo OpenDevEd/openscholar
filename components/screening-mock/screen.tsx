@@ -6,6 +6,7 @@
 // reviewers said to each other about them. From a laptop's width the page fits the window and each of
 // the three scrolls on its own. Under that the page scrolls.
 
+import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -492,7 +493,7 @@ function Screen({ open }: { open: Open }) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? null : <Empty open={open} queue={queue} />}</div>
+        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label="Loading papers" /> : <Empty open={open} queue={queue} />}</div>
       </div>
     );
   }
@@ -848,7 +849,7 @@ function Screen({ open }: { open: Open }) {
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
               ) : null}
-              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="min-[87.5rem]:hidden">Now in Conflicts</LinkChip> : null}
+              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label="Now in Conflicts" className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">Now in Conflicts</span></LinkChip> : null}
               {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
                 {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />Note</Button> : null}
@@ -1032,19 +1033,23 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
       : queue === "conflicts"
         ? [GitCompare, open.canResolve ? "No conflict to settle" : "No paper is in conflict", null]
         : [ListChecks, "You haven't voted on a paper yet", null];
+  // The frame every list of the app has for nothing to show, and for loading: the page holds still when one follows the other.
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
-      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"><Icon className="size-5" /></span>
-      <p className="text-sm font-medium">{title}</p>
-      {line ? <p className="max-w-sm text-sm tabular-nums text-muted-foreground">{line}</p> : null}
-      <div className="mt-2 flex flex-wrap justify-center gap-2">
+    <ListEmpty
+      icon={Icon}
+      description={line ?? undefined}
+      action={
+      <div className="flex flex-wrap justify-center gap-2">
         {open.isReviewer && queue === "todo" && voted ? <Button asChild size="sm"><NextLink href={screenHref(id, { queue: "done" })}>{voted === 1 ? "See your vote" : `See your ${num(voted)} votes`}</NextLink></Button> : null}
         {open.isReviewer && queue !== "conflicts" && open.conflicts ? <Button asChild size="sm" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} {plural(open.conflicts, "conflict", "conflicts")}</NextLink></Button> : null}
         {open.isReviewer && queue !== "todo" && open.toDo ? <Button asChild size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen {plural(open.toDo, "paper", "papers")}</NextLink></Button> : null}
         {!open.isReviewer && open.canChange && !open.screening.finishedAt ? <Button size="sm" onClick={() => void open.join()}><UserPlus />Join as a reviewer</Button> : null}
         <Button asChild size="sm" variant="outline"><NextLink href={papersHref(id)}>See all the papers</NextLink></Button>
       </div>
-    </div>
+      }
+    >
+      {title}
+    </ListEmpty>
   );
 }
 
@@ -1194,7 +1199,7 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
         {sure === null ? null : <Help title="How sure the model is" facts={<HelpFact icon={TriangleAlert}>Unsure below 65%</HelpFact>}>The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.</Help>}
         <span className="ms-auto flex shrink-0 items-center gap-2">
           {sure === null ? null : sure < 65 ? (
-            <StateChip tone="warning" icon={TriangleAlert}>Unsure, {sure}%</StateChip>
+            <StateChip tone="warning" icon={TriangleAlert}>Unsure: {sure}% sure</StateChip>
           ) : (
             <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground"><Meter value={sure} max={100} className="w-12" fill="bg-foreground/45" />{sure}% sure</span>
           )}

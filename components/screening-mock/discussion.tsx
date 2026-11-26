@@ -143,7 +143,8 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
               <p className="text-xs text-muted-foreground">{to ? `For ${firstName(to.name)} to answer. Everyone who can see this paper's votes reads it, and it stays on ${firstName(to.name)}'s Screening list until then.` : "Everyone who can see this paper's votes reads it. Pick a name to ask one person a question."}</p>
             </div>
           ) : null}
-          <div className="flex items-end gap-2">
+          {/* Send keeps its place at the field's first line: the field grows downwards as more is written, and the button doesn't move with it. */}
+          <div className="flex items-start gap-2">
             <Textarea
               ref={field}
               rows={2}

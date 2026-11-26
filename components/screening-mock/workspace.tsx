@@ -6,7 +6,7 @@
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
-import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
+import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -18,7 +18,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FadeRow } from "@/components/ui/fade-row";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
 import { plural, inOrder, num, SETTLE_MEANS, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
-import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
-import { useScreeningOverlays } from "./overlays";
+import { SCREENINGS, SCREENINGS_CRUMB, overviewHref, papersHref, screenHref, settingsHref } from "./links";
+import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
 import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
 import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
 
@@ -204,38 +204,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         </DropdownMenuTrigger>
       </TooltipHint>
       <DropdownMenuContent align="end" className="w-72 [&_[role=menuitem]]:whitespace-nowrap">
-        <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("activity")}><History />Activity</DropdownMenuItem>
-        <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("export")}><Download />Export</DropdownMenuItem>
-        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("people")}><Users />People</DropdownMenuItem>
-        <DropdownMenuSeparator className="xl:hidden" />
-        {/* Someone it is shared with from outside can start their own from it, and nothing else here. */}
-        {open.canChange ? (
-          <>
-            {screening.finishedAt ? (
-              <DropdownMenuItem onSelect={reopen}><RotateCcw />Reopen</DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onSelect={() => overlays.show("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
-            )}
-            {modelsOf(screening).length && !screening.finishedAt ? (
-              screening.paused ? (
-                <DropdownMenuItem onSelect={resume}><Play />Resume models</DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>
-              )
-            ) : null}
-            {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={() => void open.check()}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
-          </>
-        ) : null}
-        <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
-        {open.canChange ? (
-          <>
-            <DropdownMenuItem onSelect={() => overlays.show("move")}><Move />Move to another workspace</DropdownMenuItem>
-            {/* In the widest windows the bar has this as a button. */}
-            {canJoin ? <DropdownMenuItem className="2xl:hidden" onSelect={() => void open.join()}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => overlays.show("delete")}><Trash2 />Delete</DropdownMenuItem>
-          </>
-        ) : null}
+        <ScreeningMenuItems open={open} show={overlays.show} bar />
       </DropdownMenuContent>
     </DropdownMenu>
   );

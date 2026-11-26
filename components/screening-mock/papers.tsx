@@ -3,6 +3,7 @@
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
+import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -516,7 +517,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
         <div ref={list} className="@container/table min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
           <Wide fits={fits} style={{ minHeight: listed.isLoading || listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
-            {listed.isLoading ? null : shown.length ? (
+            {listed.isLoading ? <ListLoading label="Loading papers" /> : shown.length ? (
               <>
                 <ul className="divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
@@ -674,15 +675,12 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                 </table>
               </>
             ) : (
-              <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-                {anyFilter ? (
-                  <>
-                    <p className="text-sm text-muted-foreground">No paper here matches.</p>
-                    <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
-                  </>
+              <ListEmpty
+                icon={Layers}
+                action={anyFilter ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
                 ) : (
                   <>
-                    <p className="text-sm text-muted-foreground">{emptyResult(filter, Boolean(screening.finishedAt))}</p>
                     {/* Nothing has got this far, and the papers that could are still short of a vote or split: each count opens them. */}
                     {filter === "include" || filter === "maybe" || filter === "exclude" ? (
                       <div className="flex flex-wrap justify-center gap-1.5">
@@ -691,7 +689,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                     ) : null}
                   </>
                 )}
-              </div>
+              >
+                {anyFilter ? "No paper here matches." : emptyResult(filter, Boolean(screening.finishedAt))}
+              </ListEmpty>
             )}
           </Wide>
           {listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel="papers" steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total }} /> : null}

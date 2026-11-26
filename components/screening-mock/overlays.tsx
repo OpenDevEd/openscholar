@@ -7,7 +7,8 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Coins } from "@/components/icons";
+import { CircleCheck, CirclePause, Coins, Copy, Download, History, LogOut, Move, Play, RefreshCw, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { showStyledToast } from "@/components/ui/sonner";
@@ -18,16 +19,54 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { collectionName, num, plural, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
+import { collectionName, growing, modelsOf, num, plural, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
-import { settingsHref } from "./links";
+import { newHref, settingsHref } from "./links";
 import { Panel, ReviewerMark, OpenPapersChips } from "./parts";
 import { credits, paperCredits, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 
-export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete";
+export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete" | "leave";
+
+/**
+ * The screening's menu: the same items under the same names wherever it opens, over the open screening and in its row
+ * of the list. A member changes it from here. Someone it is shared with from outside can take a copy or leave it.
+ */
+export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; show: (what: Over) => void; /** Over the open screening: what its bar shows as a button at a width is left out of the menu at that width, and its tabs hold the settings. */ bar?: boolean }) {
+  const { screening } = open;
+  const id = screening.id;
+  const member = open.canChange;
+  const live = !screening.finishedAt;
+  return (
+    <>
+      {member && !bar ? <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem> : null}
+      <DropdownMenuItem className={bar ? "xl:hidden" : undefined} onSelect={() => show("activity")}><History />Activity</DropdownMenuItem>
+      <DropdownMenuItem className={bar ? "xl:hidden" : undefined} onSelect={() => show("export")}><Download />Export</DropdownMenuItem>
+      <DropdownMenuItem className={bar ? "sm:hidden" : undefined} onSelect={() => show("people")}><Users />People</DropdownMenuItem>
+      <DropdownMenuSeparator className={bar ? "xl:hidden" : undefined} />
+      {member ? (live ? <DropdownMenuItem onSelect={() => show("finish")}><CircleCheck />Mark as finished</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />Reopen</DropdownMenuItem>) : null}
+      {member && live && modelsOf(screening).length ? (screening.paused ? <DropdownMenuItem onSelect={() => void open.resume()}><Play />Resume models</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>) : null}
+      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={() => void open.check()}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
+      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
+      {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />Move to another workspace</DropdownMenuItem> : null}
+      {/* In the widest windows the bar over a screening has this as a button. */}
+      {member && live && !open.isReviewer ? <DropdownMenuItem className={bar ? "2xl:hidden" : undefined} onSelect={() => void open.join()}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
+      {member ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => show("delete")}><Trash2 />Delete</DropdownMenuItem>
+        </>
+      ) : open.guest ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => show("leave")}><LogOut />Leave this screening</DropdownMenuItem>
+        </>
+      ) : null}
+    </>
+  );
+}
 
 /**
  * The overlays of one screening and the ways to open them. `start` opens one at once, for a row's menu
@@ -40,6 +79,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const [demoting, setDemoting] = useState<Reviewer | null>(null);
+  const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
   const sharing = useSharing((state?.screening.id ?? "") as Id<"screeningJobs">);
@@ -55,6 +95,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const { id } = screening;
   const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); onClosed?.(); };
   const unsettled = state.counts.conflict + state.counts.waiting;
+  const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = collectionName(screening);
   const confirmAdd = (reviewer: Reviewer) =>
     reviewer.model ? add({ jobId: id, model: { model: reviewer.model.id, ...(reviewer.model.effort ? { effort: reviewer.model.effort } : {}) } }) : reviewer.email ? sharing.invite(reviewer.email) : reviewer.guest ? sharing.give(reviewer.id as Id<"users">) : add({ jobId: id, personId: reviewer.id as Id<"users"> });
@@ -80,6 +121,16 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
       </ConfirmChange>
       <ConfirmChange open={over === "delete"} variant="destructive" title={`Delete ${inQuotes(screening.name)}?`} confirm="Delete" onClose={close} onConfirm={() => void state.remove().then(() => onDeleted?.(), failed)}>
         <EffectList lines={["Its votes and its settings go with it", ...(collection && state.counts.include ? [`The ${plural(state.counts.include, "paper", "papers")} saved to ${inQuotes(collection)} stay there`] : []), "This can't be undone"]} />
+      </ConfirmChange>
+      {/* A guest gives up their own place: what they voted stays, and what they hadn't goes to the others, as when a member takes them off. */}
+      <ConfirmChange open={over === "leave"} title="Leave this screening?" confirm="Leave" onClose={close} onConfirm={() => void leave({ id }).then(() => onDeleted?.(), failed)}>
+        <EffectList
+          lines={[
+            mine?.cast ? `Your ${plural(mine.cast, "vote keeps", "votes keep")} counting` : "You have cast no vote",
+            ...(mine?.waiting ? [`The ${plural(mine.waiting, "paper", "papers")} you had not voted on ${mine.waiting === 1 ? "goes" : "go"} to the other reviewers`] : []),
+            "It leaves your list, and you can open it again only once it is shared with you again",
+          ]}
+        />
       </ConfirmChange>
       <AddReviewer open={state} reviewer={adding} onConfirm={confirmAdd} onClose={close} />
       <TakeOff open={state} reviewer={leaving} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={close} />
