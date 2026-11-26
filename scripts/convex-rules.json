@@ -51,10 +51,13 @@
       "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord",
       "MAX_RELEASES": "convex/evidenceLibraries/validators.ts",
       "MAX_APPS": "convex/developerApps/apps.ts:insert",
-      "MAX_WORKSPACE_REPORTS": "convex/reports/flow.ts:sign"
+      "MAX_WORKSPACE_REPORTS": "convex/reports/flow.ts:sign",
+      "MAX_REVIEWERS": "convex/screening/screenings.ts:open",
+      "MAX_SOURCE_ROWS": "convex/screening/screenings.ts:addSource"
     },
     "refused": {
       "MAX_ROLLOUT_COMMUNITIES": "reads one past it and refuses to list or update communities, naming why",
+      "COUNTED": "reads one past it and gives no count: a screening's papers by where they stand, more than any plan gives one screening, so the Papers page's tabs then carry no number",
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
       "MAX_ACTIVE_OPERATIONS_READ": "reads one past it and refuses the change until operations finish",
       "MAX_ORGANIZATIONS_PER_PERSON": "reads one past it and refuses: Clerk's webhooks write memberships, so no write here can",
@@ -105,7 +108,22 @@
       "ADMINS_WRITTEN": "the admins of an organisation emailed that a member's report waits for one to activate it; past it the first twenty are written to",
       "RECENT": "the workspace's reports last changed, looked through for a DOI its signer reserved and did nothing with; one older than those is found in Your reports, and signing then starts another",
       "ALIKE": "the live reports whose titles are closest to a report being checked, which Already published compares it with first; the search gives the best matches, and the rest of the series is searched through OpenAlex and our index",
-      "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced"
+      "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced",
+      "ASKED_SHOWN": "questions put to one person on one screening, counted for its list's row and its frame; past it the count says that many, and each is still found from its paper",
+      "MINE_MAX": "the screenings one person reviews or is given, newest first, looked through for the ones that wait for them; the workspace's own list pages through every one",
+      "INVITED_SHOWN": "the invitations to one screening that wait for an answer, shown among its reviewers; a plan gives an item only so many guest places, and its list of people pages through every one",
+      "CHECKS_LOOKED": "a screening's latest checks of its sources, looked through for the last one that brought papers; its checks are listed a page at a time",
+      "FLAGGED_COUNTED": "a reviewer's votes cast before a criterion became a must-have, counted for their tab; their queue pages through every one",
+      "LATEST_COUNTED": "the papers a screening's last check brought, counted for the ones still open; its Papers page lists every one",
+      "SAME_TITLE": "papers of one title and year in a screening, looked at for the one a new record is; versions of a paper share them and seldom more than a few do",
+      "MOVE_LOOKED": "the far end of one person's queue, looked through for papers another person isn't on; a second move goes on from there",
+      "ANSWERED": "the questions that wait for one person on one screening, looked through for the ones on the paper they just wrote on",
+      "PAIRS_MAX": "the pairs of reviewers a screening's overview draws agreement for; a screening with more reviewers than that many pairs shows the first",
+      "CHECKS_COUNTED": "a screening's checks for new papers counted for its methods paragraph: the first of them",
+      "CHANGES_COUNTED": "a screening's latest activity, looked through for how often its settings were changed",
+      "RECENT_VOTES": "one person's votes of the last days, counted for their pace",
+      "CHECK_COUNTED": "the papers one check added, looked at for where they stand; a check that added more shows no such count",
+      "READING_LOOKED": "The rail looks at a workspace's newest open screenings for one whose models are reading: the first few, since the ring shows one."
     },
     "batches": {
       "REMOVED_AT_ONCE": "submissions of one paper marked removed in one write; past it the mutation schedules itself for the rest",
@@ -135,6 +153,7 @@
       "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone",
       "PURGE_READERS": "a purged person's libraries, a step at a time; the cleanup runs again until none are left",
       "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left",
+      "DRAFTS_A_SWEEP": "screenings never started and untouched for a week, a step each day; the next day's run takes the rest",
       "LIBRARY_CHANGE_MAX": "a screening's queued library writes, a batch at a time: the flush schedules itself again while more wait",
       "MOST_ROWS": "One run over the live deployment, whose largest workspace or job is a few hundred rows; the file is deleted once it has run.",
       "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read.",
@@ -142,7 +161,10 @@
       "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
       "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left",
       "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two",
-      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next"
+      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next",
+      "DUE": "living screenings whose check is due, started in one run of the schedule; past it the run schedules itself for the rest",
+      "MOVE_MAX": "papers moved from one person to another in one write; a second move takes more",
+      "STEP": "papers one step of a change to a screening's reviewers looks at; it reschedules itself until every open paper has been"
     }
   }
 }

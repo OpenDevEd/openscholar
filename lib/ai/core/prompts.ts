@@ -1,3 +1,4 @@
+import { sentencesOf } from '../../screening/passages'
 import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, SuggestSearchesInput } from './types'
 import { getLanguageName } from './languages'
 
@@ -119,7 +120,8 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
   }
 }
 
-export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestionsInput) {
+/** With `named`, each question comes with a short name and the words to mark for it in an abstract. */
+export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestionsInput, named = false) {
   const responseLanguage = input.responseLanguage;
   const languageName = responseLanguage ? getLanguageName(responseLanguage) : null;
 
@@ -127,9 +129,11 @@ export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestions
     system: `You are an expert systematic review researcher specializing in screening question development for literature reviews.
 
 CRITICAL: You MUST respond with valid JSON in the following format:
-{
+${named ? `{
+  "criteria": [{ "question": "question 1", "short": "Two to four words", "terms": ["word", "short phrase"] }]
+}` : `{
   "questions": ["question 1", "question 2", "question 3"]
-}
+}`}
 
 ${languageName ? `MANDATORY: Generate all questions in ${languageName} only. All output must be in this language.` : ""}
 
@@ -158,7 +162,7 @@ Guidelines:
 - Do not duplicate existing questions
 
 Output Format:
-Return an array of 3-5 screening questions as strings.`,
+${named ? `Return 3-5 screening questions. Give each a "short" name of two to four words that tells it from the others, and "terms": up to eight words or short phrases a reader would look for in an abstract to answer it, spelled as an abstract would spell them.` : "Return an array of 3-5 screening questions as strings."}`,
     prompt: `Generate screening questions for this systematic review:
 
 Research Question: "${input.researchQuestion}"
@@ -244,37 +248,46 @@ Provide the ${targetLanguageName} translation of the title and abstract, maintai
 }
 
 export function buildScreeningResponsesPrompts(input: GenerateScreeningResponsesInput) {
+  // A paper with no abstract is read as the PDF it is.
+  const basis = input.file ? 'the attached PDF of the paper' : 'the title and abstract'
   return {
+    ...(input.file ? { files: [input.file] } : {}),
     system: `You are an expert systematic review researcher conducting literature screening.
 
-CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects.
+CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects${input.passages ? ', and a "passages" object' : ''}.
 
 Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
 
 CRITICAL INSTRUCTIONS:
-1. Answer each question based ONLY on the information provided in the title and abstract
+1. Answer each question based ONLY on the information provided in ${basis}
 2. Use boolean values: true for YES, false for NO, null for UNCLEAR/INSUFFICIENT_INFORMATION
 3. Be conservative - if information is ambiguous or missing, use null
 4. Base decisions on explicit evidence, not assumptions or implications
 5. Consider the question's intent and what constitutes a valid YES/NO answer
 6. If a question cannot be definitively answered from the provided text, use null
+7. Answer about this paper itself. A review, meta-analysis or protocol describes the studies it includes: their designs, populations and settings are not this paper's own. A systematic review of randomized trials is a review, not a randomized trial
 
 RESPONSE FORMAT:
 Return a JSON object with:
 - responses: Object mapping each question to boolean|null
-- confidences: Object mapping each question to your confidence in that response (0-1)`,
+- confidences: Object mapping each question to your confidence in that response (0-1)${input.passages ? `
+- passages: Object mapping each question to the number of the one sentence of the abstract your response rests on most, or null where it rests on no sentence` : ''}`,
     prompt: `Please screen this academic paper by answering the following questions:
 
 PAPER TITLE: "${input.title}"
 
-ABSTRACT: "${input.abstract || 'No abstract available'}"
+${input.file
+  ? 'The paper is the attached PDF.'
+  : input.passages
+    ? `ABSTRACT, a sentence a line, each after its number:\n${sentencesOf(input.abstract || 'No abstract available').map((sentence, i) => `[${i}] ${sentence}`).join('\n')}`
+    : `ABSTRACT: "${input.abstract || 'No abstract available'}"`}
 
 SCREENING QUESTIONS:
 ${input.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
 INSTRUCTIONS:
 - Answer each question as true (YES), false (NO), or null (UNCLEAR/insufficient information)
-- Base your answers ONLY on the title and abstract content above
+- Base your answers ONLY on ${basis}
 - If the information needed to answer a question is not present, use null
 
 Provide your screening decisions:`,

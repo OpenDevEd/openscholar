@@ -1,6 +1,6 @@
 // Moving an item to another of the person's workspaces (#654): a collection with its papers, a
-// search with its screening answers, its screenings and its history, a finished screening of a
-// collection, the library or another screening, a finished extraction job, a chat they started,
+// search with its screening answers, its screenings and its history, a screening none of whose
+// models is reading, a finished extraction job, a chat they started,
 // an author profile, or a community (#1092). Its activity goes with it and records where it came
 // from; the person goes with it too.
 
@@ -30,6 +30,7 @@ import { readLibraryRole } from "../evidenceLibraries/access";
 import { actorIn } from "./actor";
 import { workspaceName, workspacesOf } from "./personal";
 import { opensLibraries } from "../billing/accounts";
+import { carry, heldHere } from "../screening/moving";
 import { paginationResultValidator } from "convex/server";
 
 export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author", "community"] as const;
@@ -147,6 +148,7 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
   } else if (kind === "screening") {
     const job = await screeningJobIn(ctx, workspaceId, id);
     if (!job) return gone;
+    if (job.shape === 2) return await heldHere(ctx, job);
     const searchId = (await ctx.db.get("screenings", job.screeningId))?.searchId;
     if (searchId) return `It screens the search "${(await ctx.db.get("searches", searchId))?.data.query ?? ""}". Move the search, and its screenings go with it.`;
     if (!(await screeningSettled(ctx, job))) return "A running screening moves once it has finished.";
@@ -242,6 +244,10 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
   if (kind === "screening") {
     const job = await screeningJobIn(ctx, from, id);
     if (!job) throw createError("NOT_FOUND", "Screening not found");
+    if (job.shape === 2) {
+      await carry(ctx, by, job, to);
+      return { table: "screeningJobs", id: job._id };
+    }
     // Its answers are its own; the collection its papers went to stays where it is, with them.
     await ctx.db.patch("screeningJobs", job._id, { workspaceId: to, targetCollectionId: undefined });
     await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
@@ -398,7 +404,7 @@ export const moveAction = defineUserMutation({
   path: "workspaces/move:move",
   description:
     "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a collection with its papers, which are saved to that workspace's library while the library it left keeps them; a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; a chat the person started; an author profile with its publications and editors; or an Evidence Community, which keeps its address, settings and the people given a role in it, and whose owners are that workspace's from then on. " +
-    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Community follows stays until the community stops following it; a community moves only to a workspace the person may create one in, and once any change running on it has finished. Its activity goes with it. Returns the workspace it went to.",
+    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a screening with reviewers moves while it runs unless its models are reading, and its reviewers outside the new workspace keep it as guests; a search's screening moves with its search; a collection an Evidence Community follows stays until the community stops following it; a community moves only to a workspace the person may create one in, and once any change running on it has finished. Its activity goes with it. Returns the workspace it went to.",
   args: { kind: kindValidator, id: v.string(), to: v.id("workspaces") },
   returns: v.object({ to: v.id("workspaces") }),
   spendsCredits: false,

@@ -1,19 +1,19 @@
 "use client";
 
-// New extraction (#690), laid out as a new screening is (components/screening/setup-view.tsx) and
+// New extraction (#690), laid out as a screening's form is (components/screening/screening-form.tsx) and
 // drawn from the same sources, any number of them: searches, collections, saved papers,
 // screenings, Evidence Libraries' records, and PDFs of your own. Each source is a paper set and the range of it to read, as
 // screening reads them. Every source picked lands in the tray at the top of Papers: one bar, a
 // part per source, filling towards the papers the plan reads in one extraction, over a chip for
 // each source to take it out again.
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState, useTransition, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import { AiIcon, AlignLeft, Camera, FileText, GripVertical, Hash, List as ListIcon, Plus, ToggleLeft, Trash2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
-import { jobName } from "@/components/screening/job-view";
 import { AnimatedNumber, Chip, SOURCE_ICON } from "@/components/screening/parts";
 import { PaperScope, SourceRow, type Scope } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
@@ -104,8 +104,9 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SOURCE_PAGE);
   const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
-  const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "completed" as const }), SOURCE_PAGE);
-  const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
+  // The workspace's screenings, running or finished: the ones that have included a paper are offered, as a new screening's form offers them.
+  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, included: true as const }), SOURCE_PAGE);
+  const included = screenings.items;
   // The libraries the person reads, read with the rest so switching to them moves nothing; the library sources picked lead their lists.
   const libraries = useLibrarySources(sources.flatMap((source) => (source.held ? [source.held] : [])));
   const labelOf = useRowLabel();
@@ -172,7 +173,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState<ExtractionQuestionType>("string");
   const [generating, setGenerating] = useState(false);
-  const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateExtractionQuestions();
+  const { execute: generateQuestions, isConfigured: canGenerate, credits: writeCredits } = useGenerateExtractionQuestions();
   const add = () => {
     const text = draft.trim();
     if (!text || draftJob.questions.some((q) => q.question.toLowerCase() === text.toLowerCase())) return;
@@ -328,21 +329,19 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
                 })()}
               </List>
             ) : shown === "screening" ? (
-              <List rows={screenings.items.length} empty={ts("noSets.screening")} stale={screenings.isStale} pages={screenings.hasPages} label={t("selectPapers")}>
-                {screenings.items.map((job) => {
-                  const key = `screening:${job._id}`;
-                  const label = jobName(ts, job, date);
+              <List rows={included.length} empty={ts("noSets.screening")} stale={screenings.isStale} pages={screenings.hasPages} label={t("selectPapers")}>
+                {included.map((job) => {
+                  const key = `screening:${job.id}`;
                   const source = picked(key);
                   return (
                     <SourceRow
-                      key={job._id}
+                      key={job.id}
                       many
                       on={Boolean(source)}
-                      disabled={!job.qualifiedPapers}
-                      onToggle={() => toggle(key, () => ranged(key, { kind: "screening", jobId: job._id }, label, job.qualifiedPapers, false))}
+                      onToggle={() => toggle(key, () => ranged(key, { kind: "screening", jobId: job.id }, job.name, job.counts.include, false))}
                       icon={KIND.screening.icon}
-                      label={label}
-                      count={<Chip>{ts("paperCount", { count: job.qualifiedPapers })}</Chip>}
+                      label={job.name}
+                      count={<Chip>{ts("paperCount", { count: job.counts.include })}</Chip>}
                     >
                       {/* Its included papers as they stand when the job starts: later changes to the screening leave the extraction as it is. */}
                       {source
@@ -393,6 +392,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !groups.length}>
               <AiIcon working={generating} />
               {t("writeQuestions")}
+              <ButtonCredits credits={writeCredits} />
             </Button>
           }
         >

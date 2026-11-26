@@ -39,6 +39,8 @@ export const modelSummaryValidator = v.object({
   name: v.string(),
   inputPricePerMillion: v.number(),
   outputPricePerMillion: v.number(),
+  longPrompt: v.optional(longPromptValidator),
+  contextLength: v.optional(v.number()),
   reasoningEfforts: modelEffortsValidator,
   defaultEffort: v.optional(effortValidator),
   reasoningMandatory: v.optional(v.boolean()),

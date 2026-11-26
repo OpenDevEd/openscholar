@@ -131,3 +131,37 @@ export async function startWaitingPapers(ctx: MutationCtx, workspaceId: Id<"work
   if (!slots) await ctx.db.insert("screeningSlots", { workspaceId, running });
   else if (slots.running !== running) await ctx.db.patch("screeningSlots", slots._id, { running });
 }
+
+/** A workspace's first waiting readings of screenings with reviewers: oldest screening first, then in each one's order. */
+const waitingVotes = (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, most: number) =>
+  ctx.db
+    .query("screeningVotes")
+    .withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0))
+    .take(Math.min(most, SCREENING_POOL_SIZE));
+
+/**
+ * `startWaitingPapers` for screenings with reviewers (plans/screening-reviewers), where the unit of work is one
+ * model's reading of one paper: a row of `screeningVotes`. They share the workspace's slots with every other paper
+ * it has running. The work goes into the pool in one call, and the pool's callback finds each reading by its work.
+ */
+export async function startWaitingVotes(ctx: MutationCtx, workspaceId: Id<"workspaces">, finished = 0, facts?: StartFacts) {
+  const slots = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+  let running = Math.max(0, (slots?.running ?? 0) - finished);
+  const limit = facts?.limits.find((row) => row.workspaceId === workspaceId)?.limit ?? (await paperLimit(ctx, workspaceId));
+  if (running < limit) {
+    const waiting = await waitingVotes(ctx, workspaceId, limit - running);
+    if (waiting.length) {
+      const workIds = await screeningPool.enqueueActionBatch(ctx, internal.screening.reading.readPaper, waiting.map((vote) => ({ voteId: vote._id })), { onComplete: internal.screening.readings.done, context: {} });
+      for (const [i, vote] of waiting.entries()) await ctx.db.patch("screeningVotes", vote._id, { workId: workIds[i], slot: true, waitingWorkspace: undefined, waitingSince: undefined });
+      const started = new Map<Id<"screeningJobs">, number>();
+      for (const vote of waiting) started.set(vote.jobId, (started.get(vote.jobId) ?? 0) + 1);
+      for (const [jobId, taken] of started) {
+        const progress = await progressOf(ctx, jobId);
+        await ctx.db.patch("screeningJobProgress", progress._id, { running: (progress.running ?? 0) + taken });
+      }
+      running += waiting.length;
+    }
+  }
+  if (!slots) await ctx.db.insert("screeningSlots", { workspaceId, running });
+  else if (slots.running !== running) await ctx.db.patch("screeningSlots", slots._id, { running });
+}

@@ -13,6 +13,10 @@ export const ZOTERO_ABSTRACT_MAX = 10_000;
 export const ZOTERO_NAME_MAX = 300;
 /** Groups or collections one read returns, the most Zotero gives at once, and items one read of the assistant's returns. */
 export const ZOTERO_LIST_PAGE = 100;
+/** Pages of Zotero's asked for at once where a library is read through: measured on a group of 172,728 papers, 8 at once read 5,000 in 41 seconds with none refused, and a group's 3,325 collections in under 7. */
+export const ZOTERO_AT_ONCE = 8;
+/** Items whose attached PDFs one call fetches for a screening: a step of a screening's reading takes no more items with no abstract than this. */
+export const ZOTERO_PDFS_A_CALL = 100;
 export const ZOTERO_ITEMS_MAX = 25;
 
 export const zoteroGroupsValidator = v.object({

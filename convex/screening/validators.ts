@@ -1,10 +1,11 @@
 import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
+import { PDF_BANDS } from "../../lib/pricing/estimate";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
 import { librarySourceValidator } from "../evidenceLibraries/validators";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -74,6 +75,8 @@ export const screeningPaperInputValidator = v.object({
   /** The paper's own PDF, handed over by whoever added it, and how many pages it has: what a paper with no abstract is screened on. */
   file: v.optional(v.id("_storage")),
   pages: v.optional(v.number()),
+  /** Which of its source's records it is, where the source is a file: a row or a DOI by its place in the file, a PDF by its file. Two of a file's records can be one paper, and each stays a record of its own. */
+  record: v.optional(v.string()),
   authors: screeningAuthorsValidator,
   publicationYear: v.optional(v.number()),
   doi: v.optional(v.string()),
@@ -254,28 +257,23 @@ export const sourceSetValidator = v.union(
 /** One page of a person's Zotero groups, as Zotero pages them (../zotero/libraryValidators.ts `ZOTERO_LIST_PAGE`), with where the next page starts. */
 const ZOTERO_LISTED = 100;
 export const zoteroGroupsValidator = v.object({ page: capped(v.array(v.object({ id: v.string(), name: v.string(), papers: v.number() })), ZOTERO_LISTED), next: v.optional(v.number()) });
-/** What the index knows of a pasted list of DOIs, kept as a file a screening can read (./held.ts `lookDois`). */
-export const doisLookValidator = v.object({ file: v.id("_storage"), found: v.number(), bare: v.number(), missing: v.number() });
+/** A pasted list of DOIs, kept as a file a screening can read, and how many it holds (./held.ts `keepDois`). */
+export const doisKeptValidator = v.object({ file: v.id("_storage"), dois: v.number() });
 /** The most DOIs one pasted list holds. */
 export const DOIS_MAX = 5_000;
 
 /** What a file a person is about to add holds (./held.ts `look`). */
 export const fileLookValidator = v.object({
   records: v.number(),
-  untitled: v.number(),
-  bare: v.number(),
-  withDoi: v.number(),
-  sample: capped(v.array(v.string()), 3),
   table: v.optional(v.object({ heads: capped(v.array(v.string()), 200), picked: capped(v.record(v.string(), v.string()), 20), ask: v.boolean() })),
 });
 
 /** Why something a source held isn't screened. */
-/** `twice`: the source holds the paper as another of its own records, and that one is screened. */
-export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("broken"), v.literal("twice"));
+export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("broken"));
 
 /** Where a PDF handed to a screening stands: still to be read, read, or a file that doesn't open. */
 export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read"), v.literal("broken"));
-/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. */
+/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. `abstract`: the abstract found for that paper where the index has none, kept so its source never asks for it again. `bare`: none was found, so it is read as the file. */
 export const pdfReadValidator = v.object({
   state: v.union(v.literal("read"), v.literal("broken")),
   pages: v.optional(v.number()),
@@ -284,6 +282,8 @@ export const pdfReadValidator = v.object({
   year: v.optional(v.number()),
   doi: v.optional(v.string()),
   known: v.optional(v.boolean()),
+  abstract: v.optional(v.string()),
+  bare: v.optional(v.boolean()),
 });
 /** PDFs one call adds to a drop, and the rows of a drop a page of its list shows. */
 export const PDFS_A_CALL = 50;
@@ -305,7 +305,8 @@ export const starsValidator = capped(v.optional(v.array(v.number())), MAX_STARS)
 export const voteConfidencesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
 export const optionalPassagesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
 
-const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean() });
+/** A model on a screening. `files`: it takes a PDF as a file, so a paper that is only its PDF is given to it. */
+const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), longPrompt: v.optional(longPromptValidator), contextLength: v.optional(v.number()), effort: v.optional(effortValidator), available: v.boolean(), files: v.boolean() });
 
 /**
  * A reviewer as every page shows them. `id` is what a vote, a rule or a link names them by: a person's account, and
@@ -341,11 +342,14 @@ export const reviewerViewValidator = v.object({
   kept: v.optional(v.literal(true)),
 });
 export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
+/** Invitations to vote on one screening that wait for an answer, as its Overview lists them among its reviewers: the first of them. Its list of people pages through every one. */
+export const INVITED_SHOWN = 20;
+export const invitedViewValidator = capped(v.optional(v.array(v.object({ email: v.string() }))), INVITED_SHOWN);
 
 /** Screenings in the person's other workspaces that one page points at. */
 export const ELSEWHERE_MAX = 20;
 /** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
-export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number() })), ELSEWHERE_MAX);
+export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number(), asked: v.number() })), ELSEWHERE_MAX);
 
 /** What tells a source from another of the same name, as the list it was picked from said it: a few short facts. */
 export const SOURCE_FACTS = 6;
@@ -374,6 +378,8 @@ export const sourceViewValidator = v.object({
   // Of the ones taken, how many are screened as their own PDF, and the pages those have.
   filed: v.number(),
   filePages: v.number(),
+  // Those pages by the length of the paper they are in (lib/pricing/estimate.ts `Pdfs`).
+  fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number(), most: v.optional(v.number()) }))), PDF_BANDS),
   // Its reading stopped at the most papers the workspace's plan gives one screening.
   capped: v.optional(v.literal(true)),
   checkedAt: v.optional(v.number()),
@@ -472,8 +478,7 @@ export const previewValidator = v.object({
   eachChanged: v.number(),
   // Each model that stays: the papers it has still to read once the change is made, and the ones the change has it read at once.
   models: capped(v.record(v.string(), v.object({ ahead: v.number(), atOnce: v.number() })), MAX_REVIEWERS),
-  // Papers that join and leave with its sources, and the ones it has included.
-  added: v.number(),
+  // Papers that leave with a source taken out, and the ones it has included. What a source being added brings is known once it is read.
   removed: v.number(),
   included: v.number(),
   moves: capped(v.array(previewMoveValidator), RESULT_MOVES),

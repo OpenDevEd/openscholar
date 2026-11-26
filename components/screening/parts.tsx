@@ -4,108 +4,19 @@
 import { useEffect, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { Asterisk, Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { Asterisk, Star, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
-import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { OUTCOMES, type Answer, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
+import type { PaperSet } from "@/lib/screening/setup";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
-
-export const OUTCOME: Record<Outcome, { bar: string; text: string; icon: AppIcon }> = {
-  included: { bar: "bg-success", text: "ink-success", icon: Check },
-  unclear: { bar: "bg-warning", text: "ink-warning", icon: CircleHelp },
-  excluded: { bar: "bg-muted-foreground/35", text: "text-muted-foreground", icon: X },
-  failed: { bar: "bg-destructive", text: "text-destructive", icon: TriangleAlert },
-};
-
-export const ANSWER: Record<Answer, { icon: AppIcon; className: string }> = {
-  yes: { icon: Check, className: "bg-success/12 ink-success" },
-  no: { icon: X, className: "bg-muted text-muted-foreground" },
-  unclear: { icon: CircleHelp, className: "bg-warning/12 ink-warning" },
-};
 
 /** Where a screening's papers came from, each with its kind's icon (components/record-kinds.ts). */
 export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_KINDS.search.icon, collection: RECORD_KINDS.collection.icon, saved: RECORD_KINDS.savedPapers.icon, screening: RECORD_KINDS.screening.icon, zotero: ZoteroIcon, evidenceLibrary: RECORD_KINDS.library.icon };
 
 /** After a required question's text: a paper not answered yes there is never included. */
 export function RequiredMark() {
-  const t = useTranslations("screeningPage");
+  const t = useTranslations("screening.pieces");
   return <Asterisk role="img" aria-label={t("required")} strokeWidth={2.5} className="ms-1 inline size-3.5 align-[-0.125em] text-primary" />;
-}
-
-/** One answer as a small square with its sign; `label` names its question. */
-export function AnswerMark({ answer, changed, label }: { answer: Answer; changed?: boolean; label: string }) {
-  const t = useTranslations("screeningPage");
-  const { icon: Icon, className } = ANSWER[answer];
-  return (
-    <span
-      role="img"
-      aria-label={t(changed ? "answerMarkChanged" : "answerMark", { question: label, answer: t(`answer.${answer}`) })}
-      className={cn("inline-flex size-6 items-center justify-center rounded-md", className, changed && "ring-1 ring-primary/60")}
-    >
-      <Icon aria-hidden className="size-3.5" />
-    </span>
-  );
-}
-
-/**
- * Counts as one bar split by outcome, then the papers being screened right now as a
- * striped part, then what's still to come.
- */
-export function OutcomeBar({ counts, total, flight = 0, className }: { counts: Record<Outcome, number>; total: number; flight?: number; className?: string }) {
-  const settled = Object.values(counts).reduce((a, b) => a + b, 0);
-  const rest = Math.max(0, total - settled - flight);
-  const part = "h-full basis-0 rounded-full transition-[flex-grow] duration-500 ease-out motion-reduce:transition-none";
-  return (
-    <div className={cn("flex h-2.5 w-full gap-0.5", className)}>
-      {OUTCOMES.map((o) => (counts[o] ? <span key={o} className={cn(part, OUTCOME[o].bar)} style={{ flexGrow: counts[o] }} /> : null))}
-      {flight ? (
-        <span
-          className={cn(part, "animate-pulse motion-reduce:animate-none")}
-          style={{ flexGrow: flight, backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 3px, color-mix(in oklab, var(--primary) 30%, transparent) 3px 7px)" }}
-        />
-      ) : null}
-      {rest ? <span className={cn(part, "bg-muted")} style={{ flexGrow: rest }} /> : null}
-    </div>
-  );
-}
-
-/** How far a screening has got, as a ring; a check once it's done. */
-export function ProgressRing({ value, max, phase }: { value: number; max: number; phase: Exclude<Phase, "processing"> }) {
-  const t = useTranslations("screeningPage");
-  const size = 56;
-  const r = (size - 6) / 2;
-  const c = 2 * Math.PI * r;
-  const f = max ? value / max : 0;
-  const stroke =
-    phase === "completed" ? "stroke-success" : phase === "running" || phase === "reading" ? "stroke-primary" : phase === "waiting" ? "stroke-warning" : phase === "cancelled" ? "stroke-muted-foreground/50" : "stroke-destructive";
-  return (
-    <span className="relative inline-flex size-14 shrink-0" role="img" aria-label={t("screenedOf", { done: value, total: max })}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="size-full -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={5} className="stroke-foreground/[0.08]" />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={5}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - f)}
-          className={cn("transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none", stroke)}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums">
-        {phase === "completed" ? (
-          <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 420, damping: 22 }}>
-            <Check className="size-5 text-success" />
-          </motion.span>
-        ) : (
-          <span><AnimatedNumber value={Math.round(f * 100)} />%</span>
-        )}
-      </span>
-    </span>
-  );
 }
 
 /** A small fact chip: an icon, then a short label. */
@@ -118,19 +29,8 @@ export function Chip({ icon: Icon, children, className }: { icon?: AppIcon; chil
   );
 }
 
-/** A chip that names something of any length: it takes the room it has, and shows the whole of what's cut off. */
-export function ClippedChip({ children, className, ...chip }: { icon?: AppIcon; children: ReactNode; className?: string }) {
-  return (
-    <Chip {...chip} className={cn("min-w-0 max-w-full shrink", className)}>
-      <TooltipHint label={children} onlyWhenClipped>
-        <span className="truncate">{children}</span>
-      </TooltipHint>
-    </Chip>
-  );
-}
-
 export function Stars({ count, of = 5 }: { count: number; of?: number }) {
-  const t = useTranslations("screeningPage");
+  const t = useTranslations("screening.pieces");
   return (
     <span role="img" aria-label={t("starsOf", { count, of })} className="inline-flex shrink-0 items-center gap-0.5">
       {Array.from({ length: of }, (_, i) => (

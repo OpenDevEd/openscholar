@@ -1,8 +1,18 @@
 import { creditsForUsage } from "./convert";
+import type { Effort } from "../ai/core/call-options";
 import { PAPER_PDF_CREDITS } from "./paper-pdf";
 
+/** What a model charges once a prompt is long, where it charges more: every token of a call whose prompt has `from` tokens or more, in USD per million. */
+export type LongPrompt = { from: number; input: number; output: number };
 /** A model's price in USD per million tokens. */
-export type Pricing = { input: number; output: number };
+export type Pricing = { input: number; output: number; long?: LongPrompt };
+/**
+ * A catalog model's prices as every estimate takes them, on the server and on a page. Output is priced at the
+ * model's reasoning rate where that is higher, since the output an estimate holds may all be reasoning.
+ * ponytail: a page's model carries no reasoning rate, and no catalog model's is above its output price (checked
+ * 2026-11-26). Send it with the model (components/settings/model-map.tsx) once one is.
+ */
+export const pricingOf = (model: { inputPricePerMillion: number; outputPricePerMillion: number; reasoningPricePerMillion?: number; longPrompt?: LongPrompt }): Pricing => ({ input: model.inputPricePerMillion, output: Math.max(model.outputPricePerMillion, model.reasoningPricePerMillion ?? 0), ...(model.longPrompt ? { long: model.longPrompt } : {}) });
 export type CallTokens = { input: number; output: number };
 
 /**
@@ -77,15 +87,97 @@ export function extractionRetryCredits(pricing: ExtractionPricing, count: number
   );
 }
 
-/** What screening one paper costs at most on a model: one call about its abstract, every question answered in it. */
-export function screeningPaperCredits(pricing: Pricing): number {
-  return estimateCredits(pricing, CALL_TOKENS.paper);
+/**
+ * What a model that reasons at an effort writes on one paper besides its answers, at most. On 2026-11-26 Claude Haiku
+ * 5.5 at medium wrote up to about 1,800 tokens a paper in all, where `CALL_TOKENS.paper` allows its answers 600: a
+ * screening quoted at most 711 credits was charged 818. A model at its own default effort is priced on the answers
+ * alone, and what it is charged a paper never passes what it was quoted (convex/screening/reading.ts).
+ */
+export const REASONING_TOKENS: Record<Effort, number> = { none: 0, minimal: 300, low: 800, medium: 1_500, high: 3_000, xhigh: 6_000, max: 6_000 };
+const reasoningOf = (effort: string | undefined) => (effort ? (REASONING_TOKENS[effort as Effort] ?? 0) : 0);
+
+/** What screening one paper costs at most on a model, at the effort it reads at: one call about its abstract, every question answered in it. */
+export function screeningPaperCredits(pricing: Pricing, effort?: string): number {
+  return estimateCredits(pricing, { input: CALL_TOKENS.paper.input, output: CALL_TOKENS.paper.output + reasoningOf(effort) });
 }
+
+/**
+ * Tokens one page of a PDF takes when a model is sent the file, and what the criteria and its answers add to a
+ * paper read that way. Measured on a 76-page report sent whole: 3,155 a page on Haiku 5.5, 3,998 on GPT-6 Luna.
+ */
+export const SCREENING_PDF_TOKENS = { page: 4_000, asked: 2_000, answer: 800 };
+/** The tokens a paper screened as its PDF takes at most: every page of it, with the criteria. */
+export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKENS.page + SCREENING_PDF_TOKENS.asked;
+/** Whether a model can be given a paper that is only its PDF: it takes a file, and every page of this one fits what one call to it holds. */
+export const readsPdfOf = (model: { files: boolean; room?: number } | undefined, pages: number) => Boolean(model?.files) && (model!.room === undefined || screeningPdfTokens(pages) <= model!.room);
+/** What screening one paper as its PDF costs at most on a model: one call with its whole file, at the model's long-prompt price where that many pages reach it. */
+export const screeningPdfCredits = (pricing: Pricing, pages: number, effort?: string) => estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer + reasoningOf(effort) });
+
+/**
+ * A screening's papers read as their PDFs, by length: how many, their pages, and the same for the ones in each
+ * band of PDF_BAND pages (band 0 holds papers of 1 to 8 pages, band 1 of 9 to 16). The bands are what lets a
+ * model that charges more for a long prompt, or that holds only so many pages, be priced without reading every
+ * paper again. A band says how long its longest paper is (`most`), so a paper past what a model holds is never
+ * taken for one it reads. A paper whose pages nobody counted is in no band.
+ */
+export type Pdfs = { papers: number; pages: number; spread?: Record<string, { papers: number; pages: number; most?: number }> };
+export const PDF_BAND = 8;
+/** How many bands there are: the last one holds every paper longer than it starts at, 1,017 pages. */
+export const PDF_BANDS = 128;
+export const pdfBand = (pages: number) => Math.min(PDF_BANDS - 1, Math.max(0, Math.ceil(pages / PDF_BAND) - 1));
+const bandsOf = (pdfs: Pdfs) => Object.entries(pdfs.spread ?? {}).map(([band, held]) => ({ band, held, fewest: Number(band) * PDF_BAND + 1, most: (Number(band) + 1) * PDF_BAND }));
+
+/**
+ * What screening those papers costs at most on a model: one call a paper with its whole file. A band is taken
+ * at the long-prompt price when its longest paper would be (`screeningPdfCredits`). Each call is charged in whole
+ * credits, rounded up, where this adds the tokens up first: a credit a paper past the first covers that. So the
+ * sum is never under what the papers cost one by one.
+ */
+export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs, effort?: string): number {
+  const { long } = pricing;
+  const dear = long ? bandsOf(pdfs).filter(({ most }) => screeningPdfTokens(most) >= long.from) : [];
+  const [longPapers, longPages] = [dear.reduce((sum, { held }) => sum + held.papers, 0), dear.reduce((sum, { held }) => sum + held.pages, 0)];
+  const part = (price: { input: number; output: number }, papers: number, pages: number) =>
+    papers ? estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * (SCREENING_PDF_TOKENS.answer + reasoningOf(effort)) }) + (papers - 1) : 0;
+  return part(pricing, Math.max(0, pdfs.papers - longPapers), Math.max(0, pdfs.pages - longPages)) + (long ? part(long, longPapers, longPages) : 0);
+}
+
+/**
+ * Of those papers, the ones a model is given (`readsPdfOf`): none where it takes no file, and none of a band that
+ * is more than one call to it holds. A cost keeps a band whose shortest paper fits, so it is never under what is
+ * charged. A warning (`sure`) keeps only a band whose longest paper fits, so a paper nobody can read is never
+ * passed over: it may count the shorter papers of that one band with it.
+ */
+export function pdfsFor(model: { files: boolean; room?: number } | undefined, pdfs: Pdfs, sure = false): Pdfs {
+  if (!model?.files) return { papers: 0, pages: 0 };
+  const past = bandsOf(pdfs).filter(({ fewest, most, held }) => !readsPdfOf(model, sure ? held.most ?? most : fewest));
+  if (!past.length) return pdfs;
+  const gone = new Set(past.map(({ band }) => band));
+  return { papers: pdfs.papers - past.reduce((sum, { held }) => sum + held.papers, 0), pages: pdfs.pages - past.reduce((sum, { held }) => sum + held.pages, 0), spread: Object.fromEntries(Object.entries(pdfs.spread ?? {}).filter(([band]) => !gone.has(band))) };
+}
+
+/** The `count` longest of those papers, a band at a time from the longest: the most that many papers still to read can hold. */
+export function longestPdfs(pdfs: Pdfs, count: number): Pdfs {
+  if (count >= pdfs.papers) return pdfs;
+  const spread: NonNullable<Pdfs["spread"]> = {};
+  let [papers, pages] = [0, 0];
+  for (const { band, held, most } of bandsOf(pdfs).sort((a, b) => b.most - a.most)) {
+    const take = Math.min(held.papers, count - papers);
+    if (take <= 0) break;
+    // Part of a band is taken as its longest papers.
+    spread[band] = { papers: take, pages: take === held.papers ? held.pages : Math.min(held.pages, take * most) };
+    papers += take;
+    pages += spread[band]!.pages;
+  }
+  return { papers: Math.max(0, count), pages, spread };
+}
+
+/** The pages a paper prints its title, its authors and its DOI on: what the first reading of a PDF handed to a screening is sent. */
+export const PDF_LOOK_PAGES = 2;
+/** What that first reading costs at most on a model: those pages as a file, and the few lines it copies from them. */
+export const pdfLookCredits = (pricing: Pricing) => estimateCredits(pricing, { input: PDF_LOOK_PAGES * SCREENING_PDF_TOKENS.page + 500, output: 400 });
 
 /** Tokens a text takes at most: Claude counts about two characters a token, the fewest of the models measured. */
 export function tokensIn(text: string): number {
   return Math.ceil(text.length / 2);
 }
-
-/** How many bands of length a screening's papers read as PDFs are counted in (convex/schema.ts `screeningSources.fileSpread`): the last holds every paper of 1,017 pages or more. */
-export const PDF_BANDS = 128;

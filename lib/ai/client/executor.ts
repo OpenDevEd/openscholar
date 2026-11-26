@@ -13,11 +13,12 @@ import {
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
+  getScreeningCriteriaConfig,
   getExtractionQuestionsConfig,
   getTranslateQueryConfig,
   type OperationConfig
 } from '../core/configs'
-import { toExtractionQuestions } from '../core/schemas'
+import { toExtractionQuestions, toWrittenCriteria } from '../core/schemas'
 import type { Effort } from '../core/call-options'
 import type { AIProvider } from '@/lib/types'
 import { captureAIGeneration, captureAIGenerationBatch } from '@/lib/posthog-ai'
@@ -135,6 +136,12 @@ export const generateScreeningQuestions = createClientExecutor(
   (output) => ({
     questions: output.questions,
   }),
+  'generate_screening_questions'
+)
+
+export const generateScreeningCriteria = createClientExecutor(
+  getScreeningCriteriaConfig,
+  (output) => toWrittenCriteria(output.criteria),
   'generate_screening_questions'
 )
 

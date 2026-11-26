@@ -15,10 +15,10 @@ export function usageOf(result: { usage: LanguageModelUsage; providerMetadata?: 
   }
 }
 
-/** The reported cost when there is one, else tokens at the catalog price. */
+/** The reported cost when there is one, else tokens at the catalog price: its long-prompt price where the model has one and the prompt reaches it. */
 export function calculateCostInDollars(
   usage: Usage,
-  pricing: { input: number; output: number },
+  pricing: { input: number; output: number; long?: { from: number; input: number; output: number } },
 ): number {
   if (usage.costUsd !== undefined) return usage.costUsd
   // `||`, not `??`: an aggregate carries zero aliases next to the real counts.
@@ -27,8 +27,9 @@ export function calculateCostInDollars(
 
   if (!promptTokens && !completionTokens) return 0
 
-  return ((promptTokens / 1_000_000) * pricing.input) +
-         ((completionTokens / 1_000_000) * pricing.output)
+  const price = pricing.long && promptTokens >= pricing.long.from ? pricing.long : pricing
+  return ((promptTokens / 1_000_000) * price.input) +
+         ((completionTokens / 1_000_000) * price.output)
 }
 
 /**

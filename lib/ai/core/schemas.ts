@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { languageOptions } from './languages'
+import { shortOf } from '../../screening/rules'
 
 export const queryEnhancementSchema = z.object({
   enhancedQuery: z
@@ -19,15 +20,43 @@ export const screeningQuestionsSchema = z.object({
     ),
 })
 
-export function createScreeningResponsesSchema(questions: string[]) {
+/** The same questions, each with a short name and the words to mark for it in an abstract (convex/screening). */
+export const screeningCriteriaSchema = z.object({
+  criteria: z
+    .array(
+      z.object({
+        question: z.string().describe('A screening question that is specific and answerable with yes or no.'),
+        short: z.string().describe('A name of two to four words for what the question checks, such as "Randomised trial" or "Adults 18 to 65". Never the first words of the question itself.'),
+        terms: z
+          .array(z.string())
+          .max(8)
+          .describe('Up to eight words or short phrases a reader would look for in an abstract to answer the question, spelled as an abstract would spell them.'),
+      })
+    )
+    .min(1)
+    .max(10),
+})
+
+/** Written criteria as a screening keeps them: the question, a short name within its length, and the words to mark. */
+export const toWrittenCriteria = (criteria: z.infer<typeof screeningCriteriaSchema>['criteria']) => ({
+  criteria: criteria.map((one) => ({
+    text: one.question.trim(),
+    short: shortOf(one.short.trim() || one.question),
+    terms: one.terms.map((term) => term.trim()).filter(Boolean),
+  })),
+})
+
+export function createScreeningResponsesSchema(questions: string[], passages = false) {
   const responseProperties: Record<string, z.ZodTypeAny> = {}
   const confidenceProperties: Record<string, z.ZodTypeAny> = {}
+  const passageProperties: Record<string, z.ZodTypeAny> = {}
 
   for (const question of questions) {
     responseProperties[question] = z.union([z.boolean(), z.null()]).describe(
       `Response to: "${question}" (true=yes, false=no, null=unclear)`
     )
     confidenceProperties[question] = z.number().min(0).max(1).describe(`Confidence in the response to: "${question}" (0-1)`)
+    passageProperties[question] = z.union([z.number().int().min(0), z.null()]).describe(`The number of the one sentence of the abstract the response to "${question}" rests on most, or null where it rests on none`)
   }
 
   return z.object({
@@ -37,6 +66,9 @@ export function createScreeningResponsesSchema(questions: string[]) {
     confidences: z.object(confidenceProperties).describe(
       'An object where keys are the same screening questions and values are the confidence in each response (0-1)'
     ),
+    ...(passages
+      ? { passages: z.object(passageProperties).describe('An object where keys are the same screening questions and values are the number of the abstract sentence each response rests on, or null') }
+      : {}),
   })
 }
 

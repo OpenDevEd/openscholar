@@ -36,6 +36,8 @@ export function pageItem(path: string, params: URLSearchParams): Item | null {
   if (section === "extraction" && id && id !== "new") return { kind: "extraction", id };
   if (section === "evidence-communities" && id && id !== "new") return { kind: "library", id };
   if (section === "authors" && id) return { kind: "profile", id };
+  if (section === "screening" && id && id !== "new") return { kind: "screening", id };
+  // A link from before each screening had its own address.
   const job = path === "/screening" ? params.get("job") : null;
   if (job && job !== "new") return { kind: "screening", id: job };
   const collection = path === "/library" ? params.get("col") : null;

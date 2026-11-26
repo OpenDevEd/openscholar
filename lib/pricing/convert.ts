@@ -32,7 +32,7 @@ export function convertUsdToCredits(args: ConvertUsdToCreditsArgs): number {
  *  before the model's price syncs. */
 export function creditsForUsage(
   usage: Usage,
-  pricing: { input: number; output: number },
+  pricing: { input: number; output: number; long?: { from: number; input: number; output: number } },
   markup?: number,
 ): number {
   const credits = convertUsdToCredits({ usd: calculateCostInDollars(usage, pricing), markup });

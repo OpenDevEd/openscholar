@@ -18,6 +18,8 @@ interface LanguageTranslateControlProps {
   /** When true, the translate button is disabled (e.g. no query to translate) */
   translateDisabled?: boolean;
   isTranslating?: boolean;
+  /** What one translation costs in credits, said in the language list. */
+  credits?: number;
 }
 
 const ACTIONS_WIDTH = 56 + 8;
@@ -29,6 +31,7 @@ export function LanguageTranslateControl({
   disabled = false,
   translateDisabled = false,
   isTranslating = false,
+  credits,
 }: LanguageTranslateControlProps) {
   const t = useTranslations("searchCommand");
   const shouldReduceMotion = useReducedMotion();
@@ -92,6 +95,7 @@ export function LanguageTranslateControl({
         onValueChange={onValueChange}
         disabled={disabled}
         working={isTranslating}
+        credits={credits}
         className="border-0 rounded-none shrink-0"
       />
     </div>

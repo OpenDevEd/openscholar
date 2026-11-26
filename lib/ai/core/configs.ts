@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   queryEnhancementSchema,
   screeningQuestionsSchema,
+  screeningCriteriaSchema,
   extractionQuestionsSchema,
   createScreeningResponsesSchema,
   translateQuerySchema,
@@ -26,12 +27,12 @@ import {
   GenerateScreeningResponsesInput,
   SuggestSearchesInput,
 } from './types'
-import type { RepairStrategy } from './execute'
+import type { Prompts, RepairStrategy } from './execute'
 
 // Define the partial config type (everything except 'model')
 export interface OperationConfig<TInput, TOutput> {
   schema: z.ZodSchema<TOutput> | z.ZodType<TOutput>
-  buildPrompts: (input: TInput, retryCount: number) => { system: string; prompt: string }
+  buildPrompts: (input: TInput, retryCount: number) => Prompts
   input: TInput
   repairStrategy: RepairStrategy
   temperature: number
@@ -82,19 +83,31 @@ export function getScreeningQuestionsConfig(
     repairStrategy: { type: 'full-json' },
     temperature: 0.7,
     postProcess: (output, input) => {
-      const newQuestions = output.questions.filter((newQuestion: string) => {
-        const normalizedNew = newQuestion.toLowerCase().trim()
-        return !input.existingQuestions.some((existingQuestion: string) => {
-          const normalizedExisting = existingQuestion.toLowerCase().trim()
-          return (
-            normalizedExisting === normalizedNew ||
-            normalizedExisting.includes(normalizedNew) ||
-            normalizedNew.includes(normalizedExisting)
-          )
-        })
-      })
-      return { questions: newQuestions }
+      return { questions: output.questions.filter((question: string) => isNewQuestion(question, input.existingQuestions)) }
     },
+  }
+}
+
+/** Whether a written question says something the existing ones don't: not one of them, and not one held within another. */
+function isNewQuestion(question: string, existing: string[]) {
+  const written = question.toLowerCase().trim()
+  return !existing.some((one) => {
+    const held = one.toLowerCase().trim()
+    return held === written || held.includes(written) || written.includes(held)
+  })
+}
+
+/** The same questions, each with a short name and the words to mark for it in an abstract. */
+export function getScreeningCriteriaConfig(
+  input: GenerateScreeningQuestionsInput
+): OperationConfig<GenerateScreeningQuestionsInput, z.infer<typeof screeningCriteriaSchema>> {
+  return {
+    schema: screeningCriteriaSchema,
+    buildPrompts: (input) => buildScreeningQuestionsPrompts(input, true),
+    input,
+    repairStrategy: { type: 'full-json' },
+    temperature: 0.7,
+    postProcess: (output, input) => ({ criteria: output.criteria.filter((one) => isNewQuestion(one.question, input.existingQuestions)) }),
   }
 }
 
@@ -164,7 +177,7 @@ export function getTranslatePaperContentConfig(
 export function getScreeningResponsesConfig(
   input: GenerateScreeningResponsesInput
 ): OperationConfig<GenerateScreeningResponsesInput, any> {
-  const schema = createScreeningResponsesSchema(input.questions)
+  const schema = createScreeningResponsesSchema(input.questions, input.passages)
   return {
     schema,
     buildPrompts: (input) => buildScreeningResponsesPrompts(input),

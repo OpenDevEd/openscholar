@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, type AppIcon } from "@/components/icons";
+import { ChevronLeft, ChevronRight, type AppIcon } from "@/components/icons";
 import Link from "@/components/workspace-link";
 import type { MouseEventHandler, ReactNode } from "react";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -28,6 +28,7 @@ export function PanelHeader({
   backHref,
   backLabel,
   onBackClick,
+  trail,
   titleAside,
   tabs,
   filters,
@@ -42,6 +43,8 @@ export function PanelHeader({
   backHref?: string;
   backLabel?: string;
   onBackClick?: MouseEventHandler<HTMLAnchorElement>;
+  /** The pages above this one, nearest last, each a link before the title. Where the bar is too narrow for them, the back chevron goes to the nearest. */
+  trail?: Array<{ label: string; href: string }>;
   /** Shown right after the title, such as a state chip. */
   titleAside?: ReactNode;
   /** Views of the list, shown in the bar on wide pages. */
@@ -52,6 +55,8 @@ export function PanelHeader({
   children?: ReactNode;
 }) {
   const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
+  const parent = trail?.at(-1);
+  const back = backHref ?? parent?.href;
   return (
     <div className="flex h-16 items-center gap-4 @max-[30rem]:h-auto @max-[30rem]:min-h-16 @max-[30rem]:flex-wrap @max-[30rem]:gap-y-2 @max-[30rem]:py-3">
       {/* Under 18rem (a phone at 150% text or more) a title that doesn't fit beside the back arrow, picture and chips takes a line of its own: beside them it had 46 to 86px and broke inside its words.
@@ -61,9 +66,9 @@ export function PanelHeader({
           for the back arrow's negative margin. */}
       <AutoHeight className="min-w-0 flex-1 overflow-x-visible @3xl:flex-initial @min-[18rem]:h-auto! @max-[30rem]:basis-auto">
         <div className="flex min-w-0 items-center gap-2 @max-[18rem]:flex-wrap">
-          {backHref ? (
-            <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
-              <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
+          {back ? (
+            <Button asChild variant="ghost" size="icon" className={parent ? "-ms-2 shrink-0 text-muted-foreground @3xl:hidden" : "-ms-2 shrink-0 text-muted-foreground"}>
+              <Link href={back} aria-label={backLabel ?? (parent ? `Back to ${parent.label}` : undefined)} onClick={onBackClick}>
                 <ChevronLeft className="size-5" />
               </Link>
             </Button>
@@ -76,11 +81,23 @@ export function PanelHeader({
               fallback={icon}
             />
           ) : icon}
+          {trail?.length ? (
+            <nav aria-label="Breadcrumb" className="hidden shrink-0 items-center @3xl:flex">
+              <ol className="flex min-w-0 items-center gap-2">
+                {trail.map((crumb) => (
+                  <li key={crumb.href} className="flex min-w-0 items-center gap-2">
+                    <Link href={crumb.href} className="max-w-56 truncate rounded-sm text-base text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">{crumb.label}</Link>
+                    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground/60" />
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          ) : null}
           {title ? (
             // At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
             // and 200% text. At normal text it stays one line.
             <TooltipHint label={title} onlyWhenClipped>
-              <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
+              <h1 dir="auto" className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
             </TooltipHint>
           ) : null}
           {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}

@@ -33,10 +33,20 @@ export interface TranslatePaperContentInput {
   targetLanguage?: string
 }
 
+/** A PDF sent with a prompt as the file it is, the way the assistant sends one: its pages as they are, text, tables, figures and scans. */
+export interface PromptFile {
+  data: Uint8Array | URL
+  filename: string
+}
+
 export interface GenerateScreeningResponsesInput {
   title: string
   abstract: string
+  /** The paper itself, where it has no abstract: the model reads the PDF. */
+  file?: PromptFile
   questions: string[]
+  /** Ask, with each answer, for the sentence of the abstract it rests on (lib/screening/passages.ts). */
+  passages?: boolean
 }
 
 export interface Usage {

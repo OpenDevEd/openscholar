@@ -4,6 +4,7 @@
 // its plan and credits. Your own workspace is just you, so its plan sits with your account.
 
 import { useState } from "react";
+import { SCREENINGS_PATH } from "@/lib/screening/links";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -147,7 +148,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   const contents = [
     { icon: Folder, tint: "#e8890c", label: t("collections"), n: summary.collections, href: "/library" },
     { icon: Search, tint: "#60a5fa", label: t("searches"), n: summary.searches, href: "/history" },
-    { icon: ListFilter, tint: "#34d399", label: t("screenings"), n: summary.screenings, href: "/screening" },
+    { icon: ListFilter, tint: "#34d399", label: t("screenings"), n: summary.screenings, href: SCREENINGS_PATH },
     { icon: FileSearch, tint: "#818cf8", label: t("extractions"), n: summary.extractions, href: "/extraction" },
     { icon: EvidenceLibrariesIcon, tint: "#2dd4bf", label: t("evidenceLibraries"), n: summary.libraries, href: "/evidence-communities" },
   ];

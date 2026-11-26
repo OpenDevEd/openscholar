@@ -46,7 +46,7 @@ import { resultOf } from "./access";
 import { keepKeys } from "../paperSets/libraryKeys";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
-async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
+export async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
   if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };

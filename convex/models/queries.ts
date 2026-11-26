@@ -1,7 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
-import { effortValidator, modelEffortsValidator, modelParametersValidator } from "../aiModelConfig/validators";
+import { effortValidator, longPromptValidator, modelEffortsValidator, modelParametersValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import schema from "../schema";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
@@ -16,6 +16,7 @@ const catalogOptionValidator = v.object({
   contextLength: v.optional(v.number()),
   inputPricePerMillion: v.number(),
   outputPricePerMillion: v.number(),
+  longPrompt: v.optional(longPromptValidator),
   category: v.optional(v.string()),
   modality: v.optional(v.string()),
   tokenizer: v.optional(v.string()),
@@ -36,6 +37,7 @@ function catalogOption(model: Doc<"models">) {
     contextLength: model.contextLength,
     inputPricePerMillion: model.inputPricePerMillion,
     outputPricePerMillion: model.outputPricePerMillion,
+    longPrompt: model.longPrompt,
     category: model.category,
     modality: model.modality,
     tokenizer: model.tokenizer,

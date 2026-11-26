@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SearchLanguageIcon } from "@/components/icons";
+import { Coins, SearchLanguageIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -21,6 +21,8 @@ interface LanguageSelectorProps {
   disabled?: boolean;
   /** The query is being translated: the globe loops. */
   working?: boolean;
+  /** What picking a language costs in credits: the search's words are translated into it. */
+  credits?: number;
   className?: string;
 }
 
@@ -38,7 +40,7 @@ export function LanguageSelectItems() {
  * Picks the language to search in. Choosing one rewrites the keywords into it, so the search finds papers
  * written in that language. It says so in words, since the results' Translate button does the reverse.
  */
-export function LanguageSelector({ value, onValueChange, disabled = false, working = false, className }: LanguageSelectorProps) {
+export function LanguageSelector({ value, onValueChange, disabled = false, working = false, credits, className }: LanguageSelectorProps) {
   const tl = useTranslations("languages");
   const t = useTranslations("searchCommand");
   const selectedLanguage = languageOptions.find((lang) => lang.code === value);
@@ -63,6 +65,7 @@ export function LanguageSelector({ value, onValueChange, disabled = false, worki
         </span>
       </SelectTrigger>
       <SelectContent position="popper" align="start" className="z-[200] max-h-80 overflow-y-auto">
+        {credits ? <p className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />{t("translateCost", { credits })}</p> : null}
         <LanguageSelectItems />
       </SelectContent>
     </Select>

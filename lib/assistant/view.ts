@@ -16,7 +16,9 @@ import { topicHref } from "../topics/links";
 const KEPT: ReadonlyArray<readonly [page: RegExp, parameters: readonly string[]]> = [
   [/^\/results\/[^/]+$/, ["page"]],
   [/^\/library$/, ["col", "q", "sort", "rmin", "rmax", "yf", "yt", "sf", "st"]],
-  [/^\/screening$/, ["search", "job"]],
+  [/^\/screening\/new$/, ["search", "from"]],
+  [/^\/screening\/[^/]+\/screen$/, ["queue", "paper"]],
+  [/^\/screening\/[^/]+\/papers$/, ["paper", "result", "source", "reviewer", "voted"]],
   [/^\/extraction\/new$/, ["step", "tab"]],
   [/^\/topics$/, ["q", "domain", "field", "subfield"]],
   [/^\/topics\/[^/]+$/, ["libraryQuery"]],
@@ -111,6 +113,8 @@ export function recordOf(address: string): LinkedRecord | null {
   if (/^\/results\/[^/]+$/.test(path)) return { kind: "search" };
   if (path === "/library" && has("col")) return { kind: "collection" };
   if (/^\/extraction\/[^/]+$/.test(path) && path !== "/extraction/new") return { kind: "extraction" };
+  if (/^\/screening\/[^/]+(\/(?:screen|papers|settings))?$/.test(path) && path !== "/screening/new") return { kind: "screening" };
+  // A link written before each screening had its own address, in a chat from then.
   if (path === "/screening" && has("job")) return { kind: "screening" };
   if (/^\/evidence-(?:communities|libraries)\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
   if (/^\/topics\/[^/]+$/.test(path)) return { kind: "topic" };

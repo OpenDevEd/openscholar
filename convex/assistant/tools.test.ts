@@ -12,10 +12,9 @@ import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
-import { screeningHold, screeningPaperCreditsFor } from "../screening/estimate";
 import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
 import { SERVER_MODEL_SLUG } from "../ai/config";
-import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
@@ -30,7 +29,6 @@ import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, batched, circling, core,
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { ensureWorkspace } from "../workspaces/create";
-import { ownActor } from "../workspaces/actor.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { accountOf } from "../billing/billing.test-support";
@@ -444,8 +442,7 @@ describe("the assistant's tools", () => {
     expect(change([rating, { requestId: "r3", command: { kind: "clearShortcuts" } }])).toHaveProperty("error");
     expect(change([edit("patch", { fields: { query: "tutoring" }, clear: [] }), edit("clearResponses", { paperId: "W1" })])).toHaveProperty("error");
     // A change that asks every time can be a batch too, asked about once; one that spends credits, or only reads, can't.
-    const answer = { jobId: "j1", paperId: "W1", questionKey: "q1", answer: true };
-    expect(batched({ name: "screening/papers:answer", each: [answer, { ...answer, paperId: "W2" }] })).toHaveProperty("each");
+    expect(batched({ name: "library/collections:deleteCollection", each: [{ collectionId: "c1" }, { collectionId: "c2" }] })).toHaveProperty("each");
     expect(batched({ name: "library/collections:listCollections", each: [{}] })).toHaveProperty("error");
 
     // A few changes in one call run at once, as one step too.
@@ -890,7 +887,7 @@ describe("the assistant's tools", () => {
     expect(await t.run((ctx) => ctx.db.get("collections", theirs))).not.toBeNull();
   });
 
-  it("refuse a screening or an extraction whose start would refuse it before the person is asked to pay for it", async () => {
+  it("refuse an extraction whose start would refuse it before the person is asked to pay for it", async () => {
     const t = convexTest(schema);
     const { asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
@@ -903,109 +900,94 @@ describe("the assistant's tools", () => {
       const account = await accountOf(ctx, userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
     });
-    const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] };
-    const screen = { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last: 5, questions: [{ key: "q1", question: "Randomized?" }], scoringConfig, saveTo: { kind: "new", name: "  " } } };
     const extract = { name: "extraction/start:extract", arguments: { name: "Sample sizes", set: { kind: "collection", collectionId }, first: 1, last: 1500, questions: [{ question: "What was the sample size?", type: "number" }] } };
-    mockDoStream
-      .mockImplementationOnce(calling({ id: "screen", name: "run_action", input: screen }, { id: "extract", name: "run_action", input: extract }))
-      .mockImplementationOnce(finishingDoStream(["Neither can start as asked."]));
-    await say("Screen my trials into a new collection, and extract sample sizes from 1,500 of them");
+    mockDoStream.mockImplementationOnce(calling({ id: "extract", name: "run_action", input: extract })).mockImplementationOnce(finishingDoStream(["It can't start as asked."]));
+    await say("Extract sample sizes from 1,500 of my trials");
 
-    expect(told(1, "screen")).toEqual({ error: "Collection name cannot be empty" });
     expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer." });
     expect(await steps()).toEqual([]);
   });
 
   it("ask before an action that spends credits, with the most it holds, and run it unasked once the person allows that much in the chat", async () => {
     const t = convexTest(schema);
-    setupScreeningWorkpool(t);
+    setupExtractionPaperWorkpool(t);
+    await extractionOn(t);
     const { ada, asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
-    // Screen all runs on the server's model, at GPT-6 Luna's price: what a paper holds on it.
+    // An extraction runs on the server's model: what a paper holds on it.
     await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["tools", "structured_outputs"], contextLength: 400_000, syncedAt: 1, createdAt: 1, updatedAt: 1 }));
-    const perPaper = await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada, workspaceId: await personalWorkspaceOf(ctx, ada) }));
     for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { paper: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
-    const screen = (id: string, last = 3) => ({
-      id,
-      name: "run_action",
-      input: { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last, questions: [{ key: "q1", question: "Is this a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] }, saveTo: { kind: "none" } } },
-    });
-    const jobs = () => t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).length);
+    const asked = (last: number) => ({ name: "Sample sizes", set: { kind: "collection" as const, collectionId }, first: 1, last, questions: [{ question: "What was the sample size?", type: "number" as const }] });
+    const extract = (id: string, last = 3) => ({ id, name: "run_action", input: { name: "extraction/start:extract", arguments: asked(last) } });
+    // The most it holds: every paper the collection has, however far the call said to go.
+    const held: number = await t.query(internal.extraction.start.figure, { userId: ada, ...asked(500) });
+    expect(held).toBe(await t.query(internal.extraction.start.figure, { userId: ada, ...asked(3) }));
+    const jobs = () => t.run(async (ctx) => ctx.db.query("extractionJobs").collect());
     const limits = async () => {
       const { recent: _recent, web: _web, files: _files, ...read } = await asAda.query(api.assistant.spending.get, { threadId });
       return read;
     };
 
-    // Nothing starts until she says so. She is shown the most it holds: every paper the collection has, however far the call said to go.
-    mockDoStream.mockImplementationOnce(calling(screen("first", 500)));
-    await sayUntilAsked("Screen my trials");
-    expect(await jobs()).toBe(0);
-    const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
-    expect(asked).toMatchObject({ action: "screening/start:screen", canAnswer: true, credits: 3 * perPaper });
-    // She is asked about the papers and the question, with her collection by its name, and not about how each answer scores.
-    expect(asked && "details" in asked && asked.details).toEqual([{ name: "collection", value: "Trials" }, { name: "first", value: "1" }, { name: "last", value: "500" }, { name: "question", value: "Is this a trial?" }]);
+    // Nothing starts until she says so, and she is shown the most it holds.
+    mockDoStream.mockImplementationOnce(calling(extract("first", 500)));
+    await sayUntilAsked("Extract the sample sizes from my trials");
+    expect(await jobs()).toHaveLength(0);
+    const asking = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    expect(asking).toMatchObject({ action: "extraction/start:extract", canAnswer: true, credits: held });
+    // She is asked about the papers and the question, with her collection by its name.
+    expect(asking && "details" in asking && asking.details).toEqual([{ name: "name", value: "Sample sizes" }, { name: "collection", value: "Trials" }, { name: "first", value: "1" }, { name: "last", value: "500" }, { name: "question", value: "What was the sample size?" }]);
 
     // "Always allow in this chat": it runs, and from now on jobs that hold no more than the smallest listed limit covering it run without asking.
-    mockDoStream.mockImplementationOnce(finishingDoStream(["Screening them now."]));
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Extracting them now."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: true, always: true });
     await settled();
-    expect(await jobs()).toBe(1);
+    expect(await jobs()).toHaveLength(1);
     // The job keeps the step that started it, so its chat hears when it ends.
-    const started = (await steps()).find((step) => step.path === "screening/start:screen" && step.status === "done")!;
-    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").first())?.chatStep)).toBe(started._id);
-    expect(await limits()).toEqual({ replyLimit: null, allowance: { cap: 100 } });
+    const started = (await steps()).find((step) => step.path === "extraction/start:extract" && step.status === "done")!;
+    expect((await jobs())[0]!.chatStep).toBe(started._id);
+    const allowed = await limits();
+    expect(allowed).toMatchObject({ replyLimit: null, allowance: { cap: expect.any(Number) } });
+    const cap = (allowed.allowance as { cap: number }).cap;
+    expect(cap).toBeGreaterThanOrEqual(held);
     // A chat she starts takes it too, while her new chats take this chat's limits.
     await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: true });
     const next = await asAda.mutation(api.assistant.threads.create, { title: "Another" });
-    expect(await asAda.query(api.assistant.spending.get, { threadId: next })).toMatchObject({ allowance: { cap: 100 }, newChats: { replyLimit: null, allowance: { cap: 100 } } });
+    expect(await asAda.query(api.assistant.spending.get, { threadId: next })).toMatchObject({ allowance: { cap }, newChats: { replyLimit: null, allowance: { cap } } });
     await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: false });
-    mockDoStream.mockImplementationOnce(calling(screen("second"))).mockImplementationOnce(finishingDoStream(["And again."]));
-    await say("Screen them again");
-    expect(await jobs()).toBe(2);
-    expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 3 * perPaper], ["done", 3 * perPaper]]);
+    mockDoStream.mockImplementationOnce(calling(extract("second"))).mockImplementationOnce(finishingDoStream(["And again."]));
+    await say("Extract them again");
+    expect(await jobs()).toHaveLength(2);
+    expect((await steps()).filter((step) => step.path === "extraction/start:extract").map((step) => [step.status, step.credits])).toEqual([["done", held], ["done", held]]);
     // Each job may spend what she let it hold, asked or allowed, and stops there.
-    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).map((job) => job.spendCap))).toEqual([3 * perPaper, 3 * perPaper]);
+    expect((await jobs()).map((job) => job.spendCap)).toEqual([held, held]);
     // The Spending sheet lists them under the settings that decide for them.
     const listed = await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
-    expect(listed).toMatchObject({ page: [{ action: "screening/start:screen", credits: 3 * perPaper }], isDone: false });
+    expect(listed).toMatchObject({ page: [{ action: "extraction/start:extract", credits: held }], isDone: false });
     expect((await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: listed.continueCursor, numItems: 5 } })).page).toHaveLength(1);
-
-    // One that saves to an Evidence Library collection asks all the same, though the allowance covers what it costs:
-    // whoever the collection is shared with sees what it puts there. A no starts nothing.
-    const libraryId = await t.run(async (ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: await personalWorkspaceOf(ctx, ada), name: "Tutoring library", slug: "tutoring-library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 }));
-    const toLibrary = screen("to-library");
-    mockDoStream.mockImplementationOnce(calling({ ...toLibrary, input: { ...toLibrary.input, arguments: { ...toLibrary.input.arguments, saveTo: { kind: "libraryCollection", libraryId, collection: "6f1c2a7e-0000-4000-8000-000000000001" } } } }));
-    await sayUntilAsked("Screen them into my library collection");
-    const libraryAsk = (await steps()).find((step) => step.status === "asking");
-    expect(libraryAsk).toMatchObject({ path: "screening/start:screen" });
-    mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [libraryAsk!._id], allow: false });
-    await settled();
-    expect(await jobs()).toBe(2);
 
     // A yes while her balance can't cover what the call holds starts nothing, and keeps no allowance: it waits for credits.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
-    mockDoStream.mockImplementationOnce(calling(screen("short")));
-    await sayUntilAsked("Screen them a third time");
+    mockDoStream.mockImplementationOnce(calling(extract("short")));
+    await sayUntilAsked("Extract them a third time");
     const waits = (await steps()).find((step) => step.status === "asking")!._id;
     const account = await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())!);
-    await t.run(async (ctx) => ctx.db.patch("billingAccounts", account._id, { balance: 5 }));
+    await t.run(async (ctx) => ctx.db.patch("billingAccounts", account._id, { balance: Math.floor(held / 2) }));
     await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [waits], allow: true, always: true })).rejects.toThrow(/enough credits/);
     expect(await limits()).toEqual({ replyLimit: null, allowance: null });
     await t.run(async (ctx) => ctx.db.patch("billingAccounts", account._id, { balance: account.balance }));
     mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [waits], allow: false });
     await settled();
-    expect(await jobs()).toBe(2);
+    expect(await jobs()).toHaveLength(2);
 
     // One that holds more than she allowed asks, and a no starts nothing.
-    await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: { cap: 10 } });
-    mockDoStream.mockImplementationOnce(calling(screen("third")));
+    await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: { cap: Math.max(1, Math.floor(held / 2)) } });
+    mockDoStream.mockImplementationOnce(calling(extract("third")));
     await sayUntilAsked("And once more");
     mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: false });
     await settled();
-    expect(await jobs()).toBe(2);
+    expect(await jobs()).toHaveLength(2);
 
     // "Always" keeps a limit of hers that already covers the job, her own number included, raises one that doesn't to the smallest listed that does, and past the largest listed there is none.
     const always = (cap: number, credits: number) =>
@@ -1018,22 +1000,6 @@ describe("the assistant's tools", () => {
     expect(await always(10, 14)).toEqual({ cap: 100 });
     expect(await always(300, 400)).toEqual({ cap: 1_000 });
     expect(await always(300, 5_000)).toEqual({});
-    // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
-    await asAda.mutation(api.research.records.importBatch, { accountId: "ada", searches: [{ search: { id: "not-counted-yet", query: "tutoring", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z" } }], shortcuts: [], ratings: [] });
-    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
-    // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
-    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
-    // A collection's hold covers the papers its count says it has, not the whole range asked for.
-    const uncounted = await t.run(async (ctx) => {
-      const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
-      const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
-      for (const openalexId of ["W91", "W92", "W93"]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(openalexId), title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
-      }
-      return screeningHold(ctx, await ownActor(ctx, userId), { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
-    });
-    expect(uncounted).toBe(3 * perPaper);
 
     // Asked before every job again. An action that spends credits with no estimate to ask with is out of the chat's reach: never
     // found, so a request to extract finds the chat's own extraction, and refused by name.
@@ -1048,7 +1014,22 @@ describe("the assistant's tools", () => {
     expect(offered).toContain("extraction/start:extract");
     expect(offered).not.toContain("extraction/mutations:startJob");
     expect(told(1, "extract")).toEqual({ error: expect.stringMatching(/^No action is named/) });
-    expect(await t.run(async (ctx) => (await ctx.db.query("extractionJobs").collect()).length)).toBe(0);
+    expect(await jobs()).toHaveLength(2);
+  });
+
+  it("keeps the screening actions from before screenings had reviewers out of reach: it reads screenings and starts, stops and changes none", async () => {
+    const t = convexTest(schema);
+    const { say, steps } = await chatOf(t);
+    const offered = found("start a screening screen papers").actions.map((action) => action.name);
+    expect(offered).not.toContain("screening/start:screen");
+    expect(found("list screenings").actions.map((action) => action.name)).toContain("screening/view:list");
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "screen", name: "run_action", input: { name: "screening/start:screen", arguments: {} } }, { id: "stop", name: "run_action", input: { name: "screening/mutations:cancelScreeningJob", arguments: {} } }))
+      .mockImplementationOnce(finishingDoStream(["That is done on the Screening page."]));
+    await say("Screen my trials");
+    expect(told(1, "screen")).toEqual({ error: expect.stringMatching(/^No action is named/) });
+    expect(told(1, "stop")).toEqual({ error: expect.stringMatching(/^No action is named/) });
+    expect(await steps()).toEqual([]);
   });
 
   it("show the person what a call acts on and what it changes before anything else about it", async () => {

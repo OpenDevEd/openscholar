@@ -10,17 +10,23 @@ import {
   type RetryConfig,
   DEFAULT_RETRY_CONFIG,
 } from './errors'
-import type { Usage } from './types'
+import type { PromptFile, Usage } from './types'
 
 export interface RepairStrategy {
   type: 'single-field' | 'full-json'
   fieldName?: string
 }
 
+export interface Prompts {
+  system: string
+  prompt: string
+  files?: PromptFile[]
+}
+
 export interface ExecuteAIOperationConfig<TInput, TOutput> {
   model: LanguageModel
   schema: z.Schema<TOutput>
-  buildPrompts: (input: TInput, retryCount: number) => { system: string; prompt: string }
+  buildPrompts: (input: TInput, retryCount: number) => Prompts
   input: TInput
   repairStrategy: RepairStrategy
   temperature: number
@@ -88,7 +94,9 @@ export async function executeAIOperation<TInput, TOutput>(
         temperature,
         ...(maxOutputTokens !== undefined && { maxOutputTokens }),
         instructions: prompts.system,
-        prompt: prompts.prompt,
+        ...(prompts.files?.length
+          ? { messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: prompts.prompt }, ...prompts.files.map((file) => ({ type: 'file' as const, data: file.data, mediaType: 'application/pdf', filename: file.filename }))] }] }
+          : { prompt: prompts.prompt }),
       })
       onUsage?.(usageOf(result.finalStep))
 

@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import { useSearchAccess } from "@/lib/research/reads";
 import { RatedActions } from "./components/rated-actions";
 import React, { useState } from "react";
@@ -40,6 +41,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { chatAbout } from "@/lib/assistant/place";
+import { newHref } from "@/components/screening/links";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -90,7 +92,7 @@ export function SearchCommandFooter({
   const guest = useSearchAccess(queryOnly ? undefined : searchId)?.guest !== undefined;
 
   // Use the new router hook
-  const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
+  const { execute: enhanceQuery, isConfigured, credits: enhanceCredits } = useEnhanceSearchQuery();
 
   const effectiveQuery = currentQuery || search?.params?.q || "";
   const currentLanguage = search?.params?.lang ?? "";
@@ -317,6 +319,7 @@ Return a more targeted version of this query.`;
                       ? tsc("makeBroader")
                       : tsc("makeSpecific")}
                   </span>
+                  <ButtonCredits credits={enhanceCredits} className="hidden @3xl:flex" />
                 </Button>
                 {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />}
               </motion.div>
@@ -360,7 +363,7 @@ Return a more targeted version of this query.`;
                   variant="ghost"
                   size="sm"
                   type="button"
-                  onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
+                  onClick={() => phase === "authenticated" ? router.push(newHref({ search: searchId })) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
                   className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"

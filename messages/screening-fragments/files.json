@@ -1,0 +1,139 @@
+{
+  "title": "Export",
+  "description": "The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record",
+  "tabsLabel": "What to export",
+  "tab": {
+    "papers": "Papers",
+    "votes": "Every vote",
+    "flow": "PRISMA",
+    "methods": "Methods paragraph",
+    "record": "Whole record"
+  },
+  "openFinished": "Marked finished with papers still open, so these files leave those papers unsettled",
+  "openRunning": "Not finished yet, so these files hold the results so far",
+  "facts": {
+    "bibtex": "BibTeX goes into Zotero or JabRef",
+    "ris": "RIS goes into EndNote or Mendeley",
+    "csv": "CSV opens in Excel or Google Sheets",
+    "columns": "A column for each criterion",
+    "ids": "Each paper by its id and DOI",
+    "svg": "SVG opens in Inkscape or Illustrator",
+    "png": "PNG goes into Word or Google Docs",
+    "keeping": "For analysis and for keeping"
+  },
+  "papers": {
+    "title": {
+      "include": "{count, plural, one {# included paper} other {# included papers}}",
+      "maybe": "{count, plural, one {# paper} other {# papers}} at Maybe",
+      "exclude": "{count, plural, one {# excluded paper} other {# excluded papers}}",
+      "conflict": "{count, plural, one {# paper} other {# papers}} in conflict",
+      "waiting": "{count, plural, one {# paper} other {# papers}} waiting for votes",
+      "mine": "{count, plural, one {# paper} other {# papers}} you voted Include"
+    },
+    "help": "The papers of one result, or every paper. BibTeX and RIS carry each paper's id here, title, authors, year, journal, DOI and abstract, for a reference manager. The CSV adds where each came from, where it stands, why it was excluded, who settled it, how its reviewers voted and its points: what its reviewers' answers add up to under this screening's scoring, which ranks included papers and decides nothing.",
+    "which": "Which papers",
+    "every": "Every paper",
+    "allOfThem": "All of them",
+    "votedInclude": "You voted Include",
+    "yourOwn": "Your own",
+    "seeAll": "See all {count} in Papers",
+    "noneMine": "You haven't voted Include on a paper yet."
+  },
+  "votes": {
+    "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
+    "help": "One row for each paper a reviewer was given: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
+    "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
+    "whose": "Whose votes",
+    "everyone": "Everyone",
+    "oneReviewer": "One reviewer",
+    "column": {
+      "paper": "Paper",
+      "reviewer": "Reviewer",
+      "vote": "Vote",
+      "reason": "Reason",
+      "note": "Note",
+      "result": "Result",
+      "voted": "Voted"
+    },
+    "none": "None",
+    "shown": "These are {shown} of the {votes, plural, one {# vote} other {# votes}} cast.",
+    "hiddenRows": "The file has a row for each vote hidden from you, without the vote.",
+    "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
+    "emptyWhy": {
+      "yet": "reviewers who have yet to vote",
+      "finished": "reviewers who had not voted when the screening was marked finished",
+      "none": "papers settled without a reviewer's vote",
+      "failed": "papers a model couldn't read"
+    },
+    "seeEvery": "See every vote in Papers"
+  },
+  "flow": {
+    "title": "PRISMA 2020 flow diagram",
+    "help": "The counts fill PRISMA 2020's identification and screening boxes, taken from this screening as it stands now.",
+    "alt": "PRISMA diagram: {boxes}"
+  },
+  "record": {
+    "title": "The whole record",
+    "help": "One JSON file of the whole screening: its papers, votes, criteria, reviewers, sources, discussion and changes, with a guide to every column. A model's answers come with the passages it named. What the screening cost is left out.",
+    "part": {
+      "papers": {
+        "name": "Papers",
+        "what": "Each with its DOI, its abstract, where it came from and where it stands"
+      },
+      "votes": {
+        "name": "Votes",
+        "what": "{hidden, select, true {Each with its reason, its note, its answers, and the sentence a model named. The ones hidden from you are listed without them} other {Each with its reason, its note, its answers, and the sentence a model named}}"
+      },
+      "withoutVote": {
+        "name": "Without a vote",
+        "what": "Why a reviewer given a paper has no vote on it"
+      },
+      "criteria": {
+        "name": "Criteria",
+        "what": "As they are asked, with their guidance, and which are must-haves"
+      },
+      "reviewers": {
+        "name": "Reviewers",
+        "what": "People and models, with when each joined or was taken off"
+      },
+      "sources": {
+        "name": "Sources",
+        "what": "What each brought, before and after duplicates"
+      },
+      "messages": {
+        "name": "Messages",
+        "what": "What reviewers wrote to each other about a paper"
+      },
+      "changes": {
+        "name": "Changes",
+        "what": "The activity log: what was changed, by whom and when"
+      },
+      "columns": {
+        "name": "Columns",
+        "what": "What each column of the two CSV files holds"
+      }
+    }
+  },
+  "methods": {
+    "title": "Methods paragraph",
+    "help": "Written from this screening's sources, criteria, reviewers and votes as they stand now. Copy it when it describes the results you want to report."
+  },
+  "hint": {
+    "papers": "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.",
+    "votes": "One row for each paper a reviewer was given. Opens in Excel, Google Sheets or R.",
+    "flow": "PNG goes into a document. SVG can be edited.",
+    "record": "For keeping, and for code. Opens in any text editor.",
+    "methods": "Written from the screening as it stands now. Copy it when it describes the results you want to report."
+  },
+  "download": "<wide>Download </wide>{format}",
+  "downloaded": "{format}<sr> downloaded</sr>",
+  "copy": "Copy",
+  "copied": "Copied",
+  "copyToast": {
+    "copied": "Copied the methods paragraph",
+    "failed": "Your browser didn't let the page copy",
+    "select": "Select the paragraph and copy it:"
+  },
+  "notLoaded": "The workspace hasn't loaded yet. Try again in a moment.",
+  "notMade": "The file couldn't be made. Try again."
+}

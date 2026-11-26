@@ -51,6 +51,15 @@ describe("transformModel — token pricing unchanged", () => {
     });
     expect(out!.inputPricePerMillion).toBe(3);
     expect(out!.outputPricePerMillion).toBe(15);
+    expect(out!.longPrompt).toBeUndefined();
+  });
+
+  it("keeps what a model charges once a prompt is long: its first step, at its dearest prices", () => {
+    const out = transformModel({
+      ...RAW_BASE,
+      pricing: { prompt: "0.0000001", completion: "0.0000005", overrides: [{ min_prompt_tokens: 272_000, prompt: "0.0000004", completion: "0.000001" }, { min_prompt_tokens: 100_000, prompt: "0.0000005", completion: "0.0000025" }] },
+    });
+    expect(out!.longPrompt).toEqual({ from: 100_000, input: 0.5, output: 2.5 });
   });
 });
 

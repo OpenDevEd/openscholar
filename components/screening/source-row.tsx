@@ -89,7 +89,7 @@ export type Scope = "range" | "page" | "all";
  * results page being read (a search opened from it), or all. `summary` takes the range's place
  * when the papers aren't a range.
  */
-export function PaperScope({ search, page = search, scope, onScope, range, onRange, total, most = total, label, summary }: {
+export function PaperScope({ search, page = search, scope, onScope, range, onRange, total, most = total, held, label, summary }: {
   search: boolean;
   /** Whether the results page being read is a choice: a search opened from its page. */
   page?: boolean;
@@ -100,6 +100,8 @@ export function PaperScope({ search, page = search, scope, onScope, range, onRan
   total: number;
   /** How far the range may reach, where the plan has room for fewer than `total`. */
   most?: number;
+  /** The papers of it that are taken already and stay, with the words that say so: the range can then only take more. */
+  held?: { range: [number, number]; note: ReactNode };
   /** The slider's name. */
   label: string;
   summary: ReactNode;
@@ -117,7 +119,7 @@ export function PaperScope({ search, page = search, scope, onScope, range, onRan
           { id: "all" as const, label: search ? t("scope.allResults") : t("scope.allPapers") },
         ]}
       />
-      {scope === "range" ? <RangeFields value={range} onChange={onRange} total={total} most={most} labels={{ slider: label, from: t("rangeFrom"), to: t("rangeTo"), of: t("rangeOf", { total }), first: t("firstPaper"), last: t("lastPaper") }} /> : summary}
+      {scope === "range" ? <RangeFields value={range} onChange={onRange} total={total} most={most} held={held} labels={{ slider: label, from: t("rangeFrom"), to: t("rangeTo"), of: t("rangeOf", { total }), first: t("firstPaper"), last: t("lastPaper") }} /> : summary}
     </>
   );
 }
@@ -129,12 +131,14 @@ export function PaperScope({ search, page = search, scope, onScope, range, onRan
  * Each change is worked out from the range as it stands, so a slider move just after a field
  * snaps starts from the snap.
  */
-export function RangeFields({ value, onChange, total, most = total, labels }: {
+export function RangeFields({ value, onChange, total, most = total, held, labels }: {
   value: [number, number];
   onChange: Dispatch<SetStateAction<[number, number]>>;
   total: number;
   /** How far the range may reach, where the plan has room for fewer than `total`. */
   most?: number;
+  /** The papers taken already, which no end of the range may leave out, and the words that say so under it. */
+  held?: { range: [number, number]; note: ReactNode };
   labels: { slider: string; from: string; to: string; of: string; first: string; last: string };
 }) {
   const top = Math.max(1, Math.min(total, most));
@@ -145,10 +149,10 @@ export function RangeFields({ value, onChange, total, most = total, labels }: {
   const move = (end: 0 | 1, n: number) =>
     onChange((current) => {
       const [a, b] = [Math.min(current[0], top), Math.min(current[1], top)];
-      return end === 0 ? [Math.min(b, Math.max(1, n)), b] : [a, Math.min(top, Math.max(a, n))];
+      return end === 0 ? [Math.min(b, held?.range[0] ?? b, Math.max(1, n)), b] : [a, Math.min(top, Math.max(a, held?.range[1] ?? a, n))];
     });
   const field = (end: 0 | 1, label: string) => {
-    const [low, high] = end === 0 ? [1, last] : [first, top];
+    const [low, high] = end === 0 ? [1, Math.min(last, held?.range[0] ?? last)] : [Math.max(first, held?.range[1] ?? first), top];
     return (
       <Input
         type="number"
@@ -181,6 +185,7 @@ export function RangeFields({ value, onChange, total, most = total, labels }: {
         {field(1, labels.last)}
         {labels.of}
       </span>
+      {held ? <p className="text-xs text-muted-foreground">{held.note}</p> : null}
     </div>
   );
 }

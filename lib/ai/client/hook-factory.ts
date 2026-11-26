@@ -36,6 +36,8 @@ export interface AIHookResult<TParams, TResult> {
   isConfigured: boolean
   /** Whether it's known who pays: until then `execute` could choose wrongly, which only matters to work no one pressed a button for. */
   isReady: boolean
+  /** What one press costs in credits, said on its button (components/ui/button-credits.tsx). None where it isn't paid in credits. */
+  credits: number | undefined
 }
 
 export interface AIHookOptions<TParams> {
@@ -227,9 +229,11 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
       ]
     )
 
+    // One press, priced as the work is checked against the balance: its task's model, at the price of one helper call.
+    const credits = apiKeyMode === 'credits' ? figures.data?.[defaultTask]?.helper : undefined
     return useMemo(
-      () => ({ execute, isLoading, error, isConfigured, isReady }),
-      [execute, isLoading, error, isConfigured, isReady]
+      () => ({ execute, isLoading, error, isConfigured, isReady, credits }),
+      [execute, isLoading, error, isConfigured, isReady, credits]
     )
   }
 }

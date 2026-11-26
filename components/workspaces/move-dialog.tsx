@@ -4,7 +4,7 @@
 // Moving an item to another of your workspaces (#654): you pick one, see what goes with it, and
 // go with it, so it stays open in the workspace it moved to.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -26,6 +26,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "@/lib/workspaces/paths";
 import { WorkspacePicker } from "./workspace-picker";
+import { screeningPath } from "@/lib/screening/links";
 
 export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author" | "community";
 
@@ -34,7 +35,7 @@ const GOES = {
   collection: ["itsPapers", "ratingsInIt", "activity"],
   author: ["publications", "editors", "activity"],
   search: ["resultsRatings", "screeningAnswers", "earlierQueries", "activity"],
-  screening: ["answers", "questions", "activity"],
+  screening: ["itsPapers", "votes", "settings", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],
   chat: ["messages", "files"],
   community: ["address", "settings", "peopleWithRoles"],
@@ -45,16 +46,19 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   collection: (id) => `/library?col=${id}`,
   author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
-  screening: (id) => `/screening?job=${id}`,
+  screening: screeningPath,
   extraction: (id) => `/extraction/${id}`,
   community: (id) => `/evidence-communities/${id}/configuration`,
 };
 
+export type MoveEffects = (to: { name: string; kind: "personal" | "organization" }, from: { name: string; kind: "personal" | "organization" } | undefined) => ReactNode;
+
 /**
  * `from` is the workspace the item is in, when the page isn't (a profile opened by its public
- * link); `onMoved` hears the move done, before the page goes to where the item went.
+ * link); `onMoved` hears the move done, before the page goes to where the item went. `effects` is
+ * what else the move changes for this item, said once a workspace is picked.
  */
-export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void }) {
+export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; effects?: MoveEffects }) {
   const page = useWorkspace();
   // Read here, while the dialog is shut, so it opens knowing whether the item can move. The same read inside shares it.
   useProtectedQuery(api.workspaces.move.held, inWorkspace(item.from ?? page, { kind: item.kind, id: item.id }));
@@ -69,7 +73,7 @@ export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onO
   );
 }
 
-function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: () => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void }) {
+function Move({ close, kind, id, name, from: itemWorkspace, onMoved, effects }: { close: () => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; effects?: MoveEffects }) {
   const t = useTranslations("workspaces.move");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -154,6 +158,9 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
             {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
             {kind === "community" ? <p className="px-1 text-xs text-muted-foreground">{t("workspaceOwnsIt")}</p> : null}
           </Zone>
+          {effects && !held ? (
+            <Zone label={t("whatElseChanges")}>{target ? effects(target, from ?? undefined) : <p className="px-1 text-sm text-muted-foreground">{t("pickToSee")}</p>}</Zone>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border/50 px-4 py-3">

@@ -88,7 +88,8 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                 if (!e.currentTarget.contains(e.relatedTarget) && !suggestions.current?.contains(e.relatedTarget)) setOpen(false);
               }}
             >
-              <Popover open={open && adding.candidates !== undefined && !adding.full} onOpenChange={setOpen} modal={false}>
+              {/* With nothing typed and nobody to suggest there is nothing to show: "nobody matches" answers a search, not an empty box. */}
+              <Popover open={open && adding.candidates !== undefined && !adding.full && (choices > 0 || typed !== "" || adding.more !== undefined)} onOpenChange={setOpen} modal={false}>
                 <PopoverAnchor asChild>
                   <label ref={field} className={cn("flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40", adding.full && "opacity-60")}>
                     <UserPlus className="size-4 shrink-0 text-muted-foreground" />
@@ -168,7 +169,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                 const fixed = typeof entry.role === "string" ? (given ? { kind: given.kind, label: given.can } : null) : entry.role;
                 return (
                   <motion.li key={entry.key} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
-                    <IdentityRow className="rounded-xl px-2 py-2" avatar={entry.avatar} name={entry.name} you={entry.you} detail={entry.detail}>
+                    <IdentityRow wrap className="rounded-xl px-2 py-2" avatar={entry.avatar} name={entry.name} you={entry.you} detail={entry.detail}>
                       {entry.onRole && typeof entry.role === "string" ? (
                         <Segmented label={t("accessOf", { name: entry.name })} value={entry.role} onChange={entry.onRole} options={options} />
                       ) : fixed ? (

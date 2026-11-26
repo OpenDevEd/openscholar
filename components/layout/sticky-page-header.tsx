@@ -6,7 +6,8 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
  * Page headers share the app navigation offset and report their rendered height.
  * The border matches the sidebar's logo section, so the two top edges read as one line.
  */
-export function StickyPageHeader({ children }: { children: ReactNode }) {
+/** `wide` drops the site's 72rem strip, for a page that works across the whole window (the open screening). */
+export function StickyPageHeader({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // A ResizeObserver and the window's resize: the header's size and the screen's height are the outside systems.
@@ -37,7 +38,7 @@ export function StickyPageHeader({ children }: { children: ReactNode }) {
 
   return (
     <div ref={ref} data-sticky-page-header className="sticky top-[var(--app-navbar-height)] z-20 border-b border-sidebar-border bg-background data-scrolls:static">
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6">{children}</div>
+      <div className={wide ? "px-4 sm:px-6" : "container mx-auto max-w-6xl px-4 sm:px-6"}>{children}</div>
     </div>
   );
 }

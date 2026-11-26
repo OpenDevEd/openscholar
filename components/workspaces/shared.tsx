@@ -32,11 +32,13 @@ import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { Chip, Hero, Landing, Point } from "./join";
 import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
+import { screeningPath } from "@/lib/screening/links";
 
 /** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). `open` opens one that has no page of its own, over whatever page the person is on. */
 export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; open?: (id: string) => void; roles: readonly GuestRole[] }> = {
   collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
-  screening: { icon: ListFilter, tint: "#34d399", href: (id) => `/screening?job=${id}`, roles: ["viewer"] },
+  // A screening's editor votes on its papers as one of its reviewers.
+  screening: { icon: ListFilter, tint: "#34d399", href: screeningPath, roles: ["viewer", "editor"] },
   extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },
   // A search shared with you goes by its document's ID, and opens with its own query and filters.
   search: { icon: Search, tint: "#60a5fa", href: (id) => `/results/${id}`, roles: ["viewer", "editor"] },
@@ -164,7 +166,7 @@ export type From = { name: string; organization: boolean };
  * may do with it. One in a person's own workspace names them with `person`, where nothing beside
  * it says who shared it.
  */
-export function GuestChips({ from, role, person = false }: { from: From; role: "viewer" | "editor"; person?: boolean }) {
+export function GuestChips({ from, role, person = false, votes = false }: { from: From; role: "viewer" | "editor"; person?: boolean; /** A screening: whoever may change other things votes on it, and changes nothing else. */ votes?: boolean }) {
   const t = useTranslations("workspaces.share");
   const Icon = from.organization ? Building2 : UserRound;
   return (
@@ -177,7 +179,7 @@ export function GuestChips({ from, role, person = false }: { from: From; role: "
       ) : null}
       <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-primary/10 px-2.5">
         <RoleLabel role={role === "viewer" ? "view" : "edit"} className="text-primary">
-          {role === "viewer" ? t("canView") : t("canEdit")}
+          {role === "viewer" ? t("canView") : votes ? t("canVote") : t("canEdit")}
         </RoleLabel>
       </span>
     </>
@@ -208,7 +210,7 @@ function Row({ item }: { item: SharedItem }) {
         </Link>
         <div className="flex flex-wrap items-center gap-1.5">
           <PersonTag name={item.by.name} imageUrl={item.by.imageUrl} />
-          <GuestChips from={item.from} role={item.role} />
+          <GuestChips from={item.from} role={item.role} votes={item.kind === "screening"} />
           {/* A kind that keeps no count of what it holds, an author profile, has none to show. */}
           {item.size === undefined ? null : <span className="inline-flex h-6 items-center rounded-full border border-border-subtle px-2.5 text-xs tabular-nums text-muted-foreground">{t(`size.${item.kind}`, { count: item.size })}</span>}
         </div>
@@ -289,7 +291,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
           ) : null}
           <Chip tone="primary">
             <RoleLabel role={invitation.role === "viewer" ? "view" : "edit"} className="text-primary">
-              {invitation.role === "viewer" ? ts("canView") : ts("canEdit")}
+              {invitation.role === "viewer" ? ts("canView") : invitation.kind === "screening" ? ts("canVote") : ts("canEdit")}
             </RoleLabel>
           </Chip>
           {invitation.size === undefined ? null : (
@@ -301,8 +303,9 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       }
     >
       <ul className={LIST}>
-        <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{t("pointOwn")}</Point>
-        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{t("pointCredits")}</Point>
+        <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{invitation.kind === "screening" ? t("pointOwnScreening") : t("pointOwn")}</Point>
+        {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
+        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? t("pointScreening") : t("pointCredits")}</Point>
       </ul>
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}

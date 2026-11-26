@@ -1373,7 +1373,6 @@ export default defineSchema({
     // A workspace's screenings by name, and by when something last happened in them.
     .index("by_workspace_and_name", ["workspaceId", "name"])
     .index("by_workspace_and_activeAt", ["workspaceId", "activeAt"])
-    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId"] })
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
@@ -1468,6 +1467,8 @@ export default defineSchema({
     sourceId: v.optional(v.id("screeningSources")),
     checkId: v.optional(v.id("screeningChecks")),
     place: v.optional(v.number()),
+    // Which record of its source's file it was made from (./screening/validators.ts `screeningPaperInputValidator`): read again, that record is this paper, and any other record of the file that is the same paper is a duplicate.
+    record: v.optional(v.string()),
     // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
     file: v.optional(v.id("_storage")),
     pages: v.optional(v.number()),
@@ -1495,6 +1496,8 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_and_result", ["jobId", "result"])
+    // The papers that stand one way, by their place: a preview counts them a slice of places at a time, side by side (convex/screening/effects.ts).
+    .index("by_job_and_result_and_place", ["jobId", "result", "place"])
     // A screening's papers in each order its Papers page offers, all of them or the ones that stand one way.
     .index("by_job_and_title", ["jobId", "title"])
     .index("by_job_and_publicationYear", ["jobId", "publicationYear"])
@@ -1668,11 +1671,13 @@ export default defineSchema({
     bare: v.optional(v.number()),
     // How many times it has been read from its start: once at first, and again at each check or change of its range.
     pass: v.optional(v.number()),
+    // While it is read again: what this reading has merged and left out so far, and the pass the figures above are of. They stand until this reading is whole, so nothing a page shows falls and climbs back while a check runs.
+    next: v.optional(v.object({ from: v.number(), duplicates: v.number(), left: v.number(), bare: v.number() })),
     // Of the ones taken, how many are screened as their own PDF, and the pages those have: what an AI reviewer is sent of them.
     filed: v.optional(v.number()),
     filePages: v.optional(v.number()),
     // Those pages by the length of the paper they are in, a band of pages at a time (lib/pricing/estimate.ts `Pdfs`): a model that charges more for a long prompt is priced from it.
-    fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number() }))), PDF_BANDS),
+    fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number(), most: v.optional(v.number()) }))), PDF_BANDS),
     // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
@@ -1705,6 +1710,8 @@ export default defineSchema({
     read: v.number(),
     // How many times in a row its reading went quiet and was started again.
     tries: v.optional(v.number()),
+    // When its reading under way last kept something: one that goes on for long is not taken for one that went quiet.
+    beat: v.optional(v.number()),
   }).index("by_user_and_library", ["userId", "library"]),
   zoteroCollections: defineTable({
     userId: v.id("users"),
@@ -1740,12 +1747,30 @@ export default defineSchema({
     doi: v.optional(v.string()),
     // The index holds the paper its DOI names, under the title it prints: the screening shows that paper.
     known: v.optional(v.boolean()),
-    // The index's paper has no abstract: it is read as this file all the same.
+    // The abstract its first reading found for that paper, where the index holds none: the screening takes it from here.
+    abstract: v.optional(v.string()),
+    // No abstract was found for the index's paper: it is read as this file all the same.
     bare: v.optional(v.boolean()),
     workId: v.optional(v.string()),
   })
     .index("by_batch_and_at", ["batch", "at"])
     .index("by_workId", ["workId"]),
+
+  // A record a source held that the screening already had: the record, and the paper it was merged into.
+  screeningMerged: defineTable({
+    jobId: v.id("screeningJobs"),
+    sourceId: v.id("screeningSources"),
+    name: v.string(),
+    into: v.id("screeningResults"),
+    // The record it was read as: a file's record by which it is (`screeningResults.record`), any other source's by its paper. One met again in the same reading is counted once.
+    paperKey: v.optional(v.string()),
+    // The reading of its source that last met it (`screeningSources.pass`), and the last one before it that was whole: while the source is read again, its list shows what that one met (./screening/view.ts `merged`).
+    pass: v.number(),
+    before: v.optional(v.number()),
+  })
+    .index("by_source_and_pass", ["sourceId", "pass"])
+    .index("by_source_and_paperKey", ["sourceId", "paperKey"])
+    .index("by_job", ["jobId"]),
 
   // What a source held that the screening doesn't take, each with why.
   screeningLeftOut: defineTable({
@@ -1755,8 +1780,9 @@ export default defineSchema({
     why: leftOutWhyValidator,
     // The record it was read as: a source that holds it twice, or is read again, names it once.
     paperKey: v.optional(v.string()),
-    // The reading of its source that last left it out (`screeningSources.pass`): one that meets it again doesn't count it twice, and the list shows what the last reading left out.
+    // The reading of its source that last left it out (`screeningSources.pass`): one that meets it again doesn't count it twice, and the list shows what the last whole reading left out. `before` is that reading, on a record a reading still going has met again.
     pass: v.optional(v.number()),
+    before: v.optional(v.number()),
   })
     .index("by_source", ["sourceId"])
     .index("by_source_and_pass", ["sourceId", "pass"])
@@ -1770,6 +1796,8 @@ export default defineSchema({
     at: v.number(),
     by: v.optional(v.id("users")),
     state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+    // A look for papers its sources gained, by hand or on its schedule (convex/screening/living.ts). A look a save asks for, to read a source it adds or widens, is none.
+    search: v.optional(v.boolean()),
     // The place its first paper takes, and what it has brought so far.
     from: v.number(),
     found: v.number(),

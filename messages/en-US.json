@@ -201,7 +201,9 @@
     "calendarSelected": "{date}, selected",
     "calendarMonth": "Choose the month",
     "calendarYear": "Choose the year",
-    "calendarNavigation": "Calendar navigation"
+    "calendarNavigation": "Calendar navigation",
+    "upToCredits": "Up to {credits}",
+    "upToCreditsEach": "Up to {credits} a paper"
   },
   "home": {
     "tagline": "Search, screen and extract evidence from academic research",
@@ -1235,7 +1237,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "e.g., make it more specific about clinical trials...",
       "screeningQuestion": "Add a screening question..."
-    }
+    },
+    "translateCost": "Picking a language translates your words, for {credits} credits"
   },
   "confirmations": {
     "cancelJob": "Cancel this job?",
@@ -1670,7 +1673,7 @@
       "search": "No saved searches yet.",
       "collection": "No collections yet.",
       "saved": "No saved papers yet.",
-      "screening": "No finished screenings yet.",
+      "screening": "No screening has included a paper yet.",
       "evidenceLibrary": "No Evidence Communities yet."
     },
     "papersToScreen": "Papers to screen",
@@ -4957,7 +4960,8 @@
         "editors": "Editors",
         "address": "Address",
         "settings": "Settings",
-        "peopleWithRoles": "People with a role"
+        "peopleWithRoles": "People with a role",
+        "votes": "Votes"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
@@ -4974,7 +4978,9 @@
         "communitiesFull": "Has as many communities as a workspace can",
         "profilesOff": "Author profiles aren't on here",
         "noProfiles": "You can't make author profiles here"
-      }
+      },
+      "whatElseChanges": "What else changes",
+      "pickToSee": "Pick a workspace to see what moving does."
     },
     "share": {
       "share": "Share",
@@ -5024,7 +5030,8 @@
         "author": "{plan} allows {count, plural, one {# guest} other {# guests}} on each author profile",
         "chat": "{plan} allows {count, plural, one {# guest} other {# guests}} on each chat"
       },
-      "failed": "Couldn't change who this is shared with"
+      "failed": "Couldn't change who this is shared with",
+      "canVote": "Can vote"
     },
     "shared": {
       "title": "Shared with me",
@@ -5067,13 +5074,15 @@
         "chat": "{name} shared a chat"
       },
       "pointOwn": "It sits in your own workspace",
+      "pointOwnScreening": "You open it from your own workspace. It is the screening the others vote on too, not a copy",
       "pointCredits": "Work you run on it uses your credits",
       "open": "Open",
       "openFailed": "Couldn't open it",
       "goneTitle": "This link is no longer open",
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
-      "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to"
+      "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to",
+      "pointScreening": "Voting is free. Its models are paid for by the workspace it is in"
     },
     "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
     "asRole": "as {role}",
@@ -7760,6 +7769,1852 @@
       "funder": "Funder",
       "archive": "Archive",
       "other": "Other"
+    }
+  },
+  "screening": {
+    "effects": {
+      "criterionUnwritten": "the criterion with no question yet",
+      "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
+      "model": {
+        "startsLater": "{name} starts once the papers arrive",
+        "nothingToRead": "{name} has no papers left to read",
+        "reads": "{name} reads {all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}{when, select, gathered { once all its papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { when its models' turn comes} save { as soon as this is saved} other {}}"
+      },
+      "person": {
+        "invited": "{name} gets an invitation by email, and papers once they join",
+        "invitedNoneOpen": "{name} gets an invitation by email, and papers that come in after they join. Every paper it has now is settled, so none of those goes to them",
+        "dealt": "{name} gets {count, plural, one {# open paper} other {# open papers}}, an even share, and an email saying so",
+        "joinsWithNone": "{name} joins and gets an email saying so. Every open paper already has its reviewers, so none goes to them yet"
+      },
+      "votesStay": "Votes already cast stay as they are",
+      "conflict": {
+        "all": "Once every vote on a paper is in, votes that differ put it in conflict",
+        "most": "Once every vote on a paper is in, a paper with no majority is in conflict"
+      },
+      "leaving": {
+        "noVote": "{you, select, true {You have cast no vote} other {{name} has cast no vote}}",
+        "votesStop": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote stays on record and stops counting} other {# votes stay on record and stop counting}}",
+        "votesKept": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote keeps} other {# votes keep}} counting",
+        "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where {voted, plural, one {that vote {thrown, select, true {stops counting} other {keeps counting}}} other {those votes {thrown, select, true {stop counting} other {keep counting}}}}",
+        "unvotedGo": "The {count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {goes} other {go}} to {takers}",
+        "settled": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {is} other {are}} settled on the other votes",
+        "waiting": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {waits} other {wait}} for the others' votes"
+      },
+      "settler": {
+        "youLeave": "Conflicts go to {you, select, true {you} other {{name}}} once you leave",
+        "leaves": "{was} settled conflicts. They go to {you, select, true {you} other {{name}}} from now on",
+        "changes": "Conflicts go to {you, select, true {you} other {{name}}} from now on"
+      },
+      "each": {
+        "changes": "From now on each paper goes to {all, select, true {everyone on the screening, {each, plural, one {# person} other {# people}} today} other {{each, plural, one {# person} other {# people}}}}{changed, plural, =0 {} one {. # paper still open {more, select, true {gets {diff, plural, =1 {one more person} other {up to # more people}}} other {needs fewer votes}}} other {. # papers still open {more, select, true {get {diff, plural, =1 {one more person} other {up to # more people}}} other {need fewer votes}}}}. Votes already cast stay as they are",
+        "stillAll": "Each paper still goes to {each, plural, one {# person} other {# people}} today. Anyone added later joins every paper that is still open",
+        "stillShare": "Each paper still goes to {each, plural, one {# person} other {# people}}. Anyone added later takes an even share of the open papers, not every one"
+      },
+      "blind": {
+        "never": "Everyone sees every vote as it is cast",
+        "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled"
+      },
+      "criteria": {
+        "modelsAnswerNew": "The models answer the new {count, plural, one {criterion} other {criteria}} on the open papers they have read",
+        "votesStand": "People's votes stand as they are: they were cast before {count, plural, one {this criterion} other {these criteria}}",
+        "modelsStop": "The models stop answering {name}. Votes already cast stay as they were cast",
+        "noLongerAsked": "{name} is no longer asked. Votes already cast stay as they were cast",
+        "becomesMust": "{name} becomes a must-have: from now on a no on it points to Exclude. People's votes on the papers still open stay, and are marked for a new vote",
+        "becomesNice": "{name} becomes nice to have: from now on a no on it no longer points to Exclude. Votes already cast stay as they were cast",
+        "writeQuestion": "Write the criterion's question before saving",
+        "modelsReworded": "The models answer the reworded {name} on papers they read from now on",
+        "reviewersReworded": "Reviewers answer the reworded {name} from now on. Votes already cast stay as they were cast",
+        "guidance": "{models, select, true {Reviewers and models read} other {Reviewers read}} {name} with its {fresh, select, true {new } other {}}guidance from now on. Answers already given stay",
+        "guidanceRemoved": "Guidance is removed from {name}. Answers already given stay",
+        "termsMarked": "Reviewers see the words marked for {name} in each abstract from now on",
+        "termsRemoved": "No words are marked for {name} any more",
+        "scoring": "Included papers' points and stars are worked out again"
+      },
+      "living": {
+        "checks": "The screening checks {which, select, all {{all, plural, one {its source} other {its # sources}}} other {{sources, number} of its {all, number} sources}} for new papers{when, select, save { as soon as this is saved, then} other {}} {every, select, day {every day} week {every week} other {every month}}",
+        "nothingToCheck": "The screening has no source that gains papers, so there is nothing to check yet",
+        "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
+        "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
+        "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
+        "reopens": "A first check runs as soon as this is saved. If it finds new papers, the screening opens again. If not, it stays finished and isn't checked until it is reopened",
+        "stops": "The screening stops checking for new papers. The ones it has stay",
+        "every": "The screening checks for new papers {every, select, day {every day} week {every week} other {every month}} from now on"
+      },
+      "sources": {
+        "promised": "Up to {count, plural, one {# new paper joins} other {# new papers join}} the screening and {count, plural, one {goes} other {go}} to its reviewers. Fewer do where another source already has them or they have no abstract{pdfs, select, true {. A model is charged by the page for one that comes as its PDF, so what these cost shows once the screening has read them} other {}}",
+        "removed": "{count, plural, one {# paper leaves the screening, with its votes kept on record} other {# papers leave the screening, with their votes kept on record}}"
+      },
+      "collection": {
+        "renamed": "Its collection is renamed {name}, with the papers in it",
+        "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. {count, plural, one {The one in {from} stays there} other {The # in {from} stay there}}} other {}}",
+        "added": "The {count, plural, one {# paper} other {# papers}} included so far {count, plural, one {is} other {are}} added to {to}{was, select, true {. They stay in {from}} other {}}",
+        "prune": "Excluded papers are taken out of the collection they came from",
+        "keep": "Excluded papers stay in the collection they came from"
+      },
+      "withCredits": "{text}, for up to {credits} credits{each, select, true { each} other {}}",
+      "creditsChip": "{credits}{each, select, true { each} other {}}",
+      "moved": "{count, plural, one {# paper} other {# papers}} moved from {from} to {to}",
+      "noChange": "No paper's result changes",
+      "hidden": "{done, select, true {{count, plural, one {The # paper you have yet to vote on may have changed result too. Its votes stay hidden while it waits for yours.} other {The # papers you have yet to vote on may have changed result too. Their votes stay hidden while they wait for yours.}}} other {{count, plural, one {What this does to the # paper you have yet to vote on shows once the change is made: its votes are hidden from you.} other {What this does to the # papers you have yet to vote on shows once the change is made: their votes are hidden from you.}}}}",
+      "papersLabel": "papers",
+      "more": "{count, number} more",
+      "activity": {
+        "started": "Started the screening",
+        "startedWith": "{sources, plural, one {# source} other {# sources}}, for {who}",
+        "renamed": "Renamed it {name}",
+        "finished": "Marked the screening as finished",
+        "unsettled": "{count, plural, one {# paper was} other {# papers were}} not settled",
+        "checksStopped": "It stopped checking for new papers",
+        "reopened": "Reopened the screening",
+        "paused": "Paused the models",
+        "resumed": "Resumed the models",
+        "movedTo": "Moved it to {to}",
+        "movedAway": "Moved it to another workspace",
+        "movedFrom": "Moved it from {from}",
+        "reviewerAdded": "Added {name} as a reviewer",
+        "reviewerJoined": "Joined as a reviewer",
+        "reviewerRemoved": "Took {name} off the screening",
+        "madeViewer": "Made {name} a viewer",
+        "reminded": "Sent {name} a reminder",
+        "retried": "Sent {name} back to {count, plural, =0 {the papers} one {# paper} other {# papers}} it couldn't read",
+        "papersMoved": "Moved {count, plural, one {# paper} other {# papers}} from {from} to {known, select, true {{to}} other {someone else}}",
+        "papersMovedVotes": "{known, select, true {{to}} other {someone else}} votes on {count, plural, one {it} other {them}} now",
+        "asked": "Asked {name} about {paper}",
+        "aPaper": "a paper",
+        "checkedFound": "Checked for new papers and found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
+        "checkedNone": "Checked for new papers and found none",
+        "scheduledFound": "The scheduled check found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
+        "scheduledNone": "The scheduled check found no new papers",
+        "known": "{count, plural, one {# was} other {# were}} already in the screening",
+        "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
+        "reopenedByCheck": "The screening is open again",
+        "changed": "Changed {parts}",
+        "changedSettings": "Changed its settings",
+        "setting": {
+          "name": "its name",
+          "question": "the research question",
+          "papers": "its sources",
+          "newPapers": "how it looks for new papers",
+          "criteria": "its criteria",
+          "reviewers": "its reviewers",
+          "decided": "how a paper is decided",
+          "goesTo": "where included papers go"
+        },
+        "changedIt": "Changed it",
+        "added": "Added {what}",
+        "addedPapers": "Added papers",
+        "removed": "Took {what} off",
+        "removedPapers": "Removed papers",
+        "screened": "Screened {count, plural, one {# paper} other {# papers}}",
+        "readAgain": "Read some papers again",
+        "stopped": "Stopped the screening",
+        "shared": "Shared it with {who}",
+        "sharedSomeone": "Shared it with someone",
+        "votesDiscarded": "Their votes stay on record and stop counting",
+        "votesKept": "{count, plural, one {# vote keeps} other {# votes keep}} counting",
+        "dealt": "{count, plural, one {# open paper} other {# open papers}} went to them",
+        "reads": "It reads {count, plural, one {# paper} other {# papers}}",
+        "papersMovedBy": "{count, plural, one {# paper} other {# papers}} moved {detail}",
+        "left": "{count, plural, one {# paper} other {# papers}} left the screening",
+        "rechecked": "{count, plural, one {# settled paper was} other {# settled papers were}} checked again"
+      }
+    },
+    "files": {
+      "title": "Export",
+      "description": "The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record",
+      "tabsLabel": "What to export",
+      "tab": {
+        "papers": "Papers",
+        "votes": "Every vote",
+        "flow": "PRISMA",
+        "methods": "Methods paragraph",
+        "record": "Whole record"
+      },
+      "openFinished": "Marked finished with papers still open, so these files leave those papers unsettled",
+      "openRunning": "Not finished yet, so these files hold the results so far",
+      "facts": {
+        "bibtex": "BibTeX goes into Zotero or JabRef",
+        "ris": "RIS goes into EndNote or Mendeley",
+        "csv": "CSV opens in Excel or Google Sheets",
+        "columns": "A column for each criterion",
+        "ids": "Each paper by its id and DOI",
+        "svg": "SVG opens in Inkscape or Illustrator",
+        "png": "PNG goes into Word or Google Docs",
+        "keeping": "For analysis and for keeping"
+      },
+      "papers": {
+        "title": {
+          "include": "{count, plural, one {# included paper} other {# included papers}}",
+          "maybe": "{count, plural, one {# paper} other {# papers}} at Maybe",
+          "exclude": "{count, plural, one {# excluded paper} other {# excluded papers}}",
+          "conflict": "{count, plural, one {# paper} other {# papers}} in conflict",
+          "waiting": "{count, plural, one {# paper} other {# papers}} waiting for votes",
+          "mine": "{count, plural, one {# paper} other {# papers}} you voted Include"
+        },
+        "help": "The papers of one result, or every paper. BibTeX and RIS carry each paper's id here, title, authors, year, journal, DOI and abstract, for a reference manager. The CSV adds where each came from, where it stands, why it was excluded, who settled it, how its reviewers voted and its points: what its reviewers' answers add up to under this screening's scoring, which ranks included papers and decides nothing.",
+        "which": "Which papers",
+        "every": "Every paper",
+        "allOfThem": "All of them",
+        "votedInclude": "You voted Include",
+        "yourOwn": "Your own",
+        "seeAll": "See all {count} in Papers",
+        "noneMine": "You haven't voted Include on a paper yet."
+      },
+      "votes": {
+        "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
+        "help": "One row for each paper a reviewer was given: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
+        "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
+        "whose": "Whose votes",
+        "everyone": "Everyone",
+        "oneReviewer": "One reviewer",
+        "column": {
+          "paper": "Paper",
+          "reviewer": "Reviewer",
+          "vote": "Vote",
+          "reason": "Reason",
+          "note": "Note",
+          "result": "Result",
+          "voted": "Voted"
+        },
+        "none": "None",
+        "shown": "These are {shown} of the {votes, plural, one {# vote} other {# votes}} cast.",
+        "hiddenRows": "The file has a row for each vote hidden from you, without the vote.",
+        "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
+        "emptyWhy": {
+          "yet": "reviewers who have yet to vote",
+          "finished": "reviewers who had not voted when the screening was marked finished",
+          "none": "papers settled without a reviewer's vote",
+          "failed": "papers a model couldn't read"
+        },
+        "seeEvery": "See every vote in Papers"
+      },
+      "flow": {
+        "title": "PRISMA 2020 flow diagram",
+        "help": "The counts fill PRISMA 2020's identification and screening boxes, taken from this screening as it stands now.",
+        "alt": "PRISMA diagram: {boxes}"
+      },
+      "record": {
+        "title": "The whole record",
+        "help": "One JSON file of the whole screening: its papers, votes, criteria, reviewers, sources, discussion and changes, with a guide to every column. A model's answers come with the passages it named. What the screening cost is left out.",
+        "part": {
+          "papers": {
+            "name": "Papers",
+            "what": "Each with its DOI, its abstract, where it came from and where it stands"
+          },
+          "votes": {
+            "name": "Votes",
+            "what": "{hidden, select, true {Each with its reason, its note, its answers, and the sentence a model named. The ones hidden from you are listed without them} other {Each with its reason, its note, its answers, and the sentence a model named}}"
+          },
+          "withoutVote": {
+            "name": "Without a vote",
+            "what": "Why a reviewer given a paper has no vote on it"
+          },
+          "criteria": {
+            "name": "Criteria",
+            "what": "As they are asked, with their guidance, and which are must-haves"
+          },
+          "reviewers": {
+            "name": "Reviewers",
+            "what": "People and models, with when each joined or was taken off"
+          },
+          "sources": {
+            "name": "Sources",
+            "what": "What each brought, before and after duplicates"
+          },
+          "messages": {
+            "name": "Messages",
+            "what": "What reviewers wrote to each other about a paper"
+          },
+          "changes": {
+            "name": "Changes",
+            "what": "The activity log: what was changed, by whom and when"
+          },
+          "columns": {
+            "name": "Columns",
+            "what": "What each column of the two CSV files holds"
+          }
+        }
+      },
+      "methods": {
+        "title": "Methods paragraph",
+        "help": "Written from this screening's sources, criteria, reviewers and votes as they stand now. Copy it when it describes the results you want to report."
+      },
+      "hint": {
+        "papers": "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.",
+        "votes": "One row for each paper a reviewer was given. Opens in Excel, Google Sheets or R.",
+        "flow": "PNG goes into a document. SVG can be edited.",
+        "record": "For keeping, and for code. Opens in any text editor.",
+        "methods": "Written from the screening as it stands now. Copy it when it describes the results you want to report."
+      },
+      "download": "<wide>Download </wide>{format}",
+      "downloaded": "{format}<sr> downloaded</sr>",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyToast": {
+        "copied": "Copied the methods paragraph",
+        "failed": "Your browser didn't let the page copy",
+        "select": "Select the paragraph and copy it:"
+      },
+      "notLoaded": "The workspace hasn't loaded yet. Try again in a moment.",
+      "notMade": "The file couldn't be made. Try again."
+    },
+    "form": {
+      "kind": {
+        "search": "Search",
+        "upload": "Upload",
+        "collection": "Library",
+        "screening": "Screening",
+        "evidenceLibrary": "Community",
+        "zotero": "Zotero",
+        "dois": "DOIs"
+      },
+      "find": {
+        "search": "Find a search",
+        "screening": "Find a screening"
+      },
+      "where": {
+        "open": "{where, select, search {Open in the search} library {Open in your library} collection {Open in the collection} screening {Open in the screening} other {Open in Zotero}}",
+        "openNewTab": "{where, select, search {Open in the search, in a new tab} library {Open in your library, in a new tab} collection {Open in the collection, in a new tab} screening {Open in the screening, in a new tab} other {Open in Zotero, in a new tab}}",
+        "see": "{where, select, search {See it in the search} library {See it in your library} collection {See it in the collection} screening {See it in the screening} other {See it in Zotero}}",
+        "seeAll": "{where, select, search {See all {count} in the search} library {See all {count} in your library} collection {See all {count} in the collection} screening {See all {count} in the screening} other {See all {count} in Zotero}}"
+      },
+      "edit": {
+        "renamed": "Renamed it to {name}",
+        "question": "Changed the research question",
+        "addedSources": "{count, plural, =1 {Added {names}} =2 {Added {names}} other {Added # sources}}",
+        "removedSources": "{count, plural, =1 {Removed {names}} =2 {Removed {names}} other {Removed # sources}}",
+        "rangedSources": "{count, plural, =1 {Changed which papers {names} brings} =2 {Changed which papers {names} bring} other {Changed which papers # sources bring}}",
+        "madeLiving": "Made it a living screening",
+        "stoppedLiving": "Stopped checking for new papers",
+        "livingEvery": "Changed how often it checks for new papers",
+        "addedCriteria": "{count, plural, =1 {Added {names}} =2 {Added {names}} other {Added # criteria}}",
+        "removedCriteria": "{count, plural, =1 {Removed {names}} =2 {Removed {names}} other {Removed # criteria}}",
+        "changedCriteria": "{count, plural, =1 {Changed {names}} =2 {Changed {names}} other {Changed # criteria}}",
+        "guidance": "{count, plural, =1 {Changed the guidance on {names}} =2 {Changed the guidance on {names}} other {Changed the guidance on # criteria}}",
+        "renamedOne": "{was} to {is}",
+        "renamedCriteria": "{count, plural, =1 {Renamed {names}} =2 {Renamed {names}} other {Renamed # criteria}}",
+        "scoring": "Changed the scoring",
+        "addedReviewers": "{count, plural, =1 {Added {names}} =2 {Added {names}} other {Added # reviewers}}",
+        "removedReviewers": "{count, plural, =1 {Removed {names}} =2 {Removed {names}} other {Removed # reviewers}}",
+        "rule": "Changed how a paper is decided",
+        "destination": "Changed where included papers go",
+        "collectionRenamed": "Renamed its collection to {name}",
+        "goesTo": "Included papers go to {name}",
+        "goesNowhere": "Included papers go to no collection"
+      },
+      "untitled": "Untitled screening",
+      "includedPapers": "Included papers",
+      "again": "{name}, again",
+      "inLibrary": "In {name}",
+      "loading": "Loading the form",
+      "onlyMembers": "{personal, select, true {Only {workspace} can change these settings} other {Only members of {workspace} can change these settings}}",
+      "goToOverview": "Go to the Overview",
+      "thisWorkspace": "this workspace",
+      "share": {
+        "readsAll": "{you, select, true {You read every paper} other {{name} reads every paper}}",
+        "about": "{more, select, true {{count, plural, one {About # paper for each person, and a share of the new ones} other {About # papers for each person, and a share of the new ones}}} other {{count, plural, one {About # paper for each person} other {About # papers for each person}}}}",
+        "range": "{more, select, true {{least} to {most} papers for each person, and a share of the new ones} other {{least} to {most} papers for each person}}"
+      },
+      "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
+      "unsavedCount": "{count, plural, other {# unsaved}}",
+      "changed": "Changed",
+      "block": {
+        "emptyCriterion": "Write a question for the empty criterion",
+        "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
+        "overPapers": "{personal, select, true {{count, plural, one {Your plan screens # paper at once} other {Your plan screens up to # papers at once}}} other {{count, plural, one {The plan of {workspace} screens # paper at once} other {The plan of {workspace} screens up to # papers at once}}}}",
+        "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
+        "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
+        "creditsShort": "{credits} credits short",
+        "reading": "Reading its papers",
+        "addPapers": "Add papers to start",
+        "addReviewer": "Add a reviewer to start"
+      },
+      "unread": "{count, plural, other {# couldn't be read}}",
+      "toast": {
+        "nothingWritten": "It found nothing to add to the criteria here",
+        "notWritten": "The criteria couldn't be written. Try again.",
+        "removed": "Removed {name}",
+        "undo": "Undo",
+        "failed": "That didn't work. Try again.",
+        "notAdded": "Some people couldn't be added. Add them again from People.",
+        "notStarted": "It couldn't be started. Try again.",
+        "saved": "Changes saved",
+        "discarded": "Changes discarded"
+      },
+      "offer": {
+        "allSaved": "All saved papers",
+        "library": "This workspace's library",
+        "finished": "Finished screening",
+        "running": "Running screening"
+      },
+      "goes": {
+        "collectionName": "Collection name",
+        "itsCollection": "Its collection",
+        "newCollection": "New collection",
+        "addTo": "Add to {name}",
+        "addToIts": "Add to its collection",
+        "nowhere": "Nowhere",
+        "kept": "Kept in the screening",
+        "private": "Private",
+        "keepPrivate": "Keep the new collection private",
+        "aCollection": "A collection",
+        "yourLibrary": "Your library",
+        "aCommunity": "A community",
+        "readingCommunity": "Reading the community's collections",
+        "prune": "Remove excluded papers from {name}",
+        "excludedLeave": "Excluded leave",
+        "othersStay": "Maybe and in conflict stay"
+      },
+      "part": {
+        "papers": "Papers",
+        "criteria": "Criteria",
+        "reviewers": "Reviewers",
+        "decided": "How a paper is decided",
+        "goesTo": "Where included papers go"
+      },
+      "summary": {
+        "papers": "{state, select, upTo {Up to {papers, plural, one {# paper} other {# papers}}} soFar {{papers, plural, one {# paper} other {# papers}} so far} other {{papers, plural, one {# paper} other {# papers}}}} from {sources, plural, one {# source} other {# sources}}",
+        "noPapers": "No papers yet",
+        "criteria": "{count, plural, one {# criterion} other {# criteria}}, {musts, plural, one {# must-have} other {# must-haves}}",
+        "noCriteria": "No criteria",
+        "invited": "{count, plural, other {# invited}}",
+        "nobody": "Nobody yet",
+        "decided": "{you, select, true {{rule}, conflicts to you} other {{rule}, conflicts to {name}}}"
+      },
+      "filledFrom": "Filled in from <b>{name}</b>",
+      "openIt": "Open it",
+      "partsNav": "Go to a part of the form",
+      "neededToStart": "Needed to start",
+      "elsewhere": "{named, select, true {Your unfinished screening {name} is kept in {workspace}, where it was begun.} other {Your unfinished screening is kept in {workspace}, where it was begun.}}",
+      "goOnThere": "Go on with it there",
+      "name": {
+        "label": "Name",
+        "placeholder": "Such as “School meals and learning”",
+        "question": "Research question <optional>(optional)</optional>",
+        "questionTitle": "Research question",
+        "optional": "Optional",
+        "questionHelp": "The question your review answers. A model can write yes-or-no criteria from it under Criteria.",
+        "questionPlaceholder": "Such as “Do school meals improve learning in primary schools?”"
+      },
+      "papers": {
+        "upToSources": "{count, plural, other {Up to # sources}}",
+        "helpFrom": "Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.",
+        "helpRead": "A screening reads a title and an abstract. A record that Openscholar's index knows takes both from there. A paper that comes with its own PDF and has no abstract is read as the PDF.",
+        "helpLeft": "What can't be screened is left out, and its source's row lists it with the reason: a paper with no abstract and no PDF, a record with no title, a DOI that isn't found, a file that doesn't open.",
+        "stillReading": "Still reading",
+        "found": "{soFar, select, true {<n></n> found so far} other {<n></n> found}}",
+        "leftOut": "<n></n> left out",
+        "merged": "{count, plural, one {<n></n> duplicate merged} other {<n></n> duplicates merged}}",
+        "link": "{upTo, select, true {Up to <n></n> {count, plural, one {paper} other {papers}}} other {<n></n> {count, plural, one {paper} other {papers}}}}",
+        "toScreen": "<n></n> to screen",
+        "readingIt": "Reading it",
+        "leftOutCount": "{count, plural, other {# left out}}",
+        "grew": "{doubled, plural, =0 {{count, plural, other {# more since it started}}} one {{count, plural, other {# more since it started}}, # duplicate merged} other {{count, plural, other {# more since it started}}, # duplicates merged}}",
+        "newTab": "(opens in a new tab)",
+        "removedOnSave": "Removed when you save",
+        "atStart": "{count, plural, other {# at the start}}",
+        "allOfIt": "All of it",
+        "all": "{count, plural, one {Its # record} other {All # records}}",
+        "inSource": "{count, plural, other {# in the source}}",
+        "readAsPdf": "{count, plural, one {# read as its PDF} other {# read as PDFs}}",
+        "duplicates": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
+        "rangeHeld": "Papers {first} to {last} are in this screening already and stay in it, so the range can only take more. To take them out, remove the source.",
+        "checkedEvery": "{every, select, day {Checked every day} week {Checked every week} other {Checked every month}}",
+        "couldntBeRead": "Couldn't be read",
+        "keep": "Keep",
+        "range": "Papers {first} to {last}",
+        "choose": "Choose papers",
+        "remove": "Remove {name}",
+        "of": "Papers of {name}",
+        "everyDeep": "Every paper in it and in the collections under it.",
+        "everyOne": "{count, plural, one {Its one paper.} other {Every one of its # papers.}}",
+        "zoteroOrder": "Oldest added to Zotero first",
+        "handoffGone": "What the community handed over can't be read any more. Pick its records again under Community.",
+        "addFrom": "Add papers from",
+        "findSource": "Find a source",
+        "noneByName": "Nothing by that name.",
+        "noneOwnIncluded": "None of your own screenings has included a paper yet.",
+        "noneIncluded": "No screening in {workspace} has included a paper yet.",
+        "noSearches": "No saved searches yet.",
+        "nothingHere": "Nothing here yet.",
+        "pagerSources": "sources",
+        "pagerLeftOut": "left out",
+        "pagerMerged": "duplicates",
+        "mergedFrom": "Same paper as one from {source}",
+        "mergedSame": "Listed more than once in this source",
+        "mergedElsewhere": "another source",
+        "mergedGone": "The paper it matched has left the screening",
+        "firstPapers": "The first papers of this range",
+        "titleYear": "{title} ({year})",
+        "andMore": "{count, plural, other {and # more}}"
+      },
+      "living": {
+        "title": "Living screening",
+        "factFixed": "Uploaded files and pasted DOIs never gain papers",
+        "factEmail": "Reviewers are told by email",
+        "factCharge": "Models charge for each new paper",
+        "help": "Openscholar checks the screening's searches, collections, communities, Zotero libraries and other screenings for new papers on the schedule you pick. Only papers that are new are added and go to reviewers.",
+        "check": "Check for new papers",
+        "off": "Off",
+        "checksAll": "{count, plural, one {Checks its source} other {Checks its # sources}}",
+        "checksSome": "{count, plural, other {Checks {growing} of its # sources}}",
+        "nextCheck": "Next check {day}",
+        "firstCheck": "First check {day}",
+        "firstOnSave": "First check as soon as this is saved",
+        "perNew": "{credits} credits a new paper{pdf, select, true {, more for one read as its PDF} other {}}{last, select, true {, {spent} for the last {count}} other {}}",
+        "noneGrow": "None of these sources gains papers. Add a search, a collection, a community, a Zotero library or another screening to check.",
+        "addToCheck": "Add a search, a collection, a community, a Zotero library or another screening to check."
+      },
+      "criteria": {
+        "helpTitle": "Must-have and nice to have",
+        "factPeople": "People vote directly",
+        "factModels": "Answers decide models' votes",
+        "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never makes a model vote exclude. A person can still give it as their reason. Guidance under a question says what counts: a reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are shown marked in each abstract while a person votes.",
+        "import": "{searches, plural, one {{count, plural, one {Add # question from your search} other {Add # questions from your search}}} other {{count, plural, one {Add # question from your searches} other {Add # questions from your searches}}}}",
+        "copyFrom": "Copy from a screening",
+        "copyAdds": "Adds its criteria to the ones here, with their points",
+        "write": "Write criteria from the question",
+        "writing": "Writing criteria from the question",
+        "needQuestion": "Write a research question first",
+        "more": "More",
+        "actions": "Criteria actions",
+        "copyCriteriaFrom": "Copy criteria from a screening",
+        "questionColumn": "Question and guidance",
+        "shortName": "Short name",
+        "shortNameOf": "Short name of criterion {n}",
+        "shortNameMax": "{count, plural, other {Up to # characters}}",
+        "shortNameHelp": "The name a criterion goes by where its question doesn't fit: table columns, filters, and the reasons papers were excluded. It is the question's own words until you write one.",
+        "criterion": "Criterion {n}",
+        "questionPlaceholder": "Write a yes or no question",
+        "guidanceFor": "Guidance for criterion {n}",
+        "guidancePlaceholder": "Add guidance on what counts and what doesn't",
+        "wordsFor": "Words to mark for criterion {n}",
+        "wordsPlaceholder": "Add words to mark in the abstract, with commas between them",
+        "is": "Criterion {n} is",
+        "must": "Must-have",
+        "nice": "Nice to have",
+        "none": "No criteria yet",
+        "newPlaceholder": "A yes or no question",
+        "new": "New criterion",
+        "add": "Add"
+      },
+      "scoring": {
+        "title": "Scoring",
+        "factPoints": "Yes, no and unclear each score points",
+        "factStars": "Five star levels",
+        "help": "Points rank the included papers and set the stars they are saved with. They never change a vote.",
+        "pointsEach": "Points for each answer",
+        "criterion": "Criterion",
+        "yes": "Yes",
+        "no": "No",
+        "unclear": "Unclear",
+        "pointsFor": "{answer, select, yes {Points for yes, {name}} no {Points for no, {name}} other {Points for unclear, {name}}}",
+        "starsGroup": "Points each star begins at",
+        "starsBegin": "Stars begin at",
+        "pointsForStars": "{count, plural, one {Points for # star} other {Points for # stars}}",
+        "starsRange": "points, one to five stars"
+      },
+      "reviewers": {
+        "factPeople": "People are free",
+        "factModels": "Models cost credits",
+        "help": "Each reviewer votes include, maybe or exclude on the papers they get. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.",
+        "aiModel": "AI model",
+        "votesKeep": "{count, plural, one {# vote keeps counting} other {# votes keep counting}}",
+        "pdfsMissed": "{why, select, text {{count, plural, one {Can't read PDFs: # paper gets no vote from it} other {Can't read PDFs: # papers get no vote from it}}} other {{count, plural, one {Can't read the longest PDFs: # paper gets no vote from it} other {Can't read the longest PDFs: # papers get no vote from it}}}}",
+        "creditsFor": "{credits} credits for {count, plural, one {# paper} other {# papers}}",
+        "allRead": "All read",
+        "none": "No reviewers yet",
+        "addPerson": "Add a person",
+        "guestsLeft": "{count, plural, one {{names} votes on the screening this is copied from as a guest, and is not on this one. Share it with them once it has started.} other {{names} vote on the screening this is copied from as guests, and are not on this one. Share it with them once it has started.}}",
+        "addModel": "Add a model"
+      },
+      "decided": {
+        "votesAgree": "Votes agree",
+        "settled": "Settled",
+        "votesSplit": "Votes split",
+        "help": "Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they don't, it is in conflict, and one person settles it.",
+        "each": "People on each paper",
+        "factModels": "Models read every open paper",
+        "factEveryone": "Everyone includes whoever joins later",
+        "eachHelp": "Every model reads every paper that is open when it joins. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A number stays that number when the team grows. Everyone means every person on the screening, then and later.",
+        "everyone": "Everyone",
+        "addPerson": "Add a person to choose",
+        "settledWhen": "A paper is settled when",
+        "settlingTitle": "Settling a paper",
+        "oneVote": "Every reviewer given a paper has one vote, a model as much as a person.",
+        "ruleMeans": "<b>{label}.</b> {means}",
+        "settledBy": "Conflicts are settled by",
+        "conflictsTitle": "Conflicts",
+        "conflictsHelp": "This person sees every vote on the paper, and their decision is its result.",
+        "noConflicts": "No conflicts to settle under this rule",
+        "whoSettles": "Who settles a conflict",
+        "seeVotes": "Reviewers see the other votes",
+        "seeingTitle": "Seeing other votes",
+        "seeingHelp": "After they vote keeps a reviewer from being swayed: each sees the other votes on a paper once they have voted on it, or once it is settled. Anyone who doesn't vote on a paper sees its votes at any time.",
+        "after": "After they vote",
+        "always": "At any time",
+        "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
+        "addReviewer": "Add a reviewer to see how a paper is settled.",
+        "modelSettles": "A model's vote can settle a paper before any person votes."
+      },
+      "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in a community, with the stars from Scoring. Nowhere keeps them in the screening only.",
+      "summaryLabel": "Summary",
+      "changes": {
+        "title": "Changes",
+        "helpTitle": "Changing a running screening",
+        "factVotes": "Votes already cast are kept",
+        "factRemoved": "Removed reviewers stay on record",
+        "help": "You can change anything here while the screening runs and after it is finished. Nothing is saved until you choose Save changes, and this block shows what saving will do first.",
+        "savedNow": "Saved just now",
+        "activity": "Activity",
+        "willDo": "What saving does",
+        "counting": "Working out what saving does",
+        "did": "What the save did",
+        "recheck": "Check the settled papers again",
+        "recheckOn": "Every settled paper is checked under the new settings. The ones listed above get another result.",
+        "recheckOff": "{count, plural, one {# settled paper would get another result under the new settings. It keeps its result unless you turn this on.} other {# settled papers would get another result under the new settings. They keep their result unless you turn this on.}}",
+        "none": "No unsaved changes",
+        "checking": "Checking for new papers",
+        "checked": "{of, plural, one {{done} of # source checked} other {{done} of # sources checked}}",
+        "lastAdded": "{count, plural, one {The last check added # new paper} other {The last check added # new papers}}",
+        "lastNothing": "The last check found nothing new",
+        "seePapers": "{count, plural, one {See the # paper} other {See the # papers}}",
+        "partsNav": "Parts of the form"
+      },
+      "cost": {
+        "title": "Cost",
+        "helpTitle": "Models and credits",
+        "factPeople": "People are free",
+        "factAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
+        "help": "Each model's cost is its credits for one paper times the papers to screen. A paper that came with its PDF and has no abstract is read from the PDF, every page of it, and costs by the page. {atOnce, select, none {} other {The workspace's plan lets models read {atOnce} papers at once, so a screening started while another's models are reading waits its turn. }}People can vote from the start.",
+        "helpLiving": "A living screening also pays for each new paper a check finds.",
+        "people": "People",
+        "free": "Free",
+        "credits": "{credits} credits",
+        "noPapers": "No papers yet",
+        "pdfsRead": "{count, plural, one {# paper is read as its PDF} other {# papers are read as their PDFs}}, {pages, plural, one {# page} other {# pages}} in all{capped, select, true {: up to {credits} of these credits.} other {.}}",
+        "pdfsUnpriced": "A new paper that comes as its PDF costs more than this counts, by the page. The cost shows once the screening has read the new sources.",
+        "firstReading": "{count, plural, one {First reading of # PDF, paid as it was added} other {First reading of # PDFs, paid as they were added}}",
+        "upTo": "Up to {credits} credits",
+        "answering": "{count, plural, one {Answering the new criterion on papers already read} other {Answering the new criteria on papers already read}}",
+        "rereading": "Reading the papers this opens again",
+        "atMost": "{still, select, true {{soFar, select, true {Still to pay so far, at most} other {Still to pay, at most}}} other {{soFar, select, true {Total so far, at most} other {Total, at most}}}}",
+        "resumed": "Still to pay once resumed",
+        "still": "Still to pay",
+        "nothing": "Nothing",
+        "overWallet": "{credits} credits more than the workspace has",
+        "walletShare": "Share of the workspace's credits: {share}",
+        "shareOf": "{under, select, true {Under {share} of} other {{share} of}}",
+        "inWorkspace": "{credits} in {workspace}",
+        "leftAfter": "{credits} left after",
+        "spent": "{credits} spent so far"
+      },
+      "bar": {
+        "toScreen": "<n></n> <m>{soFar, select, true {{count, plural, one {paper to screen so far} other {papers to screen so far}}} other {{count, plural, one {paper to screen} other {papers to screen}}}}</m>",
+        "cost": "<m>{still, select, true {{soFar, select, true {Still to pay so far, at most} other {Still to pay, at most}}} other {{soFar, select, true {Total so far, at most} other {Total, at most}}}}</m> <b>{credits} credits</b>",
+        "peopleOnly": "{handed, select, true {People only, nothing more to pay} other {People only, no credits}}",
+        "addCredits": "Add credits",
+        "start": "Start screening",
+        "moved": "{count, plural, one {# paper changes result} other {# papers change result}}",
+        "review": "Review",
+        "discard": "Discard",
+        "save": "Save changes",
+        "discardTitle": "{count, plural, one {Discard # unsaved change?} other {Discard # unsaved changes?}}",
+        "keepEditing": "Keep editing"
+      },
+      "page": {
+        "title": "New screening",
+        "helpTitle": "Screening",
+        "factRead": "Title and abstract, or the paper's PDF",
+        "factWho": "People and AI models",
+        "help": "Your reviewers vote include, maybe or exclude on each paper's title and abstract. A paper that has no abstract and came with its PDF is voted on from the PDF. A rule you choose turns the votes into a result, and a paper the votes split on goes to one person."
+      }
+    },
+    "frame": {
+      "screening": "Screening",
+      "loading": "Loading the screening",
+      "notFound": "Not found",
+      "gone": "This screening was deleted, or isn't shared with you",
+      "more": "More",
+      "failed": "That didn't work. Try again.",
+      "activity": "Activity",
+      "export": "Export",
+      "people": "People",
+      "peopleOn": "People, {count} on this screening",
+      "settings": "Settings",
+      "change": "Change",
+      "join": "Join as a reviewer",
+      "reopen": "Reopen",
+      "resumeModels": "Resume models",
+      "checkNew": "Check for new papers",
+      "addCredits": "Add credits",
+      "markFinished": "Mark as finished",
+      "leaveScreening": "Leave this screening",
+      "tabs": {
+        "label": "Pages of this screening",
+        "overview": "Overview",
+        "screen": "Screen",
+        "papers": "Papers",
+        "unsaved": "Unsaved"
+      },
+      "faces": {
+        "every": "Every reviewer",
+        "takeOut": "{you, select, true {Take yourself out of the filter} other {Take {name} out of the filter}}",
+        "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
+      },
+      "rule": {
+        "title": "How a paper is decided",
+        "eachPaper": "Each paper: {who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# AI model} other {# AI models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# AI model} other {# AI models}}}}",
+        "noReviewer": "No reviewer yet",
+        "hiddenMine": "Votes hidden in your To do",
+        "hiddenTheirs": "Votes hidden in reviewers' To do",
+        "visible": "Votes visible to all",
+        "visibleFinished": "Votes visible now it is finished",
+        "conflictsGoTo": "Conflicts go to {who}",
+        "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
+        "chips": "These chips say who votes on each paper, what settles it, and who sees the other votes.",
+        "conflictOpen": "{you, select, true {A paper in conflict stays open until you settle it.} other {A paper in conflict stays open until {name} settles it.}}",
+        "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.",
+        "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
+      },
+      "role": {
+        "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
+        "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
+        "guest": "Guest",
+        "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} changes its settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings.}}"
+      },
+      "banner": {
+        "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
+        "arrived": "<link>{count, plural, one {# new paper} other {# new papers}}</link> came in {ago}",
+        "screenNew": "Screen your {count, plural, one {# new paper} other {# new papers}} first",
+        "arrivedForYou": "{count, plural, one {# new paper for you came in {ago}} other {# new papers for you came in {ago}}}",
+        "nothing": "The last check found no new papers",
+        "counting": "<done></done> of {of, number}",
+        "modelPrice": "{name}, {price}",
+        "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once you add credits.} other {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {workspace} adds credits.}}",
+        "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, one {# paper} other {# papers}}",
+        "finishedOn": "Finished on {day}",
+        "finishedAgo": "Finished {ago}",
+        "finishedTitle": "Finished screening",
+        "finishedHelp": "{member, select, true {Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.} other {Its models stop reading and it stops checking for new papers. You can still read and export it. A member of {workspace} can reopen it.}}",
+        "pausedTitle": "Paused models",
+        "pausedHelp": "{member, select, true {Paused models read nothing and spend no credits. People can keep voting. Resume the models to have them read on.} other {Paused models read nothing and spend no credits. People can keep voting. A member of {workspace} can resume them.}}",
+        "papersRead": "{done, number} of {of, plural, one {# paper} other {# papers}} read",
+        "turnsTitle": "Models take turns",
+        "atATime": "{count, plural, one {# paper at a time} other {# papers at a time}}",
+        "turnsHelp": "{workspace}'s models read {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+        "modelReading": "<model>{name}</model> reading",
+        "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
+        "read": "{done, number} of {of, number}"
+      },
+      "menu": {
+        "emailsOff": "This screening won't email you any more",
+        "emailsOn": "This screening emails you again",
+        "stopEmails": "Stop its emails to me",
+        "emailAgain": "Its emails to me are off: turn them on",
+        "pauseModels": "Pause models",
+        "duplicate": "Duplicate as a new screening",
+        "move": "Move to another workspace",
+        "delete": "Delete"
+      },
+      "move": {
+        "modelsPaid": "{own, select, true {{count, plural, one {Its model is paid from your own credits from now on} other {Its models are paid from your own credits from now on}}} other {{count, plural, one {Its model is paid from {to}'s credits from now on} other {Its models are paid from {to}'s credits from now on}}}}",
+        "reviewersStay": "{own, select, true {Its other reviewers keep it, as its guests} other {Its other reviewers keep it, as its guests where they aren't in {to}}}",
+        "papersStay": "{own, select, true {Papers it has saved stay where they are, and the ones it includes from now on are saved in your own library} other {Papers it has saved stay where they are, and the ones it includes from now on are saved in {to}'s library}}",
+        "sourcesStay": "{own, select, true {Its sources stay in your own workspace, and it goes on checking them there} other {Its sources stay in {from}, and it goes on checking them there}}",
+        "membersLose": "Members of {from} who aren't its reviewers no longer see it",
+        "nothingElse": "Nothing else changes"
+      },
+      "finish": {
+        "title": "Mark this screening as finished?",
+        "unsettled": "{count, plural, one {# paper is not settled, and stays as it is} other {# papers are not settled, and stay as they are}}",
+        "votingStops": "Nobody can vote on it until it is reopened",
+        "votesShow": "The votes that were hidden from reviewers show to everyone on it",
+        "modelsStop": "The models stop reading",
+        "checksStop": "It stops checking for new papers",
+        "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
+      },
+      "delete": {
+        "title": "Delete {name}?",
+        "goes": "Its votes and its settings go with it",
+        "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
+        "final": "This can't be undone",
+        "shut": "Only {name} or an admin of this workspace can delete this screening."
+      },
+      "leave": {
+        "title": "Leave this screening?",
+        "confirm": "Leave",
+        "votesCount": "{count, plural, one {Your # vote keeps counting} other {Your # votes keep counting}}",
+        "noVotes": "You have cast no vote",
+        "papersGo": "{count, plural, one {The # paper you had not voted on goes to another reviewer, or is settled on the votes it already has} other {The # papers you had not voted on go to other reviewers, or are settled on the votes they already have}}",
+        "fromList": "It leaves your list, and you can open it again only once it is shared with you again"
+      },
+      "add": {
+        "title": "Add {name} as a reviewer?",
+        "confirm": "Add as reviewer",
+        "noCriteria": "A model votes by answering the criteria, and this screening has none yet. It would include every paper it reads.",
+        "addCriteria": "Add criteria"
+      },
+      "takeOff": {
+        "viewerTitle": "Stop {name} voting?",
+        "title": "Take {name} off this screening?",
+        "makeViewer": "Make them a viewer",
+        "confirm": "Take off",
+        "asViewer": "As a viewer they see every paper and every vote",
+        "stopCounting": "{me, select, true {Stop counting your {count, plural, one {# vote} other {# votes}}} other {Stop counting their {count, plural, one {# vote} other {# votes}}}}",
+        "stopCountingLabel": "{me, select, true {Stop counting your votes} other {Stop counting their votes}}",
+        "discarded": "{me, select, true {Your votes stay on record and stop counting.} other {Their votes stay on record and stop counting.}}",
+        "kept": "{me, select, true {Your votes keep counting.} other {Their votes keep counting.}}"
+      },
+      "credits": {
+        "inWorkspace": "{credits} credits in the workspace now",
+        "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.}}"
+      },
+      "activitySheet": {
+        "says": "Every change to this screening, newest first",
+        "scheduled": "Scheduled check",
+        "earlier": "Show earlier changes",
+        "yourVotes": "Your {count, plural, one {# vote} other {# votes}}"
+      },
+      "peopleDialog": {
+        "helpTitle": "Who is on a screening",
+        "personalIn": "{you, select, true {This screening is in your own workspace: you see it and can change it.} other {This screening is in {workspace}'s own workspace, and they can change it.}}",
+        "personalElse": "Anyone else has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
+        "membersSee": "Members of {workspace} see this screening and can change it. The ones who are its reviewers get papers and vote on them.",
+        "outsideHas": "Someone outside {workspace} has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
+        "modelToo": "{you, select, true {A model is a reviewer too: it reads every open paper and votes, paid from your credits.} other {A model is a reviewer too: it reads every open paper and votes, paid from {workspace}'s credits.}}",
+        "close": "Close",
+        "addAs": "Add people as",
+        "finishedAdds": "This screening is finished: people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",
+        "addModel": "Add a model",
+        "membersAdd": "Members of {workspace} add people and change what each may do.",
+        "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",
+        "ownWorkspace": "It is in their own workspace",
+        "everyMember": "Every member",
+        "canChange": "Can see and change it",
+        "startedIt": "Started it",
+        "votedOn": "{detail}, voted on {done, number} of {of, number}",
+        "modelRead": "{failed, select, true {{price}, got through {done, number} of {of, number}} other {{price}, read {done, number} of {of, number}}}",
+        "model": "Model",
+        "notSent": "The invitation couldn't be sent",
+        "showMore": "Show more people",
+        "reviewer": "Reviewer",
+        "reviewerCan": "Votes on the papers they get",
+        "viewer": "Viewer",
+        "viewerCan": "Sees every paper and every vote"
+      }
+    },
+    "list": {
+      "title": "Screening",
+      "newScreening": "New screening",
+      "find": "Find a screening",
+      "sort": {
+        "you": "Needs you first",
+        "active": "Recently active",
+        "newest": "Newest",
+        "oldest": "Oldest",
+        "name": "Name"
+      },
+      "show": {
+        "all": "All",
+        "you": "Needs you",
+        "open": "In progress",
+        "finished": "Finished"
+      },
+      "showMenu": "Show",
+      "whichScreenings": "Which screenings",
+      "firstUse": {
+        "title": "Decide which papers belong in your review",
+        "text": "Bring papers from searches, collections or your own files, set your criteria, and screen them yourself, with colleagues, with AI models, or with any mix of the three."
+      },
+      "legend": {
+        "label": "What the colours of a bar mean",
+        "settled": "Settled",
+        "notYet": "Not yet"
+      },
+      "column": {
+        "screening": "Screening",
+        "reviewers": "Reviewers",
+        "papers": "Papers",
+        "status": "Status",
+        "lastActivity": "Last activity"
+      },
+      "papersHelp": {
+        "title": "Where the papers stand",
+        "text": "Each bar splits a screening's papers by where they stand now. Press a part of the bar to see those papers."
+      },
+      "loadingScreenings": "Loading screenings",
+      "needsYouNote": "Papers to screen, conflicts to settle and questions put to you",
+      "startedBy": "<person>{who}</person> <at>{you, select, true {started it {when}} other {started it {when}}}</at>",
+      "everyReviewer": "Every reviewer",
+      "lastActivity": "<label>Last activity </label>{when}",
+      "includedOf": "{included} included of {total}",
+      "settledOf": "{settled} of {total} settled",
+      "forYouToScreen": "{count, plural, other {# for you to screen}}",
+      "conflictsToSettle": "{count, plural, one {# conflict to settle} other {# conflicts to settle}}",
+      "questionsForYou": "{count, plural, one {# question for you} other {# questions for you}}",
+      "finishedIncluded": "{included} included, finished {when}",
+      "waitingForVotes": "{count} waiting for votes",
+      "inConflictFor": "{count} in conflict, for {who} to settle",
+      "upToDate": "Up to date, next check {day}",
+      "allSettled": "Every paper is settled",
+      "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
+      "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
+      "showEvery": "Show every screening",
+      "pagerItems": "screenings",
+      "elsewhere": "Waiting for you in another workspace",
+      "inWorkspace": "In {name}",
+      "more": "More",
+      "moreFor": "More for {name}",
+      "addPerson": "Add a person",
+      "findPerson": "Find a person, or type an email",
+      "nobodyByName": "Nobody in this workspace by that name. Type an email address to invite someone.",
+      "nobodyElse": "Nobody else in this workspace to add. Type an email address to invite someone.",
+      "invite": "Invite",
+      "onAlready": "{effort, select, true {{name} is on it already at that effort} other {{name} is on it already}}",
+      "confirm": {
+        "cancel": "Cancel",
+        "what": "What this change does to the screening"
+      },
+      "discussion": {
+        "title": "Discussion",
+        "about": "{models, select, true {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question: it stays on their Screening list until they answer. A model can't be asked: press one of its marks in the table for the passage it read.} other {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question: it stays on their Screening list until they answer.}}",
+        "blind": "This screening hides what is written about a paper from a reviewer only while the paper still waits for that reviewer's own vote.",
+        "shut": "Reviewers talk a paper over here. It stays out of sight so it can't sway your vote.",
+        "notSent": "That wasn't sent. Try again.",
+        "askedYou": "{name} asked you",
+        "waitingFor": "Waiting for {name}'s answer",
+        "asked": "asked {who}",
+        "readOnly": "{empty, select, true {Nobody has written about this paper yet. } other {}}Only its reviewers and the person who settles conflicts write here.{join, select, true { Join as a reviewer to write.} other {}}",
+        "whoFor": "Who it is for",
+        "to": "To",
+        "everyone": "Everyone",
+        "forOne": "For {name} to answer. Everyone who can see this paper's votes reads it, and it stays on {name}'s Screening list until then.",
+        "forAll": "Everyone who can see this paper's votes reads it. Pick a name to ask one person a question.",
+        "answerPlaceholder": "Answer {name}",
+        "askPlaceholder": "Ask {name} a question",
+        "allPlaceholder": "Write to everyone on this paper",
+        "answerLabel": "Your answer to {name}",
+        "askLabel": "Your question for {name}",
+        "allLabel": "Your message",
+        "send": "Send"
+      },
+      "pdf": {
+        "readAs": "{pages, plural, =0 {Read as its PDF} one {Read as its PDF, # page} other {Read as its PDF, # pages}}",
+        "openTab": "Open the PDF in a new tab",
+        "onItsWay": "The PDF is on its way",
+        "cantShow": "This PDF can't be shown here. Open it in a new tab."
+      },
+      "perPaper": "{credits} credits a paper",
+      "pickerCost": "Credits a paper"
+    },
+    "overview": {
+      "notSaved": "That didn't work. Try again.",
+      "empty": {
+        "arriving": "Its papers are on their way",
+        "arrivingSays": "{reviewer, select, true {They show here as they arrive from its sources. You can start screening as soon as the first are in.} other {They show here as they arrive from its sources.}}",
+        "noPaper": "{sources, select, true {Its sources held no paper it can screen.} other {This screening has no source to take papers from.}}",
+        "toSources": "{sources, select, true {See its sources} other {Add a source}}"
+      },
+      "progress": {
+        "title": "Progress",
+        "screen": "Screen <num>{count, number}</num> {count, plural, one {paper} other {papers}}",
+        "conflicts": "{settle, select, true {Settle} other {See}} <num>{count, number}</num> {count, plural, one {conflict} other {conflicts}}",
+        "helpTitle": "Where a paper stands",
+        "maybeMeans": "Maybe means it is unclear whether the paper belongs",
+        "conflictUntil": "{you, select, true {In conflict until you settle it} other {In conflict until {name} settles it}}",
+        "settles": "{means} Maybe is a result like the others, so a paper at Maybe counts as settled.",
+        "maybeStays": "A paper at Maybe is not saved with the included papers. It stays under Maybe on the Papers page, and its result can still change when a reviewer changes their vote.",
+        "exportIncluded": "Export included papers",
+        "extract": "Extract from the included papers",
+        "finish": "Mark as finished",
+        "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
+        "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
+        "capped": "{personal, select, true {Stopped at your plan's paper limit} other {Stopped at the paper limit of {workspace}'s plan}}",
+        "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
+        "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}"
+      },
+      "yours": {
+        "votes": "Your {count, plural, one {# vote} other {# votes}}",
+        "voted": "{decision, select, include {{count, number} you voted Include} maybe {{count, number} you voted Maybe} other {{count, number} you voted Exclude}}",
+        "stillWait": "See which of them still wait for other votes"
+      },
+      "reviewers": {
+        "title": "Reviewers",
+        "everyoneDone": "Everyone done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}, at this pace",
+        "move": "Move papers",
+        "agreement": "Agreement",
+        "helpTitle": "How papers are shared out",
+        "eachOf": "{each, number} of the {people, plural, other {# people}} vote on each paper",
+        "everyPerson": "Every person votes on every paper",
+        "modelsRead": "Models read every open paper",
+        "sharing": "{share, select, true {Each person votes on a share of the papers.} other {Each person votes on every paper.}}{models, select, true { Each model reads the papers still open, and new ones as they are added. It skips a paper that was settled before it joined.} other {}}",
+        "pace": "Under a person's count is when they get through what they have left, if they keep the pace of their last three days.",
+        "reviewer": "Reviewer",
+        "votedOn": "Papers voted on",
+        "agrees": "Agrees with people",
+        "agreesPerson": "A person with the other people on the paper",
+        "agreesModel": "A model with the people, never with a model",
+        "agreesMeans": "How often this reviewer's vote on a paper was the same as a person's vote on it, over every such pair of votes. A low figure is a reviewer who reads the criteria differently from the rest.",
+        "agreesMissed": "Under a model, the papers the screening included that it voted to exclude.",
+        "actions": "Actions",
+        "people": "People",
+        "models": "Models",
+        "takenOff": "Taken off",
+        "invited": "Invited",
+        "thrownOut": "Votes thrown out",
+        "stillCount": "{count, plural, one {# vote still counts} other {# votes still count}}",
+        "castNone": "Cast no vote",
+        "nobody": "{change, select, true {Nobody votes on these papers yet. Add a person or a model from People, at the top of the page.} other {Nobody votes on these papers yet.}}"
+      },
+      "move": {
+        "title": "Move papers between reviewers",
+        "confirm": "Move {count, plural, one {# paper} other {# papers}}",
+        "confirmBare": "Move",
+        "from": "From",
+        "to": "To",
+        "left": "{count, number} left",
+        "nothingLeft": "Nothing left",
+        "howMany": "Papers to move",
+        "ofMost": "<b>{papers, number}</b> of {most, number} that {you, select, true {you don't} other {{name} doesn't}} already have",
+        "doneAfter": "<b>Everyone done in about {afterWeeks, plural, =0 {{afterDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}</b>{same, select, true {<muted>, the same as now</muted>} other {<muted>, where it is about {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}} now</muted>}}",
+        "startsAt": "It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {you, select, true {your} other {{name}'s}} queue go. Votes already cast stay where they are.",
+        "hasAll": "{takerYou, select, true {You already have} other {{taker} already has}} all of {giverYou, select, true {your} other {{giver}'s}} papers.",
+        "nobodyElse": "There is nobody else to move papers to.",
+        "doneIn": "Done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}"
+      },
+      "row": {
+        "reading": "Reading",
+        "creditsSpent": "{credits} credits spent",
+        "done": "Done",
+        "reminded": "Reminded {ago}",
+        "activeNow": "Active now",
+        "added": "Added {ago}",
+        "arriving": "Arriving",
+        "doneOf": "<num>{done, number}</num> of {assigned, number}",
+        "idle": "No votes in 3 days",
+        "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
+        "unread": "{count, number} couldn't be read",
+        "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
+        "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
+        "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
+        "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
+        "noOtherPerson": "No other person to compare with",
+        "noPeople": "No people to compare with",
+        "nothingYet": "Nothing to compare yet",
+        "agrees": "{share, number, percent}<muted>{person, select, true { same vote as the others} other { same vote as the people}}</muted>",
+        "missedOf": "Excluded {missed, number} of {included, number} included",
+        "ofPairs": "of {count, plural, one {# pair of votes} other {# pairs of votes}}",
+        "more": "More",
+        "moreFor": "More for {name}",
+        "seeVotes": "{mine, select, true {See your votes in Papers} other {See their votes in Papers}}",
+        "creditsShort": "{credits} credits short",
+        "remind": "Send a reminder",
+        "moveAway": "Move papers to someone else",
+        "takeOff": "{mine, select, true {Leave this screening} other {Take off this screening}}"
+      },
+      "unread": {
+        "earlier": "Earlier",
+        "more": "More"
+      },
+      "agreement": {
+        "title": "Agreement between reviewers",
+        "band": {
+          "below": "Below {to, number}",
+          "between": "{from, number} to {to, number}",
+          "above": "{from, number} and up"
+        },
+        "sameOf": "{share, number, percent} same of {count, plural, one {# paper} other {# papers}}",
+        "kept": "How far the reviewers agree shows once you have voted on every paper of yours: it would give away how the others voted.",
+        "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
+        "mean": "Mean pairwise Cohen's kappa",
+        "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}",
+        "splitMost": "The papers they split on most",
+        "noneYet": "None yet",
+        "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
+      },
+      "kappa": {
+        "title": "Cohen's kappa",
+        "full": "1.0 same vote every time",
+        "substantial": "0.6 and up substantial",
+        "chance": "0 no better than chance",
+        "worse": "Below 0 worse than chance",
+        "means": "How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.",
+        "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes."
+      },
+      "facts": {
+        "startedIt": "started it {ago}"
+      },
+      "included": {
+        "title": "Included papers go to",
+        "helpTitle": "Where included papers go",
+        "savedEach": "Saved as each is included",
+        "pruned": "Excluded papers are taken out",
+        "toCollection": "Each paper is saved to this collection when it is included.",
+        "nowhere": "{change, select, true {Included papers stay in the screening and are saved to no collection. Choose a collection to save them to.} other {Included papers stay in the screening and are saved to no collection.}}",
+        "change": "Change",
+        "choose": "Choose a collection",
+        "aCollection": "A collection",
+        "nowhereYet": "Kept in this screening",
+        "count": "<num>{count, number}</num> {saved, select, true {saved so far} other {included}}"
+      },
+      "credits": {
+        "title": "Credits",
+        "helpTitle": "What a screening costs",
+        "modelCost": "{name}, {cost}",
+        "peopleOnly": "People only",
+        "free": "People screen for free. A model is paid for each paper it reads, from this workspace's credits.",
+        "spent": "<num>{count, number}</num> spent",
+        "onceRead": "{credits} once every paper is read",
+        "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
+        "arriving": "Its papers are still arriving",
+        "allRead": "Every paper is read",
+        "leftIn": "{credits} left in {workspace}",
+        "takenOff": "{credits} by models taken off",
+        "nothingToPay": "Nothing to pay"
+      },
+      "checks": {
+        "title": "Checks for new papers",
+        "shut": "{change, select, true {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Add a search, a collection, a community, a Zotero library or another screening as a source to get new papers.} other {A check looks in a search, a collection, a community, a Zotero library or another screening for papers this screening doesn't have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. Nothing is checked until a search, a collection, a community, a Zotero library or another screening is added as a source.}}",
+        "helpTitle": "Checking for new papers",
+        "next": "Next check {day}",
+        "onlyAsked": "Only when asked",
+        "skips": "{count, plural, one {Skips # fixed source} other {Skips # fixed sources}}",
+        "means": "A check runs each source's search again and adds the papers this screening doesn't have yet. Uploaded files and pasted lists never change, so checks skip them.",
+        "checkNow": "Check now",
+        "every": "{every, select, day {Checks every day} week {Checks every week} other {Checks every month}}, next check {day}",
+        "onlyWhenAsked": "Checks only when asked",
+        "schedule": "Check on a schedule",
+        "checkedBy": "{you, select, true {You checked} other {{name} checked}}",
+        "scheduled": "Scheduled check",
+        "failed": "Couldn't be finished",
+        "found": "{count, number} found",
+        "alreadyIn": "{count, number} already in it",
+        "added": "{count, number} added",
+        "newFrom": "{count, number} new from {source}",
+        "result": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
+        "nothingNew": "Nothing new",
+        "showLast": "Show the last {count, number}",
+        "seeEvery": "See every check, {count, number} in all",
+        "later": "Later ones",
+        "earlier": "Earlier ones",
+        "atStart": "At the start",
+        "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}",
+        "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
+      },
+      "flow": {
+        "title": "PRISMA flow",
+        "found": "Found",
+        "removed": "Removed before screening",
+        "papers": "Papers",
+        "included": "Included",
+        "arriving": "Still arriving",
+        "titleAbstract": "Title and abstract",
+        "means": "The counts a review's PRISMA diagram is drawn from, from the papers its sources found to the ones it included.",
+        "download": "Download diagram",
+        "none": "None"
+      }
+    },
+    "papers": {
+      "notSaved": "That wasn't saved. Try again.",
+      "noPapers": {
+        "gathering": "Its papers are on their way. They show here as they arrive.",
+        "none": "This screening has no papers yet."
+      },
+      "sort": {
+        "added": "As added",
+        "title": "Title, A to Z",
+        "title-desc": "Title, Z to A",
+        "result": "Result",
+        "newest": "Published, newest first",
+        "split": "Most disagreement",
+        "points": "Most points",
+        "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away"
+      },
+      "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
+      "settledToast": "Settled {count, number} as {result}",
+      "undo": "Undo",
+      "filter": {
+        "source": "Source",
+        "reviewer": "Reviewer",
+        "reviewers": "Reviewers",
+        "reviewersLabel": "{anyone, select, true {Reviewers: anyone} other {Reviewers: {names}}}",
+        "anyone": "Anyone",
+        "people": "People",
+        "models": "Models",
+        "vote": "Vote",
+        "anyVote": "Any vote",
+        "noVote": "No vote",
+        "settled": "Settled the result",
+        "decisions": "Decisions",
+        "added": "Added",
+        "anyTime": "Any time",
+        "atStart": "At the start",
+        "afterStart": "After the start",
+        "order": "Order",
+        "result": "Result",
+        "all": "All",
+        "showColumns": "Show columns",
+        "votes": "Votes",
+        "answers": "Answers"
+      },
+      "chip": {
+        "source": "Source {name}",
+        "removed": "removed",
+        "sourceFact": "{kept, plural, one {# paper} other {# papers}}, {merged, plural, one {# duplicate} other {# duplicates}} merged",
+        "votedOnBy": "Voted on by {names}",
+        "waitingFor": "{you, select, true {Waiting for your vote} other {Waiting for {name}'s vote}}",
+        "couldNotRead": "{you, select, true {You couldn't read it} other {{name} couldn't read it}}",
+        "voted": "{you, select, true {You voted {decision}} other {{name} voted {decision}}}",
+        "alsoVotedOnBy": "Also voted on by {names}",
+        "added": "Added {when}",
+        "earlierCheck": "By an earlier check",
+        "remove": "Remove the filter {label}",
+        "clearFilters": "Clear filters"
+      },
+      "find": "Find by title or author",
+      "findLabel": "Find a paper",
+      "export": "Export",
+      "extractIncluded": "Extract from the included papers",
+      "filters": "Filters",
+      "filtersSays": "What narrows the list of papers, and its order",
+      "showPapers": "Show the papers",
+      "showCount": "{count, plural, one {Show # paper} other {Show # papers}}",
+      "marksOnPhone": "Each paper shows one mark for each reviewer it was given to, in the order of the reviewers. Yours is ringed.",
+      "marksInTable": "Each column is a reviewer. Press a face for the papers they voted on.",
+      "hiddenLeftOut": "Their votes on the papers you have yet to vote on are left out of this filter, so they can't sway yours.",
+      "selection": {
+        "selected": "{count, plural, other {# selected}}",
+        "everyPage": "Select every page",
+        "all": "{count, plural, other {Select all #}}",
+        "settleAs": "{count, plural, other {Settle # in conflict as}}",
+        "ris": "RIS file, for a reference manager",
+        "csvSeen": "CSV file, with the votes you can see",
+        "csvAll": "CSV file, with every vote",
+        "clear": "Clear selection"
+      },
+      "table": {
+        "loading": "Loading papers",
+        "select": "Select {title}",
+        "selectPage": "Select every paper on this page",
+        "paper": "Paper",
+        "answers": "Answers",
+        "votes": "Votes",
+        "reason": "Reason",
+        "result": "Result",
+        "new": "New",
+        "vote": "Vote",
+        "differOn": "Reviewers differ on {name}",
+        "noMatch": "No paper here matches.",
+        "stillOpen": {
+          "waiting": "{count, plural, other {# waiting for votes}}",
+          "conflict": "{count, plural, other {# in conflict}}"
+        },
+        "pageItems": "papers"
+      },
+      "answersHelp": {
+        "says": "Each column is a criterion, and the mark is the answer its reviewers gave.",
+        "yes": "Yes",
+        "no": "No",
+        "unclear": "Unclear",
+        "yesSays": "Yes, it meets it",
+        "noSays": "No, it doesn't",
+        "unclearSays": "Unclear from the abstract",
+        "differ": "Reviewers answered it differently"
+      },
+      "reasonHelp": {
+        "includedOnly": "Points on included papers only",
+        "mostCommon": "Points from the most common answer",
+        "stars": "1 to {count, number} stars from {points} points",
+        "says": "Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.",
+        "points": "An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave: a yes earns 1 unless {canChange, select, true {the screening's settings say otherwise} other {{workspace}'s members set otherwise}}. The stars follow the points."
+      },
+      "menu": {
+        "papersVoted": "{you, select, true {Papers you voted {decision}} other {Papers {name} voted {decision}}}",
+        "papersWaiting": "{you, select, true {Papers waiting for your vote} other {Papers waiting for {name}'s vote}}",
+        "stopPapersWaiting": "{you, select, true {Stop showing only the papers waiting for your vote} other {Stop showing only the papers waiting for {name}'s vote}}"
+      },
+      "marks": {
+        "title": "Vote marks",
+        "aReviewer": "A reviewer",
+        "aModel": "A model",
+        "voted": "Voted {decision}",
+        "hidden": "Voted, hidden while the paper waits for the reviewer's own vote",
+        "empty": "An empty cell is a paper that isn't theirs to vote on"
+      },
+      "why": {
+        "nobodyCanVote": "No reviewer can vote on it yet",
+        "waitingOnYou": "Waiting on you",
+        "waitingOn": "Waiting on",
+        "noVoteFrom": "No vote from"
+      },
+      "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
+      "note": {
+        "neededForOther": "Note, needed for another reason",
+        "label": "Note",
+        "writeReason": "Write the reason in the note",
+        "forOthers": "Note for the others (optional)",
+        "forRecord": "Note for the record (optional)"
+      },
+      "back": "Back",
+      "panel": {
+        "placeOf": "{at, number} of {of, number}",
+        "notInList": "Not in this list",
+        "close": "Close",
+        "paper": "Paper",
+        "says": "Its abstract, its votes and its result",
+        "yourVote": "Your vote",
+        "youVoted": "You voted {decision}",
+        "changeIt": "Change it",
+        "changeVote": "Change your vote",
+        "settledWithoutYou": "Settled without your vote",
+        "waitingForYou": "Waiting for your vote",
+        "settleConflict": "Settle this conflict",
+        "everyonesVotes": "Everyone's votes",
+        "reopen": "Reopen",
+        "waitingToSettle": "{you, select, true {Waiting for you to settle it} other {Waiting for {name} to settle it}}",
+        "everyConflict": "Every conflict",
+        "override": "Override result",
+        "overrideTitle": "Overriding a result",
+        "votesKept": "Votes kept",
+        "canReopen": "Can be reopened",
+        "overrideSays": "Your decision replaces the result the votes gave. The votes stay on record. Reopen takes your decision away, and the votes decide the result again.",
+        "yetToVote": "{who, select, you {You have yet to vote. Your decision settles the paper without that vote, and takes it off your list.} one {{names} has yet to vote. Your decision settles the paper without that vote, and takes it off their list.} withYou {{names} have yet to vote. Your decision settles the paper without those votes, and takes it off your lists.} other {{names} have yet to vote. Your decision settles the paper without those votes, and takes it off their lists.}}",
+        "cancel": "Cancel",
+        "afterYouVote": "After you vote"
+      }
+    },
+    "pieces": {
+      "required": "Required",
+      "starsOf": "{count} of {of} stars",
+      "modelsSay": {
+        "checking": {
+          "says": "Checking for new papers",
+          "row": "Waiting for the check"
+        },
+        "gathering": {
+          "says": "Getting its papers",
+          "row": "Waiting for the papers to arrive"
+        },
+        "paused": {
+          "says": "Models paused",
+          "row": "Paused"
+        },
+        "credits": {
+          "says": "Out of credits",
+          "row": "Out of credits"
+        },
+        "waiting": {
+          "says": "Models start after <link>{name}</link>",
+          "row": "Waiting its turn"
+        }
+      },
+      "modelsReading": "Models reading",
+      "about": "About {title}",
+      "shut": {
+        "reviewer": "For its reviewers",
+        "settler": "For whoever settles conflicts",
+        "member": "For the workspace's members",
+        "sources": "No source gains papers"
+      },
+      "notReviewer": {
+        "shared": "This screening is shared with you to read. Its reviewers vote.",
+        "finished": "You aren't one of its reviewers, and the screening is finished.",
+        "join": "You aren't one of its reviewers. Join as a reviewer to vote on its papers."
+      },
+      "votesShut": "The other votes stay out of sight so they can't sway yours.",
+      "creditsShort": "{short} credits short",
+      "retry": "{papers, plural, one {Try the paper again for {cost} credits} other {Try all # papers again for {cost} credits}}",
+      "votesBy": "{you, select, true {Your votes} other {Votes by {name}}}",
+      "openPapers": {
+        "conflict": "{count, number} in conflict",
+        "waiting": "{count, number} waiting for votes"
+      },
+      "filterLabel": "{name}: {choice}",
+      "tag": {
+        "ai": "AI",
+        "takenOff": "Taken off"
+      },
+      "voteMark": {
+        "failed": "{who}: couldn't read the paper",
+        "hidden": "{who}: voted, hidden until you vote",
+        "none": "{who}: no vote",
+        "yet": "{who}: no vote yet",
+        "cast": "{who}: {decision}"
+      },
+      "votedHidden": "Voted, hidden until you vote",
+      "reasonSign": {
+        "unclear": "Unclear on",
+        "no": "Not met,"
+      },
+      "resultCount": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
+      "tally": "{decision, select, include {{count, number} include} maybe {{count, number} maybe} other {{count, number} exclude}}",
+      "reviewerN": "Reviewer {n, number}",
+      "answer": {
+        "yes": "Yes",
+        "no": "No",
+        "unclear": "Unclear"
+      },
+      "answerMark": "{label}: {answer}",
+      "votesHelp": {
+        "title": "Reading the votes",
+        "anAnswer": "An answer",
+        "noAnswer": "No answer",
+        "answersDiffer": "Answers differ",
+        "answeredDifferently": "Reviewers answered it differently",
+        "opensAnswer": "Opens what is behind the answer",
+        "body": "Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer's vote and note. Press an answer for what is behind it: the passage a model read, or a person's vote and note. A model that couldn't read a paper has no say in it.",
+        "lock": "A lock stands where a vote is hidden."
+      },
+      "anotherReason": "Another reason…",
+      "paperFacts": {
+        "from": "From {name}",
+        "added": "Added {ago}",
+        "cited": "Cited by {count, number}",
+        "fullText": "Find the full text"
+      },
+      "previousPaper": "Previous paper",
+      "nextPaper": "Next paper",
+      "messages": "{count, plural, one {# message} other {# messages}}",
+      "discuss": "Discuss"
+    },
+    "screen": {
+      "notSaved": "That wasn't saved. Try again.",
+      "yourVote": "Your vote",
+      "result": "Result",
+      "answersDiffer": "Answers differ",
+      "nextAfter": "{settling, select, true {Next paper after each decision} other {Next paper after each vote}}",
+      "settleConflicts": "{settle, select, true {Settle {count, plural, one {# conflict} other {# conflicts}}} other {See {count, plural, one {# conflict} other {# conflicts}}}}",
+      "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
+      "queue": {
+        "label": "Queue",
+        "todo": "To do",
+        "again": "Vote again",
+        "done": "Done",
+        "conflicts": "Conflicts",
+        "see": "See the queue",
+        "hide": "Hide the queue",
+        "show": "Show the queue",
+        "everyPaper": "Every paper in this queue. Press one to open it.",
+        "noMatch": "Nothing in this queue matches",
+        "showWhole": "Show the whole queue",
+        "find": "Find by title or author",
+        "findLabel": "Find in this queue",
+        "asked": "{count, plural, one {# question for you} other {# questions for you}}",
+        "loading": "Loading papers",
+        "loadingPaper": "Loading the paper"
+      },
+      "row": {
+        "new": "New",
+        "askedYou": "A question for you",
+        "messages": "{count, plural, one {# message} other {# messages}}"
+      },
+      "filter": {
+        "any": "Any",
+        "order": "Order",
+        "dealt": "As added",
+        "fresh": "New papers first",
+        "lean": "Included by the models first",
+        "leanShut": "This screening hides other reviewers' votes on these papers, and this order would give the models' votes away"
+      },
+      "shortcuts": {
+        "title": "Shortcuts",
+        "or": "or",
+        "select": "Select that criterion",
+        "answer": "Answer it yes, no or unclear",
+        "include": "Include",
+        "maybe": "Maybe",
+        "exclude": "Exclude, then say why",
+        "next": "Next paper, without a vote",
+        "previous": "Previous paper",
+        "undo": "{settling, select, true {Undo the last decision} other {Undo the last vote}}",
+        "queue": "Show or hide the queue",
+        "keys": "Show these shortcuts"
+      },
+      "votes": {
+        "title": "Everyone's votes",
+        "forSettler": "{you, select, true {For you to settle} other {For {name} to settle}}",
+        "waitingFrom": "from {names}",
+        "more": "{count, plural, other {# more}}",
+        "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}"
+      },
+      "hint": {
+        "against": "You voted {voted}, and your answers point to {points}.",
+        "againstWhy": "You voted {voted}, and your answers point to {points}: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}.",
+        "pointsWhy": "Your answers point to <b>{points}</b>: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}. Your vote is not cast yet.",
+        "allMet": "Your answers point to <b>{points}</b>: every must-have is met. Your vote is not cast yet.",
+        "againstLine": "You voted {voted}. Your answers point to <b>{points}</b>.",
+        "pointsLine": "Your answers point to <b>{points}</b>. Not cast yet."
+      },
+      "paper": {
+        "label": "Paper",
+        "fromSource": "{count, plural, =1 {See the paper from {source}} other {See the # papers from {source}}}",
+        "marked": "<mark>Marked</mark> words are ones the criteria look for."
+      },
+      "criteria": {
+        "yours": "Your answers",
+        "title": "Criteria",
+        "answered": "{answered, number} of {count, number} answered",
+        "mustHaveFact": "Must-have",
+        "guidanceFact": "Guidance: what counts and what doesn't",
+        "markedFact": "Marked words: the words a criterion looks for",
+        "showsFact": "<mark>Marked</mark>How they show in the abstract",
+        "helpAnswering": "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say.",
+        "helpReading": "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude.",
+        "mustHave": "{answering, select, true {A must-have: a No on one points to Exclude. Answers are optional and are not your vote.} other {A must-have: a No on one points to Exclude.}}",
+        "guidance": "Guidance",
+        "markedWords": "Marked words",
+        "markedFor": "Marked words for criterion {n, number}",
+        "answerTo": "Your answer to criterion {n, number}",
+        "differFor": "Criterion {n, number}: show the answer that differs",
+        "none": "No criteria yet",
+        "add": "Add criteria"
+      },
+      "bar": {
+        "atOf": "{at, number} of {count, number}",
+        "left": "{count, plural, other {# left}}",
+        "underMinute": "under a minute",
+        "minutes": "about {minutes, number} min",
+        "hours": "about {hours, number} h",
+        "settledAs": "Settled as",
+        "lastVote": "Your last vote",
+        "lastSettledAs": "Last settled as",
+        "withNote": "Saved with a note",
+        "nowInConflicts": "Now in Conflicts",
+        "more": "More for this paper",
+        "dragRight": "Drag the paper right to include",
+        "dragLeft": "Drag it left to exclude",
+        "undo": "Undo",
+        "alsoFailed": "{count, plural, other {and # more}}",
+        "votedDifferently": "{count, plural, other {# voted differently}}"
+      },
+      "shut": {
+        "finished": "{canChange, select, true {This screening is finished, so no more votes are cast. Reopen it to vote again.} other {This screening is finished, so no more votes are cast.}}",
+        "settler": "{you, select, true {You settle conflicts on this screening. You can read them here.} other {{name} settles conflicts on this screening. You can read them here.}}"
+      },
+      "through": {
+        "conflicts": "Every conflict here is settled",
+        "papers": "You voted on every paper here"
+      },
+      "exclude": {
+        "why": "Why exclude it?",
+        "whyLabel": "Why exclude it",
+        "back": "Back",
+        "pick": "Pick the reason this paper is excluded."
+      },
+      "note": {
+        "label": "Note",
+        "settling": "Why, for the record (optional)",
+        "voting": "A note for the others, saved with your vote. A question for one of them goes in Discussion, below"
+      },
+      "settle": {
+        "title": "Settle this conflict",
+        "helpTitle": "Settling a conflict",
+        "yourVote": "Your vote as a reviewer",
+        "rule": "Rule",
+        "help": "The reviewers split on this paper. What you pick becomes its result, whatever they voted. Maybe is a result too: it settles the paper as one to look at again."
+      },
+      "empty": {
+        "noConflictPaper": "No paper is in conflict",
+        "onTheirWay": "Its papers are on their way",
+        "arrived": "{done, number} of {count, number} are in",
+        "noneYet": "No paper has come to you yet",
+        "noneYours": "None of its papers is yours to vote on",
+        "allVoted": "You have voted on all your papers",
+        "finished": "This screening is finished",
+        "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",
+        "noneWaits": "No paper waits for your vote",
+        "settledWithout": "{count, plural, one {# of your papers was settled without it} other {# of your papers were settled without it}}",
+        "noneAgain": "None of your votes needs a new one",
+        "noConflict": "No conflict to settle",
+        "noVotes": "You haven't voted on a paper yet",
+        "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
+        "join": "Join as a reviewer",
+        "allPapers": "See all the papers"
+      },
+      "matrix": {
+        "nameYou": "{name}, you",
+        "theirVote": "{name}'s vote",
+        "on": "{name}, {criterion}",
+        "differFor": "{criterion}: show the answer that differs",
+        "show": "{who}, {criterion}: {kind, select, model {show the passage} you {show your vote and note} other {show their vote and note}}",
+        "vote": "Vote"
+      },
+      "said": {
+        "noNoteYou": "You left no note with this vote.",
+        "noNote": "No note with this vote."
+      },
+      "evidence": {
+        "helpTitle": "How sure the model is",
+        "unsureBelow": "Unsure below 65%",
+        "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
+        "unsure": "Unsure: {sure, number, percent} sure",
+        "sure": "{sure, number, percent} sure",
+        "noSentence": "It named no sentence of the abstract for this answer.",
+        "noSentencePdf": "It read this paper as its PDF. A model names a sentence only where it reads an abstract."
+      }
+    },
+    "sources": {
+      "add": "Add",
+      "added": "Added",
+      "empty": "Empty",
+      "in": "In {name}",
+      "andMore": "{name} and {count, number} more",
+      "remove": "Remove {name}",
+      "dismiss": "Dismiss",
+      "columns": {
+        "needNaming": "Its columns need naming",
+        "pickEach": "Pick the column that holds each part. Under it is what the first of its {count, plural, one {# row} other {# rows}} has there.",
+        "label": {
+          "title": "Title",
+          "abstract": "Abstract",
+          "doi": "DOI",
+          "year": "Year",
+          "authors": "Authors"
+        },
+        "pick": "Pick a column",
+        "notInFile": "Not in this file",
+        "pickTitle": "Pick the column that holds the title",
+        "untitledLeftOut": "{count, plural, one {# row} other {# rows}} without a title left out",
+        "noAbstract": "{count, number} without an abstract",
+        "addRecords": "{count, plural, one {Add # record} other {Add # records}}",
+        "addItsRecords": "Add its records"
+      },
+      "upload": {
+        "notSent": "The file couldn't be sent. Try again.",
+        "table": "Table",
+        "referenceFile": "Reference file",
+        "onePdf": "A PDF",
+        "uploadedPdfs": "{count, plural, one {# uploaded PDF} other {# uploaded PDFs}}",
+        "refused": "<file>{name}</file>: {why}",
+        "why": {
+          "notReadable": "Not a kind of file a screening reads",
+          "twice": "Already a source",
+          "tooBig": "Over {mb, number} MB: split it and add each part",
+          "noTable": "No table of references in it",
+          "noReferences": "No references in it",
+          "unread": "It couldn't be read",
+          "pdfTooBig": "Over {mb, number} MB",
+          "unsent": "It couldn't be sent",
+          "allUnsent": "They couldn't be sent"
+        },
+        "drop": "Drop reference files or PDFs here",
+        "helpTitle": "Files",
+        "fileLimit": "Reference files up to {mb, number} MB",
+        "pdfLimit": "PDFs up to {mb, number} MB each",
+        "aboutFiles": "A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.",
+        "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
+        "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, or a text file of DOIs, any number at once",
+        "pdfCost": "A model reads each PDF's first pages for its title and DOI: up to {credits} credits a PDF, paid as it is added",
+        "filesLabel": "Files to upload",
+        "choose": "Choose files",
+        "sent": "{sent, number} of {total, number} sent",
+        "reading": "Reading it"
+      },
+      "pdf": {
+        "read": "{read, number} of {total, number} read",
+        "inIndex": "<n>{count, number}</n> in the index",
+        "knownNoAbstract": "In the index, no abstract",
+        "fileWithPages": "Read as its PDF, {count, plural, one {# page} other {# pages}}",
+        "list": "The PDFs of this source",
+        "pager": "PDFs"
+      },
+      "dois": {
+        "fromFile": "DOIs in a file",
+        "pasted": "Pasted DOIs",
+        "notAdded": "The DOIs couldn't be added. Try again.",
+        "label": "DOIs",
+        "helpTitle": "Pasted DOIs",
+        "forms": "Bare, as doi.org addresses, or inside a reference list",
+        "takenOnce": "A DOI pasted twice is taken once",
+        "about": "Openscholar looks each DOI up in its index, then in Crossref and DataCite, and takes the paper's title and abstract from there. The ones none of them has a record of, and the ones whose record has no abstract, are left out and listed on the source's row once it has been read.",
+        "placeholder": "Paste DOIs, or any text that holds them",
+        "twice": "{count, plural, one {This DOI is already a source} other {These DOIs are already a source}}",
+        "none": "No DOI in what you pasted",
+        "repeats": "{count, number} pasted more than once",
+        "addCount": "{count, plural, one {Add # DOI} other {Add # DOIs}}",
+        "add": "Add DOIs"
+      },
+      "zotero": {
+        "myLibrary": "My library",
+        "loading": "Loading Zotero",
+        "notConnected": "Zotero isn't connected",
+        "connectWhy": "Connect it to pick from your library and the groups you are in.",
+        "connect": "Connect Zotero",
+        "withSubCollections": "With its sub-collections",
+        "aboutUnder": "About {count, number} with what is under it",
+        "library": "Zotero library",
+        "findGroup": "Find a group",
+        "yours": "Yours",
+        "groups": "Groups",
+        "moreGroups": "More groups",
+        "connected": "Connected",
+        "connectedAs": "Connected as {name}",
+        "connections": "Connections",
+        "findCollection": "Find a collection",
+        "findCollectionIn": "Find a collection in {library}",
+        "includeSub": "Include sub-collections",
+        "subHelpTitle": "Sub-collections",
+        "subTakenOnce": "A paper filed in two of them is taken once",
+        "subAbout": "Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it: what they hold together is about what Zotero counts in each, added up, and exact once the screening has read them.",
+        "readingCount": "Reading its collections, {read, number} of {total, number}",
+        "reading": "Reading its collections",
+        "failed": "Zotero couldn't be read. Open the library again.",
+        "everyPaper": "Every paper in {library}",
+        "group": "Zotero group",
+        "own": "Your Zotero library",
+        "wholeLibrary": "Whole library",
+        "itemsInZotero": "{count, plural, one {# item} other {# items}} in Zotero",
+        "noneFound": "No collection of {library} has {text} in its name.",
+        "noneHere": "{name} holds no collections.",
+        "noneInLibrary": "{library} has no collections.",
+        "pager": "collections"
+      }
+    },
+    "words": {
+      "decision": {
+        "include": "Include",
+        "maybe": "Maybe",
+        "exclude": "Exclude"
+      },
+      "result": {
+        "include": "Included",
+        "maybe": "Maybe",
+        "exclude": "Excluded",
+        "conflict": "In conflict",
+        "waiting": "Waiting for votes"
+      },
+      "you": "You",
+      "youInline": "you",
+      "someone": "Someone who left",
+      "modelAtEffort": "{name}, {effort} effort",
+      "looker": "{member, select, true {Not a reviewer} other {Viewer}}",
+      "person": {
+        "invited": "Invited by email, votes once they join",
+        "invitedFinished": "Invited by email. Votes once they have joined and this is reopened",
+        "invitedToLook": "Invited by email, sees it once they join",
+        "toInvite": "Gets an invitation when you save",
+        "toInviteAtStart": "Gets an invitation when you start",
+        "invites": "Gets an invitation by email",
+        "guest": "From outside this workspace",
+        "member": "In this workspace",
+        "settles": "Settles conflicts"
+      },
+      "settler": "{you, select, true {you settle} other {{name} settles}}",
+      "count": {
+        "papers": "{count, plural, one {# paper} other {# papers}}",
+        "newPapers": "{count, plural, one {# new paper} other {# new papers}}",
+        "openPapers": "{count, plural, one {# open paper} other {# open papers}}",
+        "sources": "{count, plural, one {# source} other {# sources}}",
+        "people": "{count, plural, one {# person} other {# people}}",
+        "models": "{count, plural, one {# model} other {# models}}",
+        "reviewers": "{count, plural, one {# reviewer} other {# reviewers}}",
+        "votes": "{count, plural, one {# vote} other {# votes}}",
+        "criteria": "{count, plural, one {# criterion} other {# criteria}}",
+        "mustHaves": "{count, plural, one {# must-have} other {# must-haves}}",
+        "conflicts": "{count, plural, one {# conflict} other {# conflicts}}",
+        "questions": "{count, plural, one {# question} other {# questions}}",
+        "duplicates": "{count, plural, one {# duplicate} other {# duplicates}}",
+        "pages": "{count, plural, one {# page} other {# pages}}",
+        "pdfs": "{count, plural, one {# PDF} other {# PDFs}}",
+        "dois": "{count, plural, one {# DOI} other {# DOIs}}",
+        "collections": "{count, plural, one {# collection} other {# collections}}",
+        "subCollections": "{count, plural, one {# sub-collection} other {# sub-collections}}",
+        "items": "{count, plural, one {# item} other {# items}}",
+        "rows": "{count, plural, one {# row} other {# rows}}",
+        "readings": "{count, plural, one {# reading} other {# readings}}",
+        "changes": "{count, plural, one {# change} other {# changes}}",
+        "credits": "{count} credits"
+      },
+      "numberWord": "{n, select, 1 {One} 2 {Two} 3 {Three} 4 {Four} 5 {Five} 6 {Six} 7 {Seven} 8 {Eight} 9 {Nine} 10 {Ten} other {{n}}}",
+      "quoted": "“{text}”",
+      "leftWhy": {
+        "abstract": "No abstract",
+        "title": "No title",
+        "doi": "No such DOI",
+        "record": "No record of it",
+        "broken": "Doesn't open"
+      },
+      "pdf": {
+        "known": "In the index",
+        "file": "Read as its PDF",
+        "broken": "Doesn't open",
+        "waiting": "Reading it",
+        "costsMore": "more for one read as its PDF"
+      },
+      "removed": {
+        "merged": "Duplicates merged",
+        "bare": "No abstract",
+        "unread": "Could not be read or found"
+      },
+      "otherReason": {
+        "duplicate": "A duplicate of another paper",
+        "other": "Another reason"
+      },
+      "excludeAsk": {
+        "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
+        "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
+        "orCriterion": "Or another criterion",
+        "orReason": "Or another reason",
+        "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
+      },
+      "notMet": "{name} not met",
+      "notMetInFull": "Not met: {name}",
+      "unclearOn": "{name} unclear",
+      "includedIn": "Included in {name}",
+      "every": {
+        "day": "Every day",
+        "week": "Every week",
+        "month": "Every month"
+      },
+      "living": "{every, select, day {Living, new papers every day} week {Living, new papers every week} other {Living, new papers every month}}",
+      "settle": {
+        "label": {
+          "all": "All agree",
+          "most": "Most agree",
+          "one": "First vote decides"
+        },
+        "means": {
+          "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
+          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+          "one": "A paper is settled by the first vote on it, so there is never a conflict."
+        },
+        "says": {
+          "all": "Settled when all agree",
+          "most": "Settled when most agree",
+          "one": "Settled by the first vote"
+        }
+      },
+      "started": "{papers, plural, one {# paper} other {# papers}} from {sources, plural, one {# source} other {# sources}}, for {who}",
+      "startedNobody": "reviewers still to be added",
+      "empty": {
+        "all": "No papers yet",
+        "include": "{finished, select, true {No paper was included} other {Nothing included yet}}",
+        "maybe": "{finished, select, true {No paper was left at Maybe} other {Nothing marked Maybe yet}}",
+        "exclude": "{finished, select, true {No paper was excluded} other {Nothing excluded yet}}",
+        "conflict": "No papers in conflict",
+        "waiting": "No papers waiting for a vote"
+      },
+      "noVote": {
+        "yet": "No vote yet",
+        "none": "No vote",
+        "failed": "Couldn't read the paper"
+      },
+      "noVoteSays": {
+        "yet": "No vote yet",
+        "none": "Paper settled without this vote",
+        "failed": "Model couldn't read the paper"
+      },
+      "hiddenUntilVote": "Hidden until you vote",
+      "hiddenWhileToDo": "Hidden while papers wait for your vote",
+      "votesHiddenSays": "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.",
+      "ago": {
+        "now": "just now",
+        "minutes": "{count} min ago",
+        "hours": "{count} h ago",
+        "yesterday": "yesterday",
+        "days": "{count} days ago"
+      }
     }
   }
 }

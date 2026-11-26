@@ -5,6 +5,7 @@ import { action } from "../_generated/server";
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
+  getScreeningCriteriaConfig,
   getExtractionQuestionsConfig,
   getTranslateQueryConfig,
   getTranslatePaperContentConfig,
@@ -20,7 +21,7 @@ import {
   withAuthAndCreditsBatch,
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-import { toExtractionQuestions } from "../../lib/ai/core/schemas";
+import { toExtractionQuestions, toWrittenCriteria } from "../../lib/ai/core/schemas";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { CALL_TOKENS } from "../../lib/pricing";
 import { internal } from "../_generated/api";
@@ -28,7 +29,7 @@ import { BATCH_LOCK_TTL_MS } from "../lib/locks";
 import { createError } from "../lib/errors";
 import { searchTaskValidator } from "../aiModelConfig/validators";
 import { MAX_BATCH_PAPERS, MAX_QUESTIONS } from "../lib/listCaps";
-import { batchScreeningValidator, batchTranslationsValidator } from "./validators";
+import { batchScreeningValidator, batchTranslationsValidator, writtenCriteriaValidator } from "./validators";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -66,6 +67,19 @@ export const generateScreeningQuestions = createAIAction(
     questions: output.questions,
   }),
   // Writing questions needs a text model; the Screening pick may be Jev, which only answers them.
+  { kind: "screening", task: "extraction" },
+);
+
+/** The same, for a screening's criteria: each question with a short name and the words to mark for it in an abstract. */
+export const generateScreeningCriteria = createAIAction(
+  {
+    researchQuestion: v.string(),
+    existingQuestions: v.array(v.string()),
+  },
+  writtenCriteriaValidator,
+  "Generate screening questions",
+  getScreeningCriteriaConfig,
+  (output) => toWrittenCriteria(output.criteria),
   { kind: "screening", task: "extraction" },
 );
 
@@ -288,9 +302,9 @@ export const generateBatchScreeningResponses = action({
             Object.entries(results).map(([paperId, result]) => [
               paperId,
               {
-                ...result,
                 responses: encodeQuestionResponseMap(result.responses),
                 confidences: encodeQuestionResponseMap(result.confidences),
+                confidence: result.confidence,
               },
             ])
           );

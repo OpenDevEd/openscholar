@@ -5,6 +5,8 @@
  * - Server action: Used when routing resolves to credits execution.
  */
 
+import type { PromptFile } from './types'
+
 // ═══════════════════════════════════════════════════════════════
 // COMMON BATCH TYPES
 // ═══════════════════════════════════════════════════════════════
@@ -13,6 +15,8 @@ export interface BatchPaper {
   id: string
   title: string
   abstract: string
+  /** The paper itself, where it has no abstract. */
+  file?: PromptFile
 }
 
 export interface BatchError {
@@ -33,6 +37,11 @@ export interface ScreeningResultData {
   confidences: Record<string, number>
   /** The mean of `confidences`. */
   confidence: number
+}
+
+/** A screening that also names, for each response, the sentence of the abstract it relied on, counted from 0: asked for by a screening with reviewers (convex/screening/reading.ts), and null where the model named none. */
+export interface ScreeningReadData extends ScreeningResultData {
+  passages?: Record<string, number | null>
 }
 
 export type BatchScreeningResult = BatchResult<ScreeningResultData>

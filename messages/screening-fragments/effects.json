@@ -1,0 +1,147 @@
+{
+  "criterionUnwritten": "the criterion with no question yet",
+  "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
+  "model": {
+    "startsLater": "{name} starts once the papers arrive",
+    "nothingToRead": "{name} has no papers left to read",
+    "reads": "{name} reads {all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}{when, select, gathered { once all its papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { when its models' turn comes} save { as soon as this is saved} other {}}"
+  },
+  "person": {
+    "invited": "{name} gets an invitation by email, and papers once they join",
+    "invitedNoneOpen": "{name} gets an invitation by email, and papers that come in after they join. Every paper it has now is settled, so none of those goes to them",
+    "dealt": "{name} gets {count, plural, one {# open paper} other {# open papers}}, an even share, and an email saying so",
+    "joinsWithNone": "{name} joins and gets an email saying so. Every open paper already has its reviewers, so none goes to them yet"
+  },
+  "votesStay": "Votes already cast stay as they are",
+  "conflict": {
+    "all": "Once every vote on a paper is in, votes that differ put it in conflict",
+    "most": "Once every vote on a paper is in, a paper with no majority is in conflict"
+  },
+  "leaving": {
+    "noVote": "{you, select, true {You have cast no vote} other {{name} has cast no vote}}",
+    "votesStop": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote stays on record and stops counting} other {# votes stay on record and stop counting}}",
+    "votesKept": "{you, select, true {Your} other {{name}'s}} {count, plural, one {# vote keeps} other {# votes keep}} counting",
+    "papersGo": "{count, plural, one {# paper goes} other {# papers go}} to {takers}: {unvoted, plural, =0 {} other {# {you, select, true {you} other {{name}}} had not voted on, and }}{voted, number} {you, select, true {you} other {{name}}} voted on, where {voted, plural, one {that vote {thrown, select, true {stops counting} other {keeps counting}}} other {those votes {thrown, select, true {stop counting} other {keep counting}}}}",
+    "unvotedGo": "The {count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {goes} other {go}} to {takers}",
+    "settled": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {is} other {are}} settled on the other votes",
+    "waiting": "{count, plural, one {# paper} other {# papers}} {you, select, true {you} other {{name}}} had not voted on {count, plural, one {waits} other {wait}} for the others' votes"
+  },
+  "settler": {
+    "youLeave": "Conflicts go to {you, select, true {you} other {{name}}} once you leave",
+    "leaves": "{was} settled conflicts. They go to {you, select, true {you} other {{name}}} from now on",
+    "changes": "Conflicts go to {you, select, true {you} other {{name}}} from now on"
+  },
+  "each": {
+    "changes": "From now on each paper goes to {all, select, true {everyone on the screening, {each, plural, one {# person} other {# people}} today} other {{each, plural, one {# person} other {# people}}}}{changed, plural, =0 {} one {. # paper still open {more, select, true {gets {diff, plural, =1 {one more person} other {up to # more people}}} other {needs fewer votes}}} other {. # papers still open {more, select, true {get {diff, plural, =1 {one more person} other {up to # more people}}} other {need fewer votes}}}}. Votes already cast stay as they are",
+    "stillAll": "Each paper still goes to {each, plural, one {# person} other {# people}} today. Anyone added later joins every paper that is still open",
+    "stillShare": "Each paper still goes to {each, plural, one {# person} other {# people}}. Anyone added later takes an even share of the open papers, not every one"
+  },
+  "blind": {
+    "never": "Everyone sees every vote as it is cast",
+    "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled"
+  },
+  "criteria": {
+    "modelsAnswerNew": "The models answer the new {count, plural, one {criterion} other {criteria}} on the open papers they have read",
+    "votesStand": "People's votes stand as they are: they were cast before {count, plural, one {this criterion} other {these criteria}}",
+    "modelsStop": "The models stop answering {name}. Votes already cast stay as they were cast",
+    "noLongerAsked": "{name} is no longer asked. Votes already cast stay as they were cast",
+    "becomesMust": "{name} becomes a must-have: from now on a no on it points to Exclude. People's votes on the papers still open stay, and are marked for a new vote",
+    "becomesNice": "{name} becomes nice to have: from now on a no on it no longer points to Exclude. Votes already cast stay as they were cast",
+    "writeQuestion": "Write the criterion's question before saving",
+    "modelsReworded": "The models answer the reworded {name} on papers they read from now on",
+    "reviewersReworded": "Reviewers answer the reworded {name} from now on. Votes already cast stay as they were cast",
+    "guidance": "{models, select, true {Reviewers and models read} other {Reviewers read}} {name} with its {fresh, select, true {new } other {}}guidance from now on. Answers already given stay",
+    "guidanceRemoved": "Guidance is removed from {name}. Answers already given stay",
+    "termsMarked": "Reviewers see the words marked for {name} in each abstract from now on",
+    "termsRemoved": "No words are marked for {name} any more",
+    "scoring": "Included papers' points and stars are worked out again"
+  },
+  "living": {
+    "checks": "The screening checks {which, select, all {{all, plural, one {its source} other {its # sources}}} other {{sources, number} of its {all, number} sources}} for new papers{when, select, save { as soon as this is saved, then} other {}} {every, select, day {every day} week {every week} other {every month}}",
+    "nothingToCheck": "The screening has no source that gains papers, so there is nothing to check yet",
+    "modelsRead": "Each new paper goes to its reviewers{people, select, true {, and the people among them get an email} other {}}. The models read it when they can{pdfs, select, true {. One read as its PDF costs more} other {}}",
+    "peopleGetEmail": "Each new paper goes to its reviewers, who get an email",
+    "waitsForReviewer": "Each new paper joins the screening, where it waits for a reviewer",
+    "reopens": "A first check runs as soon as this is saved. If it finds new papers, the screening opens again. If not, it stays finished and isn't checked until it is reopened",
+    "stops": "The screening stops checking for new papers. The ones it has stay",
+    "every": "The screening checks for new papers {every, select, day {every day} week {every week} other {every month}} from now on"
+  },
+  "sources": {
+    "promised": "Up to {count, plural, one {# new paper joins} other {# new papers join}} the screening and {count, plural, one {goes} other {go}} to its reviewers. Fewer do where another source already has them or they have no abstract{pdfs, select, true {. A model is charged by the page for one that comes as its PDF, so what these cost shows once the screening has read them} other {}}",
+    "removed": "{count, plural, one {# paper leaves the screening, with its votes kept on record} other {# papers leave the screening, with their votes kept on record}}"
+  },
+  "collection": {
+    "renamed": "Its collection is renamed {name}, with the papers in it",
+    "stopsSaving": "Included papers stop being saved to a collection{kept, select, true {. {count, plural, one {The one in {from} stays there} other {The # in {from} stay there}}} other {}}",
+    "added": "The {count, plural, one {# paper} other {# papers}} included so far {count, plural, one {is} other {are}} added to {to}{was, select, true {. They stay in {from}} other {}}",
+    "prune": "Excluded papers are taken out of the collection they came from",
+    "keep": "Excluded papers stay in the collection they came from"
+  },
+  "withCredits": "{text}, for up to {credits} credits{each, select, true { each} other {}}",
+  "creditsChip": "{credits}{each, select, true { each} other {}}",
+  "moved": "{count, plural, one {# paper} other {# papers}} moved from {from} to {to}",
+  "noChange": "No paper's result changes",
+  "hidden": "{done, select, true {{count, plural, one {The # paper you have yet to vote on may have changed result too. Its votes stay hidden while it waits for yours.} other {The # papers you have yet to vote on may have changed result too. Their votes stay hidden while they wait for yours.}}} other {{count, plural, one {What this does to the # paper you have yet to vote on shows once the change is made: its votes are hidden from you.} other {What this does to the # papers you have yet to vote on shows once the change is made: their votes are hidden from you.}}}}",
+  "papersLabel": "papers",
+  "more": "{count, number} more",
+  "activity": {
+    "started": "Started the screening",
+    "startedWith": "{sources, plural, one {# source} other {# sources}}, for {who}",
+    "renamed": "Renamed it {name}",
+    "finished": "Marked the screening as finished",
+    "unsettled": "{count, plural, one {# paper was} other {# papers were}} not settled",
+    "checksStopped": "It stopped checking for new papers",
+    "reopened": "Reopened the screening",
+    "paused": "Paused the models",
+    "resumed": "Resumed the models",
+    "movedTo": "Moved it to {to}",
+    "movedAway": "Moved it to another workspace",
+    "movedFrom": "Moved it from {from}",
+    "reviewerAdded": "Added {name} as a reviewer",
+    "reviewerJoined": "Joined as a reviewer",
+    "reviewerRemoved": "Took {name} off the screening",
+    "madeViewer": "Made {name} a viewer",
+    "reminded": "Sent {name} a reminder",
+    "retried": "Sent {name} back to {count, plural, =0 {the papers} one {# paper} other {# papers}} it couldn't read",
+    "papersMoved": "Moved {count, plural, one {# paper} other {# papers}} from {from} to {known, select, true {{to}} other {someone else}}",
+    "papersMovedVotes": "{known, select, true {{to}} other {someone else}} votes on {count, plural, one {it} other {them}} now",
+    "asked": "Asked {name} about {paper}",
+    "aPaper": "a paper",
+    "checkedFound": "Checked for new papers and found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
+    "checkedNone": "Checked for new papers and found none",
+    "scheduledFound": "The scheduled check found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
+    "scheduledNone": "The scheduled check found no new papers",
+    "known": "{count, plural, one {# was} other {# were}} already in the screening",
+    "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
+    "reopenedByCheck": "The screening is open again",
+    "changed": "Changed {parts}",
+    "changedSettings": "Changed its settings",
+    "setting": {
+      "name": "its name",
+      "question": "the research question",
+      "papers": "its sources",
+      "newPapers": "how it looks for new papers",
+      "criteria": "its criteria",
+      "reviewers": "its reviewers",
+      "decided": "how a paper is decided",
+      "goesTo": "where included papers go"
+    },
+    "changedIt": "Changed it",
+    "added": "Added {what}",
+    "addedPapers": "Added papers",
+    "removed": "Took {what} off",
+    "removedPapers": "Removed papers",
+    "screened": "Screened {count, plural, one {# paper} other {# papers}}",
+    "readAgain": "Read some papers again",
+    "stopped": "Stopped the screening",
+    "shared": "Shared it with {who}",
+    "sharedSomeone": "Shared it with someone",
+    "votesDiscarded": "Their votes stay on record and stop counting",
+    "votesKept": "{count, plural, one {# vote keeps} other {# votes keep}} counting",
+    "dealt": "{count, plural, one {# open paper} other {# open papers}} went to them",
+    "reads": "It reads {count, plural, one {# paper} other {# papers}}",
+    "papersMovedBy": "{count, plural, one {# paper} other {# papers}} moved {detail}",
+    "left": "{count, plural, one {# paper} other {# papers}} left the screening",
+    "rechecked": "{count, plural, one {# settled paper was} other {# settled papers were}} checked again"
+  }
+}

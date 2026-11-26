@@ -1,4 +1,5 @@
 import { openalexWork, paperPage, ownWork } from "../../lib/papers/paper-ref";
+import { screeningPath } from "../../lib/screening/links";
 
 /**
  * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
@@ -30,7 +31,7 @@ const KINDS = {
   search: { href: (row: Row) => text(row.id) && searchUrl(row.id as string), name: (row: Row) => text(row.query) ?? row.questionText },
   collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
-  screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.name ?? row.label ?? "Screening" },
+  screening: { href: (row: Row) => text(row.id ?? row._id) && screeningPath(String(row.id ?? row._id)), name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
   author: { href: (row: Row) => profilePage(row), name: (row: Row) => row.name },
   paper: { href: (row: Row) => paperUrl(row.id), name: (row: Row) => row.title },
@@ -47,8 +48,8 @@ const READS: Record<string, Kind> = {
   "library/queries:savedPaper": "paper",
   "extraction/queries:listJobs": "extraction",
   "extraction/queries:getJobDetails": "extraction",
-  "screening/queries:listJobs": "screening",
-  "screening/queries:getScreeningJob": "screening",
+  "screening/view:list": "screening",
+  "screening/view:get": "screening",
   "assistant/threads:list": "chat",
   "assistant/threads:get": "chat",
   "authors/assistant:directory": "author",

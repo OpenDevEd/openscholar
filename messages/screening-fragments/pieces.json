@@ -1,0 +1,79 @@
+{
+  "required": "Required",
+  "starsOf": "{count} of {of} stars",
+  "modelsSay": {
+    "checking": { "says": "Checking for new papers", "row": "Waiting for the check" },
+    "gathering": { "says": "Getting its papers", "row": "Waiting for the papers to arrive" },
+    "paused": { "says": "Models paused", "row": "Paused" },
+    "credits": { "says": "Out of credits", "row": "Out of credits" },
+    "waiting": { "says": "Models start after <link>{name}</link>", "row": "Waiting its turn" }
+  },
+  "modelsReading": "Models reading",
+  "about": "About {title}",
+  "shut": {
+    "reviewer": "For its reviewers",
+    "settler": "For whoever settles conflicts",
+    "member": "For the workspace's members",
+    "sources": "No source gains papers"
+  },
+  "notReviewer": {
+    "shared": "This screening is shared with you to read. Its reviewers vote.",
+    "finished": "You aren't one of its reviewers, and the screening is finished.",
+    "join": "You aren't one of its reviewers. Join as a reviewer to vote on its papers."
+  },
+  "votesShut": "The other votes stay out of sight so they can't sway yours.",
+  "creditsShort": "{short} credits short",
+  "retry": "{papers, plural, one {Try the paper again for {cost} credits} other {Try all # papers again for {cost} credits}}",
+  "votesBy": "{you, select, true {Your votes} other {Votes by {name}}}",
+  "openPapers": {
+    "conflict": "{count, number} in conflict",
+    "waiting": "{count, number} waiting for votes"
+  },
+  "filterLabel": "{name}: {choice}",
+  "tag": {
+    "ai": "AI",
+    "takenOff": "Taken off"
+  },
+  "voteMark": {
+    "failed": "{who}: couldn't read the paper",
+    "hidden": "{who}: voted, hidden until you vote",
+    "none": "{who}: no vote",
+    "yet": "{who}: no vote yet",
+    "cast": "{who}: {decision}"
+  },
+  "votedHidden": "Voted, hidden until you vote",
+  "reasonSign": {
+    "unclear": "Unclear on",
+    "no": "Not met,"
+  },
+  "resultCount": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
+  "tally": "{decision, select, include {{count, number} include} maybe {{count, number} maybe} other {{count, number} exclude}}",
+  "reviewerN": "Reviewer {n, number}",
+  "answer": {
+    "yes": "Yes",
+    "no": "No",
+    "unclear": "Unclear"
+  },
+  "answerMark": "{label}: {answer}",
+  "votesHelp": {
+    "title": "Reading the votes",
+    "anAnswer": "An answer",
+    "noAnswer": "No answer",
+    "answersDiffer": "Answers differ",
+    "answeredDifferently": "Reviewers answered it differently",
+    "opensAnswer": "Opens what is behind the answer",
+    "body": "Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer's vote and note. Press an answer for what is behind it: the passage a model read, or a person's vote and note. A model that couldn't read a paper has no say in it.",
+    "lock": "A lock stands where a vote is hidden."
+  },
+  "anotherReason": "Another reason…",
+  "paperFacts": {
+    "from": "From {name}",
+    "added": "Added {ago}",
+    "cited": "Cited by {count, number}",
+    "fullText": "Find the full text"
+  },
+  "previousPaper": "Previous paper",
+  "nextPaper": "Next paper",
+  "messages": "{count, plural, one {# message} other {# messages}}",
+  "discuss": "Discuss"
+}
