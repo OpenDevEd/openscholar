@@ -547,9 +547,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       <div className="grid border-t border-border-subtle">
         <div ref={list} className="@container/table min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
-          {/* While the page is read it keeps a page's height; a shorter one slides to its own instead of jumping. */}
+          {/* While the page is read it keeps the height of the rows it will hold, as many as the filter counts up to a page; what is left over slides. */}
           <AutoHeight>
-          <Wide fits={fits} style={{ minHeight: listed.isLoading || listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
+          <Wide fits={fits} style={{ minHeight: listed.isLoading ? (Math.min(total ?? PAGE, PAGE) + 2) * ROW : listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
             {listed.isLoading ? <ListLoading label={t("table.loading")} /> : shown.length ? (
               <>
                 {/* As wide as the column and no wider: the frame around it scrolls sideways for the table, and would let a long title stretch the list. */}
