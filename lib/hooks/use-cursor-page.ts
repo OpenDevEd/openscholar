@@ -38,7 +38,9 @@ const invalidCursor = (error: Error) =>
  * the first page when `args` or the page size change. The last page shown stays up until the next arrives.
  *
  * A live Convex page keeps the range it first read, so rows added inside it grow it past
- * what was asked; a grown page is read again from its start, under a new query id. A page
+ * what was asked; a grown page is read again from its start, under a new query id. Rows that
+ * leave it shrink it, and it reads on past its end to stay full; once it is out of reads it is
+ * read again from its start too, so a list a person works through never hides what is left. A page
  * can come back empty yet not be the end, when its reads found nothing; `canNext` says so.
  * A list that ends exactly on a full page finds that out from the empty page after it, and
  * stops offering next there until a row is added after it.
@@ -113,6 +115,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   const fresh = (placed: number, starts: Start[], known: Start[], want = placed) => ({
     key, placed, want, starts, known: starts.length > known.length || starts.some((start, i) => start.cursor !== known[i]!.cursor) ? starts : known,
     reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }] as Read[], id: 0, end: undefined as { page: number; cursor: string } | undefined,
+    // How many rows the page held when it was last read again from its start for running out of reads.
+    packed: undefined as number | undefined,
   });
   const [state, setState] = useState(() => fresh(named ?? 0, NO_STARTS, NO_STARTS));
   // A list that keeps its page to itself keeps it here, for as long as it is the same list.
@@ -162,6 +166,11 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
       setState({ ...current, reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }], id: id + 1, end: undefined });
     } else if (count < pageSize && !last.isDone && reads.length < MAX_READS_PER_PAGE) {
       setState({ ...current, reads: [...reads, { cursor: last.continueCursor, numItems: pageSize - count }] });
+    } else if (count < pageSize && !last.isDone && current.packed !== count) {
+      // Out of reads, short, and not at the end. Where rows left the ranges its reads keep, as a queue's do while a
+      // person works through it, the rows past its last read never reach it: it is read again from its start, which
+      // they fill. A sparse filter leaves it as short as it was, and it is then shown as it is.
+      setState({ ...current, reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }], id: id + 1, end: undefined, packed: count });
     } else if (shown?.key === key && shown.number === starts.length + 1 && shown.from.length === from.length && shown.from.every((result, i) => result === from[i])) {
       data = shown;
     } else {

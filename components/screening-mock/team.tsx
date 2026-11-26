@@ -77,15 +77,11 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   );
 }
 
-/** Picks a model from the whole catalogue, at an effort where it takes one. The four presets' own picks come first. */
+/** Picks a model from the whole catalogue, at an effort where it takes one. The presets' own picks come first, each model once: presets that pick the same model are one choice here. */
 export function AddModel({ exclude, onPick, children }: { exclude: string[]; onPick: (model: MapModel) => void; children: ReactNode }) {
   const presetModel = usePresetModels();
-  const presets = presetModel
-    ? PRESET_KEYS.flatMap((id) => {
-        const model = presetModel(id, "screenAll");
-        return model && !exclude.includes(model.id) ? [{ id, models: [model], onSelect: () => onPick({ ...model, name: stripProviderPrefix(model.name) }) }] : [];
-      })
-    : undefined;
+  const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !exclude.includes(model.id) ? [{ id, model }] : []; }) : undefined;
+  const presets = picks?.filter((pick, at) => picks.findIndex((one) => one.model.id === pick.model.id && one.model.effort === pick.model.effort) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => onPick({ ...model, name: stripProviderPrefix(model.name) }) }));
   return (
     <ModelPicker current={undefined} efforts tasks={["screenAll"]} exclude={exclude} presets={presets} align="start" trigger={children} onChange={(model, effort) => onPick({ ...model, name: stripProviderPrefix(model.name), ...(effort ? { effort } : {}) })} />
   );

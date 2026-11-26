@@ -30,9 +30,9 @@ import { kappa } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, inOrder, num, plural, bareOf, leftOf, leftTotal, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
+import { DAY, PERSON_SAYS, collectionName, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
-import { EffectList, NO_PREVIEW, effectLines, collectionName } from "./effects";
+import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./parts";
 import { credits, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
@@ -114,6 +114,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   const screen = toDo ? (
     <Button asChild size="sm" variant={finished ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo} /> {toDo === 1 ? "paper" : "papers"}</NextLink></Button>
   ) : null;
+  const removed = removedOf(screening.sources);
   const conflictsButton = conflicts ? (
     <Button asChild size="sm" variant={toDo || finished || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts} /> {conflicts === 1 ? "conflict" : "conflicts"}</NextLink></Button>
   ) : null;
@@ -156,6 +157,9 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={total - counts.conflict - counts.waiting} /></span>
             <span className="text-sm text-muted-foreground">of {num(total)} papers settled</span>
             {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING}</Chip> : null}
+            {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
+            {!open.gathering && removed.left ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{num(removed.left)} left out{removed.bare === removed.left ? ": no abstract" : ""}</LinkChip> : null}
+            {!open.gathering && removed.merged ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{plural(removed.merged, "duplicate", "duplicates")} merged</LinkChip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
@@ -912,10 +916,9 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const { screening, counts } = open;
   const id = screening.id;
   // What the sources held: the papers they brought, and what they left out for having no abstract or nothing to read.
-  const left = leftTotal(screening.sources);
-  const bare = screening.sources.reduce((sum, source) => sum + bareOf(source), 0);
-  const found = foundTotal(screening.sources) + left;
+  const { left, bare, merged } = removedOf(screening.sources);
   const kept = paperTotal(screening.sources);
+  const found = kept + merged + left;
   const arriving = open.gathering ? Math.max(0, open.gathering.of - open.gathering.done) : 0;
   // Its excluded papers by the reason, the most common first.
   const reasons = Object.entries(figures?.reasons ?? {}).sort((x, y) => y[1] - x[1]);
@@ -926,7 +929,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       title: "Removed before screening",
       total: found - kept,
       href: settingsHref(id, "papers"),
-      rows: [{ key: "duplicates", label: "Duplicates merged", value: found - left - kept }, { key: "bare", label: "No abstract", value: bare }, { key: "unread", label: "Couldn't be read or found", value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
+      rows: [{ key: "duplicates", label: "Duplicates merged", value: merged }, { key: "bare", label: "No abstract", value: bare }, { key: "unread", label: "Couldn't be read or found", value: left - bare }].flatMap((row) => (row.value ? [{ ...row, href: settingsHref(id, "papers"), fill: neutral }] : [])),
     },
     {
       title: "Papers",

@@ -21,7 +21,7 @@ import { isFinal } from "../../lib/screening/rules";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, modelName, nameOf, newFor, papersOf, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
+import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
 import { NO_RESULTS } from "./settling";
 import { criteriaValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
@@ -271,6 +271,32 @@ export const mine = workspaceQuery({
       return [await summaryOf(ctx, actor, standing)];
     }))).flat();
     return { page: kept, isDone: true, continueCursor: "" };
+  },
+});
+
+/** Open screenings looked at for one whose models are reading. */
+const READING_LOOKED = 5;
+
+/**
+ * What the workspace's models are reading, for the ring around Screen in the rail: the newest open screening whose
+ * models still have papers to read, with how many of their readings are done. Null where none is reading: a
+ * screening stays open while its people vote, and that is no run to wait on.
+ */
+export const reading = workspaceQuery({
+  args: {},
+  returns: v.union(v.null(), v.object({ jobId: v.id("screeningJobs"), done: v.number(), total: v.number() })),
+  signedOut: null,
+  handler: async (ctx, { workspaceId }) => {
+    const open = await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(READING_LOOKED);
+    for (const job of open) {
+      if (job.shape !== 2 || !modelsFree(job)) continue;
+      const [reviewers, progress] = await Promise.all([reviewersOf(ctx, job._id), progressRow(ctx as QueryCtx, job._id)]);
+      const models = reviewers.filter(readingModel);
+      const total = models.reduce((sum, one) => sum + one.dealt, 0);
+      const done = models.reduce((sum, one) => sum + (progress?.reviewers?.[one._id]?.cast ?? 0) + (progress?.reviewers?.[one._id]?.failed ?? 0), 0);
+      if (done < total) return { jobId: job._id, done, total };
+    }
+    return null;
   },
 });
 

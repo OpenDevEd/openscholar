@@ -36,12 +36,12 @@ export type ModelsState = "checking" | "gathering" | "paused" | "credits" | "wai
 
 /** A reviewer as the pages read them, from the server's row. */
 export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
-  const { dealt, cast, include, maybe, exclude, failed, waiting, spent, missed } = row;
+  const { dealt, cast, include, maybe, exclude, failed, waiting, closed, spent, missed } = row;
   return {
     id: row.id,
     row: row.row,
     kind: row.kind,
-    name: row.kind === "model" ? stripProviderPrefix(row.name) : row.name,
+    name: row.name,
     ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
     ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.effort ? { effort: row.model.effort } : {}) } } : {}),
     ...(row.guest ? { guest: true } : {}),
@@ -49,7 +49,7 @@ export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
     ...(row.left === undefined ? {} : { left: row.left }),
     ...(row.discarded === undefined ? {} : { discarded: row.discarded }),
     ...(row.reminded === undefined ? {} : { reminded: row.reminded }),
-    tally: { dealt, cast, include, maybe, exclude, failed, waiting, spent, missed },
+    tally: { dealt, cast, include, maybe, exclude, failed, waiting, closed, spent, missed },
   };
 }
 
@@ -152,9 +152,9 @@ export function useOpenScreening(id: string) {
     latest: view.latest ?? null,
     /** How many people it is shared with from outside its workspace. */
     guests: view.guests,
-    /** What is the person's to do: papers to vote on, conflicts to settle, and the papers someone asked them about. */
+    /** The person's papers to vote on, the screening's papers in conflict, which one person settles and everyone may read, and the papers someone asked them about. */
     toDo: view.forYou,
-    conflicts: view.conflicts,
+    conflicts: view.counts.conflict,
     asked: view.asked,
     /** The first paper a question waits on, which "your questions" opens. */
     askedFirst: view.askedFirst,

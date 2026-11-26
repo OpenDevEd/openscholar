@@ -3,6 +3,7 @@
 // What can be taken out of a screening: its papers, every vote, the flow of papers, a paragraph for the
 // methods section, and the whole record.
 
+import { copyText } from "@/components/copy-text";
 import { useState } from "react";
 import { useConvex } from "convex/react";
 import NextLink from "next/link";
@@ -66,11 +67,11 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const lines = voteRows(screening, voted.items, whose === "all" ? undefined : whose).flatMap((row) => (row.vote ? [{ ...row, vote: row.vote, result: row.paper.result }] : []));
   const sample = lines.filter((row, i) => lines.findIndex((one) => one.paper.id === row.paper.id) === i).slice(0, 3);
   // What the server has counted of the votes: the ones cast, and the places with no vote in them, by why.
-  const counted = reviewers.filter((one) => whose === "all" || one.id === whose).map((one) => one.tally ?? { dealt: 0, cast: 0, failed: 0, waiting: 0 });
+  const counted = reviewers.filter((one) => whose === "all" || one.id === whose).map((one) => one.tally ?? { dealt: 0, cast: 0, failed: 0, waiting: 0, closed: 0 });
   const votes = counted.reduce((sum, tally) => sum + tally.cast, 0);
   const voters = counted.filter((tally) => tally.cast).length;
   const [yet, failed] = [counted.reduce((sum, tally) => sum + tally.waiting, 0), counted.reduce((sum, tally) => sum + tally.failed, 0)];
-  const none = counted.reduce((sum, tally) => sum + Math.max(0, tally.dealt - tally.cast - tally.failed - tally.waiting), 0);
+  const none = counted.reduce((sum, tally) => sum + tally.closed, 0);
   const openNow = counts.conflict + counts.waiting;
   const flow = flowOf(out);
   const svg = () => flowSvg(out, Date.now());
@@ -96,12 +97,12 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const leftOut = blind && state.toDo ? <ShutNote by="vote">How the others voted on the {plural(state.toDo, "paper", "papers")} you have yet to vote on is left out, so it can&apos;t sway yours.</ShutNote> : null;
   // Every paper of a file is read from the server when the file is asked for.
   const every = (narrowed: object) => (workspaceId ? everyPaper(convex, { workspaceId, jobId: id, ...narrowed }) : Promise.reject(new Error("The workspace hasn't loaded yet. Try again in a moment.")));
-  const take = async (key: string, run: () => void | Promise<void>) => {
+  // `run` answers false where it said itself that it didn't work, as a copy the browser refused does.
+  const take = async (key: string, run: () => void | boolean | Promise<void | boolean>) => {
     if (busy) return;
     setBusy(key);
     try {
-      await run();
-      setDone((all) => [...new Set([...all, key])]);
+      if ((await run()) !== false) setDone((all) => [...new Set([...all, key])]);
     } catch (error) {
       showStyledToast("error", getErrorMessage(error, "The file couldn't be made. Try again."));
     } finally {
@@ -315,7 +316,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   ]
                 : tab === "record"
                   ? [{ key: "json", label: "Download JSON", run: async () => { if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment."); save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2)); }, off: false }]
-                  : [{ key: "copy", label: "Copy", run: () => navigator.clipboard.writeText(methods), off: false }]
+                  : [{ key: "copy", label: "Copy", run: () => copyText(methods, { copied: "Copied the methods paragraph", failed: "Your browser didn't let the page copy", select: "Select the paragraph and copy it:" }), off: false }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}

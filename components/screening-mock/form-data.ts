@@ -1,7 +1,7 @@
 // What the screening form offers to pick from, made up: places papers can come from, the
 // collections included papers can go to, and the questions a search already asks.
 
-import { day, includedIn, type Screening, type SourceKind } from "./data";
+import type { SourceKind } from "./data";
 
 export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[]; /** The kind it is added as, where that is not its tab's: the whole library sits above its collections. */ kind?: SourceKind };
 
@@ -154,18 +154,6 @@ export const COMMUNITIES: Array<{ id: string; name: string; role: string; record
   },
 ];
 
-export const COLLECTIONS = [
-  { id: "c1", name: "Foundational learning, core set", papers: 64 },
-  { id: "c2", name: "To read: numeracy", papers: 23 },
-  { id: "c3", name: "Skills and work, shared reading", papers: 148 },
-  { id: "c4", name: "Girls' education, 2020 onwards", papers: 71 },
-  { id: "c5", name: "Methods: cluster trials", papers: 12 },
-];
-export const COMMUNITY_COLLECTIONS = [
-  { id: "e1", name: "EdTech Hub: Sub-Saharan Africa", papers: 342 },
-  { id: "e2", name: "EdTech Hub: Foundational learning", papers: 118 },
-];
-
 /** Criteria a model writes from a research question, each with the short name it gives it. */
 // The mock has no model to write them: these fit any question, one for each part a question has. The product writes them from the question's own words.
 export const WRITTEN = [
@@ -185,13 +173,3 @@ export const PDF_FILES = /\.pdf$/i;
 export const UPLOAD_ACCEPT = [...REFERENCE_ENDINGS, "pdf"].map((ending) => `.${ending}`).join(",");
 export const UPLOAD_FORMATS = "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF";
 
-/** The settings' own collection on a running screening is kind "new" with no `collection`; a second one started from the settings carries this mark until it is saved. */
-export const ANOTHER_COLLECTION = "another";
-
-/** Where a screening's included papers are saved, by name, or null where they stay in it. The pages and the files both read this. */
-export function collectionName(screening: Pick<Screening, "destination" | "name">) {
-  const to = screening.destination;
-  if (to.kind === "none") return null;
-  if (to.kind === "new") return to.name || `${includedIn(screening.name)}${to.collection === ANOTHER_COLLECTION ? `, from ${day(Date.now())}` : ""}`;
-  return [...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? null;
-}

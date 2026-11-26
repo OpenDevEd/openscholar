@@ -46,7 +46,7 @@ export type Workspace = { id: string; kind: "organization" | "personal"; name: s
 export const lookOf = (workspace: Workspace) => ({ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id });
 
 /** A reviewer's counts, kept by the server: papers given to them, the ones voted on by how, the ones a model couldn't read, the ones that still wait, and what a model has cost. */
-export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; spent: number; /** The papers the screening included that they voted to exclude. */ missed: number };
+export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; /** Their papers settled without their vote. */ closed: number; spent: number; /** The papers the screening included that they voted to exclude. */ missed: number };
 
 /**
  * Someone or something that votes: a person, a person invited by email who has no account yet, or a
@@ -166,6 +166,11 @@ export const keptOf = (source: Source) => (source.read ? source.read.taken : Mat
 export const paperTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + keptOf(source), 0);
 /** What a screening's sources brought before duplicates were merged: the first count of its flow diagram. */
 export const foundTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + taken(source), 0);
+/** What its sources held that it doesn't screen: what they left out, how much of that for having no abstract, and the duplicates merged. One count for the progress line and the flow. */
+export function removedOf(sources: Source[]) {
+  const left = leftTotal(sources);
+  return { left, bare: sources.reduce((sum, source) => sum + bareOf(source), 0), merged: foundTotal(sources) - paperTotal(sources) };
+}
 
 export type Rule = {
   /** How many people read each paper: a number, or everyone on the screening, whoever joins later included. */
@@ -355,3 +360,12 @@ export function ago(at: number, now = Date.now()) {
 
 /** An abstract cut into its sentences, the way a model that names a passage counts them (lib/screening/passages.ts). */
 export { sentencesOf } from "@/lib/screening/passages";
+
+/** Where a screening's included papers are saved, by name, or null where they stay in it. The pages and the files both read this. */
+export function collectionName(screening: Pick<Screening, "destination" | "name">) {
+  const to = screening.destination;
+  if (to.kind === "none") return null;
+  if (to.kind === "new") return to.name || includedIn(screening.name);
+  // A collection there already is, in the workspace or in a community, has the name it has there.
+  return to.name || null;
+}

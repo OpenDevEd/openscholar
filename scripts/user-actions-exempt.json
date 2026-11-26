@@ -130,6 +130,7 @@
     "screening/reviewers:candidates": "The picker of people to add to a screening, which the assistant doesn't do. It reads a workspace's members with organizations/queries:members.",
     "screening/notices:emails": "Whether the person looking gets a screening's emails, for the switch on its page.",
     "screening/view:setup": "What the form that starts a screening shows before it is filled in: credits, the plan's limits, and what is reading now. The assistant starts none.",
+    "screening/view:reading": "The rail's ring around Screen while a screening's models read. The assistant reads each screening's models with screening/view:list.",
     "screening/view:mine": "The list page's strip of what waits for the person looking. The assistant reads the same from screening/view:list.",
     "screening/view:tally": "The list page's counts beside its filters. The assistant reads the list with screening/view:list."
   },

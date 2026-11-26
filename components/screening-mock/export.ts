@@ -40,8 +40,8 @@ import {
   type Paper,
   type Result,
   type Screening,
+  collectionName,
 } from "./data";
-import { collectionName } from "./form-data";
 import type { Figures } from "./store";
 
 /** A screening as it stands, with the figures the server keeps of it, and the person taking a file out of it. */

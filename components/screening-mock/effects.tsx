@@ -12,8 +12,7 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
-import { ANOTHER_COLLECTION, collectionName } from "./form-data";
+import { collectionName, num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./parts";
 import { credits, paperCredits } from "./store";
@@ -72,7 +71,6 @@ export const criterionName = (criterion: Pick<Criterion, "text">) => {
   return inQuotes(text.length > 60 ? `${text.slice(0, 60).replace(/\s+\S*$/, "")}…` : text);
 };
 
-export { ANOTHER_COLLECTION, collectionName };
 
 /** A part of a page a link landed on: a tint that fades into its own surface over a second. Nothing under reduced motion. */
 export function landOn(target: HTMLElement | null) {

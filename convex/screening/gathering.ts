@@ -23,6 +23,7 @@ import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type Search
 import { ZOTERO_PAGE } from "../zotero/libraryValidators";
 import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
+import { unglued } from "../../lib/papers/abstract-sections";
 import { papersIn } from "./estimate";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
@@ -218,6 +219,7 @@ export const fill = internalMutation({
       const title = paper.title.trim();
       if (!title) { await leave(paper.doi ?? "A record with no title", "title", paper.paper); continue; }
       if (!paper.abstract?.trim()) { await leave(title, "abstract", paper.paper); continue; }
+      const abstract = unglued(paper.abstract);
       const identity = identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi });
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
       // It finds the papers this step already took too: a mutation reads what it wrote.
@@ -233,8 +235,9 @@ export const fill = internalMutation({
         jobId: job._id,
         ...identity,
         title,
-        abstract: paper.abstract,
-        authors: paper.authors?.slice(0, MAX_AUTHORS),
+        abstract,
+        // An index can list one author once for each of their affiliations.
+        authors: paper.authors && [...new Set(paper.authors)].slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,
         doi: paper.doi,
         venue: paper.venue,

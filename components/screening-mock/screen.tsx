@@ -1014,7 +1014,7 @@ function Screen({ open }: { open: Open }) {
 function Empty({ open, queue }: { open: Open; queue: Queue }) {
   const id = open.screening.id;
   const tally = open.screening.reviewers.find((one) => one.id === open.me)?.tally;
-  const [yours, voted] = [tally?.dealt ?? 0, tally?.cast ?? 0];
+  const [yours, voted, closed] = [tally?.dealt ?? 0, tally?.cast ?? 0, tally?.closed ?? 0];
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
     // Someone who doesn't vote reads the papers in conflict here: an empty page says there are none, then what they are to the screening.
     ? [Eye, "No paper is in conflict", notReviewerSays(open.canChange, Boolean(open.screening.finishedAt))]
@@ -1023,10 +1023,10 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
         ? [Hourglass, "Its papers are on their way", `${num(open.gathering.done)} of ${num(open.gathering.of)} are in`]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
         : !yours ? [ListChecks, open.screening.living ? "No paper has come to you yet" : "None of its papers is yours to vote on", null]
-        : voted >= yours ? [CircleCheck, "You have voted on all your papers", null]
-        : [CircleCheck, "No paper waits for your vote", `${plural(yours - voted, "of your papers was", "of your papers were")} settled without it`]
+        : !closed ? [CircleCheck, "You have voted on all your papers", null]
+        : [CircleCheck, "No paper waits for your vote", `${plural(closed, "of your papers was", "of your papers were")} settled without it`]
       : queue === "again"
-        ? [CircleCheck, "No vote of yours asks for a new one", null]
+        ? [CircleCheck, "None of your votes needs a new one", null]
       : queue === "conflicts"
         ? [GitCompare, open.canResolve ? "No conflict to settle" : "No paper is in conflict", null]
         : [ListChecks, "You haven't voted on a paper yet", null];
