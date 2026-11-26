@@ -8329,6 +8329,7 @@
         "factModels": "Models cost credits",
         "help": "Each reviewer votes include, maybe or exclude on the papers they get. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.",
         "aiModel": "AI model",
+        "aiModelAt": "AI model at {effort} effort",
         "votesKeep": "{count, plural, one {# vote keeps counting} other {# votes keep counting}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Can't read PDFs, so # paper gets no vote from it} other {Can't read PDFs, so # papers get no vote from it}}} other {{count, plural, one {Can't read the longest PDFs, so # paper gets no vote from it} other {Can't read the longest PDFs, so # papers get no vote from it}}}}",
         "creditsFor": "{credits} credits for {count, plural, one {# paper} other {# papers}}",

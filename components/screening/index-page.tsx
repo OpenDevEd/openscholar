@@ -44,6 +44,8 @@ import { useWords } from "./words";
 import { listedNames } from "./workspace";
 
 const PAGE = 25;
+/** Rows held while how many there are isn't known yet: a few, as most lists have, and the frame slides to the real number. */
+const UNCOUNTED_ROWS = 3;
 const SORTS = ["you", "active", "newest", "oldest", "name"] as const;
 /** The groups the rows fall in, and past All a tab for each, under the same name. In progress holds every screening that isn't finished, the ones that need the person among them. */
 const SHOWS = ["you", "open", "finished"] as const;
@@ -195,7 +197,7 @@ export function ScreeningsIndex() {
                 {/* The rows and what stands in for them while they are read are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
                 {loading && !rows.length ? (
-                  <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? PAGE, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
+                  <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? UNCOUNTED_ROWS, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
                 ) : (
                 <ul className={cn("divide-y divide-border-subtle", listed.isStale && "pointer-events-none opacity-60")}>
                   {rows.map(({ row, group }, i) => {

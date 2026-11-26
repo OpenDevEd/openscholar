@@ -617,7 +617,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       const made = criterionFrom(clean, more);
       return withCriteria(d, [...d.criteria, made], { ...d.scoring.points, [made.key]: [1, 0, 0] });
     });
-  const patchCriterion = (criterionKey: string, patch: Partial<Criterion>) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === criterionKey ? { ...criterion, ...patch } : criterion)) }));
+  // A patch can be worked out from the criterion as it stands when it applies, never from an earlier render: two keystrokes before a render must not read the first's.
+  const patchCriterion = (criterionKey: string, patch: Partial<Criterion> | ((now: Criterion) => Partial<Criterion>)) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === criterionKey ? { ...criterion, ...(typeof patch === "function" ? patch(criterion) : patch) } : criterion)) }));
   // Another screening's criteria are read when they are asked for, and added to the ones here with their points.
   const copyCriteria = async (one: { id: Id<"screeningJobs"> }) => {
     if (!workspaceId) return;
@@ -1232,7 +1233,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         <>
                           {/* The short name follows the question's words until someone has written one. */}
                           <div className="min-w-0 flex-1 @max-3xl/criteria:basis-[calc(100%-1.75rem)]">
-                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: isNamed(criterion) ? criterion.short : shortOf(event.target.value) })} aria-label={t("criteria.criterion", { n: i + 1 })} aria-invalid={!criterion.text.trim() || undefined} placeholder={t("criteria.questionPlaceholder")} className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
+                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, ((text) => (now: Criterion) => ({ text, short: isNamed(now) ? now.short : shortOf(text) }))(event.target.value))} aria-label={t("criteria.criterion", { n: i + 1 })} aria-invalid={!criterion.text.trim() || undefined} placeholder={t("criteria.questionPlaceholder")} className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
                             {/* What counts and what doesn't. A reviewer opens it with "Guidance" under the question on Screen, and a model is given it with the question. */}
                             <div className="flex items-start gap-1 ps-1 text-muted-foreground">
                               <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
@@ -1323,7 +1324,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? t("reviewers.aiModel") : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && draft.rule.settle !== "one" ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && draft.rule.settle !== "one" ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>

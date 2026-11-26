@@ -800,7 +800,8 @@ function Facts({ open }: { open: Open }) {
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
         <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? words.t("someone") }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">{t("facts.startedIt", { ago: words.ago(screening.createdAt) })}</span>
-        <WorkspaceTag size="sm" workspace={lookOf(workspace)} />
+        {/* Its workspace is named where it is someone else's or an organization: your own needs no name. */}
+        {screening.workspace.kind === "personal" && open.canChange ? null : <WorkspaceTag size="sm" workspace={lookOf(workspace)} />}
       </Panel>
 
       <Section

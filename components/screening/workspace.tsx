@@ -170,15 +170,15 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     };
   }, [found, view]);
 
-  // The pages. Beside the rule they are a compact group; where the card is too narrow for both they take a line of their own, each as wide as its share.
+  // The pages, on a line of their own, each as wide as its share: the card stops short of the width the rule beside them would need.
   // While the screening is read they stand where they will be: the count of its papers holds a digit's room, and Settings is there, as it is for its members.
-  const pages = (fill: boolean) => (
+  const pages = (
     <Segmented
       label={t("tabs.label")}
       value={view}
-      fill={fill ? "labels" : false}
+      fill="labels"
       // On a phone the labels go without their icons and the four stay on one line. Where large counts or an unsaved mark make that line longer than the screen, it scrolls sideways.
-      className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
+      className="@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden"
       options={[
         { id: "overview", label: t("tabs.overview"), icon: BarChart3, href: overviewHref(id) },
         { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open?.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
@@ -188,17 +188,12 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       ]}
     />
   );
-  // The strip under the bar, the same while it is read: the pages, and how a paper is decided beside or under them. Where the card is too narrow for both on a line, the pages take the first and the rule the second.
+  // The strip under the bar, the same while it is read: the pages on the first line, with what the models are doing, and how a paper is decided on the second.
+  // On Screen from a laptop's width the window's height goes to the paper: the rule shares the pages' line, where its chips scroll sideways.
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6 @[76rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages(true)}</FadeRow>{passing}</div>
-      {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
-      <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[76rem]/strip:hidden", view === "screen" && "max-sm:hidden lg:@max-[76rem]/strip:hidden")}>
-        <div className="shrink-0 @max-[76rem]/strip:hidden">{pages(false)}</div>
-        {/* It keeps its width: the rule beside it gives way, which cuts its chips where it must. */}
-        {passing ? <div className="flex shrink-0 @max-[76rem]/strip:hidden">{passing}</div> : null}
-        {view === "settings" ? null : <div className="min-w-0 @[76rem]/strip:ms-auto">{rule}</div>}
-      </div>
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{passing}{view === "screen" ? <div className="min-w-0 max-lg:hidden">{rule}</div> : null}</div>
+      {view === "settings" ? null : <div className={cn("flex items-center px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden lg:hidden")}><div className="min-w-0">{rule}</div></div>}
     </>
   );
 
@@ -323,7 +318,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
       <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
         {/* Its name shows where the line has room for it: on a line of its own from a tablet up, and beside the pages in a wide window. */}
-        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only @[76rem]/strip:sr-only @[92rem]/strip:not-sr-only">{t("rule.title")}</span>
+        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only">{t("rule.title")}</span>
         <Help
           title={t("rule.title")}
           facts={
