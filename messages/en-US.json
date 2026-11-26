@@ -1235,7 +1235,8 @@
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "e.g., make it more specific about clinical trials...",
       "screeningQuestion": "Add a screening question..."
-    }
+    },
+    "translateCost": "Picking a language translates your words, for {credits} credits"
   },
   "confirmations": {
     "cancelJob": "Cancel this job?",
@@ -8702,7 +8703,8 @@
         "onItsWay": "The PDF is on its way",
         "cantShow": "This PDF can't be shown here. Open it in a new tab."
       },
-      "perPaper": "{credits} credits a paper"
+      "perPaper": "{credits} credits a paper",
+      "pickerCost": "Credits a paper"
     },
     "overview": {
       "notSaved": "That didn't work. Try again.",

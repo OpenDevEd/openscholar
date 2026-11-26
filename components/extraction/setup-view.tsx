@@ -7,6 +7,7 @@
 // part per source, filling towards the papers the plan reads in one extraction, over a chip for
 // each source to take it out again.
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState, useTransition, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -172,7 +173,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState<ExtractionQuestionType>("string");
   const [generating, setGenerating] = useState(false);
-  const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateExtractionQuestions();
+  const { execute: generateQuestions, isConfigured: canGenerate, credits: writeCredits } = useGenerateExtractionQuestions();
   const add = () => {
     const text = draft.trim();
     if (!text || draftJob.questions.some((q) => q.question.toLowerCase() === text.toLowerCase())) return;
@@ -391,6 +392,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !groups.length}>
               <AiIcon working={generating} />
               {t("writeQuestions")}
+              <ButtonCredits credits={writeCredits} />
             </Button>
           }
         >

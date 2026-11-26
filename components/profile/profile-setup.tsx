@@ -96,7 +96,10 @@ export function ProfileSetupGate({ due: dueOnLoad, person, children }: { due: bo
 /** The setup, as the whole page. */
 function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { person: Person; initial?: Answers; /** The page it leads to is on its way. */ leaving: boolean; onSave: (answers: Answers) => Promise<void>; onSkip: () => Promise<void> }) {
   const t = useTranslations("profileSetup");
-  const [answers, setAnswers] = useState<Answers>(() => initial ?? { affiliations: [], orcid: "", emails: NO_EMAILS });
+  const [start] = useState<Answers>(() => initial ?? { affiliations: [], orcid: "", emails: NO_EMAILS });
+  const [answers, setAnswers] = useState<Answers>(start);
+  // One way on: nothing entered skips, anything entered is saved. Two buttons for the same empty page left people unsure which one they meant.
+  const untouched = JSON.stringify(answers) === JSON.stringify(start);
   const [sending, setSending] = useState<"continue" | "skip" | null>(null);
   // Just signed up, the backend may not know the person for a moment yet: the answers wait for it, never refused.
   const { isAuthenticated } = useConvexAuth();
@@ -138,14 +141,10 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
             <EmailChoices value={answers.emails} onChange={(emails) => setAnswers((was) => ({ ...was, emails }))} />
           </Field>
         </div>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Button variant="ghost" onClick={() => void send("skip")} disabled={busy}>
-            {sending === "skip" ? <Spinner /> : null}
-            {t("skip")}
-          </Button>
-          <Button onClick={() => void send("continue")} disabled={busy}>
-            {sending === "continue" ? <Spinner /> : null}
-            {t("continue")}
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={() => void send(untouched ? "skip" : "continue")} disabled={busy}>
+            {sending ? <Spinner /> : null}
+            {untouched ? t("skip") : t("continue")}
           </Button>
         </div>
       </div>

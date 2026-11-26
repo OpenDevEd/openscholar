@@ -21,7 +21,9 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { modelKey, type Person } from "./data";
+import { paperCredits, pdfsMissed } from "./store";
 import { useWords } from "./words";
+import type { Pdfs } from "@/lib/pricing/estimate";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
 export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
@@ -88,14 +90,18 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
  * server has it (convex/screening/reviewers.ts): the same model at another effort can be added beside it, and the
  * same one at the same effort can't be added twice.
  */
-export function AddModel({ taken, onPick, children }: { /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; onPick: (model: MapModel) => void; children: ReactNode }) {
+export function AddModel({ taken, pdfs, onPick, children }: { /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; /** Its papers that are only a PDF: a pick that can't read them says so before it is made. */ pdfs: Pdfs; onPick: (model: MapModel) => void; children: ReactNode }) {
   const t = useTranslations("screening.list");
+  const tf = useTranslations("screening.form");
+  const words = useWords();
+  // What a pick can't read, in the words its reviewer row uses once it is picked.
+  const missed = (model: MapModel) => { const left = pdfsMissed(model, pdfs); return left.papers ? tf("reviewers.pdfsMissed", { why: left.why, count: left.papers }) : undefined; };
   const presetModel = usePresetModels();
   const pick = (model: MapModel) => (taken.includes(modelKey(model)) ? void toast(t("onAlready", { name: stripProviderPrefix(model.name), effort: String(Boolean(model.effort)) })) : onPick({ ...model, name: stripProviderPrefix(model.name) }));
   const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !taken.includes(modelKey(model)) ? [{ id, model }] : []; }) : undefined;
-  const presets = picks?.filter((one, at) => picks.findIndex((other) => modelKey(other.model) === modelKey(one.model)) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => pick(model) }));
+  const presets = picks?.filter((one, at) => picks.findIndex((other) => modelKey(other.model) === modelKey(one.model)) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => pick(model), ...(missed(model) ? { note: missed(model) } : {}) }));
   return (
-    <ModelPicker current={undefined} efforts tasks={["screenAll"]} presets={presets} align="start" trigger={children} onChange={(model, effort) => pick({ ...model, ...(effort ? { effort } : {}) })} />
+    <ModelPicker current={undefined} efforts tasks={["screenAll"]} presets={presets} price={{ heading: t("pickerCost"), of: (model) => words.credits(paperCredits(model)) }} align="start" trigger={children} onChange={(model, effort) => pick({ ...model, ...(effort ? { effort } : {}) })} />
   );
 }
 

@@ -4,7 +4,7 @@
 // Evidence Library's models all open it. Models are grouped by vendor, filtered
 // to what the task can use, and show intelligence, context and cost side by side.
 
-import { useDeferredValue, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useDeferredValue, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -78,9 +78,14 @@ function Reads({ model }: { model: CatalogModel | undefined }) {
 const CONTEXT_CELL = "hidden text-end @[32rem]/picker:block";
 const READS_CELL = "hidden @[26rem]/picker:flex";
 
+/** What a model costs where the picker is opened, in the unit that place charges in: credits a paper for a screening. Its price per million tokens elsewhere. */
+export type PickerPrice = { heading: string; of: (model: CatalogModel) => string };
+const PriceIn = createContext<PickerPrice | undefined>(undefined);
+
 /** The intelligence meter, context and cost of a model, as row cells. */
 function Stats({ model }: { model: CatalogModel | undefined }) {
   const t = useTranslations("modelPicker");
+  const price = useContext(PriceIn);
   const free = model && model.inputPricePerMillion === 0 && model.outputPricePerMillion === 0;
   return (
     <>
@@ -90,6 +95,8 @@ function Stats({ model }: { model: CatalogModel | undefined }) {
       <span className="text-end text-xs tabular-nums text-muted-foreground">
         {!model ? null : free ? (
           <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-medium ink-success">{t("free")}</span>
+        ) : price ? (
+          price.of(model)
         ) : (
           priceLabel(model.inputPricePerMillion, model.outputPricePerMillion)
         )}
@@ -229,6 +236,7 @@ export function ModelPicker({
   presets,
   tasks = [],
   exclude,
+  price,
 }: {
   current: Current | undefined;
   /** The picked model, and its effort when the picker asked for one. */
@@ -245,6 +253,8 @@ export function ModelPicker({
   tasks?: AiTask[];
   /** Slugs to leave out, such as models already added. */
   exclude?: string[];
+  /** The cost column in the place's own unit, where it charges in one. */
+  price?: PickerPrice;
 }) {
   const t = useTranslations("modelPicker");
   const tm = useTranslations("settingsAi");
@@ -337,216 +347,219 @@ export function ModelPicker({
     catalog !== undefined && v !== "all" && (v === "other" ? ![...present].some((p) => !featured(p)) : !present.has(v));
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={openChange}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        align={align}
-        side={side}
-        className="@container/picker relative flex w-[38rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl p-0"
-        data-model-picker
-        ref={panel}
-        // Escape in the effort step goes back to the list instead of closing.
-        onEscapeKeyDown={(e) => {
-          if (!step) return;
-          e.preventDefault();
-          back();
-        }}
+    <PriceIn.Provider value={price}>
+      <Popover
+        open={open}
+        onOpenChange={openChange}
       >
-        <motion.div
-          className="flex min-h-0 flex-1 flex-col"
-          animate={{ opacity: step ? 0 : 1, x: step ? -16 : 0 }}
-          transition={{ duration: reduce ? 0 : step ? 0.16 : 0.28, ease: EASE }}
-          inert={step ? true : undefined}
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent
+          align={align}
+          side={side}
+          className="@container/picker relative flex w-[38rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl p-0"
+          data-model-picker
+          ref={panel}
+          // Escape in the effort step goes back to the list instead of closing.
+          onEscapeKeyDown={(e) => {
+            if (!step) return;
+            e.preventDefault();
+            back();
+          }}
         >
-        {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
-        <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
-          <div className="space-y-2 p-2">
-            <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
-              <Search className="size-4 shrink-0 text-muted-foreground" />
-              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-subtle-foreground" />
-            </label>
-            {filters.length > 0 ? (
-              <div
-                role="radiogroup"
-                aria-label={t("vendors")}
-                // Scrolls sideways on a narrow screen rather than cutting off the last filters.
-                className="-mx-2 flex items-center gap-1 overflow-x-auto px-2 [scrollbar-width:none]"
+          <motion.div
+            className="flex min-h-0 flex-1 flex-col"
+            animate={{ opacity: step ? 0 : 1, x: step ? -16 : 0 }}
+            transition={{ duration: reduce ? 0 : step ? 0.16 : 0.28, ease: EASE }}
+            inert={step ? true : undefined}
+          >
+          {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
+          <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
+            <div className="space-y-2 p-2">
+              <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
+                <Search className="size-4 shrink-0 text-muted-foreground" />
+                <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-subtle-foreground" />
+              </label>
+              {filters.length > 0 ? (
+                <div
+                  role="radiogroup"
+                  aria-label={t("vendors")}
+                  // Scrolls sideways on a narrow screen rather than cutting off the last filters.
+                  className="-mx-2 flex items-center gap-1 overflow-x-auto px-2 [scrollbar-width:none]"
+                  onKeyDown={keepKeys}
+                >
+                  {filters.map((v) => {
+                    const active = v === vendor;
+                    const Icon = v === "all" || v === "other" ? null : getModelIcon(`${v}/x`);
+                    const name = v === "all" ? t("all") : v === "other" ? t("other") : vendorName(v);
+                    const chip = (
+                      <button
+                        key={v}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        aria-label={name}
+                        disabled={empty(v)}
+                        onClick={() => setVendor(v)}
+                        className={cn(
+                          "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors disabled:opacity-30",
+                          active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                        )}
+                      >
+                        {Icon ? <Icon className="size-3.5" /> : null}
+                        {!Icon || active ? <span>{name}</span> : null}
+                      </button>
+                    );
+                    return Icon && !active ? (
+                      <TooltipHint key={v} label={name}>
+                        {chip}
+                      </TooltipHint>
+                    ) : (
+                      chip
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+            <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
+              <span className="hidden @[26rem]/picker:block">{t("model")}</span>
+              <span className={READS_CELL}>{t("reads")}</span>
+              <a
+                href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
+                target="_blank"
+                rel="noreferrer"
+                aria-label={t("source")}
+                className="flex items-center gap-1 hover:text-foreground"
                 onKeyDown={keepKeys}
               >
-                {filters.map((v) => {
-                  const active = v === vendor;
-                  const Icon = v === "all" || v === "other" ? null : getModelIcon(`${v}/x`);
-                  const name = v === "all" ? t("all") : v === "other" ? t("other") : vendorName(v);
-                  const chip = (
-                    <button
-                      key={v}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      aria-label={name}
-                      disabled={empty(v)}
-                      onClick={() => setVendor(v)}
-                      className={cn(
-                        "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors disabled:opacity-30",
-                        active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                      )}
-                    >
-                      {Icon ? <Icon className="size-3.5" /> : null}
-                      {!Icon || active ? <span>{name}</span> : null}
-                    </button>
-                  );
-                  return Icon && !active ? (
-                    <TooltipHint key={v} label={name}>
-                      {chip}
-                    </TooltipHint>
-                  ) : (
-                    chip
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-          <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
-            <span className="hidden @[26rem]/picker:block">{t("model")}</span>
-            <span className={READS_CELL}>{t("reads")}</span>
-            <a
-              href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
-              target="_blank"
-              rel="noreferrer"
-              aria-label={t("source")}
-              className="flex items-center gap-1 hover:text-foreground"
-              onKeyDown={keepKeys}
-            >
-              {t("intelligence")}
-              <ArrowUpRight className="size-3" />
-            </a>
-            <span className={CONTEXT_CELL}>{t("context")}</span>
-            <span className="text-end">{t("cost")}</span>
-            <span />
-          </div>
-          {/* 22rem when there's room; shorter when the screen is, since the popover caps at the space it has. */}
-          <CommandPrimitive.List className="h-[22rem] min-h-0 overflow-y-auto overscroll-contain">
-            {/* The whole list arrives at once, already scrolled to the current model, and fades in. */}
-            {rowsReady ? (
-            <div className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
-            <CommandPrimitive.Empty className="py-10 text-center text-sm text-muted-foreground">
-              {catalog === undefined ? <Spinner className="mx-auto my-0.5" aria-label={tm("loadingModels")} /> : tm("noModels")}
-            </CommandPrimitive.Empty>
-            {presets?.length && vendor === "all" ? (
-              <CommandPrimitive.Group heading={tm("presetsGroup")} className={GROUP}>
-                {presets.map((preset) => {
-                  const Icon = PRESET_ICONS[preset.id];
-                  const models = [...new Map(preset.models.map((m) => [`${m.id}:${effortOf(m)}`, m])).values()];
-                  const only = models.length === 1 ? models[0] : undefined;
-                  const onlyEffort = only ? effortOf(only) : null;
-                  const selected = Boolean(only && current && only.id === current.id && onlyEffort === currentEffort);
-                  return (
-                    <CommandPrimitive.Item
-                      key={preset.id}
-                      value={`preset ${tm(`presets.${preset.id}`)} ${models.map((m) => m.name).join(" ")}`}
-                      onSelect={pick(preset.onSelect)}
-                      className={ROW}
-                    >
-                      <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
-                        <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
-                        <span className="min-w-0">
-                          <span className="block font-medium">{tm(`presets.${preset.id}`)}</span>
-                          <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            {models.map((m) => {
-                              const Brand = getModelIcon(m.id);
-                              return <Brand key={m.id} className="size-3 shrink-0" />;
-                            })}
-                            <span dir="auto" className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
-                            {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-2xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
-                          </span>
-                        </span>
-                      </span>
-                      <Stats model={only ? byId.get(only.id) : undefined} />
-                      <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
-                    </CommandPrimitive.Item>
-                  );
-                })}
-              </CommandPrimitive.Group>
-            ) : null}
-            {groups.map(([v, list]) => {
-              const Brand = getModelIcon(list[0]!.modelId);
-              return (
-                <CommandPrimitive.Group
-                  key={v}
-                  className={GROUP}
-                  heading={
-                    <span className="flex items-center gap-1.5">
-                      <Brand className="size-3.5" />
-                      {vendorName(v)}
-                      <span className="tabular-nums text-muted-foreground/60">{list.length}</span>
-                    </span>
-                  }
-                >
-                  {list.map((row) => {
-                    const selected = current?.id === row.modelId;
+                {t("intelligence")}
+                <ArrowUpRight className="size-3" />
+              </a>
+              <span className={CONTEXT_CELL}>{t("context")}</span>
+              <span className="text-end">{price?.heading ?? t("cost")}</span>
+              <span />
+            </div>
+            {/* 22rem when there's room; shorter when the screen is, since the popover caps at the space it has. */}
+            <CommandPrimitive.List className="h-[22rem] min-h-0 overflow-y-auto overscroll-contain">
+              {/* The whole list arrives at once, already scrolled to the current model, and fades in. */}
+              {rowsReady ? (
+              <div className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+              <CommandPrimitive.Empty className="py-10 text-center text-sm text-muted-foreground">
+                {catalog === undefined ? <Spinner className="mx-auto my-0.5" aria-label={tm("loadingModels")} /> : tm("noModels")}
+              </CommandPrimitive.Empty>
+              {presets?.length && vendor === "all" ? (
+                <CommandPrimitive.Group heading={tm("presetsGroup")} className={GROUP}>
+                  {presets.map((preset) => {
+                    const Icon = PRESET_ICONS[preset.id];
+                    const models = [...new Map(preset.models.map((m) => [`${m.id}:${effortOf(m)}`, m])).values()];
+                    const only = models.length === 1 ? models[0] : undefined;
+                    const onlyEffort = only ? effortOf(only) : null;
+                    const selected = Boolean(only && current && only.id === current.id && onlyEffort === currentEffort);
                     return (
                       <CommandPrimitive.Item
-                        key={row.modelId}
-                        value={row.modelId}
-                        keywords={[vendorName(v), row.name]}
-                        onSelect={() => choose(row)}
+                        key={preset.id}
+                        value={`preset ${tm(`presets.${preset.id}`)} ${models.map((m) => m.name).join(" ")}`}
+                        onSelect={pick(preset.onSelect)}
                         className={ROW}
-                        data-model-option={row.modelId}
-                        ref={selected ? revealCurrent : undefined}
                       >
                         <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
-                          <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
-                          <span dir="auto" className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
+                          <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
+                          <span className="min-w-0">
+                            <span className="block font-medium">{tm(`presets.${preset.id}`)}</span>
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                              {models.map((m) => {
+                                const Brand = getModelIcon(m.id);
+                                return <Brand key={m.id} className="size-3 shrink-0" />;
+                              })}
+                              <span dir="auto" className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
+                              {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-2xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
+                            </span>
+                            {preset.note ? <span className="block text-xs ink-warning">{preset.note}</span> : null}
+                          </span>
                         </span>
-                        <Stats model={row} />
+                        <Stats model={only ? byId.get(only.id) : undefined} />
                         <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
                       </CommandPrimitive.Item>
                     );
                   })}
                 </CommandPrimitive.Group>
-              );
-            })}
-            </div>
+              ) : null}
+              {groups.map(([v, list]) => {
+                const Brand = getModelIcon(list[0]!.modelId);
+                return (
+                  <CommandPrimitive.Group
+                    key={v}
+                    className={GROUP}
+                    heading={
+                      <span className="flex items-center gap-1.5">
+                        <Brand className="size-3.5" />
+                        {vendorName(v)}
+                        <span className="tabular-nums text-muted-foreground/60">{list.length}</span>
+                      </span>
+                    }
+                  >
+                    {list.map((row) => {
+                      const selected = current?.id === row.modelId;
+                      return (
+                        <CommandPrimitive.Item
+                          key={row.modelId}
+                          value={row.modelId}
+                          keywords={[vendorName(v), row.name]}
+                          onSelect={() => choose(row)}
+                          className={ROW}
+                          data-model-option={row.modelId}
+                          ref={selected ? revealCurrent : undefined}
+                        >
+                          <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
+                            <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
+                            <span dir="auto" className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
+                          </span>
+                          <Stats model={row} />
+                          <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
+                        </CommandPrimitive.Item>
+                      );
+                    })}
+                  </CommandPrimitive.Group>
+                );
+              })}
+              </div>
+              ) : null}
+            </CommandPrimitive.List>
+          </CommandPrimitive>
+            {/* Built from the current pick, which the caller already has, so it's there on the first frame. */}
+            {efforts && current?.reasoningEfforts?.length ? (
+              // The current model's effort, changed in place without closing.
+              <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 ps-4 pe-2">
+                <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
+                <Segmented
+                  className="min-w-0 max-w-full shrink flex-wrap"
+                  label={tm("effort")}
+                  // No highlight until a level is picked when OpenRouter names no default.
+                  value={currentEffort ?? ("" as Effort)}
+                  onChange={(effort) => currentRow && onChange(toMapModel(currentRow, effort), effort)}
+                  options={current.reasoningEfforts.map((level) => ({
+                    id: level,
+                    label: tm(`efforts.${level}`),
+                    // Only the chosen level shows its bars, so seven levels still fit on one row.
+                    ...(level === currentEffort && { detail: <EffortMeter levels={current.reasoningEfforts!} level={level} filled="bg-current" /> }),
+                  }))}
+                />
+              </div>
             ) : null}
-          </CommandPrimitive.List>
-        </CommandPrimitive>
-          {/* Built from the current pick, which the caller already has, so it's there on the first frame. */}
-          {efforts && current?.reasoningEfforts?.length ? (
-            // The current model's effort, changed in place without closing.
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 ps-4 pe-2">
-              <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
-              <Segmented
-                className="min-w-0 max-w-full shrink flex-wrap"
-                label={tm("effort")}
-                // No highlight until a level is picked when OpenRouter names no default.
-                value={currentEffort ?? ("" as Effort)}
-                onChange={(effort) => currentRow && onChange(toMapModel(currentRow, effort), effort)}
-                options={current.reasoningEfforts.map((level) => ({
-                  id: level,
-                  label: tm(`efforts.${level}`),
-                  // Only the chosen level shows its bars, so seven levels still fit on one row.
-                  ...(level === currentEffort && { detail: <EffortMeter levels={current.reasoningEfforts!} level={level} filled="bg-current" /> }),
-                }))}
+          </motion.div>
+          <AnimatePresence>
+            {step ? (
+              <EffortStep
+                key={step.row.modelId}
+                row={step.row}
+                fromY={step.fromY}
+                chosen={current?.id === step.row.modelId ? currentEffort : null}
+                onBack={back}
+                onPick={(effort) => pick(() => onChange(toMapModel(step.row, effort), effort))()}
               />
-            </div>
-          ) : null}
-        </motion.div>
-        <AnimatePresence>
-          {step ? (
-            <EffortStep
-              key={step.row.modelId}
-              row={step.row}
-              fromY={step.fromY}
-              chosen={current?.id === step.row.modelId ? currentEffort : null}
-              onBack={back}
-              onPick={(effort) => pick(() => onChange(toMapModel(step.row, effort), effort))()}
-            />
-          ) : null}
-        </AnimatePresence>
-      </PopoverContent>
-    </Popover>
+            ) : null}
+          </AnimatePresence>
+        </PopoverContent>
+      </Popover>
+    </PriceIn.Provider>
   );
 }

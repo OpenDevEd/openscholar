@@ -110,7 +110,7 @@ export function toMapModel(
   };
 }
 
-export type PresetPick = { id: PresetKey; models: MapModel[]; onSelect: () => void };
+export type PresetPick = { id: PresetKey; models: MapModel[]; onSelect: () => void; /** What the pick can't do where it is offered, said under it: a model that can't read the PDFs it would be given. */ note?: string };
 
 // Diagram geometry, in px.
 const ROW = 46;

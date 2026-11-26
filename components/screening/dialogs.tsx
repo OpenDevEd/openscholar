@@ -31,7 +31,7 @@ import { modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, pe
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import { papersHref } from "./links";
 import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
-import { perPaper, type Open } from "./store";
+import { pdfsOf, perPaper, type Open } from "./store";
 import { AddModel } from "./team";
 import { useWords } from "./words";
 
@@ -221,7 +221,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               </>
             )}
             {finished ? null : (
-              <AddModel taken={models.map((model) => modelKey(model.model!))} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
+              <AddModel taken={models.map((model) => modelKey(model.model!))} pdfs={pdfsOf(screening.sources)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
                 <Button variant="outline" size="sm" className="ms-auto h-8"><AiIcon />{t("peopleDialog.addModel")}</Button>
               </AddModel>
             )}

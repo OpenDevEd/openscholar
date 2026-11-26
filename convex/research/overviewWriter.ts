@@ -59,13 +59,15 @@ export async function writeOverview(
   },
 ) {
   const { model, pricing } = resolved;
+  const language = new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? "English";
   let counts = 0;
   let lists = 0;
   const years = z.object({ from: z.number().int().optional(), to: z.number().int().optional() }).optional().describe("Only papers published in these years, both included.");
   const result = streamText({
     model,
-    system: SYSTEM(new Date().getUTCFullYear(), new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? "English"),
-    prompt: `What the person wants to know about this search: ${instruction}`,
+    system: SYSTEM(new Date().getUTCFullYear(), language),
+    // The language is said again last: the lens, the tools' results and the papers' titles are often in another one, and a model said once at the top drifted into English under a French page.
+    prompt: `What the person wants to know about this search: ${instruction}\n\nWrite the overview in ${language}.`,
     stopWhen: isStepCount(STEPS),
     maxRetries: 1,
     providerOptions: callOptions(model, { effort }),

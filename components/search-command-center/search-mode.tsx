@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { paperOfQuery, SEMANTIC_FIELD } from "@/lib/search/source";
@@ -78,8 +79,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Use the new router hooks
   const { write: writeQuery, isConfigured: isEnhanceConfigured } = useQuestionToQuery();
   // Writing a query is free for anyone, so whether to offer sign-in depends on the rest of the AI.
-  const { isConfigured: isAIConfigured } = useEnhanceSearchQuery();
-  const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
+  const { isConfigured: isAIConfigured, credits: askCredits } = useEnhanceSearchQuery();
+  const { execute: translateQueryFn, isConfigured: isTranslateConfigured, credits: translateCredits } = useTranslateQuery();
 
   const selectedLanguage = search?.params?.lang ?? "";
 
@@ -290,6 +291,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
             >
               <AiIcon working={isEnhancing} size={12} className="h-3 w-3" />
               {t('askAI')}
+              <ButtonCredits credits={askCredits} />
             </Button>
           }
         />
@@ -326,6 +328,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 disabled={isLanguageSelectorDisabled}
                 translateDisabled={!localInputValue.trim()}
                 isTranslating={isTranslating}
+                credits={translateCredits}
               />
               <Button
                 aria-label={tc('search')}

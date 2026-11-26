@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // Sync effect for editableQuery when urlQuery changes (prev/next); try/finally in enhance handler
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
@@ -36,7 +37,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const router = useRouter();
 
   // Use the new router hook
-  const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
+  const { execute: enhanceQuery, isConfigured, credits } = useEnhanceSearchQuery();
 
   // Get query from URL params
   const urlQuery = search.params.q;
@@ -142,6 +143,7 @@ Please enhance this academic search query according to the user's specific instr
             >
               <AiIcon working={isEnhancing} size={12} className="h-3 w-3" />
               {t("searchCommand.enhance")}
+              <ButtonCredits credits={credits} />
             </Button>
           }
         />

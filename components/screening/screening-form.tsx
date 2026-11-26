@@ -4,6 +4,7 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
@@ -473,7 +474,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const saveChange = useWorkspaceMutation(api.screening.settings.save);
   const saveToCommunity = useWorkspaceAction(api.screening.settings.saveToCommunity);
   const previewChange = useWorkspaceAction(api.screening.effects.preview);
-  const { execute: writeQuestions } = useGenerateScreeningCriteria();
+  const { execute: writeQuestions, credits: writeCredits } = useGenerateScreeningCriteria();
   const share = useSharing((saved?.id ?? "") as Id<"screeningJobs">);
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
@@ -1163,7 +1164,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   ) : null}
                   <TooltipHint label={writing ? undefined : (cantWrite ?? undefined)}>
                     <span tabIndex={cantWrite && !writing ? 0 : -1} className="inline-flex rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={writing || Boolean(cantWrite)} onClick={writeCriteria}><AiIcon working={writing} />{t("criteria.write")}</Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={writing || Boolean(cantWrite)} onClick={writeCriteria}><AiIcon working={writing} />{t("criteria.write")}<ButtonCredits credits={writeCredits} /></Button>
                     </span>
                   </TooltipHint>
                 </span>
@@ -1354,7 +1355,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />{t("reviewers.addPerson")}</Button>
                 </AddPerson>
-                <AddModel taken={models.map((model) => modelKey(model.model!))} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>
+                <AddModel taken={models.map((model) => modelKey(model.model!))} pdfs={pdfs} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>
                   <Button variant="outline" size="sm" className="w-full"><AiIcon />{t("reviewers.addModel")}</Button>
                 </AddModel>
               </div>

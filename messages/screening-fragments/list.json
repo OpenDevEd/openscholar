@@ -99,5 +99,6 @@
     "onItsWay": "The PDF is on its way",
     "cantShow": "This PDF can't be shown here. Open it in a new tab."
   },
-  "perPaper": "{credits} credits a paper"
+  "perPaper": "{credits} credits a paper",
+  "pickerCost": "Credits a paper"
 }

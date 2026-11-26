@@ -1,6 +1,7 @@
 "use client";
   "use no memo"; // try/finally in handlers
 
+import { ButtonCredits } from "@/components/ui/button-credits";
 import React, { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
@@ -54,7 +55,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
     clearAllTestIndexPerQuestion,
   } = useTransientScreeningStore();
 
-  const { execute: generateQuestions, isConfigured } = useGenerateScreeningQuestions();
+  const { execute: generateQuestions, isConfigured, credits } = useGenerateScreeningQuestions();
 
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
@@ -242,6 +243,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
                 >
                   <AiIcon working={isGenerating} size={14} className="h-3.5 w-3.5" />
                   {t("common.generate")}
+                  <ButtonCredits credits={credits} />
                 </Button>
                 {screeningQuestions.length > 0 && (
                   <Button
