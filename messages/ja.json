@@ -202,7 +202,8 @@
     "calendarMonth": "月を選択",
     "calendarYear": "年を選択",
     "calendarNavigation": "カレンダーのナビゲーション",
-    "upToCredits": "最大{credits}"
+    "upToCredits": "最大{credits}",
+    "upToCreditsEach": "1件あたり最大{credits}"
   },
   "home": {
     "tagline": "学術研究を検索・スクリーニングし、エビデンスを抽出",

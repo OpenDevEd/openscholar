@@ -202,7 +202,8 @@
     "calendarMonth": "Khetha inyanga",
     "calendarYear": "Khetha unyaka",
     "calendarNavigation": "Ukuzulazula kwekhalenda",
-    "upToCredits": "Kufika ku-{credits}"
+    "upToCredits": "Kufika ku-{credits}",
+    "upToCreditsEach": "Kufika ku-{credits} ngephepha ngalinye"
   },
   "home": {
     "tagline": "Sesha, skrina futhi ukhiphe ubufakazi ocwaningweni lwezemfundo",

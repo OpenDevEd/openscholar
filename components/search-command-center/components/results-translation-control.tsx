@@ -1,5 +1,7 @@
 "use client";
 
+import { ButtonCredits } from "@/components/ui/button-credits";
+import { useBatchTranslations } from "@/lib/ai/client/router";
 import React, { useCallback, useContext, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, TranslateIcon, Undo2 } from "@/components/icons";
@@ -172,6 +174,8 @@ export function TranslationSettingsMenu({
   const localeTargetId = `${targetModeId}-target-locale`;
   const manualTargetId = `${targetModeId}-target-manual`;
   const { localeTargetLanguage, targetLanguageOverride, effectiveTargetLanguage, effectiveTargetLabel } = useTranslationTarget();
+  // Each paper's title and abstract is one call: what the run costs is that times the papers on the page not translated yet.
+  const { credits: paperCredits } = useBatchTranslations();
 
   const autoTranslateResults = useResultsTranslationSettingsStore(
     (state) => state.autoTranslateResults
@@ -355,7 +359,7 @@ export function TranslationSettingsMenu({
               {t("undoTranslation")}
             </span>
           ) : (
-            <span key="run" className="animate-in fade-in-0 slide-in-from-top-1 duration-200">{t("runResultsTranslation")}</span>
+            <span key="run" className="inline-flex items-center gap-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">{t("runResultsTranslation")}<ButtonCredits credits={paperCredits} each className="text-current opacity-80" /></span>
           )}
         </Button>
       </div>

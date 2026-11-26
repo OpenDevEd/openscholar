@@ -202,7 +202,8 @@
     "calendarMonth": "Monat auswählen",
     "calendarYear": "Jahr auswählen",
     "calendarNavigation": "Kalendernavigation",
-    "upToCredits": "Bis zu {credits}"
+    "upToCredits": "Bis zu {credits}",
+    "upToCreditsEach": "Bis zu {credits} pro Artikel"
   },
   "home": {
     "tagline": "Wissenschaftliche Forschung durchsuchen, screenen und Evidenz extrahieren",

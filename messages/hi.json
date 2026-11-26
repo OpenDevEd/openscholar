@@ -202,7 +202,8 @@
     "calendarMonth": "महीना चुनें",
     "calendarYear": "वर्ष चुनें",
     "calendarNavigation": "कैलेंडर नेविगेशन",
-    "upToCredits": "{credits} तक"
+    "upToCredits": "{credits} तक",
+    "upToCreditsEach": "प्रति लेख {credits} तक"
   },
   "home": {
     "tagline": "अकादमिक शोध खोजें, स्क्रीन करें और उससे साक्ष्य निकालें",

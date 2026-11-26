@@ -202,7 +202,8 @@
     "calendarMonth": "Escolher o mês",
     "calendarYear": "Escolher o ano",
     "calendarNavigation": "Navegação do calendário",
-    "upToCredits": "Até {credits}"
+    "upToCredits": "Até {credits}",
+    "upToCreditsEach": "Até {credits} por artigo"
   },
   "home": {
     "tagline": "Pesquise, faça a triagem e extraia evidências da investigação académica",

@@ -202,7 +202,8 @@
     "calendarMonth": "Choose the month",
     "calendarYear": "Choose the year",
     "calendarNavigation": "Calendar navigation",
-    "upToCredits": "Up to {credits}"
+    "upToCredits": "Up to {credits}",
+    "upToCreditsEach": "Up to {credits} a paper"
   },
   "home": {
     "tagline": "Search, screen and extract evidence from academic research",

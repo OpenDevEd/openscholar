@@ -202,7 +202,8 @@
     "calendarMonth": "Chagua mwezi",
     "calendarYear": "Chagua mwaka",
     "calendarNavigation": "Urambazaji wa kalenda",
-    "upToCredits": "Hadi {credits}"
+    "upToCredits": "Hadi {credits}",
+    "upToCreditsEach": "Hadi {credits} kwa kila makala"
   },
   "home": {
     "tagline": "Tafuta, chuja na uchimbue ushahidi kutoka kwa utafiti wa kitaaluma",

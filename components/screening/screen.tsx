@@ -457,7 +457,7 @@ function Screen({ open }: { open: Open }) {
       <li key={one.id}>
         <button ref={isOpen ? openRow : undefined} type="button" data-queue-paper={one.id} aria-current={isOpen || undefined} onClick={() => pick(one)} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors", isOpen ? "bg-primary/8" : "hover:bg-muted")}>
           <span className={cn("min-w-0 flex-1 transition-opacity", dealt && "opacity-55")}>
-            <span className={cn("line-clamp-2 text-sm leading-5", isOpen ? "font-semibold" : "font-medium")}>{one.title}</span>
+            <span dir="auto" className={cn("line-clamp-2 text-sm leading-5", isOpen ? "font-semibold" : "font-medium")}>{one.title}</span>
             <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <span className="min-w-0 truncate">{bylineOf(one, true)}</span>
               {/* New is what the last check brought, as on Papers. */}{one.batch !== undefined && one.batch === open.latest?.id && queue === "todo" ? <StateChip tone="primary" className="h-5 px-1.5 text-2xs">{t("row.new")}</StateChip> : null}
@@ -1019,7 +1019,7 @@ function Screen({ open }: { open: Open }) {
                       {lastReason ? <span className="flex min-w-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={criteria} className="min-w-0" />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={t("bar.alsoFailed", { count: alsoFailed })}>+{words.num(alsoFailed)}</span> : null}</span> : null}
                       {last.paper.id !== paper.id ? (
                         <TooltipHint label={last.paper.title} onlyWhenClipped>
-                          <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline">{words.quoted(last.paper.title)}</button>
+                          <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline"><bdi>{words.quoted(last.paper.title)}</bdi></button>
                         </TooltipHint>
                       ) : <span className="flex-1" />}
                       {madeConflict ? (

@@ -557,7 +557,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                       <li key={one.id} data-paper={one.id} className={cn("flex gap-3 px-4 py-3 transition-colors", isOpen && "bg-muted")}>
                         <Checkbox className="mt-0.5" checked={chosen.includes(one.id)} onCheckedChange={() => pickOne(one)} aria-label={t("table.select", { title: one.title })} />
                         <button type="button" aria-expanded={isOpen} onClick={() => (isOpen ? close() : show(one.id))} className="block min-w-0 flex-1 space-y-2 text-start outline-none focus-visible:underline">
-                          <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
+                          <span dir="auto" className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{bylineOf(one)}</span>
                           <span className="flex items-center gap-1">
                             {/* The marks stand without names here: your own is ringed, as your face is where faces stand without names. */}
@@ -660,7 +660,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                           </TableCell>
                           <TableCell className="py-2 whitespace-normal">
                             <button type="button" aria-expanded={isOpen} className="block w-full min-w-0 text-start outline-none focus-visible:underline">
-                              <span className="line-clamp-2 text-sm font-medium leading-5">
+                              <span dir="auto" className="line-clamp-2 text-sm font-medium leading-5">
                                 {one.title}
                                 {one.batch !== undefined && one.batch === newest ? <StateChip tone="primary" className="ms-2 h-5 align-[1px] px-1.5 text-2xs">{t("table.new")}</StateChip> : null}
                               </span>

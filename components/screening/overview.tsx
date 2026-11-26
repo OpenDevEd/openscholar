@@ -241,7 +241,7 @@ function SettingsChip({ open, part, ...chip }: { open: Open; part: "papers" | "r
  * whichever language: "Include" and "Agrees with people" are longer words in most. A name the wider headings
  * leave less room for runs onto a second line.
  */
-const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(8rem,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,minmax(3.25rem,auto))_fit-content(10.5rem)_2rem]";
+const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(11rem,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,minmax(3.25rem,auto))_fit-content(10.5rem)_2rem]";
 /** A part of the table that spans it: a group of rows, or a line that isn't cut into the columns. */
 const ACROSS = "@2xl/reviewers:col-span-full";
 const SHARED = "@2xl/reviewers:col-span-full @2xl/reviewers:grid @2xl/reviewers:grid-cols-subgrid";
@@ -629,7 +629,7 @@ function Unread({ open, model }: { open: Open; model: Reviewer }) {
       <ScrollArea shades className="-mx-1 min-h-10 flex-1">
         <ul className={cn("space-y-0.5 transition-opacity", papers.isStale && "opacity-60")}>
           {papers.items.map((paper) => (
-            <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
+            <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span dir="auto" className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
           ))}
         </ul>
       </ScrollArea>
