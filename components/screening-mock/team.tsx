@@ -3,7 +3,7 @@
 // Adding a reviewer to a screening: a person from the workspace, someone outside it, an address to
 // invite, or any model in the catalogue at any effort. Used by the form and by the open screening.
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, Fragment } from "react";
 import { Mail, UserPlus } from "@/components/icons";
 import { ModelPicker } from "@/components/models/model-picker";
 import { usePresetModels, type MapModel } from "@/components/settings/model-map";
@@ -15,10 +15,10 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
-import { PEOPLE, PERSON_SAYS, type Person } from "./data";
+import { PEOPLE, PERSON_SAYS, type Person, HOME, standsTo, type Workspace } from "./data";
 
 /** Picks a person: the workspace's members first, then people outside it, or an email address to invite. */
-export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
+export function AddPerson({ exclude, workspace = HOME, owner, onPick, children }: { exclude: string[]; /** The workspace the screening is in: the people are grouped by where they stand to it. */ workspace?: Workspace; /** Whose it is, where it is someone's own. */ owner?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const left = PEOPLE.filter((person) => !exclude.includes(person.id));
@@ -51,15 +51,15 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
             <CommandEmpty>{email ? null : "Nobody by that name. Type an email address to invite someone."}</CommandEmpty>
-            {group(PERSON_SAYS.member, left.filter((person) => !person.guest))}
-            {group(PERSON_SAYS.guest, left.filter((person) => person.guest))}
+            {/* Grouped by where each stands to the screening's workspace, in the words their row has once added. */}
+            {[...new Set(left.map((person) => standsTo(person, workspace, owner)))].sort((a, b) => Number(a !== PERSON_SAYS.member) - Number(b !== PERSON_SAYS.member)).map((place) => <Fragment key={place}>{group(place, left.filter((person) => standsTo(person, workspace, owner) === place))}</Fragment>)}
             {email ? (
               <CommandGroup heading="Invite">
                 <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>
-                    <span className="block text-xs text-muted-foreground">{PERSON_SAYS.invited}</span>
+                    <span className="block text-xs text-muted-foreground">{PERSON_SAYS.invites}</span>
                   </span>
                 </CommandItem>
               </CommandGroup>

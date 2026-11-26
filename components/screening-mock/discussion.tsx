@@ -8,13 +8,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { Hourglass, MessagesSquare, Send } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
-import { HelpFact } from "@/components/ui/help";
+
 import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ago, firstName, personOf, waitingQuestions, type Paper } from "./data";
-import { Help, SHUT, Section, ShutChip, ShutNote, StateChip } from "./parts";
+import { ago, firstName, personOf, waitingQuestions, type Paper, modelsOf } from "./data";
+import { Help, Section, ShutChip, ShutNote, StateChip } from "./parts";
 import type { Open } from "./store";
 
 /** A choice of who a line is for. */
@@ -25,8 +25,10 @@ const TO_OFF = "border-border-subtle text-muted-foreground hover:bg-muted hover:
 
 /** What the discussion is and when it is there, behind its "?": the same wherever its title shows, open or shut. The rule that hides it until you vote is named only on a screening that has that rule. */
 const about = (open: Open) => (
-  <Help title="Discussion" facts={open.screening.rule.blind === "after" ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : undefined}>
-    Write to everyone on this paper, or to one reviewer. A line to one reviewer is a question: it shows on their Screening list and on Screen, as a question for them, until they answer it. Models don&apos;t answer: press one of their answers in the table for the passage they read.
+  <Help title="Discussion">
+    {/* Said of the people who write here, so it is true for someone who only reads. */}
+    <p>Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question: it stays on their Screening list until they answer.{modelsOf(open.screening).length ? " A model can't be asked: press one of its marks in the table for the passage it read." : ""}</p>
+    {open.screening.rule.blind === "after" ? <p>This screening hides what is written about a paper from a reviewer only while the paper still waits for that reviewer&apos;s own vote.</p> : null}
   </Help>
 );
 
@@ -67,7 +69,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
     <Section
       title="Discussion"
       help={about(open)}
-      aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{firstName(owed.name)} asked you</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>Waiting for {firstName(waitingFor.name)}</StateChip> : null}
+      aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{firstName(owed.name)} asked you</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>Waiting for {firstName(waitingFor.name)}&apos;s answer</StateChip> : null}
     >
       {said.length ? (
         // Each line carries its own room over and under it, so one that arrives opens from nothing with no gap jumping in beside it. The list takes that room back at its two ends, inside a box of its own so the room between it and the field stays.
@@ -107,7 +109,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
         </div>
       ) : null}
       {/* Someone who only looks reads what was written, and is told who writes here. Nothing is left out for them without a word. */}
-      {maySay ? null : <ShutNote by="reviewer">{said.length ? "Only this screening's reviewers write here." : "Nobody has written about this paper yet. Only this screening's reviewers write here."}</ShutNote>}
+      {maySay ? null : <ShutNote by="reviewer">{said.length ? "" : "Nobody has written about this paper yet. "}Only its reviewers and the person who settles conflicts write here.{open.canChange && !open.screening.finishedAt ? " Join as a reviewer to write." : ""}</ShutNote>}
       {maySay ? (
         <div className="space-y-2 rounded-2xl border border-border-subtle p-2.5">
           {/* Who the line is for: everyone on the paper, or one reviewer, which makes it a question that waits with them. The line under the choices says which, and is always there, so choosing moves nothing. */}
@@ -123,7 +125,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{to ? `For ${firstName(to.name)} to answer. Everyone on this paper sees it, and it stays on ${firstName(to.name)}'s Screening list until then.` : "Everyone who votes on this paper sees it. Pick a name to put a question to one of them."}</p>
+              <p className="text-xs text-muted-foreground">{to ? `For ${firstName(to.name)} to answer. Everyone who can see this paper's votes reads it, and it stays on ${firstName(to.name)}'s Screening list until then.` : "Everyone who can see this paper's votes reads it. Pick a name to ask one person a question."}</p>
             </div>
           ) : null}
           <div className="flex items-end gap-2">
@@ -134,7 +136,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
               onChange={(event) => setText(event.target.value)}
               // Enter starts a new line, as in any note. With Ctrl or Cmd it sends.
               onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); send(); } }}
-              placeholder={owed ? `Answer ${firstName(owed.name)}` : to ? `Ask ${firstName(to.name)} about their vote` : "Write to everyone on this paper"}
+              placeholder={owed ? `Answer ${firstName(owed.name)}` : to ? `Ask ${firstName(to.name)} a question` : "Write to everyone on this paper"}
               aria-label={owed ? `Your answer to ${owed.name}` : to ? `Your question for ${to.name}` : "Your message"}
               className="max-h-32 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm"
             />

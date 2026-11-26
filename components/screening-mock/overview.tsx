@@ -26,7 +26,7 @@ import { DAY, PERSON_SAYS, inOrder, num, plural, excludedBy, foundTotal, paperTo
 import type { ExportTab } from "./dialogs";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText, collectionName } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, LeftOutNote } from "./parts";
+import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, LeftOutNote, StateChip } from "./parts";
 import { walletOf, credits, useMock, type Open, spentOf, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -56,7 +56,7 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">Its papers are on their way</p>
-        <p className="max-w-md text-sm text-muted-foreground">They show here as they arrive from its sources. You can start screening as soon as the first are in.</p>
+        <p className="max-w-md text-sm text-muted-foreground">They show here as they arrive from its sources.{open.isReviewer ? " You can start screening as soon as the first are in." : ""}</p>
       </div>
     );
   }
@@ -115,12 +115,13 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             title="Where a paper stands"
             facts={RESULTS.map((result) => {
               const Icon = RESULT_STYLE[result].icon;
-              const text = result === "maybe" ? "Maybe when a must-have can't be answered" : result === "conflict" ? `In conflict until ${settlerSettles(screening, open.me)} it` : RESULT_LABEL[result];
+              const text = result === "maybe" ? "Maybe means it is unclear whether the paper belongs" : result === "conflict" ? `In conflict until ${settlerSettles(screening, open.me)} it` : RESULT_LABEL[result];
               return <HelpFact key={result} icon={Icon}>{text}</HelpFact>;
             })}
           >
-            <p>A paper settles once its votes meet the screening&apos;s rule. Maybe counts as settled: the reviewers agree the abstract can&apos;t decide it.</p>
-            <p>A Maybe is not saved with the included papers. It stays under Maybe on the Papers page, and a reviewer who changes their vote settles it again.</p>
+            {/* What settles a paper here, said outright: the rule's own name is in the chips over the page, and this must read without them. */}
+            <p>{screening.rule.settle === "all" ? "A paper settles when all its reviewers vote the same way." : screening.rule.settle === "most" ? "A paper settles when most of its reviewers vote the same way." : "A paper settles with its first vote."} Maybe is a result like the others, so a paper at Maybe counts as settled.</p>
+            <p>A paper at Maybe is not saved with the included papers. It stays under Maybe on the Papers page, and its result can still change when a reviewer changes their vote.</p>
           </Help>
         }
         aside={
@@ -195,13 +196,14 @@ function Yours({ open }: { open: Open }) {
       </span>
       {waiting.length ? (
         <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">
-          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={INLINE_LINK}>{num(waiting.length)} of them {waiting.length === 1 ? "waits" : "wait"}</NextLink>
-          {" for "}
+          {/* A sentence of its own, about papers: "them" after "Your 73 votes" read as votes that wait. */}
+          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={INLINE_LINK}>{plural(waiting.length, "paper you voted on", "papers you voted on")}</NextLink>
+          {waiting.length === 1 ? " still waits for " : " still wait for "}
           {named.map((reviewer, i) => (
             <span key={reviewer.id}>
-              {i ? " and " : ""}
+              {i ? (i === named.length - 1 && others.length <= 2 ? " and " : ", ") : ""}
               {/* Your papers that still wait for this reviewer's vote. */}
-              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className={cn(INLINE_LINK, "font-normal")}>{reviewer.name}</NextLink>
+              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className={cn(INLINE_LINK, "font-normal")}>{shortName(reviewer)}</NextLink>
             </span>
           ))}
           {others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote.
@@ -305,8 +307,8 @@ function Reviewers({ open }: { open: Open }) {
       id="reviewers"
       title="Reviewers"
       help={
-        <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every open paper</HelpFact> : null}</>}>
-          <p>Each person votes on a share of the papers. Each model votes on every paper that was open when it joined.</p>
+        <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of the ${people} people vote on each paper` : "Every person votes on every paper"}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every open paper</HelpFact> : null}</>}>
+          <p>{each < people ? "Each person votes on a share of the papers." : "Each person votes on every paper."}{modelsOf(screening).length ? " Each model reads the papers still open, and new ones as they are added. It skips a paper that was settled before it joined." : ""}</p>
           <p>Under a person&apos;s count is when they get through what they have left, if they keep the pace of their last three days.</p>
         </Help>
       }
@@ -329,7 +331,7 @@ function Reviewers({ open }: { open: Open }) {
         </>
       }
     >
-      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="the counts by vote and the agreement" /></div>
+      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="each reviewer's Include, Maybe and Exclude counts and the agreement" /></div>
       {rows.length ? (
         <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
@@ -372,7 +374,7 @@ function Reviewers({ open }: { open: Open }) {
           ) : null}
         </div>
       ) : (
-        <EmptyNote>Nobody votes on these papers yet. Add a person or a model from the row above.</EmptyNote>
+        <EmptyNote>Nobody votes on these papers yet.{open.canChange ? " Add a person or a model with the buttons beside Share." : ""}</EmptyNote>
       )}
       <ConfirmChange
         open={leaving !== null}
@@ -381,13 +383,13 @@ function Reviewers({ open }: { open: Open }) {
         onClose={() => { setLeaving(null); setDiscard(false); }}
         onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
       >
-        {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} unseen={(paper) => !open.canSee(paper)} /> : null}
+        {leaving ? <EffectList lines={effectLines(screening, without(leaving), { me: open.me })} moves={effectMoves(screening, without(leaving))} unseen={(paper) => !open.canSee(paper)} /> : null}
         {/* Their work stands unless whoever takes them off says otherwise: the votes go only where that is asked for, and what it undoes shows above before it is done. */}
         {leaving && leavingVotes ? (
           <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
             <span className="min-w-0 flex-1">
               <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
-              <span className="block text-xs text-muted-foreground">{discard ? "The votes stay on record and count for nothing. The papers they decided are voted on again." : "Off, the votes go on counting and no paper's result changes."}</span>
+              <span className="block text-xs text-muted-foreground">{discard ? `${leavingMe ? "Your" : "Their"} votes stay on record and stop counting.` : `${leavingMe ? "Your" : "Their"} votes keep counting.`}</span>
             </span>
             <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Throw out ${leavingMe ? "your" : "their"} votes`} />
           </label>
@@ -467,6 +469,8 @@ const daysFrom = (days: number) => (days === 1 ? "a day" : days < 14 ? `${days} 
 function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void; /** Opens the move of some of this person's papers to someone else, where they have papers that can go. */ onMove?: () => void }) {
   const { screening } = open;
   const { reviewer, assigned, done, split, agrees, compared, missed, included, left, perDay, idle } = row;
+  // The people there are to compare a vote with: none, where it is the only person or a model with no people beside it.
+  const peopleOn = readersOf(screening).people.length;
   const takes = doneIn(left, perDay);
   const id = screening.id;
   const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
@@ -547,7 +551,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (reviewer.kind === "person" ? "No other person to compare with" : "No people to compare with") : "Nothing to compare yet"}</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block whitespace-nowrap text-xs tabular-nums ink-destructive")}>Excluded {missed} of {num(included)} included</NextLink>
@@ -729,8 +733,8 @@ function Facts({ open }: { open: Open }) {
       <Section
         title="Included papers go to"
         help={
-          <Help title="Where included papers go" facts={<><HelpFact>Saved as each is included</HelpFact>{to.prune ? <HelpFact>Excluded papers are taken out</HelpFact> : null}</>}>
-            <p>Each paper is saved to this collection when it is included.</p>
+          <Help title="Where included papers go" facts={collection ? <><HelpFact>Saved as each is included</HelpFact>{to.prune ? <HelpFact>Excluded papers are taken out</HelpFact> : null}</> : undefined}>
+            <p>{collection ? "Each paper is saved to this collection when it is included." : `Included papers stay in the screening and are saved to no collection.${open.canChange ? " Choose a collection to save them to." : ""}`}</p>
           </Help>
         }
         aside={open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={settingsHref(screening.id, "goes-to")}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
@@ -745,7 +749,7 @@ function Facts({ open }: { open: Open }) {
             <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />Nowhere yet</p>
           )}
           <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon} className="w-fit">
-            <AnimatedNumber value={counts.include} /> {collection ? "saved so far" : "included, kept here"}
+            <AnimatedNumber value={counts.include} /> {collection ? "saved so far" : "included"}
           </LinkChip>
         </Panel>
       </Section>
@@ -770,7 +774,7 @@ function Facts({ open }: { open: Open }) {
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
-                <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip>
+                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.canChange ? <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip> : <StateChip tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</StateChip>}
                 <Chip>{plural(models.length, "model", "models")}</Chip>
               </div>
             </>
@@ -798,7 +802,7 @@ function Checks({ open }: { open: Open }) {
   if (!sources.length) {
     return screening.living ? (
       <Section id="new-papers" title="Checks for new papers" aside={<ShutChip by="sources" />}>
-        <ShutNote by="sources">A check looks in a search, a collection or a community for papers this screening doesn&apos;t have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check.</ShutNote>
+        <ShutNote by="sources">A check looks in a search, a collection or a community for papers this screening doesn&apos;t have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check. {open.canChange ? "Add a search, a collection or a community as a source to get new papers." : "Nothing is checked until a search, a collection or a community is added as a source."}</ShutNote>
       </Section>
     ) : null;
   }
@@ -886,7 +890,7 @@ function Checks({ open }: { open: Open }) {
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">At the start</span><span className="text-xs text-muted-foreground">{ago(screening.createdAt)}</span></p>
-              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{num(atStart)} papers from {plural(screening.sources.length, "source", "sources")}</LinkChip>
+              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{plural(atStart, "paper", "papers")} from {plural(screening.sources.length, "source", "sources")}</LinkChip>
             </div>
           </div>
         </div>

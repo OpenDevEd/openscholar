@@ -28,9 +28,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { passageAt, plural, num, inQuotes, inOrder, type Criterion, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer, whoIs, NO_VOTE, shortName } from "./data";
+import { passageAt, plural, num, inQuotes, inOrder, type Criterion, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Reviewer, whoIs, NO_VOTE, shortName, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS, modelsOf, emptyResult, firstName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, LeftOutNote } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
@@ -44,11 +44,9 @@ const ROW = 57;
 
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
-const SORT_LABEL: Record<Sort, string> = { added: "As added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
+const SORT_LABEL: Record<Sort, string> = { added: "As added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Published, newest first", split: "Most disagreement", points: "Most points" };
 /** Each order's sign: an arrow for the way a title runs, and what the others go by. */
 const SORT_ICON: Record<Sort, AppIcon> = { added: Clock, title: ArrowDown, "title-desc": ArrowUp, result: ListChecks, newest: CalendarDays, split: GitCompare, points: Award };
-/** A result tab with nothing in it, while no filter or search narrows it. */
-const EMPTY_TAB: Record<Result | "all", string> = { all: "No papers yet", include: "Nothing included yet", maybe: "Nothing marked Maybe yet", exclude: "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" };
 const VOTED = ["any", ...DECISIONS, "none", "settled", "failed"] as const;
 type Voted = (typeof VOTED)[number];
 
@@ -166,18 +164,20 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     if (kind !== "any" && reviewerId !== open.me && !open.canSee(paper)) return false;
     return kind === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === kind;
   };
+  // The votes a filter by someone else's decision can't look at: theirs on the papers whose votes are hidden from the person looking.
+  const words = query.trim().toLowerCase();
+  /** Everything that narrows the table but whose vote it is: the source, when it was added, who else voted, the reason, the search. */
+  const passes = (paper: Paper) =>
+    (from === "all" || paper.source === from) &&
+    (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) &&
+    also.every((one) => Boolean(entryOf(paper, one)?.vote)) &&
+    (!reason || reasonKey(paper) === reason) &&
+    (!words || `${paper.title} ${paper.authors.join(" ")} ${paper.sentences.join(" ")}`.toLowerCase().includes(words));
+  // Only the ones the rest of the narrowing and the open tab would have kept: a paper another filter drops is not left out by this one.
+  const keptBack = who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? papers.filter((paper) => passes(paper) && (filter === "all" || settled[paper.id]!.result === filter) && entryOf(paper, who)?.vote && !open.canSee(paper)).length : 0;
   // Every paper the filters and the search leave, whatever its result: the tabs count these.
   const narrowed = useMemo(() => {
-    const words = query.trim().toLowerCase();
-    return papers.filter(
-      (paper) =>
-        (from === "all" || paper.source === from) &&
-        (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) &&
-        (!who || votedAs(paper, who, voted)) &&
-        also.every((one) => Boolean(entryOf(paper, one)?.vote)) &&
-        (!reason || reasonKey(paper) === reason) &&
-        (!words || `${paper.title} ${paper.authors.join(" ")} ${paper.sentences.join(" ")}`.toLowerCase().includes(words)),
-    );
+    return papers.filter((paper) => passes(paper) && (!who || votedAs(paper, who, voted)));
   }, [papers, votes, settled, from, added, who, voted, alsoKey, reason, reasonKey, query, open.me]); // eslint-disable-line react-hooks/exhaustive-deps -- the others by their ids, since the list is a new one on every draw
   const tabCounts = useMemo(() => Object.fromEntries(RESULTS.map((result) => [result, narrowed.filter((paper) => settled[paper.id]!.result === result).length])) as Record<(typeof RESULTS)[number], number>, [narrowed, settled]);
   const rows = useMemo(() => {
@@ -364,7 +364,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: DECISION_LABEL[decision], icon: <Icon />, tone, count: countVoted(decision) }; }),
             { value: "none" as Voted, label: NO_VOTE.yet, icon: <Hourglass />, count: countVoted("none"), group: "No vote" },
             ...(countVoted("failed") ? [{ value: "failed" as Voted, label: NO_VOTE.failed, icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: "No vote" }] : []),
-            ...(settles(who) ? [{ value: "settled" as Voted, label: "Settled a conflict", icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: "Conflicts" }] : []),
+            ...(settles(who) ? [{ value: "settled" as Voted, label: "Settled the result", icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: "Decisions" }] : []),
           ]}
         />
       ) : null}
@@ -447,6 +447,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
         <div className="shrink-0">{sorter(trigger)}</div>
       </div>
 
+      {/* A filter by how someone else voted can't count the votes hidden from the person looking: it says how many it leaves out, as the Overview and the files do. */}
+      {keptBack ? <div className="px-4 pb-3 sm:px-6"><LeftOutNote votes={keptBack} papers={keptBack} of="this filter" /></div> : null}
       {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
@@ -488,7 +490,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                       <Popover key={decision}>
                         <PopoverTrigger asChild><VoteButton decision={decision} size="sm" /></PopoverTrigger>
                         <PopoverContent side="top" align="end" className="w-80 p-3">
-                          <ReasonPicker criteria={open.screening.criteria} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
+                          <ReasonPicker criteria={open.screening.criteria} many={conflictsPicked.length > 1} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
                         </PopoverContent>
                       </Popover>
                     ) : (
@@ -501,7 +503,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                 <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7"><Download />Export</Button></DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="end">
                   <DropdownMenuItem onSelect={() => exportPicked("ris")}>RIS file, for a reference manager</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => exportPicked("csv")}>CSV file, with every vote</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportPicked("csv")}>{chosen.some((one) => { const paper = papers.find((p) => p.id === one); return paper && !open.canSee(paper); }) ? "CSV file, with the votes you can see" : "CSV file, with every vote"}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="ghost" size="sm" className="h-7" onClick={() => setPicked([])}>Clear selection</Button>
@@ -526,7 +528,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}</span>
                           <span className="flex items-center gap-1">
-                            {votes[one.id]!.map(({ reviewer: r, vote, failed }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settled[one.id]!.final)} hidden={!visible && r.id !== open.me} who={r.name} />)}
+                            {votes[one.id]!.map(({ reviewer: r, vote, failed }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settled[one.id]!.final)} hidden={!visible && r.id !== open.me} who={r.id === open.me ? "You" : r.name} />)}
                             <ResultChip result={settled[one.id]!.result} className="ms-auto" />
                           </span>
                         </button>
@@ -564,7 +566,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                       <TableHead rowSpan={2} className={cn("w-52 ps-6", reasonHidden)}>
                         <span className="inline-flex items-center gap-1">
                           Reason
-                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points on included papers only</HelpFact><HelpFact>Points from the majority answer</HelpFact></>}>
+                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points on included papers only</HelpFact><HelpFact>Points from the most common answer</HelpFact></>}>
                             <p>Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.</p>
                             <p>An included paper shows its points and stars. Each criterion earns the points set in the screening&apos;s settings, from the answer most reviewers gave, and the stars follow the point thresholds set there.</p>
                           </Help>
@@ -584,7 +586,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
                                       {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
-                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{one.id === open.me ? "You" : shortName(one)}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
+                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{/* The column is narrow: a first word under the face, with the whole name in its menu and its tooltip. */}{one.id === open.me ? "You" : firstName(one.name)}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>
@@ -634,7 +636,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                           {columns === "reviewers"
                             ? reviewers.map((r) => {
                                 const theirs = cast.find((entry) => entry.reviewer.id === r.id);
-                                return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} settled={Boolean(state.final)} hidden={!visible && r.id !== open.me} who={r.name} className="align-middle" /> : null}</TableCell>;
+                                return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} settled={Boolean(state.final)} hidden={!visible && r.id !== open.me} who={r.id === open.me ? "You" : r.name} className="align-middle" /> : null}</TableCell>;
                               })
                             : criteria.map((criterion) => {
                                 const given = visible ? [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))] : [];
@@ -679,7 +681,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   </>
                 ) : (
                   <>
-                    <p className="text-sm text-muted-foreground">{EMPTY_TAB[filter]}</p>
+                    <p className="text-sm text-muted-foreground">{emptyResult(filter, Boolean(screening.finishedAt))}</p>
                     {/* Nothing has got this far, and the papers that could are still short of a vote or split: each count opens them. */}
                     {filter === "include" || filter === "maybe" || filter === "exclude" ? (
                       <div className="flex flex-wrap justify-center gap-1.5">
@@ -728,14 +730,15 @@ function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode })
 /** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
 function VoteMarksHelp({ blind, children, className }: { /** The screening hides the others' votes until you vote. */ blind: boolean; children: ReactNode; className?: string }) {
   return (
-    <Help title="Vote marks" side="bottom" className={className} facts={blind ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : undefined}>
+    <Help title="Vote marks" side="bottom" className={className}>
       <p>{children}</p>
+      {blind ? <p>{VOTES_HIDDEN_SAYS}</p> : null}
       <Legend>
         {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
-        {blind ? <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, {SHUT.vote.says.toLowerCase()}</LegendRow> : null}
-        <LegendRow mark={<VoteMark who="A reviewer" />}>{NO_VOTE.yet}</LegendRow>
-        <LegendRow mark={<VoteMark settled who="A reviewer" />}>{NO_VOTE.none}: settled without it</LegendRow>
-        <LegendRow mark={<VoteMark failed who="A model" />}>A model: {NO_VOTE.failed.toLowerCase()}</LegendRow>
+        {blind ? <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden while the paper waits for the reviewer&apos;s own vote</LegendRow> : null}
+        <LegendRow mark={<VoteMark who="A reviewer" />}>{NO_VOTE_SAYS.yet}</LegendRow>
+        <LegendRow mark={<VoteMark settled who="A reviewer" />}>{NO_VOTE_SAYS.none}</LegendRow>
+        <LegendRow mark={<VoteMark failed who="A model" />}>{NO_VOTE_SAYS.failed}</LegendRow>
         <LegendRow mark={<span className="size-6" />}>An empty cell is a paper that isn&apos;t theirs to vote on</LegendRow>
       </Legend>
     </Help>
@@ -759,7 +762,7 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
   const cast = entries.flatMap((one) => one.vote ?? []);
   if (state.result === "waiting") {
     const missing = entries.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
-    if (!missing.length) return <span className="text-xs text-muted-foreground">Nobody reads it yet</span>;
+    if (!missing.length) return <span className="text-xs text-muted-foreground">No reviewer can vote on it yet</span>;
     const mine = missing[0]!.id === open.me;
     return (
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -767,7 +770,7 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
         <span className="flex items-center">
           {missing.slice(0, 5).map((one, i) => {
             const link = narrow({ reviewer: one.id, voted: "none" });
-            const says = `${link.on ? "Stop showing only the papers" : "Papers"} waiting for ${one.id === open.me ? "your vote" : one.name}`;
+            const says = `${link.on ? "Stop showing only the papers" : "Papers"} waiting for ${one.id === open.me ? "your vote" : `${one.name}'s vote`}`;
             return (
             <TooltipHint key={one.id} label={says}>
               <NextLink href={link.href} aria-current={link["aria-current"]} aria-label={says} className={cn("flex outline-none ring-2 ring-card transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:ring-ring/50", link.on && "z-10 ring-foreground", one.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
@@ -804,7 +807,7 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
 /** The drawer's own scroll is the outside system: a step that opens low in it is brought into view once, as it is first drawn. Kept outside the panel so it is the same function on every draw: one made anew each draw would be called again whenever a model reads on, and pull the drawer back. */
 const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
-function ReasonPicker({ criteria, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The note the step before already holds: it is shown here as it was written, and never looks lost. Left out, the picker keeps its own. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
+function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds: it is shown here as it was written, and never looks lost. Left out, the picker keeps its own. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
   const [own, setOwn] = useState("");
   const [missing, setMissing] = useState(false);
   const field = useRef<HTMLInputElement>(null);
@@ -812,10 +815,11 @@ function ReasonPicker({ criteria, note: given, onNote, onPick, onBack }: { crite
   const setNote = onNote ?? setOwn;
   return (
     <div className="space-y-2">
-      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder="Note (optional)" aria-label="Note" aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 bg-card text-sm" />
+      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder="Note, needed for another reason" aria-label="Note" aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 bg-card text-sm" />
       {missing ? <p id="reason-note-error" className="text-xs ink-destructive">Write the reason in the note</p> : null}
       <ReasonRows
         criteria={criteria}
+        many={many}
         onPick={(reason) => {
           // A reason no criterion covers is the note itself.
           if (reason === "other" && !note.trim()) {
@@ -897,7 +901,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       {paper.sentences.length ? (
         <p className="text-sm leading-6">{paper.sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>
       ) : (
-        <NoAbstract />
+        <NoAbstract models={modelsOf(screening).length > 0} />
       )}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
@@ -913,7 +917,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
           </section>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
-            <h3 className="text-sm font-medium">{mine ? "Change your vote" : "Waiting for your vote"}</h3>
+            <h3 className="text-sm font-medium">{mine ? "Change your vote" : state.final ? "Settled without your vote" : "Waiting for your vote"}</h3>
             {buttons("vote")}
           </Panel>
         )
@@ -982,11 +986,11 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
           <h3 className="flex items-center gap-1 text-sm font-medium">
             Override result
             <Help title="Overriding a result" side="left" facts={<><HelpFact>Votes kept</HelpFact><HelpFact icon={Undo2}>Can be reopened</HelpFact></>}>
-              <p>Your decision replaces the result the votes gave. The votes stay on record. Reopen puts the paper back under the screening&apos;s rule.</p>
+              <p>Your decision replaces the result the votes gave. The votes stay on record. Reopen takes your decision away, and the votes decide the result again.</p>
             </Help>
           </h3>
           {/* Settling it now ends the wait for whoever has yet to vote: said before it is done (it was only seen afterwards, as their column going). */}
-          {awaited.length ? <Note icon={Hourglass}>{listed(awaited.map((one) => (one.id === open.me ? "You" : one.name)))} {awaited.length === 1 && awaited[0]!.id !== open.me ? "has" : "have"} yet to vote. Your decision settles the paper without {awaited.length === 1 ? "that vote" : "those votes"}, and takes it off {awaited.length === 1 ? (awaited[0]!.id === open.me ? "your" : "their") : "their"} list.</Note> : null}
+          {awaited.length ? <Note icon={Hourglass}>{listed(awaited.map((one) => (one.id === open.me ? "You" : one.name)))} {awaited.length === 1 && awaited[0]!.id !== open.me ? "has" : "have"} yet to vote. Your decision settles the paper without {awaited.length === 1 ? "that vote" : "those votes"}, and takes it off {awaited.every((one) => one.id === open.me) ? "your list" : awaited.some((one) => one.id === open.me) ? "your lists" : awaited.length === 1 ? "their list" : "their lists"}.</Note> : null}
           {buttons("result")}
           <Button variant="ghost" size="sm" className="w-full" onClick={() => setDeciding(null)}>Cancel</Button>
         </section>

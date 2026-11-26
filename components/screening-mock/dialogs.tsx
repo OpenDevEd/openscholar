@@ -19,10 +19,10 @@ import { HelpFact } from "@/components/ui/help";
 import { ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { RESULTS, type Result, PERSON_SAYS, num, paperTotal, plural, slug, DECISION_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, listed, inOrder, nameOn, votingReviewers } from "./data";
+import { RESULTS, type Result, PERSON_SAYS, num, paperTotal, plural, slug, DECISION_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, listed, inOrder, nameOn, votingReviewers, VOTES_HIDDEN_SAYS, standsTo, emptyResult, NO_VOTE, type Workspace } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips, LeftOutNote } from "./parts";
+import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips, LeftOutNote } from "./parts";
 import { bibOf, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf } from "./export";
 import { credits, type Open, useMock, walletOf } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -146,8 +146,8 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
           <div className="min-w-0 flex-1">
             <DialogTitle className="flex items-center gap-1 text-base">
               Share this screening
-              <Help title="Reviewer or viewer" facts={screening.rule.blind === "after" ? <HelpFact icon={SHUT.vote.icon}>Votes {SHUT.vote.says.toLowerCase()}</HelpFact> : undefined}>
-                A viewer sees every paper and every vote. A reviewer gets papers and votes on them.
+              <Help title="Reviewer or viewer">
+                A viewer sees every paper and every vote. A reviewer gets papers and votes on them.{screening.rule.blind === "after" ? ` ${VOTES_HIDDEN_SAYS}` : ""}
               </Help>
             </DialogTitle>
             <DialogDescription className="truncate text-xs">{screening.name}</DialogDescription>
@@ -173,14 +173,14 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
                   // Its workspace's members see it already: as viewers, the people to add are the ones outside it.
                   candidates: PEOPLE.filter((person) => !on.some((one) => one.id === person.id) && (addAs === "reviewer" || person.guest) && (!words || person.name.toLowerCase().includes(words)))
                     .sort((a, b) => Number(Boolean(a.guest)) - Number(Boolean(b.guest)))
-                    .map((person) => ({ key: person.id, avatar: <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-9" />, name: person.name, detail: person.guest ? PERSON_SAYS.guest : PERSON_SAYS.member, pick: () => add(personReviewer(person, Date.now())) })),
+                    .map((person) => ({ key: person.id, avatar: <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-9" />, name: person.name, detail: standsTo(person, workspace, screening.createdBy), pick: () => add(personReviewer(person, Date.now())) })),
                   invite: (email) => add(invitedReviewer(email, Date.now())),
                   has: (email) => on.some((one) => one.email === email),
                 }
               : undefined
           }
           entries={[
-            { key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace, screening.createdBy)} size="row" />, name: workspace.name, detail: workspace.members, role: { kind: "member", label: "See it and can change it" } },
+            { key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace, screening.createdBy)} size="row" />, name: workspace.name, detail: workspace.members, role: { kind: "member", label: "Can see and change it" } },
             ...people.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one), role: "reviewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "viewer" && onDemote(one) : undefined })),
             ...viewers.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one, false), role: "viewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "reviewer" && onPromote(one) : undefined, onRemove: state.canChange ? () => state.update((s) => ({ ...s, viewers: s.viewers?.filter((viewer) => viewer.id !== one.id) }), { what: `Stopped sharing it with ${one.name}` }) : undefined })),
           ]}
@@ -196,9 +196,12 @@ export function MoveDialog({ open, onClose, screening, me, onMove }: { open: boo
   const store = useMock();
   const [to, setTo] = useState<string | null>(null);
   const from = workspaceOf(screening);
+  // A workspace as the log names it, for everyone who reads it: someone's own is theirs by name, never "yours".
+  const nameIn = (workspace: Workspace, owner: string) => (workspace.kind === "personal" ? `${personOf(owner)?.name ?? "someone"}'s own workspace` : workspace.name);
   const target = WORKSPACES.find((one) => one.id === to);
   const models = modelsOf(screening);
-  const staying = peopleOf(screening).filter((one) => one.id !== me).length;
+  // Whoever else is on it or has it shared with them keeps it through the move.
+  const staying = peopleOf(screening).filter((one) => one.id !== me).length + (screening.viewers ?? []).filter((one) => one.id !== me).length;
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { onClose(); setTo(null); } }}>
       <DialogContent className={`max-w-md ${AVATARS_FADE_IN}`}>
@@ -226,9 +229,9 @@ export function MoveDialog({ open, onClose, screening, me, onMove }: { open: boo
               lines={[
                 "Its papers, votes, settings and activity go with it",
                 ...(models.length ? [`Its ${models.length === 1 ? "model is" : "models are"} paid from ${target.name}'s credits from now on`] : []),
-                ...(staying ? [`The ${staying === 1 ? "other person" : `${staying} other people`} on it ${staying === 1 ? "stays" : "stay"} on it, as ${staying === 1 ? "a guest" : "guests"} where they aren't in ${target.name}`] : []),
+                ...(staying ? [`Its other reviewers and viewers keep it, as guests where they aren't in ${target.name}`] : []),
                 ...(screening.destination.kind !== "none" ? [`Papers it has saved stay in ${from.name}, and the ones it includes from now on are saved in ${target.name}`] : []),
-                `It leaves ${from.name}'s list for everyone else there`,
+                `Members of ${from.name} who aren't its reviewers or viewers no longer see it`,
               ]}
             />
           ) : (
@@ -237,7 +240,7 @@ export function MoveDialog({ open, onClose, screening, me, onMove }: { open: boo
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => { onClose(); setTo(null); }}>Cancel</Button>
-          <Button disabled={!target} onClick={() => { if (target) onMove(target.id, `Moved it from ${from.name} to ${target.name}`); onClose(); setTo(null); }}>Move</Button>
+          <Button disabled={!target} onClick={() => { if (target) onMove(target.id, `Moved it from ${nameIn(from, screening.createdBy)} to ${nameIn(target, me)}`); onClose(); setTo(null); }}>Move</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -349,7 +352,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       title: "Methods paragraph",
       help: (
         <Help title="Methods paragraph">
-          Written from this screening&apos;s sources, criteria, reviewers and votes. It changes as votes come in, so copy it when you are done.
+          Written from this screening&apos;s sources, criteria, reviewers and votes as they stand now. Copy it when it describes the results you want to report.
         </Help>
       ),
     },
@@ -372,7 +375,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
             <Panel tone="warning" className="flex items-start gap-2.5 py-2.5 text-sm">
               <Info className="mt-1 size-4 shrink-0 ink-warning" />
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="font-medium">{screening.finishedAt ? "Marked finished with papers still open, so this is part of the result" : "Not finished, so this is part of the result"}</span>
+                <span className="font-medium">{screening.finishedAt ? "Marked finished with papers still open, so these files leave those papers unsettled" : "Not finished yet, so these files hold the results so far"}</span>
                 <OpenPapersChips id={id} conflict={counts.conflict} waiting={waiting} onClick={onClose} />
               </span>
             </Panel>
@@ -427,7 +430,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3"><EmptyNote>{group === "mine" ? "You haven't voted Include on a paper yet." : group === "all" ? "This screening has no papers yet." : `No paper is ${RESULT_LABEL[group].toLowerCase()} yet.`}</EmptyNote></div>
+                <div className="space-y-3"><EmptyNote>{group === "mine" ? "You haven't voted Include on a paper yet." : emptyResult(group, Boolean(screening.finishedAt))}</EmptyNote></div>
               )
             ) : tab === "votes" ? (
               <div className="space-y-3">
@@ -460,7 +463,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
                 <p className="text-xs text-muted-foreground">
                   {sample.length < rows.length ? `These are ${sample.length} of the ${num(rows.length)} votes in the file. ` : ""}
-                  {unvoted + locked ? `It has ${plural(unvoted + locked, "more row", "more rows")}, one for each place with no vote to show: ${listed([...(unvoted ? ["a reviewer who has yet to vote or a model that couldn't read the paper"] : []), ...(locked ? ["a vote that is hidden from you"] : [])])}.` : ""}
+                  {unvoted + locked ? `The file also has ${plural(unvoted + locked, "row", "rows")} with no vote to show: ${listed([...(count(lines, (row) => row.status === NO_VOTE.yet) ? ["reviewers who have yet to vote"] : []), ...(count(lines, (row) => row.status === NO_VOTE.none) ? ["papers settled without a reviewer's vote"] : []), ...(count(lines, (row) => row.status === NO_VOTE.failed) ? ["papers a model couldn't read"] : []), ...(locked ? ["votes hidden from you"] : [])])}.` : ""}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <NextLink href={papersHref(id)} onClick={onClose}>See every vote in Papers<ArrowRight /></NextLink>
@@ -477,13 +480,14 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   {([
                     ["Papers", record.papers.length, "Each with its DOI, its abstract, where it came from and where it stands"],
                     ["Votes", record.votes.length, "Each with its reason, its note, its answers, and the passage a model read"],
-                    ["Without a vote", record.without_a_vote.length, "Who has yet to vote on a paper, and what a model couldn't read"],
+                    ["Without a vote", record.without_a_vote.length, "Why each reviewer has no vote on a paper"],
                     ["Criteria", record.criteria.length, "As they are asked, with their guidance, and which are must-haves"],
                     ["Reviewers", record.reviewers.length, "People and models, with when each joined or was taken off"],
                     ["Sources", record.sources.length, "What each brought, before and after duplicates"],
                     ["Messages", record.discussion.length, "What reviewers wrote to each other about a paper"],
                     ["Changes", record.activity.length, "The activity log: what was changed, by whom and when"],
-                    ["Columns", Object.keys(record.guide.papers).length + Object.keys(record.guide.votes).length, "A guide to what each column of the two CSV files holds"],
+                    // The guide has one entry for all the criteria's columns: the count is of the columns themselves.
+                    ["Columns", Object.keys(record.guide.papers).length + Object.keys(record.guide.votes).length - 1 + screening.criteria.length, "What each column of the two CSV files holds"],
                   ] as const).map(([name, count, what]) => (
                     <li key={name} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                       <span className="w-28 shrink-0 font-medium">{name}</span>
@@ -500,7 +504,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         </div>
         </ScrollArea>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
-          <p className="me-auto min-w-0 text-xs text-muted-foreground max-sm:basis-full">{{ papers: "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.", votes: "One row for each reviewer on each paper. Opens in Excel, Google Sheets or R.", flow: "PNG goes into a document. SVG can be edited.", record: "For keeping, and for code. Opens in any text editor.", methods: "It changes as votes come in: copy it when the screening is done." }[tab]}</p>
+          <p className="me-auto min-w-0 text-xs text-muted-foreground max-sm:basis-full">{{ papers: "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.", votes: "One row for each reviewer on each paper. Opens in Excel, Google Sheets or R.", flow: "PNG goes into a document. SVG can be edited.", record: "For keeping, and for code. Opens in any text editor.", methods: "Written from the screening as it stands now. Copy it when it describes the results you want to report." }[tab]}</p>
           {(tab === "papers"
             ? [
                 { key: `papers-csv:${group}`, label: "Download CSV", run: () => save(fileName(out, GROUP_FILE[group], "csv", Date.now()), "text/csv", papersCsv(out, included)), off: !included.length },

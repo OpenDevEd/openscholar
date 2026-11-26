@@ -24,12 +24,12 @@ import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel } from "./data";
+import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
 import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { StateChip, Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
+import { StateChip, Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
 import { useMock, useModelsReading, useOpenScreening, type Open, modelsDone, toppedUp, perPaper } from "./store";
 import { AddModel, AddPerson } from "./team";
 
@@ -86,8 +86,8 @@ function ruleFacts(screening: Screening, voter: boolean) {
     who: readers ? `Each paper: ${readers}` : "No reviewer yet",
     whoIcon: each ? Users : AiIcon,
     when: SETTLE_SAYS[screening.rule.settle],
-    // Someone who doesn't vote here sees every vote: the chip then says what holds for the reviewers.
-    see: screening.rule.blind === "after" ? (voter ? `Votes ${SHUT.vote.says.toLowerCase()}` : "Reviewers see votes once they vote") : "Votes visible to all",
+    // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
+    see: screening.rule.blind === "after" ? (voter ? "Votes hidden in your To do" : "Votes hidden in reviewers' To do") : "Votes visible to all",
     seeIcon: screening.rule.blind === "after" ? Lock : Eye,
   };
 }
@@ -250,7 +250,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
       {open.canChange ? (
         <>
-          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
+          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} workspace={workspaceOf(screening)} owner={screening.createdBy} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
             <PickerButton hint="Add a person"><UserPlus /></PickerButton>
           </AddPerson>
           <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
@@ -276,8 +276,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             </>
           }
         >
-          <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
+          <p>Each paper gets the votes named in these chips, and is settled once they are in.</p>
           {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>{screening.rule.settle === "all" ? "When its reviewers split" : "With no majority among its reviewers"}, the paper is in conflict until {settlerSettles(screening, open.me)} it.</p>}
+          {/* What the third chip stands for, in full, for whoever reads it. */}
+          {screening.rule.blind === "after" ? <p>{VOTES_HIDDEN_SAYS}</p> : null}
           {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
         </Help>
       </span>
@@ -297,7 +299,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
   const role = !open.isReviewer
-    ? { label: lookerLabel(open.canChange), icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on." : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
+    ? { label: lookerLabel(open.canChange), icon: Eye, text: open.canChange ? `You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.${screening.finishedAt ? "" : " Join as a reviewer to get some."}` : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
     : !open.canChange
       ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers you get. Only ${workspace.name}'s members change its settings.` }
       : null;
@@ -396,7 +398,8 @@ function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Rev
     <span className="flex shrink-0 items-center">
       {reviewers.slice(0, max).map((reviewer, i) => {
         const on = shown.includes(reviewer.id);
-        const says = on ? `Take ${reviewer.name} out of the filter` : shown.length ? `Add ${reviewer.name} to the filter` : `${reviewer.name}'s votes`;
+        const [whose, who] = reviewer.id === me ? ["Your", "yourself"] : [`${reviewer.name}'s`, reviewer.name];
+        const says = on ? `Take ${who} out of the filter` : shown.length ? `Add ${who} to the filter` : `${whose} votes`;
         return (
           <TooltipHint key={reviewer.id} label={says}>
             <NextLink
@@ -472,11 +475,10 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     );
   }
   if (kind === "nothing") {
-    const before = screening.updates?.at(-2)?.at ?? screening.createdAt;
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span className="font-medium">No new papers since {ago(before)}</span>
+        <span className="font-medium">The last check found no new papers</span>
       </div>
     );
   }
@@ -487,7 +489,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <span className="font-medium">{MODELS_SAY.gathering.says}</span>
         <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {num(open.gathering.of)}</span>
-        {open.isReviewer ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
+        {/* Offered once one of the papers that are in is theirs to vote on. */}{open.isReviewer && open.toDo.length ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
       </div>
     );
   }
@@ -498,7 +500,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <span className="flex items-center gap-1 font-medium">
           {MODELS_SAY.credits.says}
           <Help title={MODELS_SAY.credits.says} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {perPaper(model.model!)}</HelpFact>)}>
-            A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once credits are added.
+            A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {open.canChange ? "you add credits" : `${workspace} adds credits`}.
           </Help>
         </span>
         <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsDone(screening, reading))} of {num(papers.length)} papers</span>
@@ -514,7 +516,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <CircleCheck className={icon} />
         <span className="flex items-center gap-1 font-medium">
           Finished {ago(at) === day(at) ? `on ${day(at)}` : ago(at)}
-          <Help title="Finished screening">Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.</Help>
+          <Help title="Finished screening">Its models stop reading and it stops checking for new papers. {open.canChange ? "You can still read, export and change it, or reopen it." : `You can still read and export it. A member of ${workspace} can reopen it.`}</Help>
         </span>
         {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={open.check}><RefreshCw />Check for new papers</Button> : null}
         {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button> : null}
@@ -528,7 +530,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <CirclePause className={icon} />
         <span className="flex items-center gap-1 font-medium">
           {MODELS_SAY.paused.says}
-          <Help title="Paused models">Paused models read nothing and spend no credits. People keep voting, and papers settle on the votes they have.</Help>
+          <Help title="Paused models">Paused models read nothing and spend no credits. People can keep voting. {open.canChange ? "Resume the models to have them read on." : `A member of ${workspace} can resume them.`}</Help>
         </span>
         <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)} papers read</span>
         {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}

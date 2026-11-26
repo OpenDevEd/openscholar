@@ -36,7 +36,10 @@ export const personOf = (id: string) => PEOPLE.find((person) => person.id === id
 /** Who a person is to a screening, in the words every list of its people uses. `sent` is an invitation that goes out with the save it waits for. */
 /** What someone who has no vote on a screening is called: a member of its workspace is not a reviewer, someone it is shared with from outside is a viewer. */
 export const lookerLabel = (member: boolean) => (member ? "Not a reviewer" : "Viewer");
-export const PERSON_SAYS = { invited: "Invited by email, votes once they join", invitedToLook: "Invited by email, sees it once they join", sent: "Invited by email once you save", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
+/** `invited` and `invitedToLook` stand once the invitation is sent. Before that, `toInvite` on a row not saved yet, `toInviteAtStart` on a screening not started yet, and `invites` in the list a person is picked from. */
+export const PERSON_SAYS = { invited: "Invited by email, votes once they join", invitedToLook: "Invited by email, sees it once they join", toInvite: "Gets an invitation when you save", toInviteAtStart: "Gets an invitation when you start", invites: "Gets an invitation by email", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
+/** Where a person stands to a screening's workspace, as the line under their name: a member of it, a member of the home workspace seen from another, or someone from outside. `owner` is whose own workspace it is, where it is one. */
+export const standsTo = (person: Pick<Person, "id" | "guest"> | undefined, workspace: Workspace, owner?: string) => (person && memberOf(person.id, workspace, owner) ? PERSON_SAYS.member : person?.guest ? PERSON_SAYS.guest : `In ${HOME.name}`);
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
 /** A reviewer's name where there is little room: a person's first name, and a model's whole name, since its first word alone only names its maker. */
@@ -149,16 +152,18 @@ export type Scoring = { points: Record<string, [number, number, number]>; minimu
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean };
 
 /** Why a paper is excluded when it isn't one of the criteria: shown after them in the list of reasons. */
-const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }];
+/** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
+const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason" }];
 /**
  * What a paper can be excluded for, in two groups, the same wherever Exclude asks why: a must-have it fails, or another
  * reason. A nice-to-have criterion is never one: failing it doesn't exclude a paper. Each has a key for the keyboard: a
  * must-have its own number, as far as the digits go, and another reason its first letter.
  */
-export const excludeGroups = (criteria: Criterion[]) => {
+export const excludeGroups = (criteria: Criterion[], many = false) => {
   const musts = criteria.flatMap((criterion, i) => (criterion.must ? [{ key: criterion.key, hotkey: i < 9 ? String(i + 1) : "" }] : []));
   const others = OTHER_REASONS.map((reason) => ({ key: reason.key, hotkey: reason.key[0]!.toUpperCase() }));
-  return [{ name: "Which must-have does it fail?", list: musts }, { name: musts.length ? "Or another reason" : "Why exclude it?", list: others }].filter((group) => group.list.length);
+  // Asked of one paper, or of several picked together.
+  return [{ name: many ? "Which must-have do these papers fail?" : "Which must-have does it fail?", list: musts }, { name: musts.length ? "Or another reason" : many ? "Why exclude them?" : "Why exclude it?", list: others }].filter((group) => group.list.length);
 };
 /** A reason in words: the criterion's short name, or one of the others. */
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
@@ -265,11 +270,13 @@ export type Screening = {
  * where they are a reviewer. Someone from outside sees it only once it is shared with them, to vote
  * or to look, and never changes its settings.
  */
+/** Whether someone is a member of a workspace. The own workspace of someone from outside is theirs alone. An organisation's is every member's: the home one's are everyone the mock knows but its guests, and the others' are the person the mock starts as. */
+export const memberOf = (id: string, workspace: Workspace, owner?: string) => (workspace.id === "theirs" ? owner === id : !personOf(id)?.guest && (workspace === HOME || (workspace.mine && id === PEOPLE[0]!.id)));
 export function accessOf(screening: Screening, viewer: string): { reviewer: boolean; member: boolean } | null {
   const reviewer = activeReviewers(screening).some((one) => one.id === viewer);
   const workspace = workspaceOf(screening);
   // The own workspace of someone from outside is theirs alone. An organisation's is every member's.
-  const member = workspace.id === "theirs" ? screening.createdBy === viewer : !personOf(viewer)?.guest && (workspace === HOME || (workspace.mine && viewer === PEOPLE[0]!.id));
+  const member = memberOf(viewer, workspace, screening.createdBy);
   return reviewer || member || screening.viewers?.some((one) => one.id === viewer) ? { reviewer, member } : null;
 }
 
@@ -915,9 +922,16 @@ export function scoreOf(screening: Pick<Screening, "criteria" | "scoring">, cast
 // ── Where each paper stands ──────────────────────────────────────────────────────────────────────
 
 /** What stands where the others' votes on a paper are kept from someone: on a chip, behind a "?", in a file's cell. */
+/** What stands where no paper has a result: on a Papers tab and in the Export dialog. "Yet" only while the screening is running. */
+export const emptyResult = (result: Result | "all", finished: boolean) => ({ all: "No papers yet", include: finished ? "No paper was included" : "Nothing included yet", maybe: finished ? "No paper was left at Maybe" : "Nothing marked Maybe yet", exclude: finished ? "No paper was excluded" : "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" })[result];
 /** What a reviewer's place on a paper says where no vote stands in it: they have yet to vote, the paper was settled without them, or a model couldn't read it. One wording for the marks, the menus, the legends and the files. */
-export const NO_VOTE = { yet: "No vote yet", none: "No vote", failed: "Couldn't read it" } as const;
+export const NO_VOTE = { yet: "No vote yet", none: "No vote", failed: "Couldn't read the paper" } as const;
+/** The same three in a legend, where there is room to say what each means. */
+export const NO_VOTE_SAYS = { yet: NO_VOTE.yet, none: "Paper settled without this vote", failed: "Model couldn't read the paper" } as const;
+/** On a lock the person's own vote opens, and nowhere else: a paper that still waits for their vote. */
 export const HIDDEN_UNTIL_VOTE = "Hidden until you vote";
+/** The rule itself, for a "?" or a legend anyone may read, whether or not they vote: it says what this screening does and to whom. */
+export const VOTES_HIDDEN_SAYS = "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.";
 /**
  * Whether someone sees the other votes on a paper, and what was written about it. The votes are kept from a person only
  * while the paper still waits for their own: on a paper that isn't theirs to vote on, on one they have voted on, on one
@@ -1192,10 +1206,10 @@ export function startingScreenings(): Screening[] {
   for (const person of edtech.reviewers) if (person.kind === "person") edtech.reached[person.id] = Math.min(edtech.reached[person.id] ?? 0, 132);
   edtech.question = "Do digital tools improve foundational literacy and numeracy for primary-school children in sub-Saharan Africa?";
   edtech.changes = [
-    { at: NOW - 6 * DAY, by: "amina", what: "Started the screening", effect: "132 papers from 4 sources, 3 people and 2 models" },
+    { at: NOW - 6 * DAY, by: "amina", what: "Started the screening", effect: startedSays(132, 4, 3, 2) },
     { at: NOW - 4 * DAY, by: "jonas", what: "Changed “Is the intervention delivered with digital technology?” from must-have to nice to have", effect: "3 excluded papers became included" },
     { at: NOW - 2 * DAY, by: "amina", what: "Added Gemma 3 4B as a reviewer", effect: "It reads all 132 papers" },
-    { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9, 7 of them new", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
+    { at: THIS_MORNING, by: SCHEDULE, ...checkLog(edtech, SCHEDULE, 9, 7) },
   ];
   // Half of the splits found so far were settled before the mock opens. The standing is worked out for a copy: one is remembered for the object it was made for, and this one is written into below.
   const state = standing({ ...edtech });
@@ -1283,8 +1297,30 @@ export function checked(screening: Screening, at: number, by: string): Screening
     // A look by hand leaves the schedule where it was.
     living: screening.living && by === SCHEDULE ? { ...screening.living, next: at + PERIOD[screening.living.every] } : screening.living,
     finishedAt: added ? undefined : screening.finishedAt,
-    changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Checked for new papers and"} found ${found}${added !== found ? `, ${added} of them new` : ""}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Checked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
+    changes: [...screening.changes, { at, by, ...checkLog(screening, by, found, added) }],
   });
+}
+
+/** What starting a screening writes in its log: what it began with, and who screens it. A count of none is left out. */
+export const startedSays = (papers: number, sources: number, people: number, models: number) =>
+  `${plural(papers, "paper", "papers")} from ${plural(sources, "source", "sources")}, for ${listed([people ? plural(people, "person", "people") : "", models ? plural(models, "model", "models") : ""].filter(Boolean)) || "reviewers still to be added"} to screen`;
+
+const CHECK_NAME: Record<Every, string> = { day: "The daily check", week: "The weekly check", month: "The monthly check" };
+/**
+ * What a check for new papers writes in the log: what it found, what was already there, and what became of the rest.
+ * An email goes to people, so it is spoken of only where people review, and a finished screening that gained papers is
+ * said to be open again.
+ */
+export function checkLog(screening: Screening, by: string, found: number, added: number): Pick<Change, "what" | "effect"> {
+  const scheduled = by === SCHEDULE ? CHECK_NAME[screening.living?.every ?? "week"] : null;
+  if (!found) return { what: scheduled ? `${scheduled} found no new papers` : "Checked for new papers and found none" };
+  const known = found - added;
+  const effect = [
+    known ? `${plural(known, "was", "were")} already in the screening` : "",
+    added ? `${plural(added, "paper", "papers")} joined the screening${readersOf(screening).people.length ? ", and the people they went to got an email" : modelsOf(screening).length ? " for the models to read" : ""}` : "",
+    added && screening.finishedAt ? "The screening is open again" : "",
+  ].filter(Boolean).join(". ");
+  return { what: `${scheduled ? `${scheduled} found` : "Checked for new papers and found"} ${plural(found, "paper", "papers")}${added !== found ? `, ${added} of them new` : ""}`, effect: effect || undefined };
 }
 
 /** Settings being changed, brought up to date with what the screening's checks have found since: its sources keep the papers they gained. */

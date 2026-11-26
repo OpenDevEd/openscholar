@@ -12,7 +12,7 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { num, listed, plural, readersOf, firstName, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening, inQuotes, type Paper } from "./data";
+import { num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening, inQuotes, type Paper } from "./data";
 import { ANOTHER_COLLECTION, collectionName } from "./form-data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./parts";
@@ -26,7 +26,7 @@ export type EffectSection = "name" | "papers" | "new-papers" | "criteria" | "rev
  * are held as they are. `credits` is shown in a chip at the line's end, `each` when it is paid for
  * every new paper.
  */
-export type EffectLine = { text: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen" | "held"; credits?: number; each?: boolean; section?: EffectSection };
+export type EffectLine = { text: string; /** When it takes hold, said only before the change is made: the log of what was done leaves it out. */ when?: string; /** What follows that, in both. */ then?: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen" | "held"; credits?: number; each?: boolean; section?: EffectSection };
 
 const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
 
@@ -36,6 +36,8 @@ export const ON_SAVE = "as soon as this is saved";
 /** A criterion in quotes, in its own words as the list shows them, cut at a word near 60 letters where it runs longer. */
 export const criterionName = (criterion: Pick<Criterion, "text">) => {
   const text = criterion.text.trim();
+  // One whose question is being written has no words to quote yet.
+  if (!text) return "the criterion with no question yet";
   return inQuotes(text.length > 60 ? `${text.slice(0, 60).replace(/\s+\S*$/, "")}…` : text);
 };
 
@@ -88,8 +90,22 @@ export function scoringChanged(before: Screening, after: Screening) {
 }
 
 /** Each thing a change does besides moving results, in the order a person checks them. */
-export function effectItems(before: Screening, raw: Screening): EffectLine[] {
+export type EffectFor = {
+  /** Who reads the lines: they are "you" in them. */
+  me?: string;
+  /** The credits its workspace has: a model that can't pay for its next paper starts once it can. */
+  wallet?: number;
+  /** Another screening's models are ahead of this one's. */
+  waiting?: boolean;
+  /** When the change takes hold, where it isn't a save of the settings. */
+  onSave?: string;
+};
+export function effectItems(before: Screening, raw: Screening, { me, wallet = Infinity, waiting = false, onSave = ON_SAVE }: EffectFor = {}): EffectLine[] {
   const lines: EffectLine[] = [];
+  // A reviewer as the reader is told of them: "you" for themselves.
+  const whose = (reviewer: Reviewer) => (reviewer.id === me ? "Your" : `${reviewer.name}'s`);
+  const named = (reviewer: Reviewer) => (reviewer.id === me ? "you" : reviewer.name);
+  const [hasModels, hasPeople] = [modelsOf(raw).length > 0, readersOf(raw).people.length > 0];
   // As a save leaves it: the papers that were settled keep their result, unless the change asks for them to be checked again.
   const after = projected(before, raw);
   const [was, now] = [standing(before), standing(after)];
@@ -100,31 +116,35 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
 
   // A finished screening that gets papers to vote on is open again: said first, since it changes the screening's state.
   const reopened = effect.moves.filter((move) => move.to === "conflict" || move.to === "waiting").reduce((sum, move) => sum + move.papers.length, 0) + effect.added;
-  if (before.finishedAt && reopened) lines.push({ text: `It opens again: ${plural(reopened, "paper needs", "papers need")} votes`, kind: "reopen" });
+  if (before.finishedAt && reopened) lines.push({ text: `The screening opens again for ${plural(reopened, "paper", "papers")}`, kind: "reopen" });
 
   const joining = activeReviewers(after).filter((reviewer) => !wasIds.has(reviewer.id));
   for (const reviewer of joining) {
     if (reviewer.kind === "model") {
       // It reads the papers still open. One that was settled before it came is not read again, and is not paid for.
       const reads = readNext(after, reviewer, Infinity, () => Infinity).read;
-      lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${plural(total, "paper", "papers")}` : `the ${plural(reads, "paper", "papers")} not settled yet`} ${after.paused ? "once the models resume" : ON_SAVE}`, kind: "cost", credits: reads * paperCredits(reviewer.model!), section: "reviewers" });
+      // When it starts is said for how the screening stands: paused, out of credits or behind another screening, it does not start with the save.
+      // Whatever keeps this model from starting, in the order it would have to end: papers still arriving, a finished screening, paused models, credits for its next paper, another screening's turn.
+      const starts = after.gathered !== undefined ? "once all its papers arrive" : after.finishedAt ? "once the screening is reopened" : after.paused ? "once the models resume" : paperCredits(reviewer.model!) > wallet ? "once the workspace has enough credits for its next paper" : waiting ? "when its models' turn comes" : onSave;
+      if (!reads) lines.push({ text: after.gathered !== undefined ? `${reviewer.name} starts once the papers arrive` : `${reviewer.name} has no papers left to read`, section: "reviewers" });
+      else lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${plural(total, "paper", "papers")}` : `the ${plural(reads, "paper", "papers")} not settled yet`}`, when: starts, kind: "cost", credits: reads * paperCredits(reviewer.model!), section: "reviewers" });
     }
     else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and papers once they join`, kind: "mail", section: "reviewers" });
     else {
       const dealt = now.papers.filter((paper) => !now.settled[paper.id]!.final && dealtTo(after, paper).some((one) => one.id === reviewer.id)).length;
-      lines.push({ text: dealt ? `${reviewer.name} gets ${plural(dealt, "paper", "papers")} that still ${dealt === 1 ? "waits" : "wait"} for a vote, an even share of what is left, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`, kind: "join", section: "reviewers" });
+      lines.push({ text: dealt ? `${reviewer.name} gets ${plural(dealt, "open paper", "open papers")}, an even share, and an email saying so` : `${reviewer.name} joins and gets an email saying so. Every open paper already has its reviewers, so none goes to them yet`, kind: "join", section: "reviewers" });
     }
   }
   if (joining.length && wasIds.size) {
     lines.push({ text: "Votes already cast stay as they are", section: "reviewers" });
-    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one") lines.push({ text: after.rule.settle === "all" ? "A paper where it votes differently from the others becomes a conflict" : "Its vote counts with the others: a paper it tips into an even split becomes a conflict", section: "reviewers" });
+    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one") lines.push({ text: after.rule.settle === "all" ? "Once every vote on a paper is in, votes that differ put it in conflict" : "Once every vote on a paper is in, an even split puts it in conflict", section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;
     const cast = was.papers.filter((paper) => was.votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id && one.vote)).length;
     // Thrown out by this change, not by an earlier one: votes cast since an earlier one count.
     const thrown = after.reviewers.some((one) => one.id === reviewer.id && one.discarded && one.discarded !== reviewer.discarded);
-    lines.push(!cast ? { text: `${reviewer.name} has cast no vote`, section: "reviewers" } : thrown ? { text: `${reviewer.name}'s ${plural(cast, "vote stays", "votes stay")} on record and ${cast === 1 ? "stops" : "stop"} counting`, kind: "leave", section: "reviewers" } : { text: `${reviewer.name}'s ${plural(cast, "vote keeps", "votes keep")} counting`, kind: "held", section: "reviewers" });
+    lines.push(!cast ? { text: reviewer.id === me ? "You have cast no vote" : `${reviewer.name} has cast no vote`, section: "reviewers" } : thrown ? { text: `${whose(reviewer)} ${plural(cast, "vote stays", "votes stay")} on record and ${cast === 1 ? "stops" : "stop"} counting`, kind: "leave", section: "reviewers" } : { text: `${whose(reviewer)} ${plural(cast, "vote keeps", "votes keep")} counting`, kind: "held", section: "reviewers" });
     if (reviewer.kind !== "person") continue;
     // Every paper dealt to them, and who is dealt it now in their place. Whoever takes one starts without a vote on it, whether or not they had voted.
     const theirs = was.papers.flatMap((paper) => {
@@ -133,23 +153,25 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
       return own ? [{ id: paper.id, voted: Boolean(own.vote), to: (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !had.some((old) => old.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name) }] : [];
     });
     const going = theirs.filter((one) => one.to.length);
-    const first = firstName(reviewer.name);
     if (going.length) {
       const [unvoted, voted] = [going.filter((one) => !one.voted).length, going.filter((one) => one.voted).length];
-      const parts = [unvoted ? `${num(unvoted)} ${reviewer.name} had not voted on` : null, voted ? `${num(voted)} whose vote from ${first} stops counting` : null].filter(Boolean);
+      // A paper they voted on that goes to someone else keeps their vote, unless their votes are thrown out with them.
+      const parts = [unvoted ? `${num(unvoted)} ${named(reviewer)} had not voted on` : null, voted ? `${num(voted)} ${named(reviewer)} voted on, where that vote ${thrown ? "stops counting" : "keeps counting"}` : null].filter(Boolean);
       const takers = listed([...new Set(going.flatMap((one) => one.to))]);
-      lines.push({ text: voted ? `${plural(going.length, "paper goes", "papers go")} to ${takers}: ${parts.join(", and ")}` : `The ${plural(unvoted, "paper", "papers")} ${reviewer.name} had not voted on ${unvoted === 1 ? "goes" : "go"} to ${takers}`, kind: "join", section: "reviewers" });
+      lines.push({ text: voted ? `${plural(going.length, "paper goes", "papers go")} to ${takers}: ${parts.join(", and ")}` : `The ${plural(unvoted, "paper", "papers")} ${named(reviewer)} had not voted on ${unvoted === 1 ? "goes" : "go"} to ${takers}`, kind: "join", section: "reviewers" });
     }
     // The ones nobody takes over: settled where the votes that remain meet the rule, and still waiting where they don't.
     const kept = theirs.filter((one) => !one.to.length && !one.voted);
     const settled = kept.filter((one) => now.settled[one.id]?.final).length;
-    if (settled) lines.push({ text: `${plural(settled, "paper", "papers")} ${reviewer.name} had not voted on ${settled === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
-    if (kept.length - settled) lines.push({ text: `${plural(kept.length - settled, "paper", "papers")} ${reviewer.name} had not voted on ${kept.length - settled === 1 ? "waits" : "wait"} for the others' votes`, section: "reviewers" });
+    if (settled) lines.push({ text: `${plural(settled, "paper", "papers")} ${named(reviewer)} had not voted on ${settled === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
+    if (kept.length - settled) lines.push({ text: `${plural(kept.length - settled, "paper", "papers")} ${named(reviewer)} had not voted on ${kept.length - settled === 1 ? "waits" : "wait"} for the others' votes`, section: "reviewers" });
   }
 
   if (before.rule.resolver !== after.rule.resolver && after.rule.settle !== "one") {
-    const [from, to] = [personOf(before.rule.resolver)?.name, personOf(after.rule.resolver)?.name ?? "the person who started it"];
-    lines.push({ text: from && !isIds.has(before.rule.resolver) ? `${from} settled conflicts: they go to ${to} from now on` : `Conflicts go to ${to} from now on`, section: "decided" });
+    const to = after.rule.resolver === me ? "you" : (personOf(after.rule.resolver)?.name ?? "the person who started it");
+    // Whoever settled them is leaving: the line says who takes over, and speaks to them where they are the one reading.
+    const leaving = !isIds.has(before.rule.resolver) ? personOf(before.rule.resolver) : undefined;
+    lines.push({ text: leaving ? (leaving.id === me ? `Conflicts go to ${to} once you leave` : `${leaving.name} settled conflicts. They go to ${to} from now on`) : `Conflicts go to ${to} from now on`, section: "decided" });
   }
   const people = (screening: Screening) => readersOf(screening).people.length;
   const eachOf = (screening: Screening) => readersOf(screening).each;
@@ -162,36 +184,40 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
     // The same number today, and another rule for whoever joins later.
     lines.push({ text: after.rule.each === "all" ? `Each paper still goes to ${plural(eachOf(after), "person", "people")} today. Anyone added later joins every paper that is still open` : `Each paper still goes to ${plural(eachOf(after), "person", "people")}. Anyone added later takes an even share of the open papers, not every one`, section: "decided" });
   }
-  if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? "Everyone sees every vote as it is cast" : "People see a paper's votes once they have cast theirs", section: "decided" });
+  if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? "Everyone sees every vote as it is cast" : "A reviewer sees the other votes on a paper once they vote on it or it is settled", section: "decided" });
 
   const had = new Set(before.criteria.map((criterion) => criterion.key));
   const fresh = after.criteria.filter((criterion) => !had.has(criterion.key));
   if (fresh.length) {
     const read = rereadCost(after);
-    if (read > 0) lines.push({ text: `The models answer ${fresh.length === 1 ? "it" : "them"} on the papers they have read`, kind: "cost", credits: read, section: "criteria" });
+    if (read > 0) lines.push({ text: `The models answer the new ${fresh.length === 1 ? "criterion" : "criteria"} on the open papers they have read`, kind: "cost", credits: read, section: "criteria" });
     if (activeReviewers(after).some((reviewer) => reviewer.kind === "person")) lines.push({ text: `People's votes stand as they are: they were cast before ${fresh.length === 1 ? "this criterion" : "these criteria"}`, section: "criteria" });
   }
   for (const criterion of before.criteria) {
     const now = after.criteria.find((one) => one.key === criterion.key);
-    if (!now) lines.push({ text: `The models stop answering ${criterionName(criterion)}. Votes people cast stay as they were cast`, kind: "leave", section: "criteria" });
-    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: from now on a no on it points to Exclude. Votes people cast stay as they were cast` : `${criterionName(now)} becomes nice to have: from now on a no on it no longer points to Exclude. Votes people cast stay as they were cast`, section: "criteria" });
-    else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded ${criterionName(now)} on papers they read from now on`, section: "criteria" });
+    // A line speaks of the models only on a screening that has some.
+    if (!now) lines.push({ text: `${hasModels ? `The models stop answering ${criterionName(criterion)}` : `${criterionName(criterion)} is no longer asked`}. Votes already cast stay as they were cast`, kind: "leave", section: "criteria" });
+    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes a must-have: from now on a no on it points to Exclude. Votes already cast stay as they were cast` : `${criterionName(now)} becomes nice to have: from now on a no on it no longer points to Exclude. Votes already cast stay as they were cast`, section: "criteria" });
+    else if (now.text !== criterion.text) lines.push({ text: !now.text.trim() ? "Write the criterion's question before saving" : hasModels ? `The models answer the reworded ${criterionName(now)} on papers they read from now on` : `Reviewers answer the reworded ${criterionName(now)} from now on. Votes already cast stay as they were cast`, section: "criteria" });
     // Guidance changes how the question is read from here on. What was answered under the old guidance is left as it was.
-    else if ((now.note ?? "") !== (criterion.note ?? "")) lines.push({ text: `Reviewers and models read ${criterionName(now)} with its ${criterion.note ? "new " : ""}guidance from now on. Answers already given stay`, section: "criteria" });
+    else if ((now.note ?? "") !== (criterion.note ?? "")) lines.push({ text: now.note?.trim() ? `${hasModels ? "Reviewers and models read" : "Reviewers read"} ${criterionName(now)} with its ${criterion.note ? "new " : ""}guidance from now on. Answers already given stay` : `Guidance is removed from ${criterionName(now)}. Answers already given stay`, section: "criteria" });
   }
   if (scoringChanged(before, after)) lines.push({ text: "Included papers' points and stars are worked out again", section: "criteria" });
 
   if (after.living && !before.living) {
     const sources = growing(after).length;
-    lines.push({ text: sources ? `It checks ${sources === 1 ? "its source" : `${sources} of its sources`} for new papers ${ON_SAVE}, then ${EVERY_LABEL[after.living.every].toLowerCase()}` : "It has no source that gains papers, so there is nothing to check yet", kind: "schedule", section: "new-papers" });
+    const all = after.sources.length;
+    // Which of its sources a check looks in: all of them, or so many of them, never "2 of its sources" where it has two.
+    lines.push(sources ? { text: `The screening checks ${sources === all ? (all === 1 ? "its source" : `its ${all} sources`) : `${sources} of its ${all} sources`} for new papers`, when: `${onSave}, then`, then: EVERY_LABEL[after.living.every].toLowerCase(), kind: "schedule", section: "new-papers" } : { text: "The screening has no source that gains papers, so there is nothing to check yet", kind: "schedule", section: "new-papers" });
     const each = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!), 0);
-    lines.push(each ? { text: "The models read each new paper, then it goes to its reviewers", kind: "cost", credits: each, each: true, section: "new-papers" } : { text: "Each new paper goes to its reviewers, who are told by email", kind: "mail", section: "new-papers" });
-    if (before.finishedAt && !reopened) lines.push({ text: "It is open again, and stays open to new papers", kind: "reopen", section: "new-papers" });
-  } else if (before.living && !after.living) lines.push({ text: "It stops checking for new papers. The ones it has stay", kind: "schedule", section: "new-papers" });
-  else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: `It checks for new papers ${EVERY_LABEL[after.living.every].toLowerCase()} from now on`, kind: "schedule", section: "new-papers" });
+    // People get a new paper as it comes in, whether or not a model has read it. An email goes to people, so it is promised only where there are some.
+    lines.push(each ? { text: `Each new paper goes to its reviewers${hasPeople ? ", and the people among them get an email" : ""}. The models read it when they can`, kind: "cost", credits: each, each: true, section: "new-papers" } : hasPeople ? { text: "Each new paper goes to its reviewers, who get an email", kind: "mail", section: "new-papers" } : { text: "Each new paper joins the screening, where it waits for a reviewer", section: "new-papers" });
+    if (before.finishedAt && !reopened) lines.push({ text: "The screening is open again, and stays open to new papers", kind: "reopen", section: "new-papers" });
+  } else if (before.living && !after.living) lines.push({ text: "The screening stops checking for new papers. The ones it has stay", kind: "schedule", section: "new-papers" });
+  else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: `The screening checks for new papers ${EVERY_LABEL[after.living.every].toLowerCase()} from now on`, kind: "schedule", section: "new-papers" });
 
-  if (effect.added) lines.push({ text: `${plural(effect.added, "paper joins", "papers join")} the queue`, section: "papers" });
-  if (effect.removed) lines.push({ text: `${plural(effect.removed, "paper leaves", "papers leave")}, with ${effect.removed === 1 ? "its" : "their"} votes kept on record`, kind: "leave", section: "papers" });
+  if (effect.added) lines.push({ text: `${plural(effect.added, "paper joins", "papers join")} the screening`, section: "papers" });
+  if (effect.removed) lines.push({ text: `${plural(effect.removed, "paper leaves", "papers leave")} the screening, with ${effect.removed === 1 ? "its" : "their"} votes kept on record`, kind: "leave", section: "papers" });
 
   const [from, to] = [collectionName(before), collectionName(after)];
   // The screening's own collection given a new name keeps its papers: only a different collection is added to.
@@ -205,10 +231,13 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
   return lines;
 }
 
-/** The same lines as plain sentences, for a confirmation and the screening's activity. */
-export const effectLines = (before: Screening, after: Screening) => effectItems(before, after).map(lineText);
-/** One line as a sentence, its credits said in words. */
-export const lineText = (line: EffectLine) => (line.credits ? `${line.text}, for up to ${credits(line.credits)} credits${line.each ? " each" : ""}` : line.text);
+/** A line's words before the change is made: what it does and when it takes hold. */
+export const previewText = (line: EffectLine) => [line.text, line.when, line.then].filter(Boolean).join(" ");
+/** The same lines as plain sentences, for a confirmation that asks before the change is made. */
+export const effectLines = (before: Screening, after: Screening, opts?: EffectFor) => effectItems(before, after, opts).map((line) => withCredits(line, previewText(line)));
+const withCredits = (line: EffectLine, text: string) => (line.credits ? `${text}, for up to ${credits(line.credits)} credits${line.each ? " each" : ""}` : text);
+/** One line as the activity log keeps it, once the change is made: what it did, without "as soon as this is saved". */
+export const lineText = (line: EffectLine) => withCredits(line, [line.text, line.then].filter(Boolean).join(" "));
 
 /** How many papers a model answers a new criterion on: the ones it has read that are still open. A paper whose result is held, or that a person settled, is not read again. */
 export const rereads = (screening: Screening, model: Reviewer) => {
@@ -221,7 +250,7 @@ export const rereadCost = (screening: Screening) => modelsOf(screening).reduce((
 /** The results a change moves: so many papers from one result to another. */
 export const effectMoves = (before: Screening, after: Screening) => effectOf(before, after).moves;
 /** The same, in words, for the screening's activity. */
-export const movesText = (moves: Move[]) => moves.map((move) => `${move.papers.length} ${RESULT_LABEL[move.from].toLowerCase()} to ${RESULT_LABEL[move.to].toLowerCase()}`).join(", ");
+export const movesText = (moves: Move[]) => moves.map((move) => `${plural(move.papers.length, "paper", "papers")} moved from ${RESULT_LABEL[move.from]} to ${RESULT_LABEL[move.to]}`).join(". ");
 
 const PAPERS_PAGE = 8;
 
@@ -230,7 +259,7 @@ const PAPERS_PAGE = 8;
  * covers. With `screening`, each paper opens on the Papers page. With `jump`, on the settings, a
  * line goes to the part of them it is about.
  */
-export function EffectList({ lines, moves = [], none = "No paper's result changes", screening, jump = false, unseen }: { lines: Array<string | EffectLine>; moves?: Move[]; none?: string; screening?: string; jump?: boolean; /** The papers whose votes are hidden from the person looking: a move counts them and doesn't name them, since the name under a result would say how the others voted. */ unseen?: (paper: Paper) => boolean }) {
+export function EffectList({ lines, moves = [], none = "No paper's result changes", screening, jump = false, done = false, unseen }: { lines: Array<string | EffectLine>; moves?: Move[]; none?: string; screening?: string; jump?: boolean; /** The change is made: the lines say what it did, without when it would take hold. */ done?: boolean; /** The papers whose votes are hidden from the person looking: a move counts them and doesn't name them, since the name under a result would say how the others voted. */ unseen?: (paper: Paper) => boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const items = (lines.length ? lines : moves.length ? [] : [none]).map((line) => (typeof line === "string" ? { text: line } : line));
@@ -244,7 +273,7 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
             const body = (
               <>
                 <Icon aria-hidden className={cn("mt-0.5 size-3.5 shrink-0", line.kind === "leave" || line.kind === "reopen" ? "ink-warning" : line.kind === "cost" ? "text-foreground" : "text-muted-foreground")} />
-                <span className={cn("min-w-0 flex-1", line.kind === "cost" && "font-medium", line.kind === "reopen" && "font-medium ink-warning")}>{line.text}</span>
+                <span className={cn("min-w-0 flex-1", line.kind === "cost" && "font-medium", line.kind === "reopen" && "font-medium ink-warning")}>{done ? [line.text, line.then].filter(Boolean).join(" ") : previewText(line)}</span>
                 {line.credits ? <Chip icon={Coins} className="-my-0.5 font-medium text-foreground">{credits(line.credits)}{line.each ? " each" : ""}</Chip> : null}
               </>
             );
@@ -261,7 +290,7 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
         </ul>
       ) : null}
       {/* The papers whose votes are hidden from the person are counted together and under no result: which way each goes would say how the others voted on it. */}
-      {hidden ? <ShutNote by="vote">{plural(hidden, "paper you have yet to vote on changes", "papers you have yet to vote on change")} result too. Which way stays hidden until you vote on {hidden === 1 ? "it" : "them"}.</ShutNote> : null}
+      {hidden ? <ShutNote by="vote">{plural(hidden, "paper you have yet to vote on changes", "papers you have yet to vote on change")} result too. {done ? "Their votes stay hidden while they wait for yours." : "Which way shows once the change is made."}</ShutNote> : null}
       {moves.length ? (
         <ul className="@container divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle bg-card">
           {moves.map((move) => {

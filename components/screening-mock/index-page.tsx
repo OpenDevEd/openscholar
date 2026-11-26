@@ -287,7 +287,7 @@ export function ScreeningsIndex() {
                               : models ? null
                               : state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{num(state.counts.waiting)} waiting for votes</LinkChip>
                               : state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{num(state.counts.conflict)} in conflict, for {resolver} to settle</LinkChip>
-                              : screening.living ? <LinkChip href={settingsHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">Up to date, next check {day(screening.living.next)}</LinkChip>
+                              : screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">Up to date, next check {day(screening.living.next)}</LinkChip>
                               : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">Every paper is settled</LinkChip>}
                           </span>
                           <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">
@@ -350,8 +350,8 @@ function Faces({ id, reviewers, me, max = 6 }: { id: string; reviewers: Reviewer
         );
       })}
       {more > 0 ? (
-        <TooltipHint label={`${more} more reviewers`}>
-          <NextLink href={overviewHref(id, "reviewers")} aria-label={`${more} more reviewers`} className={cn(ABOVE, "ms-1.5 px-0.5 text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>+{more}</NextLink>
+        <TooltipHint label={plural(more, "more reviewer", "more reviewers")}>
+          <NextLink href={overviewHref(id, "reviewers")} aria-label={plural(more, "more reviewer", "more reviewers")} className={cn(ABOVE, "ms-1.5 px-0.5 text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>+{more}</NextLink>
         </TooltipHint>
       ) : null}
     </span>
@@ -409,7 +409,8 @@ function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void
   const member = open.canChange;
   return (
     <>
-      <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem>
+      {/* Settings are its workspace's members' to open: nobody is offered a page that would turn them away. */}
+      {member ? <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem> : null}
       <DropdownMenuItem onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onOpen("share")}><Share2 />Share</DropdownMenuItem>
       <DropdownMenuSeparator />

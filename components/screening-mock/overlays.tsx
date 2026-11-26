@@ -11,10 +11,10 @@ import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { num, plural, projected, readNext, withAdded, type Reviewer, type Screening, inQuotes } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
-import { EffectList, ON_SAVE, collectionName, effectLines, effectMoves, movesText } from "./effects";
+import { EffectList, collectionName, effectLines, effectMoves, movesText, effectItems, lineText } from "./effects";
 import { settingsHref } from "./links";
 import { Panel, ReviewerMark, OpenPapersChips } from "./parts";
-import { credits, paperCredits, useMock, type Open, walletOf, toppedUp, perPaper } from "./store";
+import { credits, paperCredits, useMock, type Open, walletOf, toppedUp, perPaper, modelsState } from "./store";
 import { ConfirmChange } from "./team";
 
 export type Over = "activity" | "export" | "share" | "move" | "finish" | "delete";
@@ -25,6 +25,8 @@ export type Over = "activity" | "export" | "share" | "move" | "finish" | "delete
  */
 export function useScreeningOverlays(state: Open | null, { start = null, onClosed, onDeleted }: { start?: Over | null; onClosed?: () => void; onDeleted?: () => void } = {}) {
   const store = useMock();
+  // What would keep a model added now from reading: no credits, or another screening's models ahead of it.
+  const heldFor = (after: Screening) => ({ wallet: walletOf(after, store), waiting: modelsState(after, store.screenings, store) === "waiting" });
   const [over, setOver] = useState<Over | null>(start);
   const [exportTab, setExportTab] = useState<ExportTab>("papers");
   // A reviewer about to be added, and one about to be made a viewer: each says what it does before it happens.
@@ -85,7 +87,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         onConfirm={() => {
           if (!adding) return;
           const after = withAdded(screening, adding);
-          state.update(() => after, { what: `Added ${adding.name} as a reviewer`, effect: effectLines(screening, after)[0] });
+          state.update(() => after, { what: `Added ${adding.name} as a reviewer`, effect: effectItems(screening, after).map(lineText)[0] });
         }}
       >
         {adding ? (
@@ -105,7 +107,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
               </Panel>
             ) : (
               // Here nothing is saved apart from the adding itself.
-              <EffectList lines={effectLines(screening, withAdded(screening, adding)).map((line) => line.replace(ON_SAVE, "as soon as it is added"))} moves={effectMoves(screening, withAdded(screening, adding))} unseen={(paper) => !state.canSee(paper)} />
+              <EffectList lines={effectLines(screening, withAdded(screening, adding), { me: state.me, onSave: "as soon as it is added", ...heldFor(withAdded(screening, adding)) })} moves={effectMoves(screening, withAdded(screening, adding))} unseen={(paper) => !state.canSee(paper)} />
             )}
             {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
             {adding.model ? <Credits model={adding.model} papers={toRead(adding)} wallet={walletOf(screening, store)} onAddCredits={() => { store.set(toppedUp(screening, store)); close(); }} /> : null}
@@ -117,9 +119,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         title={demoting ? `Stop ${demoting.name} voting?` : ""}
         confirm="Make them a viewer"
         onClose={close}
-        onConfirm={() => demoting && state.update(() => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: [...effectLines(screening, demoted(demoting)), movesText(effectMoves(screening, demoted(demoting)))].filter(Boolean).join(". ") || undefined })}
+        onConfirm={() => demoting && state.update(() => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: [...effectItems(screening, demoted(demoting)).map(lineText), movesText(effectMoves(screening, demoted(demoting)))].filter(Boolean).join(". ") || undefined })}
       >
-        {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} unseen={(paper) => !state.canSee(paper)} /> : null}
+        {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting), { me: state.me }), "As a viewer they see every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} unseen={(paper) => !state.canSee(paper)} /> : null}
       </ConfirmChange>
     </>
   );

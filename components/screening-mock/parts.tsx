@@ -22,7 +22,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { num, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE } from "./data";
+import { num, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,7 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
  */
 export const MODELS_SAY: Record<Exclude<ModelsState, "reading">, { icon: AppIcon; says: string; row: string; stop?: true }> = {
   checking: { icon: RefreshCw, says: "Checking for new papers", row: "Waiting for the check" },
-  gathering: { icon: Search, says: "Getting its papers", row: "Waiting for its papers" },
+  gathering: { icon: Search, says: "Getting its papers", row: "Waiting for the papers to arrive" },
   paused: { icon: CirclePause, says: "Models paused", row: "Paused", stop: true },
   credits: { icon: Coins, says: "Out of credits", row: "Out of credits", stop: true },
   waiting: { icon: Clock, says: "Models start after", row: "Waiting its turn" },
@@ -140,8 +140,8 @@ export const SHUT = {
   // A living screening whose sources hold what they held: a file, a pasted list.
   sources: { icon: Lock, says: "No source gains papers" },
 } as const;
-/** What someone who doesn't vote on a screening is told, wherever a vote would be cast. */
-export const NOT_A_REVIEWER = "You aren't one of this screening's reviewers";
+/** What someone who doesn't vote on a screening is told where a vote would be cast: what they are to it, and what would change that, where something would. */
+export const notReviewerSays = (member: boolean, finished: boolean) => (!member ? "This screening is shared with you to read. Its reviewers vote." : finished ? "You aren't one of its reviewers, and the screening is finished." : "You aren't one of its reviewers. Join as a reviewer to vote on its papers.");
 export type Shut = keyof typeof SHUT;
 
 /** Beside the title of a part a rule shuts, or beside a control it shuts: what opens it. A control is not hidden, so it says when it opens in its own words. */
@@ -186,7 +186,7 @@ export function RetryRead({ papers, cost, short, onRetry, variant = "outline", s
   );
 }
 /** What that control says, for a menu's row too. */
-export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Read all ${num(papers)} again` : "Read it again"}, ${cost} credits`;
+export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Try all ${num(papers)} papers again` : "Try the paper again"} for ${cost} credits`;
 
 /** A figure that opens the papers it counts: underlined at rest, so it is told apart from a figure that only says how many. */
 /** A name or a count inside a sentence that opens something: underlined where it stands, so it reads as a link before the pointer is on it. */
@@ -571,10 +571,9 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
       side={side}
       facts={
         <>
-          {blind ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : null}
-          <HelpFact icon={Hourglass}>{NO_VOTE.yet}</HelpFact>
-          <HelpFact icon={Minus}>{NO_VOTE.none}: settled without it</HelpFact>
-          <HelpFact icon={TriangleAlert}>{NO_VOTE.failed}</HelpFact>
+          <HelpFact icon={Hourglass}>{NO_VOTE_SAYS.yet}</HelpFact>
+          <HelpFact icon={Minus}>{NO_VOTE_SAYS.none}</HelpFact>
+          <HelpFact icon={TriangleAlert}>{NO_VOTE_SAYS.failed}</HelpFact>
           {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label="An answer" /></span>{ANSWER_SIGN[answer].label}</HelpFact>)}
           <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />No answer</HelpFact>
           <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
@@ -582,7 +581,9 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
         </>
       }
     >
-      Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note. Press an answer for what is behind it: the passage a model read, or a person&apos;s vote and note. A model that couldn&apos;t read a paper has no say in it.
+      <p>Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note. Press an answer for what is behind it: the passage a model read, or a person&apos;s vote and note. A model that couldn&apos;t read a paper has no say in it.</p>
+      {/* The rule, said for anyone who reads this: someone who never votes here sees every vote, and is promised no lock. */}
+      {blind ? <p>{VOTES_HIDDEN_SAYS} A lock stands where a vote is hidden.</p> : null}
     </Help>
   );
 }
@@ -622,10 +623,10 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
 }
 
 /** The reasons to exclude as rows to press, in their two groups: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. */
-export function ReasonRows({ criteria, onPick }: { criteria: Criterion[]; onPick: (reason: string) => void }) {
+export function ReasonRows({ criteria, many = false, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; onPick: (reason: string) => void }) {
   return (
     <>
-      {excludeGroups(criteria).map((group) => (
+      {excludeGroups(criteria, many).map((group) => (
         <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
           <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
           {group.list.map((reason) => (
@@ -643,11 +644,11 @@ export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
 }
 
 /** A paper that came without an abstract says so in the abstract's place, with what to do about it behind its "?". */
-export function NoAbstract() {
+export function NoAbstract({ models = false }: { /** The screening has models, which read such a paper too. */ models?: boolean }) {
   return (
     <EmptyNote className="flex items-center gap-1.5 text-start">
       No abstract
-      <Help title="Papers without an abstract" facts={<HelpFact>Models vote on the title alone</HelpFact>}>Vote on the title, or vote Maybe where the title can&apos;t settle it.</Help>
+      <Help title="Papers without an abstract" facts={models ? <HelpFact>Models vote on the title alone</HelpFact> : undefined}>Reviewers vote on the title, or vote Maybe where the title can&apos;t settle the paper.</Help>
     </EmptyNote>
   );
 }
@@ -690,7 +691,8 @@ export function PaperStepper({ onStep, canPrevious, canNext }: { onStep: (by: 1 
 }
 
 /** The way to what reviewers wrote about a paper, with how much there is: one chip wherever it stands. With nothing written yet it invites the first line. */
-export function DiscussionLink({ count, onClick }: { count: number; onClick: () => void }) {
+export function DiscussionLink({ count, writes = true, onClick }: { count: number; /** Whether the person looking may write there: with nothing written, someone who can't is offered nothing. */ writes?: boolean; onClick: () => void }) {
+  if (!count && !writes) return null;
   return (
     <button type="button" onClick={onClick} className="flex h-6 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50">
       <MessagesSquare aria-hidden className="size-3.5" />

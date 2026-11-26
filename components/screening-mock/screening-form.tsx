@@ -34,14 +34,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder } from "./data";
+import { listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder, standsTo, startedSays } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, UPLOAD_ACCEPT, UPLOAD_FORMATS, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
-import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper, settingsOf } from "./store";
+import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper, settingsOf, modelsState } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -54,7 +54,7 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = 
   { id: "collection", label: "Library", icon: SOURCE_ICON.saved, find: "Find a collection" },
   { id: "screening", label: "Screening", icon: SOURCE_ICON.screening },
   { id: "evidenceLibrary", label: "Community", icon: SOURCE_ICON.evidenceLibrary },
-  { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero },
+  { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero, find: "Find a Zotero collection" },
   { id: "dois", label: "DOIs", icon: Hash },
 ];
 const OFFER_PAGE = 5;
@@ -282,7 +282,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const purse = saved ?? { workspace: workspace.id };
   const wallet = walletOf(purse, store);
   // The workspace's models read so many papers at once: a screening started while another's are reading waits its turn.
-  const busy = fresh ? store.screenings.find(isReading) : undefined;
+  // Only a screening of the same workspace is ahead of it: each workspace's models take turns among themselves.
+  const busy = fresh ? store.screenings.find((one) => isReading(one) && workspaceOf(one) === workspace) : undefined;
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
   const people = peopleOf(draft);
   // Someone invited by email reads papers once they have joined.
@@ -313,7 +314,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const again = saved ? recheckable(saved, merged) : 0;
   const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
-  const lines = saved ? effectItems(saved, merged) : [];
+  // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
+  const heldNow = saved ? modelsState(merged, store.screenings, store) : null;
+  const lines = saved ? effectItems(saved, merged, { me: store.viewer, wallet, waiting: heldNow === "waiting" }) : [];
   const moves = saved ? effectMoves(saved, merged) : [];
   // A model answers criteria: with none it would include every paper it reads.
   const needsCriteria = models.length > 0 && draft.criteria.length === 0;
@@ -331,7 +334,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What it has to be able to pay for now: all its reading to start, and for a running screening only what the save itself has the models read. What is left to read is paid for as it is read, and stops where the credits do.
   const owed = saved ? reread : cost;
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const lacking: Block | null = unasked ?? (needsCriteria ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : owed > wallet ? { text: `${credits(owed - wallet)} credits short` } : null);
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: models.length > 1 ? "Add a criterion for the models" : "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : owed > wallet ? { text: `${credits(owed - wallet)} credits short` } : null);
   const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast, and which papers each check added: what a row's chips open.
   const savedState = saved ? standing(saved) : null;
@@ -476,7 +479,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ...(draft.sources.some((source) => ["search", "evidenceLibrary", "zotero", "dois"].includes(source.kind)) ? { gathered: 0 } : {}),
       ...(busy && models.length ? { after: busy.id } : {}),
       destination: { ...draft.destination, name: draft.destination.name || includedIn(name) },
-      changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${num(papers)} papers from ${plural(draft.sources.length, "source", "sources")}, ${plural(people.length, "person", "people")} and ${plural(models.length, "model", "models")}` }],
+      changes: [{ at, by: store.viewer, what: "Started the screening", effect: startedSays(papers, draft.sources.length, people.length, models.length) }],
     });
     store.draft(key, () => undefined);
     // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
@@ -503,7 +506,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         ...(draft.living && !saved.living && growing(draft).length ? { checking: { done: 0, of: growing(draft).length, by: SCHEDULE } } : {}),
         finishedAt: reopens || (draft.living && !saved.living) ? undefined : now.finishedAt,
       }),
-      { what: describe(saved, draft), effect: [...lines.map(lineText), movesText(moves)].filter(Boolean).join(". ") || undefined },
+      // The log is read by everyone: its lines name people, where the preview said "you".
+      { what: describe(saved, draft), effect: [...effectItems(saved, merged).map(lineText), movesText(moves)].filter(Boolean).join(". ") || undefined },
     );
     if (again.length) store.set(paid(saved, store, again.reduce((sum, one) => sum + one.cost, 0)));
     // The page stays where it is: Changes keeps what the save did until the next edit.
@@ -817,7 +821,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       <div className="space-y-2">
                         <span className="flex items-center gap-1">
                           <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-                          <Help title="Pasted DOIs" facts={<HelpFact>One a line, or separated by commas</HelpFact>}>Openscholar looks up each DOI in its index and takes the title and abstract from there. DOIs it can&apos;t find are listed after you add them.</Help>
+                          <Help title="Pasted DOIs" facts={<HelpFact>One a line, or separated by commas</HelpFact>}>Openscholar looks up each DOI in its index and takes the title and abstract from there. The source&apos;s row then says how many it couldn&apos;t find.</Help>
                         </span>
                         <Textarea id="dois" value={dois} onChange={(event) => setDois(event.target.value)} rows={4} placeholder="Paste DOIs, one a line or separated by commas" className="bg-card text-sm" />
                         <div className="flex min-h-8 items-center justify-between gap-3">
@@ -865,7 +869,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </>
                               }
                               added={draft.sources.some((source) => source.kind === "evidenceLibrary" && source.name === row.name)}
-                              onAdd={() => { openAdded(row.name, row.total); addSource("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As it stands when the screening starts"] } : source)) })); }}
+                              onAdd={() => { openAdded(row.name, row.total); addSource("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As the community stood when it was added"] } : source)) })); }}
                             />
                           ))}
                           {!communityRows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : group === "yours" ? `You have no collections in ${inCommunity.name}.` : group === "shared" ? `Nobody has shared a collection in ${inCommunity.name} with you.` : `Nothing to read in ${inCommunity.name} yet.`}</p> : null}
@@ -909,7 +913,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {draft.living ? (
                   growing(draft).length ? (
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
-                      <Chip icon={RefreshCw}>{growing(draft).length} of {plural(draft.sources.length, "source", "sources")} checked</Chip>
+                      <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? (draft.sources.length === 1 ? "Checks its source" : `Checks its ${draft.sources.length} sources`) : `Checks ${growing(draft).length} of its ${draft.sources.length} sources`}</Chip>
                       <Chip icon={Clock}>{saved?.living ? `Next check ${day(draft.living.next)}` : fresh ? `First check ${day(NOW + PERIOD[draft.living.every])}` : "First check as soon as this is saved"}</Chip>
                       {models.length ? <Chip icon={Coins}>{credits(perNew)} credits a new paper</Chip> : null}
                     </div>
@@ -1082,7 +1086,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             id="reviewers"
             title="Reviewers"
             help={<><Help title="Reviewers" facts={<><HelpFact>People are free</HelpFact><HelpFact icon={Coins}>Models cost credits</HelpFact></>}>Each reviewer votes include, maybe or exclude on the papers they get. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.</Help>{changed("reviewers")}</>}
-            aside={<Chip>{[plural(joined.length, "person", "people"), people.length > joined.length ? `${people.length - joined.length} invited` : null, plural(models.length, "model", "models")].filter(Boolean).join(" and ")}</Chip>}
+            aside={<Chip>{listed([joined.length ? plural(joined.length, "person", "people") : "", people.length > joined.length ? `${people.length - joined.length} invited` : "", models.length ? plural(models.length, "model", "models") : ""].filter(Boolean)) || "Nobody yet"}</Chip>}
           >
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
             <div className={cn(LIST, "bg-card")}>
@@ -1097,7 +1101,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === store.viewer}
                       href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? "AI model" : reviewer.email ? (saved && !wasOn(reviewer) ? PERSON_SAYS.sent : PERSON_SAYS.invited) : reviewer.id === draft.rule.resolver ? PERSON_SAYS.settles : personOf(reviewer.id)?.guest ? PERSON_SAYS.guest : PERSON_SAYS.member}
+                      detail={reviewer.kind === "model" ? "AI model" : reviewer.email ? (!saved ? PERSON_SAYS.toInviteAtStart : !wasOn(reviewer) ? PERSON_SAYS.toInvite : PERSON_SAYS.invited) : reviewer.id === draft.rule.resolver && draft.rule.settle !== "one" ? PERSON_SAYS.settles : standsTo(personOf(reviewer.id), workspace, draft.createdBy)}
                       chips={
                         gone ? (
                           <>
@@ -1131,7 +1135,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {!reviewerRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="px-4 py-4 text-sm text-muted-foreground">No reviewers yet</p></motion.div> : null}
               </AnimatePresence>
               <div className="grid gap-2 px-4 py-2.5 sm:grid-cols-2">
-                <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, NOW) : invitedReviewer(pick.email, NOW))}>
+                <AddPerson exclude={people.map((person) => person.id)} workspace={workspace} owner={draft.createdBy} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, NOW) : invitedReviewer(pick.email, NOW))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />Add a person</Button>
                 </AddPerson>
                 <AddModel exclude={models.map((model) => model.model!.id)} onPick={(model) => addReviewer(modelReviewer(model, NOW))}>
@@ -1168,16 +1172,21 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </Select>
                 ) : <span className="flex items-center gap-2 text-sm"><ReviewerMark reviewer={personReviewer(personOf(draft.createdBy)!, 0)} className="size-5" /><ReviewerName reviewer={personReviewer(personOf(draft.createdBy)!, 0)} you={draft.createdBy === store.viewer} /></span>}
               </RuleRow>
-              <RuleRow name="People see the other votes" help={<Help title="Seeing other votes">After they vote keeps people from being swayed: a paper&apos;s votes show once you have cast yours.</Help>}>
-                <Segmented label="People see the other votes" value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: "After they vote" }, { id: "always" as const, label: "At any time" }]} />
+              <RuleRow name="Reviewers see the other votes" help={<Help title="Seeing other votes">After they vote keeps a reviewer from being swayed: each sees the other votes on a paper once they have voted on it, or once it is settled. Anyone who doesn&apos;t vote on a paper sees its votes at any time.</Help>}>
+                <Segmented label="Reviewers see the other votes" value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: "After they vote" }, { id: "always" as const, label: "At any time" }]} />
               </RuleRow>
               {/* What the rule does, on three made-up papers. */}
               <div className="space-y-2 bg-inset px-4 py-3">
-                <p className="text-xs text-muted-foreground">With {plural(models.length + each, "vote", "votes")} on a paper, for example</p>
-                <RuleExamples rule={draft.rule} people={joined.length} models={models.length} />
+                {/* The examples show as many votes as a paper gets here. With nobody on it yet there are none to show. */}
+                {models.length + each ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">With {plural(models.length + each, "vote", "votes")} on a paper, for example</p>
+                    <RuleExamples rule={draft.rule} people={joined.length} models={models.length} />
+                  </>
+                ) : <p className="text-xs text-muted-foreground">Add a reviewer to see how a paper is settled.</p>}
               </div>
             </div>
-            {draft.rule.settle === "one" && models.length ? <p className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">A model reads faster than any person, so its vote alone will settle most papers.</p> : null}
+            {draft.rule.settle === "one" && models.length ? <p className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">A model&apos;s vote can settle a paper before any person votes.</p> : null}
           </Section>
 
           <Section
@@ -1232,7 +1241,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </ul>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "What the save did"}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump unseen={saved && savedState ? (paper) => !seesVotes(saved, savedState, store.viewer, paper) : undefined} />
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump done={!dirty} unseen={saved && savedState ? (paper) => !seesVotes(saved, savedState, store.viewer, paper) : undefined} />
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || draft.recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
@@ -1299,10 +1308,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <ReviewerMark reviewer={model} className="size-5" />
                     <span className="min-w-0 truncate">{model.name}</span>
                     {!fresh && unreadBy(model).length ? <StateChip tone="destructive" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model).length)}</StateChip> : !due(model) && !fresh ? <Chip icon={Check} className="h-5 px-1.5">All read</Chip> : null}
-                    <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">Free</span> : null}</span>
+                    <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">No papers yet</span> : null}</span>
                   </JumpLink>
                 ))}
-                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? "Answering the new criterion on papers already read" : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
+                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? `Answering the new ${draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length === 1 ? "criterion" : "criteria"} on papers already read` : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Total, at most" : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>
                   <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-warning" : "bg-primary"} />
@@ -1411,7 +1420,8 @@ function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; ic
 
 /** A reviewer on the screening, a person or a model, as the same row: what they are to it, what they cost, and the way to take them off. The summary's cost lines open a model's row. */
 function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKeep }: { reviewer: Reviewer; you: boolean; detail: string; chips?: ReactNode; /** Their votes on the Papers page, for someone already on the screening. */ href?: string; /** Removed in the form and not saved yet: struck through, with Keep. */ gone: boolean; onRemove: () => void; onKeep: () => void }) {
-  const name = <ReviewerName reviewer={reviewer} you={you} className={cn("text-sm font-medium", gone && "text-muted-foreground line-through")} />;
+  // Removed here and not saved yet: the chip beside the name says so, and the name carries no "Taken off" of its own.
+  const name = <ReviewerName reviewer={gone ? { ...reviewer, left: undefined } : reviewer} you={you} className={cn("text-sm font-medium", gone && "text-muted-foreground line-through")} />;
   return (
     <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER, DIVIDED_ROW)}>
       <div className={cn("flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors", gone && TONE.warning.panel)}>

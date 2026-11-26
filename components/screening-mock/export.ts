@@ -14,7 +14,6 @@ import {
   agreement,
   confidenceOf,
   count,
-  day,
   doiOf,
   evidence,
   excludedBy,
@@ -22,6 +21,7 @@ import {
   foundTotal,
   growing,
   keptOf,
+  listed,
   modelsOf,
   nameOn,
   num,
@@ -47,6 +47,8 @@ export type Taken = { screening: Screening; state: Pick<Standing, "papers" | "vo
 
 const sees = ({ screening, state, me }: Taken, paper: Paper) => seesVotes(screening, state, me, paper);
 const iso = (at: number) => new Date(at).toISOString();
+/** A day as a file says it, with its year: a file is read long after the year it was made in. */
+const fullDay = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const MORE_AUTHORS = "and others";
 const authorsOf = (paper: Paper) => paper.authors.filter((author) => author !== MORE_AUTHORS);
 /** A list of authors the source gave incomplete ends "and others": a file keeps that, since the missing names can't be made up. */
@@ -55,8 +57,8 @@ const cutShort = (paper: Paper) => paper.authors.includes(MORE_AUTHORS);
 const openIn = ({ screening, state }: Taken) => state.counts.conflict + state.counts.waiting + (paperTotal(screening.sources) - state.papers.length);
 const kindOf = (reviewer: { kind: "person" | "model" }) => (reviewer.kind === "model" ? "AI model" : "Person");
 
-/** A file's name: the screening, what the file holds, "unfinished" while papers are still open, and the day it was taken out. A file sent on says by its name what it is a picture of. */
-export const fileName = (out: Taken, what: string, ending: string, at: number) => `${slug(out.screening.name)}-${what}${openIn(out) ? "-unfinished" : ""}-${iso(at).slice(0, 10)}.${ending}`;
+/** A file's name: the screening, what the file holds, "unfinished" while it is running with papers still open, "with-open-papers" where it was marked finished with some, and the day it was taken out. A file sent on says by its name what it is a picture of. */
+export const fileName = (out: Taken, what: string, ending: string, at: number) => `${slug(out.screening.name)}-${what}${!openIn(out) ? "" : out.screening.finishedAt ? "-with-open-papers" : "-unfinished"}-${iso(at).slice(0, 10)}.${ending}`;
 
 /** A file of rows, as a spreadsheet opens it: every cell quoted, a quote in a cell doubled. */
 const toCsv = (lines: unknown[][]) => lines.map((line) => line.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -179,7 +181,7 @@ export const bibOf = (papers: Paper[], every: Paper[] = papers) => {
 };
 
 /** What a reviewer's row says where their vote is cast and kept from the person taking the file out. */
-const VOTE_KEPT = "Voted, hidden until you vote";
+const VOTE_KEPT = "Voted, hidden";
 /**
  * One row for each reviewer on each paper: who was on it, whether they voted, and how. On a paper the person has yet
  * to vote on, the others' rows say only what the page says: that a vote was cast, never which. Their own row is whole.
@@ -204,7 +206,7 @@ export const VOTE_GUIDE = {
   year: PAPER_GUIDE.year,
   reviewer: "The person or the AI model.",
   reviewer_kind: "Person or AI model.",
-  status: `Voted, ${NO_VOTE.yet}, ${NO_VOTE.none} (the paper was settled without it), ${NO_VOTE.failed} (a model), or ${VOTE_KEPT} (cast, and kept from the person who took the file out).`,
+  status: `One of: "Voted"; "${NO_VOTE.yet}"; "${NO_VOTE.none}" (the paper was settled without this vote); "${NO_VOTE.failed}" (an AI model); "${VOTE_KEPT}" (the vote was cast, and is hidden from the person who took the file out, who had not voted on the paper yet).`,
   decision: "Include, Maybe or Exclude.",
   reason: "For an Exclude, the criterion the paper failed or the other reason given.",
   criteria: "One column for each criterion, named by its number and short name: the reviewer's answer, yes, no or unclear. Empty where they gave none.",
@@ -245,7 +247,7 @@ export function flowOf(out: Taken): FlowRow[] {
   const later = looks.reduce((sum, look) => sum + look.found, 0);
   return [
     {
-      main: { title: "Records identified", n: found, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) })), ...(later ? [{ label: looks.length === 1 ? `Of these, by the later search on ${day(looks[0]!.at)}` : `Of these, by ${looks.length} later searches, the last on ${day(looks.at(-1)!.at)}`, n: later }] : [])] },
+      main: { title: "Records identified", n: found, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) })), ...(later ? [{ label: looks.length === 1 ? `Of these, by the later search on ${fullDay(looks[0]!.at)}` : `Of these, by ${looks.length} later searches, the last on ${fullDay(looks.at(-1)!.at)}`, n: later }] : [])] },
       side: [{ title: "Records removed before screening", n: found - kept, lines: [{ label: "Duplicates", n: found - kept }] }],
     },
     {
@@ -289,8 +291,10 @@ export function flowSvg(out: Taken, at: number) {
     return drawn;
   });
   const open = openIn(out);
-  const caption = `${out.screening.name}. Screening on title and abstract, as it stood on ${day(at)}${open ? `: not finished, ${plural(open, "record", "records")} still open` : ""}.`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${y - gap + 44}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${parts.join("")}<text x="${mainX}" y="${y - gap + 26}" font-size="11" fill="#666">${esc(caption)}</text></svg>`;
+  const caption = `${out.screening.name}. Screening on title and abstract, as it stood on ${fullDay(at)}${!open ? "" : out.screening.finishedAt ? `: marked finished with ${plural(open, "record", "records")} still open` : `: not finished, ${plural(open, "record", "records")} still open`}.`;
+  // The caption runs onto further lines where it is long: a line cut at the drawing's edge would lose its end.
+  const captionLines = wrap(caption, 118);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${y - gap + 30 + captionLines.length * 14}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${parts.join("")}${captionLines.map((text, k) => `<text x="${mainX}" y="${y - gap + 26 + k * 14}" font-size="11" fill="#666">${esc(text)}</text>`).join("")}</svg>`;
 }
 
 /** A paragraph for a review's methods section: what was done, in the past tense for what is done and the present for a screening still running. */
@@ -312,19 +316,29 @@ export function methodsOf(out: Taken) {
   const unread = count(papers, (paper) => votes[paper.id]!.some((one) => one.failed));
   const untitled = count(papers, (paper) => !paper.sentences.length);
   const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
-  // What people changed after it began: every line of its activity but the first, a check for new papers aside.
-  const changed = screening.changes.filter((change) => change.at > screening.createdAt && change.by !== SCHEDULE && !/^Checked for new papers/.test(change.what)).length;
+  // What changed its settings or its reviewers after it began. Asking a reviewer, reminding one, pausing the models, sharing, moving and finishing are in its activity too, and change neither.
+  const changed = screening.changes.filter((change) => change.at > screening.createdAt && change.by !== SCHEDULE && !/^(Asked|Sent|Paused|Resumed|Moved|Marked|Reopened|Shared|Checked|Started)\b/.test(change.what)).length;
   const settler = nameOn(screening, screening.rule.resolver);
+  // The present for a screening still running. One marked finished is told in the past, whether or not papers were left open.
+  const running = open > 0 && !screening.finishedAt;
+  const [is, are] = running ? ["is", "are"] : ["was", "were"];
+  const one = (n: number) => (n === 1 ? is : are);
+  // Marked finished with papers left open: nothing is claimed of every record, since not every one was done.
+  const partial = open > 0 && !running;
+  // The people who joined after it began were given only what was still open then.
+  const late = people.filter((person) => person.addedAt > screening.createdAt);
   return [
-    open ? `Screening was still in progress when this was written: ${num(kept - open)} of ${num(kept)} records had been settled.` : "",
-    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found)}) were brought into Openscholar. After ${num(found - kept)} duplicates were merged, ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
-    looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
-    `Each record ${open ? "is" : "was"} assessed on its title and abstract${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${open ? "has" : "had"} to meet to be included` : ""}${untitled ? `; ${plural(untitled, "record", "records")} had no abstract and ${untitled === 1 ? "was" : "were"} assessed on the title alone` : ""}.`,
-    readers ? `${readers} ${open ? "vote" : "voted"} on each record${screening.rule.blind === "after" ? " without seeing the other votes" : ""}.` : "No human reviewer voted on the records.",
-    models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${open ? "vote" : "voted"} on the records as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}, giving an answer and a quoted passage for every criterion${unread ? `; ${plural(unread, "record", "records")} could not be read by a model and ${unread === 1 ? "was" : "were"} decided by the other reviewers` : ""}.` : "No AI model took part.",
-    screening.rule.settle === "all" ? `A record ${open ? "is" : "was"} settled when all of its reviewers agree${open ? "" : "d"}, and disagreements ${open ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "was", "were")} still open` : ""}.` : screening.rule.settle === "most" ? `A record ${open ? "is" : "was"} settled by the majority of its reviewers, and records with no majority ${open ? "go" : "went"} to ${settler}.` : `The first vote on a record ${open ? "settles" : "settled"} it.`,
-    lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: the votes people had cast were kept, the models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open, records already settled kept their result, and records where that changed the outcome went to ${settler}.` : "",
-    changed ? `The screening's settings or reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after it began; its record lists each change with what it did.` : "",
+    !open ? "" : running ? `Screening was still in progress when this was written: ${num(kept - open)} of ${num(kept)} records had been settled.` : `The screening was marked finished with ${plural(open, "record", "records")} still open: ${num(kept - open)} of ${num(kept)} records had been settled.`,
+    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found)}) were brought into Openscholar. ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
+    looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${fullDay(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
+    // Said of the records, not of work done: true before the first vote and after the last.
+    `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}${untitled ? `; ${plural(untitled, "record", "records")} had no abstract, so only ${untitled === 1 ? "its title was" : "their titles were"} available` : ""}.`,
+    // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
+    readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${screening.rule.blind === "after" ? `, and ${running ? ((each >= people.length ? people.length : each) === 1 ? "votes" : "vote") : "voted"} without seeing the other votes` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
+    models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) ${running ? (models.length === 1 ? "votes" : "vote") : "voted"} on the records${people.length ? ` as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer and a quoted passage for every criterion${unread ? `; ${plural(unread, "record", "records")} could not be read by a model and ${one(unread)} decided by the other reviewers` : ""}.` : "No AI model took part.",
+    screening.rule.settle === "all" ? `A record ${is} settled when all of its reviewers agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its reviewers, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${num(counts.conflict)} ${one(counts.conflict)} still open` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it.`,
+    lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
+    changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${names[0]} and ${names[1]} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (Cohen's kappa ${pair.kappa.toFixed(2)}).` : "",
     kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
     `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe, where a criterion a record had to meet could not be answered from its title and abstract` : ""}.`,
@@ -347,7 +361,7 @@ export function recordOf(out: Taken, at: number) {
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
   return {
-    exported: { at: iso(at), by: nameOn(screening, me), ...(hidden.votes ? { left_out: `${hidden.votes} votes on ${hidden.papers} papers, hidden from ${nameOn(screening, me)} until they vote on them` } : {}) },
+    exported: { at: iso(at), by: nameOn(screening, me), ...(hidden.votes ? { left_out: `${plural(hidden.votes, "vote", "votes")} on ${plural(hidden.papers, "paper", "papers")}, hidden from ${nameOn(screening, me)}, who had not voted on ${hidden.papers === 1 ? "it" : "them"} yet` } : {}) },
     guide: { papers: PAPER_GUIDE, votes: VOTE_GUIDE },
     screening: {
       id: screening.id,
@@ -358,7 +372,7 @@ export function recordOf(out: Taken, at: number) {
       started_at: iso(screening.createdAt),
       finished_at: screening.finishedAt ? iso(screening.finishedAt) : null,
       checks_for_new_papers: screening.living ? { how_often: EVERY_LABEL[screening.living.every], next: iso(screening.living.next) } : null,
-      rule: { people_on_each_paper: rule.each === "all" ? "Everyone" : Number(rule.each), settled_when: SETTLE_LABEL[rule.settle], conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind === "after" ? "After you vote" : "At any time" },
+      rule: { people_on_each_paper: rule.each === "all" ? "Everyone" : Number(rule.each), settled_when: SETTLE_LABEL[rule.settle], conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind === "after" ? "Hidden from a reviewer only while the paper waits for that reviewer's own vote" : "At any time" },
       scoring: { points_needed_for_each_star: scoring.stars },
       included_papers_go_to: destination.kind === "none" ? null : { kind: destination.kind, name: collectionName(screening), collection_id: destination.kind === "new" ? null : (destination.collection ?? null), excluded_papers_removed_from_it: destination.prune },
       shared_with: (screening.viewers ?? []).map((viewer) => ({ name: viewer.name, role: "Viewer", since: iso(viewer.addedAt) })),
