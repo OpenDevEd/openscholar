@@ -241,6 +241,16 @@ export const sourceSetValidator = v.union(
   v.object({ kind: v.literal("dois"), file: v.id("_storage") }),
 );
 
+/** What a file a person is about to add holds (./held.ts `look`). */
+export const fileLookValidator = v.object({
+  records: v.number(),
+  untitled: v.number(),
+  bare: v.number(),
+  withDoi: v.number(),
+  sample: capped(v.array(v.string()), 3),
+  table: v.optional(v.object({ heads: capped(v.array(v.string()), 200), picked: capped(v.record(v.string(), v.string()), 20), ask: v.boolean() })),
+});
+
 /** Why something a source held isn't screened. */
 export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("scan"), v.literal("broken"), v.literal("wrong"));
 

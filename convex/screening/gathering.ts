@@ -25,6 +25,7 @@ import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing"
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { papersIn } from "./estimate";
+import { handedPapers, handedStart, PDFS_A_STEP, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
 import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator } from "./validators";
@@ -74,11 +75,11 @@ export const heldTotal = internalQuery({
 
 /** A source's reading begins: what it holds, and for a search the search as it was then, which every step reads. */
 export const begin = internalMutation({
-  args: { sourceId: v.id("screeningSources"), total: v.optional(v.number()), snapshot: v.optional(searchSnapshotValidator) },
+  args: { sourceId: v.id("screeningSources"), total: v.optional(v.number()), snapshot: v.optional(searchSnapshotValidator), resume: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { sourceId, total, snapshot }) => {
+  handler: async (ctx, { sourceId, total, snapshot, resume }) => {
     const source = await ctx.db.get("screeningSources", sourceId);
-    if (source?.state === "waiting") await ctx.db.patch("screeningSources", sourceId, { state: "reading", ...(total === undefined ? {} : { total }), ...(snapshot ? { snapshot } : {}) });
+    if (source?.state === "waiting") await ctx.db.patch("screeningSources", sourceId, { state: "reading", ...(total === undefined ? {} : { total }), ...(snapshot ? { snapshot } : {}), ...(resume ? { resume } : {}) });
     return null;
   },
 });
@@ -121,8 +122,11 @@ export const gather = internalAction({
 async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading) {
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
-  const give = (papers: SearchPaper[], read: number, ended: boolean, resume?: string) => ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers, read, ended, ...(resume ? { resume } : {}) });
+  const give = (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers, read, ended, ...(resume ? { resume } : {}), ...(leftOut?.length ? { leftOut } : {}) });
+  const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;
   if (source.state === "waiting") {
+    // A file, a pasted list or PDFs: what it holds is counted from the file itself.
+    if (held) return void (await ctx.runMutation(internal.screening.gathering.begin, { sourceId, ...(await handedStart(ctx, held)) }));
     // What it holds is counted once, before its first paper: a search as it is now, a community's source as the person may read it.
     if (set.kind === "search") {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { ...reader, searchId: set.searchId });
@@ -141,6 +145,12 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   const from = source.first + source.read;
   if (from > last) return void (await give([], 0, true));
   const to = Math.min(last, Math.ceil(from / READ_STEP) * READ_STEP);
+  if (held) {
+    // PDFs are opened and read one by one, so a step takes a few.
+    const through = held.set.kind === "pdf" ? Math.min(to, from + PDFS_A_STEP - 1) : to;
+    const { papers, left } = await handedPapers(ctx, held, from, through);
+    return void (await give(papers, through - from + 1, through >= last, source.resume, left));
+  }
   if (set.kind === "search") {
     // Numbered pages when the search's order has them as far as the source goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
     const paged = source.snapshot !== undefined && numbered(source.snapshot.request, last);
@@ -164,7 +174,7 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     const { papers, resume } = await heldPapers(ctx, reader, set, { first: from, last: to }, source.resume);
     return void (await give(papers, to - from + 1, !resume || to >= last, resume));
   }
-  throw new Error("Files, PDFs and pasted DOIs are read by their own steps.");
+  throw new Error(`No reading for a source of this kind: ${set.kind}`);
 }
 
 /** The screening a check is of. */
@@ -197,9 +207,9 @@ async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, 
  * take the next places in the round and go to their reviewers.
  */
 export const fill = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean() },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a scan, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
   returns: v.null(),
-  handler: async (ctx, { checkId, sourceId, papers, read, resume, ended }) => {
+  handler: async (ctx, { checkId, sourceId, papers, read, resume, ended, leftOut }) => {
     const [check, source] = await Promise.all([ctx.db.get("screeningChecks", checkId), ctx.db.get("screeningSources", sourceId)]);
     const job = check?.state === "running" && source?.state === "reading" ? await ctx.db.get("screeningJobs", check.jobId) : null;
     if (!check || !source || !job) return null;
@@ -214,6 +224,7 @@ export const fill = internalMutation({
       if (paperKey && (await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first())) return;
       await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
     };
+    for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     for (const sent of papers) {
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
       const title = paper.title.trim();
