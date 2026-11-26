@@ -1125,7 +1125,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? t("living.checksAll", { count: draft.sources.length }) : t("living.checksSome", { count: draft.sources.length, growing: growing(draft).length })}</Chip>
                       <Chip icon={Clock}>{saved?.living ? t("living.nextCheck", { day: words.day(draft.living.next) }) : fresh ? t("living.firstCheck", { day: words.day(draft.living.next) }) : t("living.firstOnSave")}</Chip>
-                      {models.length ? <Chip icon={Coins}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome), last: "false", spent: "", count: 0 })}</Chip> : null}
+                      {models.length ? <Chip icon={Coins}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome) })}</Chip> : null}
                     </div>
                   ) : (
                     <p className="bg-warning/10 px-4 py-2.5 text-sm ink-warning">{draft.sources.length ? t("living.noneGrow") : t("living.addToCheck")}</p>
@@ -1547,7 +1547,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {spentSoFar ? <Chip>{t("cost.spent", { credits: words.credits(spentSoFar) })}</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
-                    <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome), last: String(Boolean(lastCheck)), spent: lastCheck ? words.credits(lastCheck.added * perNew) : "", count: lastCheck?.added ?? 0 })}</Chip>
+                    <>
+                    <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome) })}</Chip>
+                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.credits(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
+                    </>
                   ) : null}
                 </div>
                 {ahead_ && models.length ? <LinkChip href={overviewHref(ahead_.id)} icon={MODELS_SAY.waiting.icon} className="w-fit max-w-full [&>span]:shrink">{pieces.rich("modelsSay.waiting.says", { name: ahead_.name, link: (chunks) => chunks })}</LinkChip> : null}

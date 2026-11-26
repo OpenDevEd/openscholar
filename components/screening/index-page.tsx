@@ -250,11 +250,11 @@ export function ScreeningsIndex() {
                               : null}
                             {/* Where its papers stand shows where nothing waits for you. */}
                             {forYou || conflicts ? null
-                              : row.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{t("finishedIncluded", { included: words.num(stands.include), when: words.ago(row.finishedAt) })}</LinkChip>
+                              : row.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{t("finishedIncluded", { included: words.num(stands.include) })}</LinkChip>
                               : models ? null
                               : stands.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{t("waitingForVotes", { count: words.num(stands.waiting) })}</LinkChip>
                               : stands.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{t("inConflictFor", { count: words.num(stands.conflict), who: resolver })}</LinkChip>
-                              : row.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">{t("upToDate", { day: words.day(row.living.next) })}</LinkChip>
+                              : row.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">{t("upToDate")}</LinkChip>
                               : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">{t("allSettled")}</LinkChip>}
                           </span>
                           <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">

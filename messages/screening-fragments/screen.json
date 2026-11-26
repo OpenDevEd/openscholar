@@ -59,10 +59,10 @@
     "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}"
   },
   "hint": {
-    "against": "You voted {voted}, and your answers point to {points}.",
-    "againstWhy": "You voted {voted}, and your answers point to {points}: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}.",
-    "pointsWhy": "Your answers point to <b>{points}</b>: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}. Your vote is not cast yet.",
-    "allMet": "Your answers point to <b>{points}</b>: every must-have is met. Your vote is not cast yet.",
+    "against": "You voted {voted}, but your answers point to {points}.",
+    "againstWhy": "You voted {voted}, but your answers point to {points}. You answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, which are must-haves} other {criterion {numbers}, a must-have}}.",
+    "pointsWhy": "Your answers point to <b>{points}</b>. You answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, which are must-haves} other {criterion {numbers}, a must-have}}. Your vote isn't cast yet.",
+    "allMet": "Your answers point to <b>{points}</b>, since every must-have is met. Your vote isn't cast yet.",
     "againstLine": "You voted {voted}. Your answers point to <b>{points}</b>.",
     "pointsLine": "Your answers point to <b>{points}</b>. Not cast yet."
   },
@@ -76,17 +76,17 @@
     "title": "Criteria",
     "answered": "{answered, number} of {count, number} answered",
     "mustHaveFact": "Must-have",
-    "guidanceFact": "Guidance: what counts and what doesn't",
-    "markedFact": "Marked words: the words a criterion looks for",
+    "guidanceFact": "Guidance says what counts and what doesn't",
+    "markedFact": "Marked words are the ones a criterion looks for",
     "showsFact": "<mark>Marked</mark>How they show in the abstract",
-    "helpAnswering": "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say.",
+    "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say.",
     "helpReading": "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude.",
-    "mustHave": "{answering, select, true {A must-have: a No on one points to Exclude. Answers are optional and are not your vote.} other {A must-have: a No on one points to Exclude.}}",
+    "mustHave": "{answering, select, true {A must-have, so a No points to Exclude. Answers are optional and aren't your vote.} other {A must-have, so a No points to Exclude.}}",
     "guidance": "Guidance",
     "markedWords": "Marked words",
     "markedFor": "Marked words for criterion {n, number}",
     "answerTo": "Your answer to criterion {n, number}",
-    "differFor": "Criterion {n, number}: show the answer that differs",
+    "differFor": "Show the answer that differs on criterion {n, number}",
     "none": "No criteria yet",
     "add": "Add criteria"
   },
@@ -132,11 +132,11 @@
     "helpTitle": "Settling a conflict",
     "yourVote": "Your vote as a reviewer",
     "rule": "Rule",
-    "help": "The reviewers split on this paper. What you pick becomes its result, whatever they voted. Maybe is a result too: it settles the paper as one to look at again."
+    "help": "The reviewers split on this paper. What you pick becomes its result, whatever they voted. Maybe is a result too. It settles the paper as one to look at again."
   },
   "empty": {
     "noConflictPaper": "No paper is in conflict",
-    "onTheirWay": "Its papers are on their way",
+    "onTheirWay": "Papers are on their way",
     "arrived": "{done, number} of {count, number} are in",
     "noneYet": "No paper has come to you yet",
     "noneYours": "None of its papers is yours to vote on",
@@ -156,8 +156,8 @@
     "nameYou": "{name}, you",
     "theirVote": "{name}'s vote",
     "on": "{name}, {criterion}",
-    "differFor": "{criterion}: show the answer that differs",
-    "show": "{who}, {criterion}: {kind, select, model {show the passage} you {show your vote and note} other {show their vote and note}}",
+    "differFor": "Show the answer that differs on {criterion}",
+    "show": "{kind, select, model {Show the passage {who} read for {criterion}} you {Show your vote and note on {criterion}} other {Show {who}'s vote and note on {criterion}}}",
     "vote": "Vote"
   },
   "said": {
@@ -168,7 +168,7 @@
     "helpTitle": "How sure the model is",
     "unsureBelow": "Unsure below 65%",
     "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
-    "unsure": "Unsure: {sure, number, percent} sure",
+    "unsure": "Only {sure, number, percent} sure",
     "sure": "{sure, number, percent} sure"
   }
 }

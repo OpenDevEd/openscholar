@@ -1,7 +1,7 @@
 {
   "notSaved": "That wasn't saved. Try again.",
   "noPapers": {
-    "gathering": "Its papers are on their way. They show here as they arrive.",
+    "gathering": "Papers are on their way. They show here as they arrive.",
     "none": "This screening has no papers yet."
   },
   "sort": {
@@ -21,7 +21,7 @@
     "source": "Source",
     "reviewer": "Reviewer",
     "reviewers": "Reviewers",
-    "reviewersLabel": "{anyone, select, true {Reviewers: anyone} other {Reviewers: {names}}}",
+    "reviewersLabel": "{anyone, select, true {Any reviewer} other {Reviewers {names}}}",
     "anyone": "Anyone",
     "people": "People",
     "models": "Models",
@@ -109,8 +109,8 @@
     "includedOnly": "Points on included papers only",
     "mostCommon": "Points from the most common answer",
     "stars": "1 to {count, number} stars from {points} points",
-    "says": "Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.",
-    "points": "An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave: a yes earns 1 unless {canChange, select, true {the screening's settings say otherwise} other {{workspace}'s members set otherwise}}. The stars follow the points."
+    "says": "Why a paper stands where it does. This is the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.",
+    "points": "An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave. A yes earns 1 unless {canChange, select, true {the screening's settings say otherwise} other {{workspace}'s members set otherwise}}. The stars follow the points."
   },
   "menu": {
     "papersVoted": "{you, select, true {Papers you voted {decision}} other {Papers {name} voted {decision}}}",
@@ -133,7 +133,7 @@
   },
   "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
   "note": {
-    "neededForOther": "Note, needed for another reason",
+    "neededForOther": "Write the other reason",
     "label": "Note",
     "writeReason": "Write the reason in the note",
     "forOthers": "Note for the others (optional)",
@@ -145,7 +145,7 @@
     "notInList": "Not in this list",
     "close": "Close",
     "paper": "Paper",
-    "says": "Its abstract, its votes and its result",
+    "says": "The abstract, votes and result of this paper",
     "yourVote": "Your vote",
     "youVoted": "You voted {decision}",
     "changeIt": "Change it",
@@ -157,7 +157,7 @@
     "reopen": "Reopen",
     "waitingToSettle": "{you, select, true {Waiting for you to settle it} other {Waiting for {name} to settle it}}",
     "everyConflict": "Every conflict",
-    "override": "Override result",
+    "override": "Override the result",
     "overrideTitle": "Overriding a result",
     "votesKept": "Votes kept",
     "canReopen": "Can be reopened",

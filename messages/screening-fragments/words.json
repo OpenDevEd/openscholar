@@ -86,7 +86,7 @@
     "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
   },
   "notMet": "{name} not met",
-  "notMetInFull": "Not met: {name}",
+  "notMetInFull": "Doesn't meet {name}",
   "unclearOn": "{name} unclear",
   "includedIn": "Included in {name}",
   "every": {
@@ -94,7 +94,7 @@
     "week": "Every week",
     "month": "Every month"
   },
-  "living": "{every, select, day {Living, new papers every day} week {Living, new papers every week} other {Living, new papers every month}}",
+  "living": "{every, select, day {Every day} week {Every week} other {Every month}}",
   "settle": {
     "label": {
       "all": "All agree",
@@ -104,7 +104,7 @@
     "means": {
       "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
       "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
-      "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it: a model's vote settles only a paper no person has."
+      "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
     },
     "says": {
       "all": "Settled when all agree",

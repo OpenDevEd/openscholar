@@ -1,10 +1,10 @@
 {
   "notSaved": "That didn't work. Try again.",
   "empty": {
-    "arriving": "Its papers are on their way",
-    "arrivingSays": "{reviewer, select, true {They show here as they arrive from its sources. You can start screening as soon as the first are in.} other {They show here as they arrive from its sources.}}",
-    "noPaper": "{sources, select, true {Its sources held no paper it can screen.} other {This screening has no source to take papers from.}}",
-    "toSources": "{sources, select, true {See its sources} other {Add a source}}"
+    "arriving": "Papers are on their way",
+    "arrivingSays": "{reviewer, select, true {They show here as they arrive from the sources. You can start screening as soon as the first are in.} other {They show here as they arrive from the sources.}}",
+    "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {This screening has no source to take papers from.}}",
+    "toSources": "{sources, select, true {See the sources} other {Add a source}}"
   },
   "progress": {
     "title": "Progress",
@@ -19,7 +19,7 @@
     "extract": "Extract from the included papers",
     "finish": "Mark as finished",
     "settledOf": "{total, plural, one {of # paper settled} other {of # papers settled}}",
-    "leftOut": "{bare, select, true {{count, number} left out: no abstract} other {{count, number} left out}}",
+    "leftOut": "{bare, select, true {{count, number} left out for having no abstract} other {{count, number} left out}}",
     "capped": "{personal, select, true {Stopped at your plan's paper limit} other {Stopped at the paper limit of {workspace}'s plan}}",
     "pdfsUnread": "{count, plural, one {# PDF has no reviewer that reads it} other {# PDFs have no reviewer that reads them}}",
     "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}"
@@ -86,8 +86,8 @@
     "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
     "unread": "{count, number} couldn't be read",
     "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
-    "notGivenText": "{count, plural, one {Not on the PDF: it reads text only} other {Not on the # PDFs: it reads text only}}",
-    "notGivenLong": "{count, plural, one {Not on # PDF: longer than it reads at once} other {Not on # PDFs: longer than it reads at once}}",
+    "notGivenText": "{count, plural, one {Not given the PDF, as it reads text only} other {Not given the # PDFs, as it reads text only}}",
+    "notGivenLong": "{count, plural, one {Not given # PDF that is longer than it reads at once} other {Not given # PDFs that are longer than it reads at once}}",
     "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
     "noOtherPerson": "No other person to compare with",
     "noPeople": "No people to compare with",
@@ -101,7 +101,7 @@
     "creditsShort": "{credits} credits short",
     "remind": "Send a reminder",
     "moveAway": "Move papers to someone else",
-    "takeOff": "{mine, select, true {Leave this screening} other {Take off this screening}}"
+    "takeOff": "{mine, select, true {Leave this screening} other {Take them off this screening}}"
   },
   "unread": {
     "earlier": "Earlier",
@@ -115,13 +115,13 @@
       "above": "{from, number} and up"
     },
     "sameOf": "{share, number, percent} same of {count, plural, one {# paper} other {# papers}}",
-    "kept": "How far the reviewers agree shows once you have voted on every paper of yours: it would give away how the others voted.",
+    "kept": "How far the reviewers agree shows once you have voted on every paper of yours. Before that, it would give away how the others voted.",
     "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
     "mean": "Mean pairwise Cohen's kappa",
     "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}",
     "splitMost": "The papers they split on most",
     "noneYet": "None yet",
-    "cell": "{a} and {b}: kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
+    "cell": "{a} and {b}, kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
   },
   "kappa": {
     "title": "Cohen's kappa",
@@ -157,7 +157,7 @@
     "spent": "<num>{count, number}</num> spent",
     "onceRead": "{credits} once every paper is read",
     "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
-    "arriving": "Its papers are still arriving",
+    "arriving": "Papers are still arriving",
     "allRead": "Every paper is read",
     "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
     "takenOff": "{credits} by models taken off",
@@ -172,7 +172,7 @@
     "skips": "{count, plural, one {Skips # fixed source} other {Skips # fixed sources}}",
     "means": "A check runs each source's search again and adds the papers this screening doesn't have yet. Uploaded files and pasted lists never change, so checks skip them.",
     "checkNow": "Check now",
-    "every": "{every, select, day {Checks every day} week {Checks every week} other {Checks every month}}, next check {day}",
+    "every": "{every, select, day {Checks every day} week {Checks every week} other {Checks every month}}",
     "onlyWhenAsked": "Checks only when asked",
     "schedule": "Check on a schedule",
     "checkedBy": "{you, select, true {You checked} other {{name} checked}}",

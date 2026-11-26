@@ -902,7 +902,10 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
           {screening.living ? (
-            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every, day: words.day(screening.living.next) })}</Chip>
+            <>
+            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every })}</Chip>
+            {screening.finishedAt ? null : <Chip>{t("checks.next", { day: words.day(screening.living.next) })}</Chip>}
+            </>
           ) : (
             <>
               <Chip>{t("checks.onlyWhenAsked")}</Chip>
