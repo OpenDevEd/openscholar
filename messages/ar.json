@@ -201,7 +201,8 @@
     "calendarSelected": "{date}، محدَّد",
     "calendarMonth": "اختر الشهر",
     "calendarYear": "اختر السنة",
-    "calendarNavigation": "التنقل في التقويم"
+    "calendarNavigation": "التنقل في التقويم",
+    "upToCredits": "حتى {credits}"
   },
   "home": {
     "tagline": "ابحث وافرز واستخلص الأدلة من البحوث الأكاديمية",

@@ -1,4 +1,4 @@
-import { isStepCount, streamText, tool } from "ai";
+import { generateText, isStepCount, streamText, tool } from "ai";
 import { z } from "zod";
 import type { resolveOpenRouterModel } from "../ai/provider";
 import { groupSearch, readSearchWorks, type SearchRequest } from "../paperSets/openalex";
@@ -135,8 +135,27 @@ export async function writeOverview(
   if (!text.trim() || counts + lists === 0) throw new Error(`Nothing read or written: ${counts} counts, ${lists} lists, ${text.length} characters`);
   const usage = usageOf({ usage: await result.totalUsage });
   if (!reported) usd = calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
-  return { text: text.trim(), usd, usage, counts, lists };
+  let written = text.trim();
+  // Told twice to write in the page's language, a model can still answer in English when everything it read was English (a French page got an English overview on 2026-11-26): it rewrites what it wrote once, in that language.
+  if (!locale.startsWith("en") && looksEnglish(written)) {
+    const again = await generateText({ model, system: rewriteIn(language), prompt: written, maxRetries: 1, providerOptions: callOptions(model, { effort }) });
+    if (again.text.trim()) {
+      written = again.text.trim();
+      await progress({ text: written });
+    }
+    const spent = usageOf({ usage: again.usage });
+    usd += pickProviderCostUsd(again.providerMetadata) ?? calculateCostInDollars({ inputTokens: spent.inputTokens, outputTokens: spent.outputTokens }, pricing);
+  }
+  return { text: written, usd, usage, counts, lists };
 }
+
+/** Words that make up much of any English prose and little of other languages': where they are over an eighth of a text's words, it is English. */
+const ENGLISH = new Set(["the", "and", "of", "is", "are", "with", "from", "this", "that", "which", "were", "was", "most", "papers", "between", "their"]);
+export const looksEnglish = (text: string) => {
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  return words.length > 0 && words.filter((word) => ENGLISH.has(word)).length / words.length > 0.125;
+};
+const rewriteIn = (language: string) => `Rewrite the overview you are given in ${language}. Keep every line that is only a chart marker, such as [chart:c1] or [chart:c1:change], exactly as it is. Keep every paper link, such as [a few words](paper:W2016011122), with its target exactly as it is, and write the words inside its brackets in ${language}. Keep every number. Add nothing, leave nothing out, and add no heading or Markdown.`;
 
 const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in Openscholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
 

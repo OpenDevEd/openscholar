@@ -201,7 +201,8 @@
     "calendarSelected": "{date}, sélectionné",
     "calendarMonth": "Choisir le mois",
     "calendarYear": "Choisir l'année",
-    "calendarNavigation": "Navigation du calendrier"
+    "calendarNavigation": "Navigation du calendrier",
+    "upToCredits": "Jusqu'à {credits}"
   },
   "home": {
     "tagline": "Recherchez, filtrez et extrayez des preuves de la recherche académique",

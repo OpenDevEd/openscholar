@@ -23,10 +23,10 @@ type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
 
 /** What a model costs for one paper, in credits: its price for the tokens that call takes at most, as the real estimate works it out. */
-export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) {
-  return screeningPaperCredits(pricingOf(model));
+export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion"> & { effort?: string }) {
+  return screeningPaperCredits(pricingOf(model), model.effort);
 }
-type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "longPrompt" | "inputs" | "contextLength">;
+type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "longPrompt" | "inputs" | "contextLength"> & { effort?: string };
 /** The papers of a screening that are screened as their own PDF, by length (lib/pricing/estimate.ts `Pdfs`). */
 export function pdfsOf(sources: Source[]): Pdfs {
   const spread: NonNullable<Pdfs["spread"]> = {};
@@ -72,7 +72,7 @@ export function readingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 /** The part of that which is the papers read as their PDFs. */
 export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
   const filed = longestPdfs(pdfsGiven(model, pdfs), ahead);
-  return filed.papers ? screeningPdfsCredits(pricingOf(model), filed) : 0;
+  return filed.papers ? screeningPdfsCredits(pricingOf(model), filed, model.effort) : 0;
 }
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));

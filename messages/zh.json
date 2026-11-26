@@ -201,7 +201,8 @@
     "calendarSelected": "{date}，已选择",
     "calendarMonth": "选择月份",
     "calendarYear": "选择年份",
-    "calendarNavigation": "日历导航"
+    "calendarNavigation": "日历导航",
+    "upToCredits": "最多 {credits}"
   },
   "home": {
     "tagline": "搜索、筛选学术研究并提取证据",

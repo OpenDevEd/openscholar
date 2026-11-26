@@ -201,7 +201,8 @@
     "calendarSelected": "{date}, selected",
     "calendarMonth": "Choose the month",
     "calendarYear": "Choose the year",
-    "calendarNavigation": "Calendar navigation"
+    "calendarNavigation": "Calendar navigation",
+    "upToCredits": "Up to {credits}"
   },
   "home": {
     "tagline": "Search, screen and extract evidence from academic research",

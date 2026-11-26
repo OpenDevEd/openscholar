@@ -1,4 +1,5 @@
 import { creditsForUsage } from "./convert";
+import type { Effort } from "../ai/core/call-options";
 import { PAPER_PDF_CREDITS } from "./paper-pdf";
 
 /** What a model charges once a prompt is long, where it charges more: every token of a call whose prompt has `from` tokens or more, in USD per million. */
@@ -86,9 +87,18 @@ export function extractionRetryCredits(pricing: ExtractionPricing, count: number
   );
 }
 
-/** What screening one paper costs at most on a model: one call about its abstract, every question answered in it. */
-export function screeningPaperCredits(pricing: Pricing): number {
-  return estimateCredits(pricing, CALL_TOKENS.paper);
+/**
+ * What a model that reasons at an effort writes on one paper besides its answers, at most. On 2026-11-26 Claude Haiku
+ * 5.5 at medium wrote up to about 1,800 tokens a paper in all, where `CALL_TOKENS.paper` allows its answers 600: a
+ * screening quoted at most 711 credits was charged 818. A model at its own default effort is priced on the answers
+ * alone, and what it is charged a paper never passes what it was quoted (convex/screening/reading.ts).
+ */
+export const REASONING_TOKENS: Record<Effort, number> = { none: 0, minimal: 300, low: 800, medium: 1_500, high: 3_000, xhigh: 6_000, max: 6_000 };
+const reasoningOf = (effort: string | undefined) => (effort ? (REASONING_TOKENS[effort as Effort] ?? 0) : 0);
+
+/** What screening one paper costs at most on a model, at the effort it reads at: one call about its abstract, every question answered in it. */
+export function screeningPaperCredits(pricing: Pricing, effort?: string): number {
+  return estimateCredits(pricing, { input: CALL_TOKENS.paper.input, output: CALL_TOKENS.paper.output + reasoningOf(effort) });
 }
 
 /**
@@ -101,7 +111,7 @@ export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKEN
 /** Whether a model can be given a paper that is only its PDF: it takes a file, and every page of this one fits what one call to it holds. */
 export const readsPdfOf = (model: { files: boolean; room?: number } | undefined, pages: number) => Boolean(model?.files) && (model!.room === undefined || screeningPdfTokens(pages) <= model!.room);
 /** What screening one paper as its PDF costs at most on a model: one call with its whole file, at the model's long-prompt price where that many pages reach it. */
-export const screeningPdfCredits = (pricing: Pricing, pages: number) => estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer });
+export const screeningPdfCredits = (pricing: Pricing, pages: number, effort?: string) => estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer + reasoningOf(effort) });
 
 /**
  * A screening's papers read as their PDFs, by length: how many, their pages, and the same for the ones in each
@@ -123,12 +133,12 @@ const bandsOf = (pdfs: Pdfs) => Object.entries(pdfs.spread ?? {}).map(([band, he
  * credits, rounded up, where this adds the tokens up first: a credit a paper past the first covers that. So the
  * sum is never under what the papers cost one by one.
  */
-export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs): number {
+export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs, effort?: string): number {
   const { long } = pricing;
   const dear = long ? bandsOf(pdfs).filter(({ most }) => screeningPdfTokens(most) >= long.from) : [];
   const [longPapers, longPages] = [dear.reduce((sum, { held }) => sum + held.papers, 0), dear.reduce((sum, { held }) => sum + held.pages, 0)];
   const part = (price: { input: number; output: number }, papers: number, pages: number) =>
-    papers ? estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer }) + (papers - 1) : 0;
+    papers ? estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * (SCREENING_PDF_TOKENS.answer + reasoningOf(effort)) }) + (papers - 1) : 0;
   return part(pricing, Math.max(0, pdfs.papers - longPapers), Math.max(0, pdfs.pages - longPages)) + (long ? part(long, longPapers, longPages) : 0);
 }
 

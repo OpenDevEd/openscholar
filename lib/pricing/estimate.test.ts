@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { convertUsdToCredits, creditsForUsage } from "./convert";
-import { extractionPaperCredits, extractionRetryCredits, longestPdfs, pdfBand, pdfsFor, screeningPdfCredits, screeningPdfsCredits } from "./estimate";
+import { extractionPaperCredits, extractionRetryCredits, longestPdfs, pdfBand, pdfsFor, screeningPaperCredits, screeningPdfCredits, screeningPdfsCredits } from "./estimate";
 
 // Measured on 2026-10-06 with the real abstract extraction prompt, 16 calls a model: the dearest call and the average one.
 const measured = [
@@ -82,5 +82,16 @@ describe("screening a paper as its PDF", () => {
     expect(pdfsFor({ files: true, room: 128_000 }, edge(32)).papers).toBe(2);
     expect(pdfsFor({ files: true, room: 128_000 }, edge(32), true).papers).toBe(0);
     expect(pdfsFor({ files: true, room: 128_000 }, edge(31), true).papers).toBe(2);
+  });
+});
+
+describe("screening a paper on a model that reasons", () => {
+  it("quotes no less than the dearest paper Claude Haiku 5.5 read at medium cost", () => {
+    // 2026-11-26, 79 papers on the throwaway backend: up to 16 credits a paper, quoted at 9 before effort was priced.
+    const haiku = { input: 0.1, output: 0.5 };
+    expect(screeningPaperCredits(haiku, "medium")).toBeGreaterThanOrEqual(16);
+    expect(screeningPaperCredits(haiku, "medium")).toBeGreaterThan(screeningPaperCredits(haiku));
+    expect(screeningPaperCredits(haiku, "high")).toBeGreaterThan(screeningPaperCredits(haiku, "medium"));
+    expect(screeningPdfCredits(haiku, 10, "high")).toBeGreaterThan(screeningPdfCredits(haiku, 10));
   });
 });

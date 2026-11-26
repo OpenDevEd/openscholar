@@ -265,6 +265,7 @@ CRITICAL INSTRUCTIONS:
 4. Base decisions on explicit evidence, not assumptions or implications
 5. Consider the question's intent and what constitutes a valid YES/NO answer
 6. If a question cannot be definitively answered from the provided text, use null
+7. Answer about this paper itself. A review, meta-analysis or protocol describes the studies it includes: their designs, populations and settings are not this paper's own. A systematic review of randomized trials is a review, not a randomized trial
 
 RESPONSE FORMAT:
 Return a JSON object with:

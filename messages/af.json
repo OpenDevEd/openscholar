@@ -201,7 +201,8 @@
     "calendarSelected": "{date}, gekies",
     "calendarMonth": "Kies die maand",
     "calendarYear": "Kies die jaar",
-    "calendarNavigation": "Kalendernavigasie"
+    "calendarNavigation": "Kalendernavigasie",
+    "upToCredits": "Tot {credits}"
   },
   "home": {
     "tagline": "Soek, sif en onttrek bewyse uit akademiese navorsing",

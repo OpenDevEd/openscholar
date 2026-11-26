@@ -201,7 +201,8 @@
     "calendarSelected": "{date}, चयनित",
     "calendarMonth": "महीना चुनें",
     "calendarYear": "वर्ष चुनें",
-    "calendarNavigation": "कैलेंडर नेविगेशन"
+    "calendarNavigation": "कैलेंडर नेविगेशन",
+    "upToCredits": "{credits} तक"
   },
   "home": {
     "tagline": "अकादमिक शोध खोजें, स्क्रीन करें और उससे साक्ष्य निकालें",

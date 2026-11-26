@@ -182,6 +182,8 @@ export type CreditTarget = {
    * under the hold with no charge of its own.
    */
   under?: string;
+  /** The most the work is charged: what the person was told it costs at most. Past that, the cost is Openscholar's. */
+  most?: number;
   /** The cached balance and the person's Clerk id, when the caller read them already. */
   balance?: number;
   clerkId?: string;
@@ -221,7 +223,7 @@ export async function withCredits<T>(
     if (target.hold !== false) await releaseCredits(ctx, target);
     throw error;
   }
-  const credits = creditsForUsage(outcome.usage, pricing);
+  const credits = Math.min(creditsForUsage(outcome.usage, pricing), target.most ?? Infinity);
   const settled = await settleUnder(ctx, {
     userId: target.userId,
     workspaceId: target.workspaceId,

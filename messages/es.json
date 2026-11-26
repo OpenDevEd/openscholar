@@ -201,7 +201,8 @@
     "calendarSelected": "{date}, seleccionado",
     "calendarMonth": "Elegir el mes",
     "calendarYear": "Elegir el año",
-    "calendarNavigation": "Navegación del calendario"
+    "calendarNavigation": "Navegación del calendario",
+    "upToCredits": "Hasta {credits}"
   },
   "home": {
     "tagline": "Busque, cribe y extraiga evidencia de la investigación académica",

@@ -41,10 +41,12 @@ export const readPaper = internalAction({
     if (file && !readsPdfOf(context.model, pages)) return { read: false, why: "unreadable", error: context.model.files ? `This PDF has ${pages.toLocaleString("en-GB")} pages, more than ${context.model.name} reads at once.` : `${context.model.name} can't read a PDF. It reads papers that have an abstract.` };
     const address = file ? await ctx.storage.getUrl(file) : null;
     if (file && !address) return { read: false, why: "unreadable", error: "This paper's PDF is gone." };
+    // What the screening quoted this paper at, at the effort the model reads at: it is never charged more.
+    const quoted = file ? screeningPdfCredits(pricing, pages, context.effort) : screeningPaperCredits(pricing, context.effort);
     try {
       const { result, credits } = await withUserCredits<ScreeningReadData>(
         ctx,
-        { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: file ? screeningPdfCredits(pricing, pages) : screeningPaperCredits(pricing), hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
+        { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: quoted, most: quoted, hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
         pricing,
         async () => {
           const batch = await processScreeningBatch({ model: await openRouterModel(context.model.slug), effort: context.effort, decisionsKey: process.env.OPENROUTER_API_KEY, sessionId: String(context.jobId), papers: [{ id: voteId, title: context.paper.title, abstract: context.paper.abstract ?? "", ...(address ? { file: { data: new URL(address), filename: "paper.pdf" } } : {}) }], questions, passages: true });

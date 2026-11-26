@@ -14,7 +14,8 @@ export function ButtonCredits({ credits, className }: { credits: number | undefi
   return (
     <span className={cn("flex items-center gap-1 text-xs font-normal text-muted-foreground tabular-nums", className)}>
       <Coins aria-hidden className="size-3.5" />
-      {credits}
+      {/* The most one press can cost: what it is charged depends on what the model writes, and is often less. */}
+      {t("upToCredits", { credits })}
       <span className="sr-only">{t("credits")}</span>
     </span>
   );
