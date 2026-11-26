@@ -26,6 +26,7 @@ import { isFrozen, rowKey, screeningQuestionsOf, setOfRow } from "@/lib/evidence
 import { paperKey, paperPage } from "@/lib/papers/paper-ref";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { newHref } from "@/components/screening/links";
 
 export type Opened = FunctionReturnType<typeof api.evidenceLibraries.handoffs.open>;
 type Field = Exclude<Opened, { gone: true }>["fields"][number];
@@ -88,7 +89,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
     router.push("/extraction/new");
   };
   // Screening asks yes or no: a yes or no question comes along as what it asks, the others stay behind.
-  const screen = () => router.push(`/screening/new?handoff=${encodeURIComponent(handoffId)}`);
+  const screen = () => router.push(newHref({ handoff: handoffId }));
 
   return (
     <PageWrapper>

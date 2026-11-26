@@ -26,6 +26,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "@/lib/workspaces/paths";
 import { WorkspacePicker } from "./workspace-picker";
+import { screeningPath } from "@/lib/screening/links";
 
 export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author" | "community";
 
@@ -45,7 +46,7 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   collection: (id) => `/library?col=${id}`,
   author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
-  screening: (id) => `/screening/${id}`,
+  screening: screeningPath,
   extraction: (id) => `/extraction/${id}`,
   community: (id) => `/evidence-communities/${id}/configuration`,
 };

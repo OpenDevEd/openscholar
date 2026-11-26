@@ -3,7 +3,9 @@
 // in the person's own workspace: a link takes the organization's prefix where the page is one of its
 // (components/workspaces/link.tsx).
 
-const BASE = "/screening";
+import { SCREENINGS_PATH, screeningPath } from "@/lib/screening/links";
+
+const BASE = SCREENINGS_PATH;
 
 type Query = Record<string, string | number | null | undefined>;
 const withQuery = (path: string, query?: Query, section?: string) => {
@@ -17,10 +19,10 @@ const withQuery = (path: string, query?: Query, section?: string) => {
 export const SCREENINGS = BASE;
 /** The trail every page under the list starts with. */
 export const SCREENINGS_CRUMB = { label: "Screening", href: BASE };
-/** The new-screening form, blank or started from another screening's settings. */
-export const newHref = (from?: string) => withQuery(`${BASE}/new`, { from });
+/** The new-screening form: blank, started from another screening's settings (`from`), on a saved search (`search`), or on what a community handed over (`handoff`). */
+export const newHref = (on?: { from?: string; search?: string; handoff?: string }) => withQuery(`${BASE}/new`, on);
 /** An open screening's Overview, at one of its sections: "reviewers", "new-papers", "agreement" or "flow". */
-export const overviewHref = (id: string, section?: "reviewers" | "new-papers" | "agreement" | "flow") => withQuery(`${BASE}/${id}`, undefined, section);
+export const overviewHref = (id: string, section?: "reviewers" | "new-papers" | "agreement" | "flow") => withQuery(screeningPath(id), undefined, section);
 /**
  * Its Screen page: a queue (To do when left out), the paper open in it, the order of what is still to
  * do, and in Done which of your votes to show.

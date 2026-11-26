@@ -56,7 +56,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       {member ? (live ? <DropdownMenuItem onSelect={() => show("finish")}><CircleCheck />Mark as finished</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />Reopen</DropdownMenuItem>) : null}
       {member && live && modelsOf(screening).length ? (screening.paused ? <DropdownMenuItem onSelect={() => void open.resume()}><Play />Resume models</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>) : null}
       {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={() => void open.check()}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
-      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
+      <DropdownMenuItem asChild><NextLink href={newHref({ from: id })}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
       {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />Move to another workspace</DropdownMenuItem> : null}
       {/* In the widest windows the bar over a screening has this as a button. */}
       {member && live && !open.isReviewer ? <DropdownMenuItem className={bar ? "2xl:hidden" : undefined} onSelect={() => void open.join()}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}

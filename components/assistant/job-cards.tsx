@@ -20,6 +20,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { WorkingText } from "./parts";
 import { KindTile } from "./steps";
+import { screeningPath } from "@/lib/screening/links";
 
 type Read = NonNullable<FunctionReturnType<typeof api.assistant.jobs.card>>;
 type Screening = Extract<Read["card"], { kind: "screening" }>;
@@ -385,7 +386,7 @@ function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
       credits={job.credits}
       done={done}
       total={job.total}
-      href={mine ? `/screening/${job.jobId}` : null}
+      href={mine ? screeningPath(job.jobId) : null}
       end={<EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("screening.cancel")} onCancel={cancel} mine={mine} />}
       bar={
         <>

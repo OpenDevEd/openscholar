@@ -12,6 +12,7 @@ import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
 import { laterChecks, nameOf, newFor, waitingOf } from "./dealing";
+import { screeningPath } from "../../lib/screening/links";
 
 export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"));
 
@@ -56,7 +57,7 @@ export const context = internalQuery({
       : waitingOf(on, progress?.reviewers?.[on._id]);
     if (!count) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
-    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}/screening/${jobId}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
+    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
   },
 });
 
