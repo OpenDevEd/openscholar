@@ -171,6 +171,29 @@ describe("what a change takes out", () => {
     expect((await made.as.ann!.query(api.screening.paperViews.list, { workspaceId, jobId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((one) => one.title)).toEqual(["Paper 1", "Paper 2"]);
   });
 
+  it("brings a paper back when its source was taken out and another source holds it too, with the vote cast on it", async () => {
+    const made = await team(["ann", "ben"]);
+    const { workspaceId } = made;
+    const { jobId } = await started(made, ["ann", "ben"], 0, { sources: [{ set: { kind: "zotero" }, name: "My library" }] });
+    const { sourceId, papers } = await give(made.t, jobId, 0, [{ ...paper(3), paper: "zotero:user:7:AAAA1111", doi: "10.1000/three" }, { ...paper(4), paper: "zotero:user:7:BBBB2222" }]);
+    await run(made.t);
+    await voter(made, jobId)("ann", papers[0]!._id, "include");
+    await settleAll(made.t);
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { removeSources: [sourceId] } });
+    await run(made.t);
+    expect(await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId })).toMatchObject({ total: 0 });
+
+    // The library, added now, holds the first of them too, under its own key.
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "saved" }, name: "Saved papers" }] } });
+    await give(made.t, jobId, 1, [{ ...paper(9), doi: "10.1000/three" }]);
+    await run(made.t);
+    const after = await standingOf(made.t, jobId);
+    expect(after.reviewers.ann).toMatchObject({ dealt: 1, cast: 1, include: 1 });
+    expect(after.reviewers.ben).toMatchObject({ dealt: 1, cast: 0 });
+    expect(await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId })).toMatchObject({ total: 1, counts: { waiting: 1 } });
+    expect((await made.as.ann!.query(api.screening.paperViews.list, { workspaceId, jobId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((one) => one.title)).toEqual(["Paper 3"]);
+  });
+
   it("lists no vote of someone whose votes were thrown out", async () => {
     const made = await team(["ann", "ben"]);
     const { workspaceId } = made;

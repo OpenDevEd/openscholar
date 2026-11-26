@@ -92,10 +92,12 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const held = carried !== undefined || (isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0));
     // Where it stands and who is on it is one sum, the same one a change's preview runs (lib/screening/project.ts): this applies it to the rows.
     const places = votes.map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
+    // One whose source was taken out and that another source brought back (./gathering.ts `fill`): its open places were let go, and are given out again.
+    const returning = !paper.withdrawn && paper.out === true;
     // One whose source was taken out stands nowhere: the places nobody voted from go, and its votes stay on record and count for nothing.
     const plan: Pick<Projected, "result" | "made" | "reopened" | "closed" | "gone"> = paper.withdrawn
       ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place) => place.status === "waiting" || place.status === "closed") }
-      : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" });
+      : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" || returning, refill: returning });
     const now = plan.result;
     if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;

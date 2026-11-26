@@ -15,7 +15,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
-import { LibrarySelect, useLibrarySources } from "@/components/screening/library-sources";
+import { LibrarySelect, useLibrarySources, useRowLabel } from "@/components/screening/library-sources";
 import { AnimatedNumber, Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
 import { PaperScope, PickMark } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
@@ -39,6 +39,7 @@ import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useGenerateScreeningCriteria } from "@/lib/ai/client/router";
+import { rowKey, screeningQuestionsOf, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { LIBRARY_COLLECTION_NAME_MAX, fittingCollectionName } from "@/lib/evidence-libraries/source-address";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
@@ -293,6 +294,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [from] = useQueryState("from");
   // "Screen all" on a results page opens the form with that search picked and its questions as criteria.
   const [fromSearch] = useQueryState("search");
+  // What a community handed over opens the form on it (app/from-library): its source as the person may read it now, and its yes-or-no questions as criteria.
+  const [fromHandoff] = useQueryState("handoff");
+  const openHandoff = useWorkspaceAction(api.evidenceLibraries.handoffs.open);
+  const handedOver = useSWR(!id && fromHandoff && workspaceId ? ["library-handoff", workspaceId, fromHandoff] : null, () => openHandoff({ handoffId: fromHandoff! }), { revalidateOnFocus: false });
+  const handed = handedOver.data && !("gone" in handedOver.data) && "row" in handedOver.data.found ? { ...handedOver.data.found, fields: handedOver.data.fields } : null;
+  // A hand-off that is gone, or whose source can't be read now, is said so, and nothing is put in its place.
+  const handoffProblem = Boolean(fromHandoff) && !id && (Boolean(handedOver.error) || (handedOver.data !== undefined && !handed));
+  const rowLabel = useRowLabel();
   // An open screening's settings sit in its frame, which has read it. A new one has no frame.
   const frame = useFrame();
   const saved = id ? frame?.open.screening : undefined;
@@ -315,14 +324,19 @@ export function ScreeningForm({ id }: { id?: string }) {
       const criteria = searchOffer(picked).questions?.map((question) => criterionFrom(question)) ?? [];
       return { ...start, name: picked.query.slice(0, 200), sources: [sourceFrom(searchOffer(picked))], criteria, scoring: defaultScoring(criteria) };
     }
+    if (!copied && handed) {
+      const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
+      const name = rowLabel(handed.row);
+      return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, detail: `In ${handed.library.name}`, total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
+    }
     if (!copied) return start;
     const mine = (one: Reviewer) => one.kind === "model" || !one.guest;
     return { ...start, name: `${copied.name}, again`, question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id })), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
-  }, [setup?.me.id, copied?.id, picked?.id]);
+  }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
-  const key = id ?? `new:${from ?? ""}:${fromSearch ?? ""}`;
+  const key = id ?? `new:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
   const kept = useKept((store) => store.drafts[key]);
   const keep = useKept((store) => store.draft);
   const draft = kept ?? origin;
@@ -347,7 +361,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     window.addEventListener("hashchange", tint);
     return () => window.removeEventListener("hashchange", tint);
   }, []);
-  const [kind, setKind] = useState<Kind>("search");
+  const [kind, setKind] = useState<Kind>(fromHandoff && !id ? "evidenceLibrary" : "search");
   const [find, setFind] = useState("");
   const [recheck, setRecheck] = useState(false);
   // The source whose row is open, and on which part: the papers taken from it, or what it held and left out.
@@ -897,6 +911,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 </AutoHeight>
               </div>
 
+              {handoffProblem ? <p role="alert" className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">What the community handed over can&apos;t be read any more. Pick its records again under Community.</p> : null}
               {/* What can be added sits in a well of its own, under its own title: it never looks like what is already in. */}
               <Panel className="@container min-w-0 space-y-3 @[88rem]:col-start-2 @[88rem]:row-span-2 @[88rem]:row-start-1">
                 <h3 className="text-sm font-semibold">Add papers from</h3>

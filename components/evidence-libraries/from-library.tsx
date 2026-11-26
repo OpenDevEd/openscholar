@@ -88,7 +88,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
     router.push("/extraction/new");
   };
   // Screening asks yes or no: a yes or no question comes along as what it asks, the others stay behind.
-  const screen = () => router.push(`/screening?handoff=${encodeURIComponent(handoffId)}`);
+  const screen = () => router.push(`/screening/new?handoff=${encodeURIComponent(handoffId)}`);
 
   return (
     <PageWrapper>

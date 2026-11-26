@@ -22,6 +22,7 @@ import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchS
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { actorIn } from "../workspaces/actor";
 import { ZOTERO_PAGE } from "../zotero/libraryValidators";
+import { bookkeepLater } from "./bookkeeping";
 import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
@@ -224,8 +225,9 @@ async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, 
 /**
  * Gives a check a step of one source's papers: `read` of the source's papers, and where it goes on after them. A
  * record with no title or no abstract is left out, with why: a screening reads a title and an abstract. A paper
- * another source already brought is counted as merged, and one this source brought before is passed over. The rest
- * take the next places in the round and go to their reviewers.
+ * another source already brought is counted as merged, and one this source brought before is passed over. One whose
+ * source was since taken out comes back as this source's. The rest take the next places in the round and go to their
+ * reviewers.
  */
 export const fill = internalMutation({
   args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a scan, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
@@ -237,7 +239,7 @@ export const fill = internalMutation({
     const reviewers = await reviewersOf(ctx, job._id);
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const now = Date.now();
-    let [taken, duplicates, left, bare] = [0, 0, 0, 0];
+    let [taken, duplicates, left, bare, back] = [0, 0, 0, 0, 0];
     // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
     let capped = false;
@@ -259,6 +261,12 @@ export const fill = internalMutation({
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
       // It finds the papers this step already took too: a mutation reads what it wrote.
       const twin = await twinOf(ctx, job._id, keys);
+      if (twin?.withdrawn) {
+        // Its source was taken out, and this one holds it too: it comes back as this source's paper, in the place it had, with the votes cast on it. The worker gives its open places out again.
+        await ctx.db.patch("screeningResults", twin._id, { withdrawn: undefined, sourceId, doneAt: ctx.db.vars.commitTs });
+        back++;
+        continue;
+      }
       if (twin) {
         // The first source added keeps the paper. One this source brought before, or holds twice, is neither new nor merged.
         if (twin.sourceId !== sourceId) duplicates++;
@@ -292,7 +300,8 @@ export const fill = internalMutation({
       await dealNew(ctx, job, { _id: resultId, place }, reviewers, dealt);
       taken++;
     }
-    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
+    if (back) await bookkeepLater(ctx);
+    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
     await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);

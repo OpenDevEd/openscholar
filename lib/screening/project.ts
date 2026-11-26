@@ -50,9 +50,11 @@ export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">
  * holds it while they are on the screening, the places the rule no longer asks for go, and the ones it still lacks go
  * to the people not on the paper yet. With `models`, every model that reads the screening and has no place on the
  * paper gets one. Once it is settled, the places nobody voted from are closed. A model taken off the screening reads
- * nothing more: the places it hadn't read from go, however the paper stands.
+ * nothing more: the places it hadn't read from go, however the paper stands. With `refill`, a paper that comes back
+ * with the votes it had and none of its open places is given those places before its votes are counted: the votes of
+ * some of its reviewers are not the whole paper's.
  */
-export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle">, criteria: Pick<Criterion, "key" | "must">[], { models }: { models: boolean }): Projected {
+export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle">, criteria: Pick<Criterion, "key" | "must">[], { models, refill = false }: { models: boolean; refill?: boolean }): Projected {
   const on = (list: Place[]) => settle(rule.settle, list.map((place) => ballotOf(place, criteria)));
   const off = places.filter((place) => place.kind === "model" && place.status === "waiting" && !team.models.includes(place.reviewer));
   const stay = off.length ? places.filter((place) => !off.includes(place)) : places;
@@ -60,7 +62,7 @@ export function project(paper: PaperState, places: Place[], team: Team, rule: Pi
   let now: Result = paper.resolved ?? on(stay);
   let list = stay;
   const [made, gone, reopened]: Place[][] = [[], off, []];
-  if (!isFinal(now)) {
+  if (!isFinal(now) || (refill && !paper.resolved)) {
     const persons = list.filter((place) => place.kind === "person" && place.status !== "discarded");
     const open = persons.filter((place) => place.status === "waiting" || place.status === "closed");
     // A place whose holder has left the screening is free again.
