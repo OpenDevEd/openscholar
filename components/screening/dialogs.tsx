@@ -239,9 +239,9 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               avatar: <ReviewerMark reviewer={one} className="size-9" />,
               name: one.name,
               you: one.id === state.me,
-              detail: `${detail(one)}${one.tally ? `, voted on ${num(one.tally.cast)} of ${num(one.tally.dealt)}` : ""}`,
-              // A guest who votes can be made a viewer. A member is a reviewer or isn't: taking them off leaves them a member, who still sees it.
-              ...(one.guest ? { role: "reviewer" as const, ...(may ? { onRole: (role: Role) => { if (role === "viewer") onDemote(one); } } : {}) } : { role: { kind: "edit" as const, label: "Reviewer" } }),
+              detail: `${detail(one)}${one.tally ? `, voted on ${num(one.tally.cast)} of ${num(Math.max(0, one.tally.dealt - one.tally.closed))}` : ""}`,
+              // A guest who votes can be made a viewer by whoever may change the screening. A member is a reviewer or isn't: taking them off leaves them a member, who still sees it. Whoever only looks at the list reads one word for every reviewer, guest or member.
+              ...(one.guest && may ? { role: "reviewer" as const, onRole: (role: Role) => { if (role === "viewer") onDemote(one); } } : { role: { kind: "edit" as const, label: "Reviewer" } }),
               ...(may ? { onRemove: () => onRemove(one) } : {}),
             })),
             ...models.map((one) => ({

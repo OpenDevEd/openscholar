@@ -147,6 +147,7 @@ export function useOpenScreening(id: string) {
   const remove = useWorkspaceMutation(api.screening.screenings.remove);
   const check = useWorkspaceMutation(api.screening.living.checkNow);
   const join = useWorkspaceMutation(api.screening.reviewers.joinIn);
+  const setEmails = useWorkspaceMutation(api.screening.notices.setEmails);
   const retry = useWorkspaceMutation(api.screening.reviewers.retry);
   const remind = useWorkspaceMutation(api.screening.reviewers.remind);
   const move = useWorkspaceMutation(api.screening.reviewers.move);
@@ -216,6 +217,9 @@ export function useOpenScreening(id: string) {
     check: () => check({ jobId }),
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
     join: () => join({ jobId }),
+    /** Whether the screening emails the person looking, and their own switch for it. */
+    emails: view.emails,
+    setEmails: (on: boolean) => setEmails({ jobId, on }),
     /** Sends a model back to the papers it couldn't read. */
     retry: (model: Reviewer) => (model.row ? retry({ jobId, reviewerId: model.row }) : Promise.resolve(null)),
     /** Sends a person a reminder by email that papers wait for their vote. */

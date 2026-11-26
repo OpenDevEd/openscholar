@@ -8,7 +8,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalQuery } from "../lib/functions";
-import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
 import { laterChecks, nameOf, newFor, waitingOf } from "./dealing";
@@ -58,15 +58,6 @@ export const context = internalQuery({
     const sender = by ? await ctx.db.get("users", by) : null;
     return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}/screening/${jobId}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
   },
-});
-
-/**
- * Says whether one screening sends the person its emails: new papers to vote on, conflicts to settle, and reminders.
- */
-export const emails = workspaceQuery({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.boolean(),
-  handler: async (ctx, actor, { jobId }) => !(await rowOf(ctx, jobId, actor.userId))?.off,
 });
 
 /**

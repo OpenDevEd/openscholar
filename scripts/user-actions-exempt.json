@@ -130,7 +130,6 @@
     "screening/effects:preview": "The settings page counting what a change would do before it is saved. The assistant changes nothing in a screening, so it has nothing to preview.",
     "screening/reviewers:movable": "The Overview's move of one reviewer's papers to another, which the assistant doesn't make: how many could move.",
     "screening/reviewers:candidates": "The picker of people to add to a screening, which the assistant doesn't do. It reads a workspace's members with organizations/queries:members.",
-    "screening/notices:emails": "Whether the person looking gets a screening's emails, for the switch on its page.",
     "screening/view:setup": "What the form that starts a screening shows before it is filled in: credits, the plan's limits, and what is reading now. The assistant starts none.",
     "screening/held:uploadUrl": "Where the form sends a file a screening is to read. The assistant adds no files to a screening: it reads screenings.",
     "screening/held:keepDois": "The form keeps a pasted list of DOIs as a file before it is added. The assistant adds no sources to a screening.",

@@ -303,10 +303,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             trail={[SCREENINGS_CRUMB]}
             titleAside={
               <>
-                {/* On a phone the chip is its icon, with its "?": the name keeps the room. */}
+                {/* The chip keeps its word at every width: a sign alone, a group of people for a guest, was taken for a button that opens the team. */}
                 {role ? (
                   <span className="flex items-center gap-0.5">
-                    <Chip icon={role.icon}><span className="@max-[30rem]:sr-only">{role.label}</span></Chip>
+                    <Chip icon={role.icon}>{role.label}</Chip>
                     <Help title={role.label}>{role.text}</Help>
                   </span>
                 ) : null}

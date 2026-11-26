@@ -17,7 +17,7 @@ import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from 
 import { readsPdfs } from "../../lib/assistant/files";
 import { pdfLookCredits } from "../../lib/pricing/estimate";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
-import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
+import { FILE_MAX_BYTES, REFERENCES, itemRecords, plainTitle, readTable, sameTitle, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
 import { registered } from "./doiRecords";
 import { DOIS_MAX, doisKeptValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
 import type { Infer } from "convex/values";
@@ -113,16 +113,25 @@ export async function byDois(dois: string[], spend: Spend): Promise<Map<string, 
 /**
  * OpenAlex's abstract for each of these papers that came without one. Our own index holds fewer abstracts than
  * OpenAlex does: of 12 papers a search on it gave with none, OpenAlex had the abstract of 6. A paper is not left out
- * of a screening for want of an abstract OpenAlex has.
+ * of a screening for want of an abstract OpenAlex has. The abstract is taken only from the work that carries the
+ * paper's own title: an index can name the wrong OpenAlex work for a paper (ours gave one its PubMed number as its
+ * OpenAlex one), and that work's abstract is another paper's.
  */
 export async function withAbstracts(papers: SearchPaper[], spend: Spend): Promise<SearchPaper[]> {
   const bare = papers.filter((paper) => !paper.abstract?.trim() && /^openalex:W\d+$/.test(paper.paper));
   const found = new Map<string, string>();
+  const titled = new Map(bare.map((paper) => [paper.paper, paper.title]));
+  const sameWork = (one: string, other: string) => sameTitle(one, other) || (plainTitle(one) !== "" && plainTitle(one) === plainTitle(other));
   for (let at = 0; at < bare.length; at += DOIS_A_REQUEST) {
     const ids = bare.slice(at, at + DOIS_A_REQUEST).map((paper) => paper.paper.slice("openalex:".length));
     // A paper OpenAlex can't be asked about now is screened, or left out, as it came.
-    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,abstract_inverted_index" }, spend).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
-    for (const work of works) { const paper = work.id ? toPaper(work) : null; if (paper?.abstract) found.set(paper.paper, paper.abstract); }
+    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,title,abstract_inverted_index" }, spend).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
+    for (const work of works) {
+      const paper = work.id ? toPaper(work) : null;
+      if (!paper?.abstract) continue;
+      if (sameWork(paper.title, titled.get(paper.paper) ?? "")) found.set(paper.paper, paper.abstract);
+      else console.warn("[screening] OpenAlex holds another work under a paper's ID: its abstract isn't taken", { paper: paper.paper, ours: titled.get(paper.paper)?.slice(0, 120), theirs: paper.title.slice(0, 120) });
+    }
   }
   return found.size ? papers.map((paper) => (found.has(paper.paper) ? { ...paper, abstract: found.get(paper.paper)! } : paper)) : papers;
 }

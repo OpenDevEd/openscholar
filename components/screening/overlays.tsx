@@ -7,10 +7,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { CircleCheck, CirclePause, Coins, Copy, Download, History, LogOut, Move, Play, RefreshCw, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
+import { BellOff, CircleCheck, CirclePause, Coins, Copy, Download, History, LogOut, Mail, Move, Play, RefreshCw, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { showStyledToast } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -45,6 +46,12 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       <DropdownMenuItem className={bar ? "xl:hidden" : undefined} onSelect={() => show("activity")}><History />Activity</DropdownMenuItem>
       <DropdownMenuItem className={bar ? "xl:hidden" : undefined} onSelect={() => show("export")}><Download />Export</DropdownMenuItem>
       <DropdownMenuItem className={bar ? "sm:hidden" : undefined} onSelect={() => show("people")}><Users />People</DropdownMenuItem>
+      {/* Its emails go to its reviewers and to whoever settles its conflicts: each of them turns their own off here, and on again. */}
+      {live && (open.isReviewer || open.canResolve) ? (
+        <DropdownMenuItem onSelect={() => void open.setEmails(!open.emails).then(() => toast(open.emails ? "This screening won't email you any more" : "This screening emails you again")).catch(failed)}>
+          {open.emails ? <><BellOff />Stop its emails to me</> : <><Mail />Email me about it again</>}
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuSeparator className={bar ? "xl:hidden" : undefined} />
       {member ? (live ? <DropdownMenuItem onSelect={() => show("finish")}><CircleCheck />Mark as finished</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />Reopen</DropdownMenuItem>) : null}
       {member && live && modelsOf(screening).length ? (screening.paused ? <DropdownMenuItem onSelect={() => void open.resume()}><Play />Resume models</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />Pause models</DropdownMenuItem>) : null}

@@ -55,6 +55,7 @@ export { Buildings2Icon as BuildingsIcon, Buildings2Icon as Building2 } from "@s
 export { HamburgerMenuIcon as MenuIcon } from "@solar-icons/react/bold-duotone/hamburger-menu";
 export { PanelBottomIcon as FooterIcon } from "@solar-icons/react/bold-duotone/panel-bottom";
 export { LetterIcon as MailIcon, LetterIcon as Mail } from "@solar-icons/react/bold-duotone/letter";
+export { BellOffIcon as BellOff } from "@solar-icons/react/bold-duotone/bell-off";
 export { FolderWithFilesIcon as CollectionsIcon } from "@solar-icons/react/bold-duotone/folder-with-files";
 export { MagnifierIcon as SearchIcon, MagnifierIcon as Search } from "@solar-icons/react/bold-duotone/magnifier";
 export { QuoteIcon, QuoteIcon as Quote } from "@solar-icons/react/bold-duotone/quote";

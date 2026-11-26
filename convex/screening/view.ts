@@ -416,6 +416,8 @@ export const getAction = defineUserQuery({
       destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), libraryId: v.optional(v.id("evidenceLibraries")), libraryCollection: v.optional(v.string()), prune: v.boolean() }),
       // The papers its workspace's models read at once, as its plan gives.
       atOnce: v.number(),
+      // Whether it emails the person looking: new papers to vote on, conflicts to settle, a colleague's reminder. Theirs to turn off (./notices.ts `setEmails`).
+      emails: v.boolean(),
       // Whether its workspace is out of credits for its models, and what the workspace has, for someone who may see that.
       outOfCredits: v.boolean(),
       credits: v.optional(v.number()),
@@ -451,6 +453,7 @@ export const getAction = defineUserQuery({
     return {
       ...summary,
       atOnce: await paperLimit(ctx, job.workspaceId),
+      emails: !(await ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", actor.userId)).unique())?.off,
       ...(job.question ? { question: job.question } : {}),
       criteria: job.criteria ?? [],
       stars: job.stars ?? [],
