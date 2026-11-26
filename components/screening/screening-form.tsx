@@ -384,7 +384,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
   const [sent, setSent] = useState<Screening | null>(null);
   const unnamed = sent ?? kept ?? origin;
-  const draft = unnamed ? withTwins(unnamed) : unnamed;
+  const draft = unnamed ? withTwins(unnamed, words.modelAtEffort) : unnamed;
   // A new screening's sources are read by the server as the form holds them, a moment after the last change to them
   // (convex/screening/screenings.ts `sync`). So each row says what its source holds, what another source already
   // brought and what is left out, as counted by what takes the papers, and starting has nothing left to read.

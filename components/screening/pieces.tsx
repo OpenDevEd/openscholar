@@ -387,13 +387,17 @@ export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
 /** A small tag after a name, as "You" is drawn: what kind of reviewer it is, or that they were taken off. */
 const NAME_TAG = "shrink-0 rounded-full bg-foreground/[0.07] px-2 text-2xs font-normal leading-5 text-muted-foreground";
 /** A reviewer's name with what kind of reviewer it is: You after your own, AI after a model's. One marker, the same on every page. */
-export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name"> & { left?: number }; you?: boolean; className?: string }) {
+export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name" | "model"> & { left?: number }; you?: boolean; className?: string }) {
   const t = useTranslations("screening.pieces");
+  const words = useWords();
+  // One model on it at two efforts: the effort is all that tells the two apart, and a narrow column cuts a name at its end. It stands beside the model's own name, where it is never cut.
+  const effort = words.twinEffort(reviewer);
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* A name cut short by its column is read in full on hover. */}
-      <TooltipHint label={reviewer.name} onlyWhenClipped><span className="truncate">{reviewer.name}</span></TooltipHint>
-      {you ? <YouTag /> : reviewer.kind === "model" ? <span className={NAME_TAG}>{t("tag.ai")}</span> : null}
+      <TooltipHint label={reviewer.name} onlyWhenClipped={!effort}><span className="truncate">{effort ? reviewer.model!.name : reviewer.name}</span></TooltipHint>
+      {/* An effort is said of a model only: it takes the place of the tag that says a reviewer is one. */}
+      {you ? <YouTag /> : effort ? <span className={NAME_TAG}>{effort}</span> : reviewer.kind === "model" ? <span className={NAME_TAG}>{t("tag.ai")}</span> : null}
       {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}
       {reviewer.left ? <span className={NAME_TAG}>{t("tag.takenOff")}</span> : null}
     </span>

@@ -350,7 +350,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
                 <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[76rem]/strip:hidden", view === "screen" && "max-sm:hidden lg:@max-[76rem]/strip:hidden")}>
                   <div className="shrink-0 @max-[76rem]/strip:hidden">{pages(false)}</div>
-                  <div className="flex min-w-0 @max-[76rem]/strip:hidden">{passing}</div>
+                  {/* It keeps its width: the rule beside it gives way, which cuts its chips where it must. */}
+                  <div className="flex shrink-0 @max-[76rem]/strip:hidden">{passing}</div>
                   {view === "settings" ? null : <div className="min-w-0 @[76rem]/strip:ms-auto">{rule}</div>}
                 </div>
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}

@@ -71,7 +71,7 @@ export const invitedReviewer = (email: string, addedAt: number): Reviewer => ({ 
 export const modelKey = (model: Pick<MapModel, "id" | "effort">) => reviewerKey(model.id, model.effort);
 export const modelReviewer = (model: MapModel, addedAt: number): Reviewer => ({ id: modelKey(model), kind: "model", name: model.name, model, addedAt });
 /** A screening's reviewers as its pages name them before a save has: two of one model each say their effort, as the server names them once it has them (lib/screening/rules.ts `twinsNamed`). */
-export const withTwins = <S extends Pick<Screening, "reviewers">>(screening: S): S => ({ ...screening, reviewers: twinsNamed(screening.reviewers, (model) => model.id) });
+export const withTwins = <S extends Pick<Screening, "reviewers">>(screening: S, named: (name: string, effort: string) => string): S => ({ ...screening, reviewers: twinsNamed(screening.reviewers, (model) => model.id, named) });
 
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
 

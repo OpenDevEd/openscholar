@@ -71,6 +71,27 @@ describe("what a source leaves out", () => {
     expect(await leftOut()).toHaveLength(1);
   });
 
+  it("keeps what a source left out as it stood while the source is read again, and takes the new count once that reading is whole", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0);
+    const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
+    const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
+    const listed = async () => (await made.as.ann!.query(api.screening.view.leftOut, { workspaceId: made.workspaceId, jobId, sourceId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.name).sort();
+    await made.t.mutation(internal.screening.gathering.begin, { sourceId });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
+    expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
+    // A check reads it again, and has met the first paper only so far: the page still says two were left out, and lists both.
+    await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [{ ...paper(1), abstract: undefined }], read: 1, ended: false });
+    expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
+    expect(await listed()).toEqual(["Paper 1", "Paper 2"]);
+    // The second paper is gone from the source: once the reading is whole, one is left out.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: [], read: 0, ended: true });
+    expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
+    expect((await sourceOf())!.next).toBeUndefined();
+    expect(await listed()).toEqual(["Paper 1"]);
+  });
+
   it("counts a paper a file lists twice as a duplicate merged, under two records or under one, so the file's records add up to what it held", async () => {
     const made = await team(["ann"]);
     const file = await made.t.run((ctx) => ctx.storage.store(new Blob(["title"])));

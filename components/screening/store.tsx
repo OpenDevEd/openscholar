@@ -13,11 +13,11 @@ import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { readsPdfs } from "@/lib/assistant/files";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCredits, type Pdfs } from "@/lib/pricing/estimate";
-import { modelsProgress, type Answer } from "@/lib/screening/rules";
+import { modelsProgress, twinsNamed, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import type { useTranslations } from "next-intl";
 import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
-import type { Words } from "./words";
+import { useWords, type Words } from "./words";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -87,14 +87,16 @@ export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useT
  */
 export type ModelsState = "checking" | "gathering" | "paused" | "credits" | "waiting" | "reading";
 
-/** A reviewer as the pages read them, from the server's row. */
-export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
+/** A screening's reviewers as its pages read them, named in the reader's language: one model at two efforts says each effort, and someone whose account is gone is said so. */
+export const toReviewers = (rows: Summary["reviewers"], words: Pick<Words, "modelAtEffort" | "person">): Reviewer[] => twinsNamed(rows.map(toReviewer), (model) => model.id, words.modelAtEffort).map((one) => (one.kind === "person" ? { ...one, name: words.person(one.name) } : one));
+/** One of them, from the server's row. A model has its own name here: the server's says an effort in English where two share a model. */
+function toReviewer(row: Summary["reviewers"][number]): Reviewer {
   const { dealt, cast, include, maybe, exclude, failed, waiting, closed, spent, missed } = row;
   return {
     id: row.id,
     row: row.row,
     kind: row.kind,
-    name: row.name,
+    name: row.model ? stripProviderPrefix(row.model.name) : row.name,
     ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
     ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.longPrompt ? { longPrompt: row.model.longPrompt } : {}), ...(row.model.contextLength === undefined ? {} : { contextLength: row.model.contextLength }), ...(row.model.effort ? { effort: row.model.effort } : {}), /* What it takes besides text, as far as a screening asks: a file. */ inputs: row.model.files ? ["file"] : [] } } : {}),
     ...(row.guest ? { guest: true } : {}),
@@ -128,9 +130,9 @@ function toSource(source: View["sources"][number]): Source {
 }
 
 /** The screening in the shape its pages share. */
-function toScreening(view: View): Screening {
+function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">): Screening {
   const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt }) => ({ key, text, short, must, terms, addedAt, ...(note ? { note } : {}) }));
-  const people: Record<string, Person> = { [view.createdBy.id]: view.createdBy, [view.resolver.id]: view.resolver };
+  const people: Record<string, Person> = { [view.createdBy.id]: { ...view.createdBy, name: words.person(view.createdBy.name) }, [view.resolver.id]: { ...view.resolver, name: words.person(view.resolver.name) } };
   const grows = view.sources.filter((source) => source.removedAt === undefined && GROWS.includes(source.set.kind));
   return {
     id: view.id,
@@ -142,7 +144,7 @@ function toScreening(view: View): Screening {
     question: view.question ?? "",
     sources: view.sources.filter((source) => source.removedAt === undefined).map(toSource),
     criteria,
-    reviewers: view.reviewers.map(toReviewer),
+    reviewers: toReviewers(view.reviewers, words),
     rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind },
     scoring: { points: Object.fromEntries(view.criteria.map((criterion) => [criterion.key, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), stars: view.stars ?? [] },
     destination: { kind: view.destination.kind, name: view.destination.name ?? "", ...(view.destination.collectionId ? { collection: view.destination.collectionId } : {}), ...(view.destination.libraryId ? { community: { libraryId: view.destination.libraryId, collection: view.destination.libraryCollection ?? "", private: true, requestId: "" } } : {}), prune: view.destination.prune },
@@ -166,7 +168,8 @@ export function useOpenScreening(id: string) {
   const jobId = id as Id<"screeningJobs">;
   // With no screening named there is none to read: the form that starts a new one asks for the one it copies only where it copies one.
   const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), id ? { jobId } : "skip")).data;
-  const screening = useMemo(() => (view ? toScreening(view) : null), [view]);
+  const words = useWords();
+  const screening = useMemo(() => (view ? toScreening(view, words) : null), [view, words]);
   const vote = useWorkspaceMutation(api.screening.voting.vote);
   const voteMany = useWorkspaceMutation(api.screening.voting.voteMany);
   const resolve = useWorkspaceMutation(api.screening.voting.resolve);

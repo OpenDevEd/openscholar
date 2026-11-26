@@ -169,11 +169,12 @@ export const SOMEONE = "Someone who left";
 export const modelKey = (model: string, effort?: string) => `model:${model}:${effort ?? ""}`;
 /**
  * One model put on a screening at two efforts is two reviewers: each then says its effort, so a row, a filter or a
- * vote names the one it means. `same` is the model's own id, however the caller holds it.
+ * vote names the one it means. `same` is the model's own id, however the caller holds it. `named` says it in the
+ * reader's language on a page (components/screening/words.ts `modelAtEffort`); the server's own words are English.
  */
-export function twinsNamed<T extends { name: string; model?: { name: string; effort?: string } }>(reviewers: T[], same: (model: NonNullable<T["model"]>) => string): T[] {
+export function twinsNamed<T extends { name: string; model?: { name: string; effort?: string } }>(reviewers: T[], same: (model: NonNullable<T["model"]>) => string, named: (name: string, effort: string) => string = (name, effort) => `${name}, ${effort} effort`): T[] {
   const twice = (one: T) => one.model !== undefined && reviewers.some((other) => other !== one && other.model !== undefined && same(other.model) === same(one.model!));
-  return reviewers.map((one) => (one.model && twice(one) ? { ...one, name: one.model.effort ? `${one.model.name}, ${one.model.effort} effort` : one.model.name } : one));
+  return reviewers.map((one) => (one.model && twice(one) ? { ...one, name: one.model.effort ? named(one.model.name, one.model.effort) : one.model.name } : one));
 }
 /** Who settles conflicts once the one who did is taken off: whoever started the screening where they are still on it, else the first person still on it, else whoever started it. Conflicts always have someone to settle them. */
 export const nextResolver = <Person extends string>(createdBy: Person, people: Person[]): Person => (people.includes(createdBy) ? createdBy : (people[0] ?? createdBy));

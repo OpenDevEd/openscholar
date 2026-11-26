@@ -6,7 +6,7 @@
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
 import { useFormatter, useTranslations } from "next-intl";
-import { OTHER_REASONS, type Decision, type Result } from "@/lib/screening/rules";
+import { OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed } from "./data";
 
 /** A criterion as far as its name goes. */
@@ -15,19 +15,20 @@ type Named = { key: string; text: string; short: string; must: boolean };
 type Peopled = { reviewers: Array<{ id: string; name: string }>; people: Record<string, { name: string } | undefined> };
 const DAY = 86_400_000;
 
-/** The shared messages' translator and the formatter of numbers, dates and lists, for whichever language. */
-type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter> };
+/** The shared messages' translator and the formatter of numbers, dates and lists, for whichever language. `effort` names a model's reasoning effort as the model picker does, where the language isn't English. */
+type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter>; effort?: (level: string) => string };
 
 /** The shared words of the reader's own language. */
 export function useWords() {
-  return wordsOf({ t: useTranslations("screening.words"), format: useFormatter() });
+  const efforts = useTranslations("settingsAi.efforts");
+  return wordsOf({ t: useTranslations("screening.words"), format: useFormatter(), effort: (level) => (efforts.has(level as "high") ? efforts(level as "high") : level) });
 }
 
 /**
  * The shared words from a translator and a formatter: what `useWords` hands a page, and what a file is written
  * with, whose words are English whoever downloads it (./export.ts).
  */
-export function wordsOf({ t, format }: Said) {
+export function wordsOf({ t, format, effort = (level) => level }: Said) {
 
   /** A number as people read it: "1,204". */
   const num = (n: number) => format.number(n);
@@ -77,8 +78,12 @@ export function wordsOf({ t, format }: Said) {
     looker: (member: boolean) => t("looker", { member: String(member) }),
     /** Where a person stands to a screening's workspace, as the line under their name. */
     standsTo: (person: { guest?: boolean } | undefined) => (person?.guest ? t("person.guest") : t("person.member")),
-    /** One model on a screening at two efforts: each says its effort (lib/screening/rules.ts `twinsNamed`). */
-    modelAtEffort: (name: string, effort: string) => t("modelAtEffort", { name, effort }),
+    /** One model on a screening at two efforts: each says its effort (lib/screening/rules.ts `twinsNamed`), in the words the model picker has for it. */
+    modelAtEffort: (name: string, level: string) => t("modelAtEffort", { name, effort: effort(level).toLocaleLowerCase() }),
+    /** What tells one model on a screening at two efforts from its twin, in a word: its effort. Null for any other reviewer. */
+    twinEffort: (reviewer: { name: string; model?: { name: string; effort?: string } }) => (reviewer.model?.effort && reviewer.name !== reviewer.model.name ? effort(reviewer.model.effort) : null),
+    /** A person by the name the server gives them: one whose account is gone is said in the reader's language. */
+    person: (name: string) => (name === SOMEONE ? t("someone") : name),
     /** A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met, by the name someone gave it or by its question, or one of the other reasons. */
     failed: (key: string, criteria: Named[]) => {
       const criterion = criteria.find((one) => one.key === key);

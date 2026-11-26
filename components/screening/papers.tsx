@@ -620,7 +620,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     <button type="button" aria-label={votesBy(pieces, one, open.me)} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
                                       {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
-                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{/* The column is narrow: a first word under the face, with the whole name in its menu and its tooltip. */}{one.id === open.me ? words.t("you") : words.firstName(one.name)}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
+                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{/* The column is narrow: a first word under the face, with the whole name in its menu and its tooltip. */}{one.id === open.me ? words.t("you") : (words.twinEffort(one) ?? words.firstName(one.name))}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>

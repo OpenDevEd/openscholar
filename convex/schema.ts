@@ -1668,6 +1668,8 @@ export default defineSchema({
     bare: v.optional(v.number()),
     // How many times it has been read from its start: once at first, and again at each check or change of its range.
     pass: v.optional(v.number()),
+    // While it is read again: what this reading has merged and left out so far, and the pass the figures above are of. They stand until this reading is whole, so nothing a page shows falls and climbs back while a check runs.
+    next: v.optional(v.object({ from: v.number(), duplicates: v.number(), left: v.number(), bare: v.number() })),
     // Of the ones taken, how many are screened as their own PDF, and the pages those have: what an AI reviewer is sent of them.
     filed: v.optional(v.number()),
     filePages: v.optional(v.number()),

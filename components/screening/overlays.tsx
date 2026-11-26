@@ -199,7 +199,7 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
   const counted = useSWR(change ? ["screening-add", id, reviewer!.id] : null, () => previewChange({ jobId: id, change: change! }), { revalidateOnFocus: false });
   const preview = counted.data ?? NO_PREVIEW;
   const noCriteria = Boolean(reviewer?.model && !screening.criteria.length);
-  const after: Screening | null = reviewer ? withTwins({ ...screening, reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer] }) : null;
+  const after: Screening | null = reviewer ? withTwins({ ...screening, reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer] }, words.modelAtEffort) : null;
   return (
     <ConfirmChange open={reviewer !== null} title={reviewer ? t("add.title", { name: reviewer.name }) : ""} confirm={t("add.confirm")} disabled={noCriteria || (change !== null && counted.isLoading)} onClose={onClose} onConfirm={() => void (reviewer && onConfirm(reviewer).catch(failed(t)))}>
       {reviewer && after ? (

@@ -99,11 +99,12 @@ export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
 }
 
 /**
- * A source set to be read again from its start: at a check, and when its range changes. What it merged and left out
- * is counted afresh as it is read, and its reading is a new pass, so what an earlier pass left out is told from what
- * this one does. The papers it brought stay its papers, and so do the ones read as their PDF among them.
+ * A source set to be read again from its start: at a check, and when its range changes. Its reading is a new pass, so
+ * what an earlier pass left out is told from what this one does. What it merges and leaves out is counted afresh
+ * beside the figures it has (`next`), which stand until this reading is whole (./gathering.ts `fill`). The papers
+ * it brought stay its papers, and so do the ones read as their PDF among them.
  */
-export const readAgain = (source: Pick<Doc<"screeningSources">, "pass">) => ({ state: "waiting" as const, read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined, pass: (source.pass ?? 0) + 1 });
+export const readAgain = (source: Pick<Doc<"screeningSources">, "pass" | "next">) => ({ state: "waiting" as const, read: 0, resume: undefined, snapshot: undefined, failure: undefined, capped: undefined, pass: (source.pass ?? 0) + 1, next: { from: source.next?.from ?? source.pass ?? 0, duplicates: 0, left: 0, bare: 0 } });
 
 /** What marks a screening as just changed: when it was, for its row and for the order of the list. */
 export const touched = (now = Date.now()) => ({ updatedAt: now, activeAt: now });

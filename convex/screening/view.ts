@@ -526,8 +526,8 @@ export const leftOutAction = defineUserQuery({
     const standing = await standingOn(ctx, actor, jobId);
     const source = standing ? await ctx.db.get("screeningSources", sourceId) : null;
     if (source?.jobId !== jobId) return { page: [], isDone: true, continueCursor: "" };
-    // What its last reading left out: a paper an earlier one left out that has an abstract now, or is outside its range now, is not listed.
-    const read = await ctx.db.query("screeningLeftOut").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).eq("pass", source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
+    // What its last whole reading left out: a paper an earlier one left out that has an abstract now, or is outside its range now, is not listed. While it is read again, that is the reading before this one, with what this one has left out so far.
+    const read = await ctx.db.query("screeningLeftOut").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).gte("pass", source.next?.from ?? source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
     return { ...read, page: read.page.map((one) => ({ id: one._id, name: one.name, why: one.why })) };
   },
 });

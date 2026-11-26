@@ -35,7 +35,7 @@ import { inOrder, RESULTS } from "./data";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
 import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
-import { toReviewer, useOpenScreening, type Summary } from "./store";
+import { toReviewers, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWords } from "./words";
 
@@ -191,7 +191,7 @@ export function ScreeningsIndex() {
                     const me = row.me as string;
                     // The workspace is named wherever it isn't the one the person looking works in.
                     const elsewhere = row.workspace.id !== here;
-                    const reviewers = inOrder(row.reviewers.filter((one) => one.left === undefined).map(toReviewer), me);
+                    const reviewers = inOrder(toReviewers(row.reviewers.filter((one) => one.left === undefined), words), me);
                     const { counts: stands, total, forYou, conflicts, asked, askedFirst, models, ahead } = row;
                     const settled = total - stands.conflict - stands.waiting;
                     const resolver = row.resolver.id === me ? words.t("youInline") : words.firstName(row.resolver.name);
