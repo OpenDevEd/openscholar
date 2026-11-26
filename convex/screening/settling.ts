@@ -79,6 +79,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   let freed = 0;
   let queued = 0;
   let conflicts = false;
+  // Papers whose result this pass changed: what reads the included papers as a set (an extraction) is told the set moved.
+  let moves = 0;
   const ballot = (vote: Vote) => ballotOf(placeOf(vote, byId.get(vote.reviewerId)), job.criteria ?? []);
 
   const team = teamOf(reviewers);
@@ -100,6 +102,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place) => place.status === "waiting" || place.status === "closed") }
       : project({ id: paper._id, place: paper.place ?? 0, result: carried ?? was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, teamFor(team, paper, reads), job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" || returning, refill: returning });
     const now = plan.result;
+    if (now !== was || Boolean(paper.withdrawn) !== Boolean(paper.out)) moves++;
     if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;
     // A reading under way finishes and is paid for: its place goes once the reading has come back.
@@ -197,6 +200,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     ...(freed && progress.running ? { running: Math.max(0, progress.running - freed) } : {}),
     ...(withdrawn ? { withdrawn: Math.max(0, (progress.withdrawn ?? 0) + withdrawn) } : {}),
     ...withMoved(progress, moved),
+    ...(moves ? { exportRevision: (progress.exportRevision ?? 0) + 1 } : {}),
   });
   await countDealt(ctx, dealt);
   // Whoever settles its conflicts hears that some wait: one email for a burst of them.

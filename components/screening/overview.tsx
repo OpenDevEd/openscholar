@@ -30,11 +30,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
 import { HIDDEN_UNTIL_VOTE, DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
+import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
-import { credits, pdfsOf, readsFiles, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
+import { credits, pdfsMissed, pdfsOf, unreadPdfs, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -145,7 +146,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             {conflictsButton}
             {settledAll ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => onExport("papers")}><Download />Export included papers</Button>
+                {/* Offered once there is something in it: with nothing included, the file would be empty. */}
+                {counts.include ? <Button variant="outline" size="sm" onClick={() => onExport("papers")}><Download />Export included papers</Button> : null}
                 {/* With every paper settled, finishing is the next step for a member. Once it is finished, extracting is. */}
                 {counts.include ? <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href="/extraction/new" onClick={pickForExtraction}><FileSearch />Extract from the included papers</NextLink></Button> : null}
                 {finishable ? <Button size="sm" onClick={finish}><CircleCheck />Mark as finished</Button> : null}
@@ -163,6 +165,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             {!open.gathering && removed.left ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{num(removed.left)} left out{removed.bare === removed.left ? ": no abstract" : ""}</LinkChip> : null}
             {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
             {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">Stopped at your plan&apos;s paper limit</LinkChip> : null}
+            {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
+            {unreadPdfs(screening) ? <LinkChip href={settingsHref(screening.id, "reviewers")} tone="warning" icon={FileText} className="self-center">{plural(unreadPdfs(screening), "PDF has", "PDFs have")} no reviewer that reads {unreadPdfs(screening) === 1 ? "it" : "them"}</LinkChip> : null}
             {!open.gathering && removed.merged ? <LinkChip href={settingsHref(screening.id, "papers")} className="self-center">{plural(removed.merged, "duplicate", "duplicates")} merged</LinkChip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
@@ -242,10 +246,9 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
     const perDay = reviewer.kind === "person" && Math.max(reviewer.addedAt, screening.createdAt) < now - DAY ? (figures?.recent[reviewer.id] ?? 0) / PACE_DAYS : 0;
     return {
       reviewer,
-      // The papers that are theirs to vote on: what they were given, less the ones settled without them. Screen counts the same way (convex/screening/dealing.ts `waitingOf`).
-      assigned: Math.max(0, (tally?.dealt ?? 0) - (tally?.closed ?? 0)),
-      // What they voted on. The papers a model got to and couldn't read are not among them: they are on a line of their own under it.
-      done: tally?.cast ?? 0,
+      // The papers that are theirs to vote on, and the ones they have got through. A paper a model got to and couldn't read is one it is through with: it is counted here, and named on a line of its own under the row.
+      assigned: theirsOf(tally),
+      done: gotThrough(tally),
       split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
       agrees: compared ? same / compared : null,
       compared,
@@ -448,8 +451,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const id = screening.id;
   const unread = reviewer.kind === "model" ? (reviewer.tally?.failed ?? 0) : 0;
   const reading = reviewer.kind === "model" && left > 0 && !screening.finishedAt;
-  // A model that takes no files is given none of the papers that are only a PDF: its row says so, where it would otherwise look as if it had read everything.
-  const pdfs = reviewer.kind === "model" && reviewer.model && !readsFiles(reviewer.model) ? pdfsOf(screening.sources).papers : 0;
+  // A model is given none of the papers that are only a PDF it can't read: its row says so, where it would otherwise look as if it had read everything.
+  const notGiven = reviewer.kind === "model" && reviewer.model ? pdfsMissed(reviewer.model, pdfsOf(screening.sources)) : null;
   const retry = open.retryOf(reviewer);
   const held = open.modelsNow && open.modelsNow !== "reading" ? MODELS_SAY[open.modelsNow] : null;
   const mine = reviewer.id === open.me;
@@ -476,7 +479,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
         <div className="flex items-center gap-3">
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><span className={FIGURE_LINK}><AnimatedNumber value={done} /> of {num(assigned)}</span></NextLink>
+          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><span className={FIGURE_LINK}>{/* While its papers are still being read from their sources nobody has any yet: "0 of 0" would say it never will. */}{open.gathering && !assigned ? "Arriving" : <><AnimatedNumber value={done} /> of {num(assigned)}</>}</span></NextLink>
         </div>
         {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
         {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
@@ -499,7 +502,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </PopoverContent>
           </Popover>
         ) : null}
-        {pdfs ? <p className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"><FileText className="size-3.5 shrink-0" />Not on the {plural(pdfs, "PDF", "PDFs")}: it reads text only</p> : null}
+        {notGiven?.papers ? <p className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"><FileText className="size-3.5 shrink-0" />{notGiven.why === "text" ? `Not on the ${plural(notGiven.papers, "PDF", "PDFs")}: it reads text only` : `Not on ${plural(notGiven.papers, "PDF", "PDFs")}: longer than it reads at once`}</p> : null}
       </div>
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
@@ -771,7 +774,7 @@ function Facts({ open }: { open: Open }) {
                   <AnimatedNumber value={Math.ceil(spent)} /> spent
                   {open.modelsNow === "reading" ? <AiIcon working className="size-3.5" /> : null}
                 </p>
-                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${plural(unread, "reading", "readings")} failed` : "Every paper is read"}</p>
+                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${plural(unread, "reading", "readings")} failed` : open.gathering ? "Its papers are still arriving" : "Every paper is read"}</p>
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">

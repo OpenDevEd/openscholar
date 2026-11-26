@@ -142,7 +142,6 @@ function Screen({ open }: { open: Open }) {
   const { paper: picked, q: find, voted, order } = place;
   // Someone who is not a reviewer has no paper to do: they read the conflicts.
   const queue: Queue = open.isReviewer ? place.queue : "conflicts";
-  const setFind = (next: string) => void setPlace({ q: next, paper: null }, { history: "replace" });
   const words = useDebouncedValue(find.trim(), 300);
   // What the server has counted of the person's own papers and votes.
   const counted = screening.reviewers.find((one) => one.id === open.me)?.tally;
@@ -153,8 +152,11 @@ function Screen({ open }: { open: Open }) {
   // With no paper named in the address, the page's first is the open one, and stays it while the queue changes under the person: someone else settling a conflict never swaps the paper being read, or written about, for the next one.
   const [led, setLed] = useState<{ of: string; id: string } | null>(null);
   const leading = `${holding}:${listed.page}`;
-  if (!picked && !listed.isLoading && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
-  const opened = picked ?? (led?.of === leading ? led.id : null);
+  // The list shown is the one asked for: not an earlier search or page that stays up while the new one is read.
+  const arrived = !listed.isLoading && !listed.isStale;
+  if (!picked && arrived && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
+  // Until the list asked for arrives, the paper that was open stays open.
+  const opened = picked ?? (led && (led.of === leading || !arrived) ? led.id : null);
   // The open paper is read by itself, so Back, a reload or a link shows the paper its address says, whether or not the queue still holds it.
   const named = useProtectedQuery(api.screening.paperViews.paper, inWorkspace(workspaceId, opened ? { jobId: id, paperId: opened as Id<"screeningResults"> } : "skip")).data;
   const { folded, guides, paced: paces, set: setKept } = useKept();
@@ -164,6 +166,13 @@ function Screen({ open }: { open: Open }) {
   const dealtWith = (one: Paper) => (queue === "todo" ? Boolean(myVote(one)) : queue === "again" ? !myVote(one)?.flagged : queue === "conflicts" ? one.result !== "conflict" : voted !== "any" && myVote(one)?.decision !== voted);
 
   const paper: Paper | undefined = (opened ? (named ?? listed.items.find((one) => one.id === opened)) : undefined) ?? (opened && named === undefined ? undefined : listed.items[0]);
+  // Typing in the search box takes the paper out of the address, so the first paper found opens. The one open now stays until the papers found arrive.
+  const setFind = (next: string) => {
+    if (paper) setLed({ of: leading, id: paper.id });
+    void setPlace({ q: next, paper: null }, { history: "replace" });
+  };
+  // The open paper is still being read by itself: a paper from a link or from Back, which the list doesn't hold.
+  const opening = Boolean(opened) && named === undefined && !paper;
   // Where the open paper stood in the list when the list last held it. Once your vote takes it out of the queue it is shown there still. A paper opened from a link, which the list never held, leads the first page.
   const [stood, setStood] = useState<{ id: string; at: number; page: number } | null>(null);
   const inPage = paper ? listed.items.findIndex((one) => one.id === paper.id) : -1;
@@ -507,8 +516,9 @@ function Screen({ open }: { open: Open }) {
     </>
   );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
-  const reading = listed.isLoading || (Boolean(opened) && named === undefined && !paper);
-  if (reading || (!paper && !narrowed)) {
+  // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
+  const reading = listed.isLoading;
+  if (reading || (!paper && !narrowed && !opening)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -666,7 +676,9 @@ function Screen({ open }: { open: Open }) {
           </div>
         </div>
 
-        {!paper ? (
+        {!paper && opening ? (
+          <div className="flex flex-col justify-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2"><ListLoading label="Loading the paper" /></div>
+        ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
             <p className="text-sm font-medium">Nothing in this queue matches</p>
             <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null }, { history: "replace" })}>Show the whole queue</Button>

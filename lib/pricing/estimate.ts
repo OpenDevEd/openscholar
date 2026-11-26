@@ -2,7 +2,11 @@ import { creditsForUsage } from "./convert";
 import { PAPER_PDF_CREDITS } from "./paper-pdf";
 
 /** A model's price in USD per million tokens. */
-export type Pricing = { input: number; output: number };
+/** What a model charges once a prompt is long, where it charges more: every token of a call whose prompt has `from` tokens or more, in USD per million. */
+export type LongPrompt = { from: number; input: number; output: number };
+export type Pricing = { input: number; output: number; long?: LongPrompt };
+/** A catalog model's prices, as every estimate that can meet a long prompt takes them. */
+export const pricingOf = (model: { inputPricePerMillion: number; outputPricePerMillion: number; longPrompt?: LongPrompt }): Pricing => ({ input: model.inputPricePerMillion, output: model.outputPricePerMillion, ...(model.longPrompt ? { long: model.longPrompt } : {}) });
 export type CallTokens = { input: number; output: number };
 
 /**
@@ -91,12 +95,60 @@ export const SCREENING_PDF_TOKENS = { page: 4_000, asked: 2_000, answer: 800 };
 export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKENS.page + SCREENING_PDF_TOKENS.asked;
 /** Whether a model can be given a paper that is only its PDF: it takes a file, and every page of this one fits what one call to it holds. */
 export const readsPdfOf = (model: { files: boolean; room?: number } | undefined, pages: number) => Boolean(model?.files) && (model!.room === undefined || screeningPdfTokens(pages) <= model!.room);
-/** What screening papers as their PDFs costs at most on a model: one call a paper with its whole file, `pages` in all. */
-export function screeningPdfsCredits(pricing: Pricing, papers: number, pages: number): number {
-  return estimateCredits(pricing, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer });
+/** What screening one paper as its PDF costs at most on a model: one call with its whole file, at the model's long-prompt price where that many pages reach it. */
+export const screeningPdfCredits = (pricing: Pricing, pages: number) => estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer });
+
+/**
+ * A screening's papers read as their PDFs, by length: how many, their pages, and the same for the ones in each
+ * band of PDF_BAND pages (band 0 holds papers of 1 to 8 pages, band 1 of 9 to 16). The bands are what lets a
+ * model that charges more for a long prompt, or that holds only so many pages, be priced without reading every
+ * paper again. A paper whose pages nobody counted is in no band.
+ */
+export type Pdfs = { papers: number; pages: number; spread?: Record<string, { papers: number; pages: number }> };
+export const PDF_BAND = 8;
+/** How many bands there are: the last one holds every paper longer than it starts at, 1,017 pages. */
+export const PDF_BANDS = 128;
+export const pdfBand = (pages: number) => Math.min(PDF_BANDS - 1, Math.max(0, Math.ceil(pages / PDF_BAND) - 1));
+const bandsOf = (pdfs: Pdfs) => Object.entries(pdfs.spread ?? {}).map(([band, held]) => ({ band, held, fewest: Number(band) * PDF_BAND + 1, most: (Number(band) + 1) * PDF_BAND }));
+
+/**
+ * What screening those papers costs at most on a model: one call a paper with its whole file. A band is taken
+ * at the long-prompt price when its longest paper would be (`screeningPdfCredits`), so the sum is never under
+ * what the papers cost one by one.
+ */
+export function screeningPdfsCredits(pricing: Pricing, pdfs: Pdfs): number {
+  const { long } = pricing;
+  const dear = long ? bandsOf(pdfs).filter(({ most }) => screeningPdfTokens(most) >= long.from) : [];
+  const [longPapers, longPages] = [dear.reduce((sum, { held }) => sum + held.papers, 0), dear.reduce((sum, { held }) => sum + held.pages, 0)];
+  const part = (price: { input: number; output: number }, papers: number, pages: number) =>
+    estimateCredits({ input: price.input, output: price.output }, { input: pages * SCREENING_PDF_TOKENS.page + papers * SCREENING_PDF_TOKENS.asked, output: papers * SCREENING_PDF_TOKENS.answer });
+  return part(pricing, Math.max(0, pdfs.papers - longPapers), Math.max(0, pdfs.pages - longPages)) + (long ? part(long, longPapers, longPages) : 0);
 }
-/** The same for one paper. */
-export const screeningPdfCredits = (pricing: Pricing, pages: number) => screeningPdfsCredits(pricing, 1, pages);
+
+/** Of those papers, the ones a model is given (`readsPdfOf`): none where it takes no file, and none of a band whose shortest paper is more than one call to it holds. */
+export function pdfsFor(model: { files: boolean; room?: number } | undefined, pdfs: Pdfs): Pdfs {
+  if (!model?.files) return { papers: 0, pages: 0 };
+  const past = bandsOf(pdfs).filter(({ fewest }) => !readsPdfOf(model, fewest));
+  if (!past.length) return pdfs;
+  const gone = new Set(past.map(({ band }) => band));
+  return { papers: pdfs.papers - past.reduce((sum, { held }) => sum + held.papers, 0), pages: pdfs.pages - past.reduce((sum, { held }) => sum + held.pages, 0), spread: Object.fromEntries(Object.entries(pdfs.spread ?? {}).filter(([band]) => !gone.has(band))) };
+}
+
+/** The `count` longest of those papers, a band at a time from the longest: the most that many papers still to read can hold. */
+export function longestPdfs(pdfs: Pdfs, count: number): Pdfs {
+  if (count >= pdfs.papers) return pdfs;
+  const spread: NonNullable<Pdfs["spread"]> = {};
+  let [papers, pages] = [0, 0];
+  for (const { band, held, most } of bandsOf(pdfs).sort((a, b) => b.most - a.most)) {
+    const take = Math.min(held.papers, count - papers);
+    if (take <= 0) break;
+    // Part of a band is taken as its longest papers.
+    spread[band] = { papers: take, pages: take === held.papers ? held.pages : Math.min(held.pages, take * most) };
+    papers += take;
+    pages += spread[band]!.pages;
+  }
+  return { papers: Math.max(0, count), pages, spread };
+}
 
 /** The pages a paper prints its title, its authors and its DOI on: what the first reading of a PDF handed to a screening is sent. */
 export const PDF_LOOK_PAGES = 2;

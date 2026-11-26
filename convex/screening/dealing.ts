@@ -77,6 +77,34 @@ type Readable = Pick<Doc<"screeningResults">, "abstract" | "file" | "pages">;
 export const teamFor = <Team extends { people: string[]; models: string[] }>(team: Team, paper: Readable, reads: Reads): Team =>
   paper.abstract || !paper.file ? team : { ...team, models: team.models.filter((id) => readsPdfOf(reads.get(id), paper.pages ?? 0)) };
 
+/** Questions put to one person on one screening that its pages count and open: the first of them. */
+const ASKED_SHOWN = 50;
+/** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
+export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
+  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
+  return [...new Set(open.map((message) => message.resultId))];
+}
+
+/**
+ * What waits for one person on one screening: papers for their vote and conflicts for them to settle, none once it
+ * is finished, and the papers someone asked them about. One function, for the list, the rail and every summary.
+ */
+export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null, progress: Doc<"screeningJobProgress"> | null) {
+  const open = job.finishedAt === undefined;
+  return {
+    forYou: open && reviewer && reviewer.left === undefined ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0,
+    conflicts: open && job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0,
+    asked: await askedOf(ctx, job._id, userId),
+  };
+}
+
+/**
+ * A source set to be read again from its start: at a check, and when its range changes. What it merged and left out
+ * is counted afresh as it is read, and its reading is a new pass, so what an earlier pass left out is told from what
+ * this one does. The papers it brought stay its papers, and so do the ones read as their PDF among them.
+ */
+export const readAgain = (source: Pick<Doc<"screeningSources">, "pass">) => ({ state: "waiting" as const, read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined, pass: (source.pass ?? 0) + 1 });
+
 /** What marks a screening as just changed: when it was, for its row and for the order of the list. */
 export const touched = (now = Date.now()) => ({ updatedAt: now, activeAt: now });
 

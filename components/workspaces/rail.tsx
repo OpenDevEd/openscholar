@@ -6,6 +6,7 @@
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { SCREENINGS_PATH } from "@/lib/screening/links";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -266,10 +267,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 tooltip: hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined,
               })}
               {item({
-                href: "/screening",
+                href: SCREENINGS_PATH,
                 icon: ListChecks,
                 label: t("screen"),
-                active: is("/screening"),
+                active: is(SCREENINGS_PATH),
                 // The ring is a screening's models reading. People voting is no run to wait on, so an open screening with nothing left to read shows none.
                 running: screening?.reading ? { done: screening.reading.done, total: screening.reading.total, what: tc("screening"), percent: Math.floor((screening.reading.done / screening.reading.total) * 100) } : undefined,
                 // How many screenings wait for the person, in whichever workspace: the list says where.

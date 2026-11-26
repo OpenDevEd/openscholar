@@ -170,8 +170,8 @@ export function paperDetail(own: PaperResult, openalex: PaperResult | null, open
   };
 }
 
-/** Authors as listed, each person once: by their ID, or their name where they have none. */
-function onceEach(authorships: Authorship[]) {
+/** Authors as listed, each person once: by their ID, or their name where they have none. The index lists an author once for each affiliation. */
+export function onceEach<T extends { author?: { id?: string | null; display_name?: string | null } | null }>(authorships: T[]): T[] {
   const seen = new Set<string>();
   return authorships.filter(({ author }) => {
     const key = author?.id ?? author?.display_name?.trim().toLowerCase();

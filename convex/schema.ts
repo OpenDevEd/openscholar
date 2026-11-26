@@ -72,7 +72,8 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
-import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
+import { PDF_BANDS } from "../lib/pricing/estimate";
+import { customPicksValidator, effortValidator, longPromptValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { checksValidator, payWithValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields, reportEmailFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -496,6 +497,8 @@ export default defineSchema({
     // ── Pricing (USD per million tokens) ──
     inputPricePerMillion: v.number(),
     outputPricePerMillion: v.number(),
+    // What a call costs once its prompt is long, where the model charges more then (USD per million tokens, from that many prompt tokens).
+    longPrompt: v.optional(longPromptValidator),
     cacheReadPricePerMillion: v.optional(v.number()),
     cacheWritePricePerMillion: v.optional(v.number()),
     reasoningPricePerMillion: v.optional(v.number()),
@@ -1663,9 +1666,13 @@ export default defineSchema({
     left: v.number(),
     // Of the ones left out, how many for having no abstract.
     bare: v.optional(v.number()),
+    // How many times it has been read from its start: once at first, and again at each check or change of its range.
+    pass: v.optional(v.number()),
     // Of the ones taken, how many are screened as their own PDF, and the pages those have: what an AI reviewer is sent of them.
     filed: v.optional(v.number()),
     filePages: v.optional(v.number()),
+    // Those pages by the length of the paper they are in, a band of pages at a time (lib/pricing/estimate.ts `Pdfs`): a model that charges more for a long prompt is priced from it.
+    fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number() }))), PDF_BANDS),
     // Its reading stopped at the most papers its workspace's plan gives one screening: what it held past that was not taken.
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
@@ -1696,6 +1703,8 @@ export default defineSchema({
     readAt: v.number(),
     total: v.number(),
     read: v.number(),
+    // How many times in a row its reading went quiet and was started again.
+    tries: v.optional(v.number()),
   }).index("by_user_and_library", ["userId", "library"]),
   zoteroCollections: defineTable({
     userId: v.id("users"),
@@ -1746,10 +1755,11 @@ export default defineSchema({
     why: leftOutWhyValidator,
     // The record it was read as: a source that holds it twice, or is read again, names it once.
     paperKey: v.optional(v.string()),
-    // The check that last counted it: one that meets it again doesn't count it twice.
-    checkId: v.optional(v.id("screeningChecks")),
+    // The reading of its source that last left it out (`screeningSources.pass`): one that meets it again doesn't count it twice, and the list shows what the last reading left out.
+    pass: v.optional(v.number()),
   })
     .index("by_source", ["sourceId"])
+    .index("by_source_and_pass", ["sourceId", "pass"])
     .index("by_source_and_paperKey", ["sourceId", "paperKey"])
     .index("by_job_and_why", ["jobId", "why"]),
 

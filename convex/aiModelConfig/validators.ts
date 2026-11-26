@@ -11,6 +11,8 @@ export const effortValidator = v.union(...EFFORTS.map((effort) => v.literal(effo
 export const modelModalitiesValidator = capped(v.optional(v.array(v.string())), MAX_MODEL_MODALITIES);
 export const modelParametersValidator = capped(v.optional(v.array(v.string())), MAX_MODEL_PARAMETERS);
 export const modelEffortsValidator = capped(v.optional(v.array(effortValidator)), MAX_EFFORT_LEVELS);
+/** What a model charges once a prompt is long (lib/pricing/estimate.ts `LongPrompt`): from that many prompt tokens, USD per million tokens. */
+export const longPromptValidator = v.object({ from: v.number(), input: v.number(), output: v.number() });
 export const modelChoiceValidator = v.union(presetKeyValidator, v.literal("custom"));
 
 /** A model and the effort it runs at; no effort means the model's own default. */
@@ -37,6 +39,8 @@ export const modelSummaryValidator = v.object({
   name: v.string(),
   inputPricePerMillion: v.number(),
   outputPricePerMillion: v.number(),
+  longPrompt: v.optional(longPromptValidator),
+  contextLength: v.optional(v.number()),
   reasoningEfforts: modelEffortsValidator,
   defaultEffort: v.optional(effortValidator),
   reasoningMandatory: v.optional(v.boolean()),

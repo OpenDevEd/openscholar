@@ -270,7 +270,7 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, getErrorMessage(error, "They couldn't be sent"));
     }
     setSending((now) => now.filter((one) => one.batch !== batch));
-    if (added) onAdd({ ref, name: `${sized[0]!.name}${added > 1 ? ` and ${num(added - 1)} more` : ""}`, detail: added === 1 ? "A PDF" : "PDFs", total: added, set: { kind: "pdf", batch } });
+    if (added) onAdd({ ref, name: added > 1 ? `${num(added)} uploaded PDFs` : sized[0]!.name, detail: added === 1 ? "A PDF" : `${sized[0]!.name} and ${num(added - 1)} more`, total: added, set: { kind: "pdf", batch } });
     else if (!failed) refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, "They couldn't be sent");
   };
   const addPending = async (table: PendingTable & { file: File }) => {
@@ -296,7 +296,7 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
         </p>
         <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
         {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. */}
-        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />A model reads each PDF&apos;s first pages for its title and DOI: about {credits(lookCredits)} credits a PDF, paid as it is added</p> : null}
+        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />A model reads each PDF&apos;s first pages for its title and DOI: up to {credits(lookCredits)} credits a PDF, paid as it is added</p> : null}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
         <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />Choose files</Button>
       </div>

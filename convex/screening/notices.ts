@@ -11,12 +11,13 @@ import { internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, nameOf, newFor, waitingOf } from "./dealing";
+import { laterChecks, nameOf, newFor, waitsOn } from "./dealing";
 import { screeningPath } from "../../lib/screening/links";
 
 export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"));
 
-const rowOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) => ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).unique();
+/** A person's own row for one screening's emails: whether they turned them off, and when the last one about conflicts went. */
+export const noticeOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) => ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).unique();
 
 /** New papers counted for one person's email: past it the email says so many. */
 const NEW_COUNTED = 500;
@@ -27,7 +28,7 @@ const CONFLICTS_EVERY_MS = 24 * 3_600_000;
 
 /** Tells whoever settles a screening's conflicts that some wait, by one email for a burst of them and at most one a day. */
 export async function conflictsWait(ctx: MutationCtx, jobId: Id<"screeningJobs">, userId: Id<"users">) {
-  const row = await rowOf(ctx, jobId, userId);
+  const row = await noticeOf(ctx, jobId, userId);
   if (row?.off || (row?.conflictsAt !== undefined && Date.now() - row.conflictsAt < CONFLICTS_EVERY_MS)) return;
   if (row) await ctx.db.patch("screeningNotices", row._id, { conflictsAt: Date.now() });
   else await ctx.db.insert("screeningNotices", { jobId, userId, off: false, conflictsAt: Date.now() });
@@ -39,7 +40,7 @@ export const context = internalQuery({
   args: { jobId: v.id("screeningJobs"), userId: v.id("users"), about: aboutValidator, by: v.optional(v.id("users")) },
   returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), by: v.optional(v.string()) })),
   handler: async (ctx, { jobId, userId, about, by }) => {
-    const [job, user, row] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("users", userId), rowOf(ctx, jobId, userId)]);
+    const [job, user, row] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("users", userId), noticeOf(ctx, jobId, userId)]);
     if (!job || job.finishedAt !== undefined || user?.state !== "active" || row?.off) return null;
     const workspace = await ctx.db.get("workspaces", job.workspaceId);
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
@@ -50,11 +51,9 @@ export const context = internalQuery({
     const on = reviewer && reviewer.left === undefined ? reviewer : null;
     // New papers: the ones its last check gave this person, which still wait for their vote. A reminder: everything that waits for them.
     const brought = about === "papers" ? (await laterChecks(ctx, jobId)).find((check) => check.added > 0) : undefined;
-    const count =
-      about === "conflicts" ? (job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0)
-      : !on ? 0
-      : about === "papers" ? (brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0)
-      : waitingOf(on, progress?.reviewers?.[on._id]);
+    // What waits for them is counted as every page counts it (./dealing.ts `waitsOn`).
+    const waits = await waitsOn(ctx, job, userId, on, progress);
+    const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0) : waits.forYou;
     if (!count) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
     return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
@@ -70,7 +69,7 @@ export const setEmails = workspaceMutation({
   returns: v.null(),
   handler: async (ctx, actor, { jobId, on }) => {
     if (!(await standingOn(ctx, actor, jobId))) return null;
-    const row = await rowOf(ctx, jobId, actor.userId);
+    const row = await noticeOf(ctx, jobId, actor.userId);
     if (row) await ctx.db.patch("screeningNotices", row._id, { off: !on });
     else if (!on) await ctx.db.insert("screeningNotices", { jobId, userId: actor.userId, off: true });
     return null;

@@ -12,7 +12,7 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "./parts";
 import { cn } from "@/lib/utils";
-import { baseTaken, collectionName, num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
+import { baseTaken, bringsPdfs, collectionName, num, listed, plural, readersOf, EVERY_LABEL, PDF_COSTS_MORE, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./pieces";
 import { credits, paperCredits, readingOf } from "./store";
@@ -228,15 +228,17 @@ export function effectItems(before: Screening, after: Screening, counted: Previe
     lines.push(sources ? { text: `The screening checks ${sources === all ? (all === 1 ? "its source" : `its ${all} sources`) : `${sources} of its ${all} sources`} for new papers`, when: `${onSave}, then`, then: EVERY_LABEL[after.living.every].toLowerCase(), kind: "schedule", section: "new-papers" } : { text: "The screening has no source that gains papers, so there is nothing to check yet", kind: "schedule", section: "new-papers" });
     const each = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!), 0);
     // People get a new paper as it comes in, whether or not a model has read it. An email goes to people, so it is promised only where there are some.
-    lines.push(each ? { text: `Each new paper goes to its reviewers${hasPeople ? ", and the people among them get an email" : ""}. The models read it when they can`, kind: "cost", credits: each, each: true, section: "new-papers" } : hasPeople ? { text: "Each new paper goes to its reviewers, who get an email", kind: "mail", section: "new-papers" } : { text: "Each new paper joins the screening, where it waits for a reviewer", section: "new-papers" });
+    lines.push(each ? { text: `Each new paper goes to its reviewers${hasPeople ? ", and the people among them get an email" : ""}. The models read it when they can${bringsPdfs(growing(after)) ? `, at ${PDF_COSTS_MORE}` : ""}`, kind: "cost", credits: each, each: true, section: "new-papers" } : hasPeople ? { text: "Each new paper goes to its reviewers, who get an email", kind: "mail", section: "new-papers" } : { text: "Each new paper joins the screening, where it waits for a reviewer", section: "new-papers" });
     if (before.finishedAt && !counted.reopened) lines.push({ text: "The screening is open again, and stays open to new papers", kind: "reopen", section: "new-papers" });
   } else if (before.living && !after.living) lines.push({ text: "The screening stops checking for new papers. The ones it has stay", kind: "schedule", section: "new-papers" });
   else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: `The screening checks for new papers ${EVERY_LABEL[after.living.every].toLowerCase()} from now on`, kind: "schedule", section: "new-papers" });
 
   // What a source this adds brings is known once the screening has read it: until then, what its range promises is the most it can be.
   const promised = promisedBy(before, after);
-  const reading = modelsOf(after).reduce((sum, model) => sum + readingOf(after, model.model!, promised), 0);
-  if (promised) lines.push({ text: `Up to ${plural(promised, "new paper joins", "new papers join")} the screening and ${promised === 1 ? "goes" : "go"} to its reviewers. Fewer do where another source already has them or they have no abstract`, ...(reading ? { kind: "cost" as const, credits: reading } : {}), section: "papers" });
+  // Nobody has read them yet: each is priced as a paper with an abstract, and a source that can bring PDFs says they cost more.
+  const reading = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!) * promised, 0);
+  const unreadPdfs = bringsPdfs(bringing(before, after).map((one) => one.source));
+  if (promised) lines.push({ text: `Up to ${plural(promised, "new paper joins", "new papers join")} the screening and ${promised === 1 ? "goes" : "go"} to its reviewers. Fewer do where another source already has them or they have no abstract${reading && unreadPdfs ? `. The models charge ${PDF_COSTS_MORE}` : ""}`, ...(reading ? { kind: "cost" as const, credits: reading } : {}), section: "papers" });
   if (counted.removed) lines.push({ text: `${plural(counted.removed, "paper leaves", "papers leave")} the screening, with ${counted.removed === 1 ? "its" : "their"} votes kept on record`, kind: "leave", section: "papers" });
 
   const [from, to] = [collectionName(before), collectionName(after)];
@@ -260,7 +262,16 @@ const withCredits = (line: EffectLine, text: string) => (line.credits ? `${text}
 export const lineText = (line: EffectLine) => withCredits(line, [line.text, line.then].filter(Boolean).join(" "));
 
 /** The papers the sources a change adds promise at most: which of them are new is known once the screening has read them. */
-export const promisedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => after.sources.filter((source) => !before.sources.some((one) => one.id === source.id)).reduce((sum, source) => sum + baseTaken(source), 0);
+/** The sources a change brings more papers from, each with how many more its range promises: a source it adds, and one whose range it widens. */
+const bringing = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) =>
+  after.sources.flatMap((source) => {
+    const was = before.sources.find((one) => one.id === source.id);
+    const more = was ? Math.max(0, baseTaken(source) - baseTaken(was)) : baseTaken(source);
+    return more ? [{ source, more, widened: Boolean(was) }] : [];
+  });
+export const promisedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => bringing(before, after).reduce((sum, one) => sum + one.more, 0);
+/** Of those, the ones a wider range of a source it already has promises: a source's own count is of what it has read, so they are added to it. */
+export const widenedBy = (before: Pick<Screening, "sources">, after: Pick<Screening, "sources">) => bringing(before, after).reduce((sum, one) => sum + (one.widened ? one.more : 0), 0);
 
 /** What a change has every model read at once comes to: a criterion added to a running screening is answered on the open papers each has read. The preview and the save both charge this. */
 export const rereadCost = (screening: Screening, counted: Preview) => modelsOf(screening).reduce((sum, model) => sum + readingOf(screening, model.model!, counted.models[model.id]?.atOnce ?? 0), 0);

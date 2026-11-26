@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
+import type { LongPrompt } from "@/lib/pricing/estimate";
 import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented, type Ico } from "./parts";
@@ -27,6 +28,10 @@ export type MapModel = {
   name: string;
   inputPricePerMillion: number;
   outputPricePerMillion: number;
+  /** What it charges once a prompt is long, where it charges more (lib/pricing/estimate.ts `LongPrompt`). */
+  longPrompt?: LongPrompt;
+  /** The tokens one call to it holds. */
+  contextLength?: number;
   /** A key model the catalog doesn't list, so there's no price to show. */
   unpriced?: boolean;
   /** The effort this pick runs at; none means the model's default. */
@@ -78,6 +83,8 @@ export function toMapModel(
     name: string;
     inputPricePerMillion: number;
     outputPricePerMillion: number;
+    longPrompt?: LongPrompt;
+    contextLength?: number;
     reasoningEfforts?: Effort[];
     defaultEffort?: Effort;
     intelligenceIndex?: number;
@@ -93,6 +100,8 @@ export function toMapModel(
     name: row.name,
     inputPricePerMillion: row.inputPricePerMillion,
     outputPricePerMillion: row.outputPricePerMillion,
+    ...(row.longPrompt && { longPrompt: row.longPrompt }),
+    ...(row.contextLength !== undefined && { contextLength: row.contextLength }),
     reasoningEfforts: row.reasoningEfforts,
     defaultEffort: row.defaultEffort,
     intelligenceIndex: row.intelligenceIndex,

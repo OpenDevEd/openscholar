@@ -27,6 +27,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { changeOpens, changeSays } from "./activity-words";
 import { modelKey, PERSON_SAYS, VOTES_HIDDEN_SAYS, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
+import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import { papersHref } from "./links";
 import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { perPaper, type Open } from "./store";
@@ -239,7 +240,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               avatar: <ReviewerMark reviewer={one} className="size-9" />,
               name: one.name,
               you: one.id === state.me,
-              detail: `${detail(one)}${one.tally ? `, voted on ${num(one.tally.cast)} of ${num(Math.max(0, one.tally.dealt - one.tally.closed))}` : ""}`,
+              detail: `${detail(one)}${one.tally ? `, voted on ${num(gotThrough(one.tally))} of ${num(theirsOf(one.tally))}` : ""}`,
               // A guest who votes can be made a viewer by whoever may change the screening. A member is a reviewer or isn't: taking them off leaves them a member, who still sees it. Whoever only looks at the list reads one word for every reviewer, guest or member.
               ...(one.guest && may ? { role: "reviewer" as const, onRole: (role: Role) => { if (role === "viewer") onDemote(one); } } : { role: { kind: "edit" as const, label: "Reviewer" } }),
               ...(may ? { onRemove: () => onRemove(one) } : {}),
@@ -248,7 +249,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               key: one.id,
               avatar: <ReviewerMark reviewer={one} className="size-9" />,
               name: one.name,
-              detail: `${perPaper(one.model!)}, read ${num(one.tally?.cast ?? 0)} of ${num(Math.max(0, (one.tally?.dealt ?? 0) - (one.tally?.closed ?? 0)))}`,
+              detail: `${perPaper(one.model!)}, ${one.tally?.failed ? "got through" : "read"} ${num(gotThrough(one.tally))} of ${num(theirsOf(one.tally))}`,
               role: { kind: "edit" as const, label: "Model" },
               ...(may ? { onRemove: () => onRemove(one) } : {}),
             })),

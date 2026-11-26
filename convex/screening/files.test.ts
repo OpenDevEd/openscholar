@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import { readAgain } from "./dealing";
 import { give, paper, started, team, type Team } from "./reviewers.test-support";
 
 beforeEach(() => vi.useFakeTimers());
@@ -43,7 +44,7 @@ describe("a drop of PDFs", () => {
 });
 
 describe("what a source leaves out", () => {
-  it("counts a paper the source holds twice once, and counts it again once when the source is read again", async () => {
+  it("counts a paper the source holds twice once, and counts it again once each time the source is read again", async () => {
     const made = await team(["ann"]);
     const { jobId } = await started(made, ["ann"], 0);
     const bare = { ...paper(1), abstract: undefined };
@@ -57,12 +58,15 @@ describe("what a source leaves out", () => {
     expect(await sourceOf()).toMatchObject({ taken: 1, left: 1, bare: 1 });
     expect(await leftOut()).toHaveLength(1);
 
-    // The next check reads the source from its start: what it leaves out is counted afresh, and named once.
-    const next = await made.t.run(async (ctx) => {
-      await ctx.db.patch("screeningSources", sourceId, { state: "reading", read: 0, left: 0, bare: 0 });
-      return ctx.db.insert("screeningChecks", { jobId, at: 2, state: "running", beat: 2, from: 1, found: 0, added: 0 });
+    // Read again from its start, by a later check or because its range changed while a check was running: what it leaves out is counted afresh, and named once.
+    const again = (checkId: Id<"screeningChecks">) => made.t.run(async (ctx) => {
+      await ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" });
+      return checkId;
     });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId: next, sourceId, papers: [bare, bare], read: 2, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(checkId), sourceId, papers: [bare, bare], read: 2, ended: false });
+    expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
+    const later = await made.t.run((ctx) => ctx.db.insert("screeningChecks", { jobId, at: 2, state: "running", beat: 2, from: 1, found: 0, added: 0 }));
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(later), sourceId, papers: [bare, bare], read: 2, ended: true });
     expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
     expect(await leftOut()).toHaveLength(1);
   });

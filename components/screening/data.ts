@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, OTHER_REASONS as OTHER_KEYS, RESULTS, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, type Decision, type Result } from "@/lib/screening/rules";
+import { DECISIONS, OTHER_REASONS as OTHER_KEYS, RESULTS, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
 export type { Decision, Result };
@@ -80,10 +80,13 @@ export const invitedReviewer = (email: string, addedAt: number): Reviewer => ({ 
 /** A model on a draft, before its row exists: named by its slug and effort, which is what makes it one reviewer. */
 export const modelKey = (model: Pick<MapModel, "id" | "effort">) => reviewerKey(model.id, model.effort);
 export const modelReviewer = (model: MapModel, addedAt: number): Reviewer => ({ id: modelKey(model), kind: "model", name: model.name, model, addedAt });
+/** A screening's reviewers as its pages name them before a save has: two of one model each say their effort, as the server names them once it has them (lib/screening/rules.ts `twinsNamed`). */
+export const withTwins = <S extends Pick<Screening, "reviewers">>(screening: S): S => ({ ...screening, reviewers: twinsNamed(screening.reviewers, (model) => model.id) });
 
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
 
-export type Criterion = { key: string; text: string; short: string; must: boolean; /** Words the organiser marked, shown in the abstract while a person votes. */ terms: string[]; addedAt: number; /** Guidance for whoever answers it, a person or a model: what counts and what doesn't. */ note?: string };
+/** A criterion as the pages hold it: the shared one (lib/screening/rules.ts), with its points kept apart in the screening's scoring. */
+export type Criterion = Omit<SharedCriterion, "points">;
 
 export type SourceKind = "search" | "collection" | "saved" | "screening" | "evidenceLibrary" | "zotero" | "upload" | "pdf" | "dois";
 /** What the server reads a source from (convex/screening/validators.ts `sourceSetValidator`). A source picked in the form carries it from then on. */
@@ -106,7 +109,7 @@ export const refOf = (set: SourceSet) =>
   : set.kind === "saved" ? "saved"
   : undefined;
 /** How a source's reading stands on the server, once the screening exists: what was read of it, taken, merged with another source's and left out. */
-export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; checkedAt?: number; removedAt?: number ; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
+export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; /** Those by length (lib/pricing/estimate.ts `Pdfs`). */ fileSpread?: Record<string, { papers: number; pages: number }>; checkedAt?: number; removedAt?: number ; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
 export type Source = {
   id: string;
@@ -157,6 +160,10 @@ export const AS_PDF = "Read as its PDF";
 export const PDF_STANDS = { known: "In the index", file: AS_PDF, broken: LEFT_WHY.broken, waiting: "Reading it" } as const;
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
+/** Sources whose papers can come with no abstract and their PDF, which a model is sent whole and charges for by the page. */
+export const bringsPdfs = (sources: Source[]) => sources.some((source) => (source.kind === "zotero" || source.kind === "pdf") && source.read?.removedAt === undefined);
+/** Said beside a price for papers nobody has read yet, where some may be read as their PDF. */
+export const PDF_COSTS_MORE = "more for one read as its PDF";
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
 /** What a source held when it was added, before any check found more. */
 export const baseTotal = (source: Source) => source.total - grown(source);
@@ -176,16 +183,8 @@ export function removedOf(sources: Source[]) {
   return { left, bare: sources.reduce((sum, source) => sum + bareOf(source), 0), merged: foundTotal(sources) - paperTotal(sources) };
 }
 
-export type Rule = {
-  /** How many people read each paper: a number, or everyone on the screening, whoever joins later included. */
-  each: `${number}` | "all";
-  /** When a paper is settled: every reviewer agrees, most of them do, or the first vote decides. */
-  settle: "all" | "most" | "one";
-  /** Who settles a split. */
-  resolver: string;
-  /** When people see the other votes on a paper. */
-  blind: "after" | "always";
-};
+/** The rule as the pages hold it: the shared one (lib/screening/rules.ts), with how many people read each paper as the text a control holds. */
+export type Rule = Omit<SharedRule, "each"> & { each: `${number}` | "all" };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
@@ -212,15 +211,17 @@ export const excludeGroups = (criteria: Criterion[], many = false) => {
 };
 /** A reason in words: the criterion's short name, or one of the others. */
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
-/** A reason for excluding in words, for a file, a tooltip or a screen reader: the criterion that wasn't met, named as such, or one of the other reasons. On a page it is drawn, by `Reason`. */
-export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `${reasonLabel(key, criteria)} not met` : reasonLabel(key, criteria));
+/** Whether someone wrote a criterion's short name. One nobody wrote is its question cut short, which names nothing: the question stands in for it. */
+export const isNamed = (criterion: Pick<Criterion, "short" | "text">) => criterion.short !== shortOf(criterion.text);
+/** A criterion as a line names it: the name someone wrote, or else its question. */
+export const criterionLabel = (criterion: Pick<Criterion, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
 /**
- * A reason for excluding as a file or a drawing holds it, which nobody can hover over to read the rest: the criterion
- * that wasn't met, by the name someone gave it, or by its whole question where its name is only that question cut short.
+ * A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met,
+ * by the name someone gave it or by its question, or one of the other reasons. On a page it is drawn, by `Reason`.
  */
-export const failedInFull = (key: string, criteria: Criterion[]) => {
+export const failedLabel = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
-  return criterion ? `Not met: ${criterion.short === shortOf(criterion.text) ? criterion.text : criterion.short}` : reasonLabel(key, criteria);
+  return criterion ? (isNamed(criterion) ? `${criterion.short} not met` : `Not met: ${criterionLabel(criterion)}`) : reasonLabel(key, criteria);
 };
 /** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
 export const unclearLabel = (key: string, criteria: Criterion[]) => `${criteria.find((criterion) => criterion.key === key)?.short ?? key} unclear`;

@@ -105,8 +105,8 @@ export const resolveForUser = internalQuery({
 export async function modelSummary(ctx: QueryCtx, id: Id<"models"> | null) {
   const model = id ? await ctx.db.get("models", id) : null;
   if (!model) return null;
-  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex, inputModalities } = model;
-  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex, inputModalities };
+  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, longPrompt, contextLength, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex, inputModalities } = model;
+  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, longPrompt, contextLength, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex, inputModalities };
 }
 
 /**

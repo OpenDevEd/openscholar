@@ -17,12 +17,13 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
-import { isFinal, modelsProgress } from "../../lib/screening/rules";
+import { isFinal, modelsProgress, twinsNamed } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
+import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
+import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
 import { checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
@@ -51,8 +52,6 @@ async function workspaceOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspace
   return { id: workspaceId, kind: "personal", name: owner ? personName(owner) || owner.email : "A workspace", ...(owner?.avatarUrl ? { imageUrl: owner.avatarUrl } : {}) };
 }
 
-/** Questions put to one person on one screening that its pages count and open: the first of them. */
-const ASKED_SHOWN = 50;
 
 /** What a list's row and a screening's frame both say of it. */
 const aheadValidator = v.object({ id: v.id("screeningJobs"), name: v.string(), done: v.number(), of: v.number() });
@@ -113,7 +112,7 @@ async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
   const base = { row: reviewer._id, addedAt: reviewer.addedAt, ...(reviewer.left === undefined ? {} : { left: reviewer.left }), ...(reviewer.discarded === undefined ? {} : { discarded: reviewer.discarded }), ...(reviewer.reminded === undefined ? {} : { reminded: reviewer.reminded }), dealt: reviewer.dealt, ...tally, waiting };
   if (reviewer.kind === "model") {
     const model = reviewer.modelId ? await ctx.db.get("models", reviewer.modelId) : null;
-    return { ...base, id: reviewer._id, kind: "model", name: modelName(model), ...(model ? { model: { _id: model._id, modelId: model.modelId, name: modelName(model), inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities) } } : {}) };
+    return { ...base, id: reviewer._id, kind: "model", name: modelName(model), ...(model ? { model: { _id: model._id, modelId: model.modelId, name: modelName(model), inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(model.longPrompt ? { longPrompt: model.longPrompt } : {}), ...(model.contextLength === undefined ? {} : { contextLength: model.contextLength }), ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities) } } : {}) };
   }
   const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
   if (!user) return { ...base, id: reviewer._id, kind: "person", name: SOMEONE };
@@ -146,26 +145,9 @@ async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspac
   // How far its models have read: the one furthest behind, as every page says it (`modelsProgress`).
   const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
   const read = modelsProgress(theirs.filter(readingModel).map((one) => ({ dealt: one.dealt, ...counted?.reviewers?.[one._id] })));
-  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read?.done ?? 0, of: read?.of ?? papersOf(ahead, counted) };
-}
-
-/** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
-export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
-  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
-  return [...new Set(open.map((message) => message.resultId))];
-}
-
-/**
- * What waits for one person on one screening: papers for their vote and conflicts for them to settle, none once it
- * is finished, and the papers someone asked them about. One function, for the list, the rail and every summary.
- */
-export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null, progress: Doc<"screeningJobProgress"> | null) {
-  const open = job.finishedAt === undefined;
-  return {
-    forYou: open && reviewer && reviewer.left === undefined ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0,
-    conflicts: open && job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0,
-    asked: await askedOf(ctx, job._id, userId),
-  };
+  // With none of its models behind, it is read through: the same figure its own frame shows then.
+  const all = papersOf(ahead, counted);
+  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read?.done ?? all, of: read?.of ?? all };
 }
 
 /** The screenings something may wait for one person on, in any workspace: the ones they review, and the open ones whose conflicts they settle, reviewer or not. */
@@ -188,7 +170,9 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   ]);
   const members = new Map<Id<"users">, boolean>();
   const keeps = keepsVotes(job, reviewer, progress?.reviewers);
-  const reviewers = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id)));
+  const viewed = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id)));
+  // One model put on it at two efforts is two reviewers: each then says its effort, so a filter, a row or a vote names the one it means.
+  const reviewers = twinsNamed(viewed, (model) => model.modelId);
   const settled = { ...NO_RESULTS, ...progress?.counts };
   const total = papersOf(job, progress, check);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
@@ -249,21 +233,23 @@ export const listAction = defineUserQuery({
   description:
     "Lists the workspace's screenings, a page at a time: each with who started it, its reviewers (people and AI models), how many papers it has and where they stand (included, maybe, excluded, in conflict, waiting for votes), what waits for the person (papers to vote on, conflicts to settle, questions put to them) and what its models are doing. " +
     "`show` keeps the ones still open or the finished ones, `by` the ones one person started, and `text` the ones whose name matches. In order of last activity, newest or oldest started, or name.",
-  args: { show: v.union(v.literal("all"), v.literal("open"), v.literal("finished")), sort: SORTS, by: v.optional(v.id("users")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  args: { show: v.union(v.literal("all"), v.literal("open"), v.literal("finished")), sort: SORTS, by: v.optional(v.id("users")), text: v.optional(v.string()), /** Only the ones that have included a paper: what another screening or an extraction can take its papers from. */ included: v.optional(v.literal(true)), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(summaryValidator),
-  run: async (ctx, actor, { show, sort, by, text, paginationOpts }) => {
+  run: async (ctx, actor, { show, sort, by, text, included, paginationOpts }) => {
     const { workspaceId } = actor;
     const needle = text?.trim() ?? "";
-    const keeps = (job: Doc<"screeningJobs">) => job.shape === 2 && job.status !== "draft" && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by);
+    const fits = (job: Doc<"screeningJobs">) => job.shape === 2 && job.status !== "draft" && (show === "all" || (show === "finished") === (job.finishedAt !== undefined)) && (!by || job.createdBy === by);
+    const keeps = async (job: Doc<"screeningJobs">) => fits(job) && (!included || ((await progressRow(ctx as QueryCtx, job._id))?.counts?.include ?? 0) > 0);
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const jobs = stream(ctx.db, schema).query("screeningJobs");
     const read = needle
       ? // A name is found by its words, best match first.
         await ctx.db.query("screeningJobs").withSearchIndex("search_name", (q) => q.search("name", needle).eq("workspaceId", workspaceId)).paginate(options)
       : await (sort === "name" ? jobs.withIndex("by_workspace_and_name", (q) => q.eq("workspaceId", workspaceId)).order("asc") : sort === "active" ? jobs.withIndex("by_workspace_and_activeAt", (q) => q.eq("workspaceId", workspaceId)).order("desc") : jobs.withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(sort === "oldest" ? "asc" : "desc"))
-          .filterWith(async (job) => keeps(job))
+          .filterWith(keeps)
           .paginate({ ...options, maximumRowsRead: FILTER_ROWS });
-    const page = await Promise.all(read.page.filter(keeps).map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
+    const kept = (await Promise.all(read.page.map(async (job) => ((await keeps(job)) ? [job] : [])))).flat();
+    const page = await Promise.all(kept.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
     return { ...read, page };
   },
 });
@@ -453,13 +439,13 @@ export const getAction = defineUserQuery({
     return {
       ...summary,
       atOnce: await paperLimit(ctx, job.workspaceId),
-      emails: !(await ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", actor.userId)).unique())?.off,
+      emails: !(await noticeOf(ctx, jobId, actor.userId))?.off,
       ...(job.question ? { question: job.question } : {}),
       criteria: job.criteria ?? [],
       stars: job.stars ?? [],
       each: rule.each,
       blind: rule.blind,
-      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, filed: source.filed ?? 0, filePages: source.filePages ?? 0, ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
+      sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, filed: source.filed ?? 0, filePages: source.filePages ?? 0, ...(source.fileSpread ? { fileSpread: source.fileSpread } : {}), ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
       destination: job.libraryDestination
         ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true }
         : job.newCollection
@@ -532,7 +518,8 @@ export const leftOutAction = defineUserQuery({
     const standing = await standingOn(ctx, actor, jobId);
     const source = standing ? await ctx.db.get("screeningSources", sourceId) : null;
     if (source?.jobId !== jobId) return { page: [], isDone: true, continueCursor: "" };
-    const read = await ctx.db.query("screeningLeftOut").withIndex("by_source", (q) => q.eq("sourceId", sourceId)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
+    // What its last reading left out: a paper an earlier one left out that has an abstract now, or is outside its range now, is not listed.
+    const read = await ctx.db.query("screeningLeftOut").withIndex("by_source_and_pass", (q) => q.eq("sourceId", sourceId).eq("pass", source.pass ?? 0)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 100) });
     return { ...read, page: read.page.map((one) => ({ id: one._id, name: one.name, why: one.why })) };
   },
 });

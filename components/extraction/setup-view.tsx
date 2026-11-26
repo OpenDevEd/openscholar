@@ -104,8 +104,8 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
   // The workspace's screenings, running or finished: the ones that have included a paper are offered, as a new screening's form offers them.
-  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const }), SOURCE_PAGE);
-  const included = screenings.items.filter((one) => one.counts.include > 0);
+  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, included: true as const }), SOURCE_PAGE);
+  const included = screenings.items;
   // The libraries the person reads, read with the rest so switching to them moves nothing; the library sources picked lead their lists.
   const libraries = useLibrarySources(sources.flatMap((source) => (source.held ? [source.held] : [])));
   const labelOf = useRowLabel();

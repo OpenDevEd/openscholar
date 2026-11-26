@@ -9,6 +9,7 @@ import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { OQL_FIELD } from "../../lib/openalex/oql";
 import type { SavedSearch } from "../../lib/research/records";
+import { toPaper } from "./search";
 
 const search: SavedSearch = {
   id: "local-search", query: "rct... AND tutoring", field: "title_and_abstract", count: 900,
@@ -546,5 +547,13 @@ describe("counting OpenAlex requests from an action", () => {
     expect(await spend("visitor:3f2a", 120)).toBe(true);
     expect(await spend("visitor:3f2a", 1)).toBe(false);
     expect(await spend("clerk_1", 121)).toBe(true);
+  });
+});
+
+describe("a paper taken from a search", () => {
+  it("lists each author once, where the index lists one for each affiliation", () => {
+    const author = (id: string, display_name: string) => ({ author: { id, display_name } });
+    const paper = toPaper({ id: "https://openalex.org/W1", title: "A trial", authorships: [author("A1", "A. Pettifor"), author("A2", "Catherine MacPhail"), author("A2", "Catherine MacPhail"), author("A3", "J. Hughes"), author("A3", "J. Hughes")] });
+    expect(paper.authors).toEqual(["A. Pettifor", "Catherine MacPhail", "J. Hughes"]);
   });
 });

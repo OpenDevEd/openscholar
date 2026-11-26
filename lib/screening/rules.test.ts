@@ -1,6 +1,6 @@
 // A screening's rules (plans/screening-reviewers): each setting against each state of a paper's votes.
 import { describe, expect, it } from "vitest";
-import { cellOf, decide, emptyMatrix, fillPlaces, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, type Ballot, type Decision } from "./rules";
+import { cellOf, decide, emptyMatrix, fillPlaces, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, twinsNamed, type Ballot, type Decision } from "./rules";
 import { project } from "./project";
 
 const cast = (decision: Decision, at = 1, reason?: string): Ballot => ({ status: "cast", decision, at, ...(reason ? { reason } : {}) });
@@ -112,5 +112,16 @@ describe("agreement between two reviewers", () => {
     expect(figure.same).toBeCloseTo(0.7);
     expect(figure.kappa).toBeCloseTo(0.4);
     expect(kappa(emptyMatrix())).toBeNull();
+  });
+});
+
+describe("one model on a screening twice", () => {
+  it("names each by its effort, and leaves a model that is on it once as it is", () => {
+    type One = { name: string; model?: { id: string; name: string; effort?: string } };
+    const model = (id: string, name: string, effort?: string): One => ({ name, model: { id, name, ...(effort ? { effort } : {}) } });
+    const named = twinsNamed<One>([{ name: "Amina" }, model("luna", "GPT-6 Luna"), model("luna", "GPT-6 Luna", "high"), model("haiku", "Claude Haiku 5.5", "medium")], (one) => one.id);
+    expect(named.map((one) => one.name)).toEqual(["Amina", "GPT-6 Luna", "GPT-6 Luna, high effort", "Claude Haiku 5.5"]);
+    // Named again, as a page does with what the server already named, nothing changes.
+    expect(twinsNamed(named, (one) => one.id).map((one) => one.name)).toEqual(named.map((one) => one.name));
   });
 });

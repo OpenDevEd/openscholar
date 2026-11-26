@@ -17,7 +17,7 @@ import { actorIn } from "../workspaces/actor";
 import { nextResolver, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater, saveQualified } from "./bookkeeping";
-import { dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./gathering";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -190,7 +190,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
   for (const range of change.ranges ?? []) {
     const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
-    if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, filed: undefined, filePages: undefined, capped: undefined });
+    if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, ...readAgain(source) });
   }
   for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
   // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.

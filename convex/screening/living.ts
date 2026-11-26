@@ -11,7 +11,7 @@ import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
-import { reviewersOf, sourcesOf, touched } from "./dealing";
+import { readAgain, reviewersOf, sourcesOf, touched } from "./dealing";
 import { startCheck } from "./gathering";
 import { logChange } from "./log";
 import { EVERY_MS } from "./screenings";
@@ -26,7 +26,7 @@ export async function check(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<
   const sources = (await sourcesOf(ctx, job._id)).filter(grows);
   if (!sources.length) return false;
   // Read again from its start, as it stands now: what it had merged and left out is counted again as it is read.
-  for (const source of sources) await ctx.db.patch("screeningSources", source._id, { state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined });
+  for (const source of sources) await ctx.db.patch("screeningSources", source._id, readAgain(source));
   await startCheck(ctx, job, by, job.totalPapers);
   return true;
 }

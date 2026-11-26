@@ -14,11 +14,11 @@ import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
 import { isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { reviewersOf, viewId, votesOf } from "./dealing";
+import { askedOf, reviewersOf, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { progressRow } from "./bookkeeping";
-import { askedOf, keepsVotes } from "./view";
+import { keepsVotes } from "./view";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;

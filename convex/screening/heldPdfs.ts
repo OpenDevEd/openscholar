@@ -21,7 +21,7 @@ import { outOfCredits, withUserCredits } from "../ai/helpers";
 import { openRouterModel } from "../ai/provider";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { spender } from "../paperSets/search";
-import { byDois } from "./held";
+import { byDois, withAbstracts } from "./held";
 import { pdfReadValidator } from "./validators";
 
 type Read = typeof pdfReadValidator.type;
@@ -92,17 +92,20 @@ export const look = internalAction({
     const title = read.title.trim().slice(0, TITLE_MAX);
     const doi = normalDoi(read.doi ?? undefined) ?? undefined;
     // The index's paper, where it holds this DOI under the title these pages print: a DOI alone may be a cited work's.
-    const found = doi && title ? (await byDois([doi], spender(ctx, who.clerkId)).catch(() => null))?.get(doi) : undefined;
-    const known = found !== undefined && sameTitle(found.title, title);
+    const spend = spender(ctx, who.clerkId);
+    const indexed = doi && title ? (await byDois([doi], spend).catch(() => null))?.get(doi) : undefined;
+    const known = indexed !== undefined && sameTitle(indexed.title, title);
+    // Whether that paper will be screened on an abstract is asked as its source will ask it: of OpenAlex, then of the registries.
+    const found = indexed && known ? (await withAbstracts([indexed], spend))[0]! : indexed;
     return {
       state: "read",
       pages,
-      ...(title ? { title: known ? found.title : title } : {}),
+      ...(title ? { title: found && known ? found.title : title } : {}),
       ...(read.authors.length ? { authors: read.authors.slice(0, MAX_AUTHORS).map((name) => name.slice(0, 300)) } : {}),
       ...(read.year ? { year: read.year } : {}),
       // A DOI nothing confirms is not kept: the paper would be merged with whatever else carries it.
       // The index's paper with no abstract is still read as this file.
-      ...(known ? { doi, known, ...(found.abstract?.trim() ? {} : { bare: true }) } : {}),
+      ...(found && known ? { doi, known, ...(found.abstract?.trim() ? {} : { bare: true }) } : {}),
     };
   },
 });

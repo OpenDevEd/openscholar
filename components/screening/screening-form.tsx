@@ -54,14 +54,14 @@ import { cn } from "@/lib/utils";
 import { EVERY_MS, MAX_SOURCES } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { LEFT_WHY, SETTLE_MEANS, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo } from "./data";
+import { LEFT_WHY, PDF_COSTS_MORE, SETTLE_MEANS, bringsPdfs, collectionName, leftOf, leftTotal, personIn, listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, firstName, plural, EVERY_LABEL, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, day, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, includedIn, inQuotes, inOrder, standsTo, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
-import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, promisedBy, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
+import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
-import { credits, paperCredits, pdfsOf, perPaper, readableBy, readingCredits, readsFiles, useOpenScreening } from "./store";
+import { credits, paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -94,12 +94,16 @@ const criterionFrom = (question: string, more: { short?: string; terms?: string[
 type Pager = { page: number; canPrevious: boolean; canNext: boolean; hasPages: boolean; previous: () => void; next: () => void; offset: number; items: unknown[]; isStale: boolean };
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
+/** The papers of a source a screening asks for: all of it, or a range of it. */
+const askedOf = (source: Source) => (source.scope === "range" ? source.range.join("-") : "all");
+/** The sources a change asks for other papers of. The draft that is kept, the list of unsaved changes and the save all go by this one test. */
+const rangedIn = (before: Screening, after: Screening) => after.sources.filter((source) => { const was = before.sources.find((one) => one.id === source.id); return was !== undefined && askedOf(was) !== askedOf(source); });
 const SETTINGS = ["name", "question", "sources", "criteria", "reviewers", "rule", "scoring", "destination", "living"] as const;
 const settingOf = (screening: Screening, field: (typeof SETTINGS)[number]) =>
   JSON.stringify(
     field === "living" ? screening.living?.every
     : field === "reviewers" ? activeReviewers(screening).map((one) => [one.kind === "model" && one.model ? modelKey(one.model) : one.id, one.discarded ?? null])
-    : field === "sources" ? screening.sources.map((source) => [source.id, source.scope, source.scope === "range" ? source.range : null])
+    : field === "sources" ? screening.sources.map((source) => [source.id, askedOf(source)])
     : screening[field],
   );
 const settingsOf = (screening: Screening) => SETTINGS.map((field) => settingOf(screening, field)).join();
@@ -165,7 +169,7 @@ function changeOf(saved: Screening, draft: Screening, recheck: boolean) {
   const on = (list: Reviewer[], one: Reviewer) => list.some((other) => other.id === one.id);
   const joining = is.filter((one) => !on(was, one));
   const leaving = was.filter((one) => !on(is, one) && one.row);
-  const ranged = draft.sources.filter((source) => { const before = saved.sources.find((one) => one.id === source.id); return before && (before.scope !== source.scope || before.range.join() !== source.range.join()); });
+  const ranged = rangedIn(saved, draft);
   return {
     ...(differs("name") ? { name: draft.name } : {}),
     ...(differs("question") ? { question: draft.question } : {}),
@@ -234,7 +238,7 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   const [newSources, oldSources] = [gone(after.sources, before.sources), gone(before.sources, after.sources)];
   if (newSources.length) push(`Added ${named(newSources.map((source) => source.name), "a source", "sources")}`, "papers");
   if (oldSources.length) push(`Removed ${named(oldSources.map((source) => source.name), "a source", "sources")}`, "papers");
-  const ranged = before.sources.filter((source) => { const now = after.sources.find((one) => one.id === source.id); return now && taken(now) !== taken(source); });
+  const ranged = rangedIn(before, after);
   if (ranged.length) push(`Changed which papers ${named(ranged.map((source) => source.name), "a source", "sources")} ${ranged.length === 1 ? "brings" : "bring"}`, "papers");
   if (Boolean(before.living) !== Boolean(after.living)) push(after.living ? "Made it a living screening" : "Stopped checking for new papers", "new-papers");
   else if (before.living?.every !== after.living?.every) push("Changed how often it checks for new papers", "new-papers");
@@ -247,7 +251,7 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   const guided = after.criteria.filter((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && (was.note ?? "") !== (criterion.note ?? ""); });
   if (guided.length) push(`Changed the guidance on ${named(quoted(guided), "a criterion", "criteria")}`, "criteria");
   // A short name that only followed its reworded question is part of that change, not one of its own.
-  const own = (criterion: Criterion) => criterion.short === shortOf(criterion.text);
+  const own = (criterion: Criterion) => !isNamed(criterion);
   const renamed = after.criteria.flatMap((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && was.short !== criterion.short && !(own(was) && own(criterion)) ? [`${inQuotes(was.short)} to ${inQuotes(criterion.short)}`] : []; });
   if (renamed.length) push(`Renamed ${named(renamed, "a criterion", "criteria")}`, "criteria");
   if (scoringChanged(before, after)) push("Changed the scoring", "criteria");
@@ -355,7 +359,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const keep = useKept((store) => store.draft);
   // Once it is started, the form shows what was sent until the new screening's page takes its place: the draft is dropped then, and a blank form never shows in between.
   const [sent, setSent] = useState<Screening | null>(null);
-  const draft = sent ?? kept ?? origin;
+  const unnamed = sent ?? kept ?? origin;
+  const draft = unnamed ? withTwins(unnamed) : unnamed;
   // A new screening's sources are read by the server as the form holds them, a moment after the last change to them
   // (convex/screening/screenings.ts `sync`). So each row says what its source holds, what another source already
   // brought and what is left out, as counted by what takes the papers, and starting has nothing left to read.
@@ -425,7 +430,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const searches = useSearchList({ sort: "recent", pageSize: OFFER_PAGE, text: kind === "search" ? words : "" });
   const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), OFFER_PAGE);
   const savedCount = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {})).data;
-  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, ...(kind === "screening" && words ? { text: words } : {}) }), OFFER_PAGE);
+  // The workspace's newest screenings, whose criteria can be copied.
+  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const }), OFFER_PAGE);
+  // The ones that have included a paper, a page at a time, for the Screening tab: the server pages only those, so a page never comes back empty with more behind it.
+  const withIncluded = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, kind === "screening" ? { show: "all" as const, sort: "newest" as const, included: true as const, ...(words ? { text: words } : {}) } : "skip"), OFFER_PAGE);
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // The communities the person reads in, with their collections there: where included papers can go beside their own library.
   const communities = useLibrarySources();
@@ -473,7 +481,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const { people: joined, each } = readersOf(draft);
   const models = modelsOf(draft);
   const found = foundTotal(sources);
-  const papers = paperTotal(sources);
+  // What its sources hold, and what a wider range of one of them promises on top: nobody knows how many of those are new until the source is read again.
+  const papers = paperTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
   const pdfs = pdfsOf(sources);
   // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to".
   const promisedNew = saved ? promisedBy(saved, draft) : 0;
@@ -489,15 +498,19 @@ export function ScreeningForm({ id }: { id?: string }) {
   })();
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
   const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
-  const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), papers, pdfs);
+  const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
+  // How much of what the models still cost is the papers they are sent as PDFs: said beside the PDFs' pages, where a price a paper times the papers falls short of the total.
+  const pdfCost = models.reduce((sum, model) => sum + pdfReadingCredits(model.model!, ahead(model), pdfs), 0);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
   const added = Boolean(saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)));
-  const atOnce = (model: Reviewer) => (saved ? readingCredits(model.model!, preview.models[model.id]?.atOnce ?? 0, papers, pdfs) : 0);
+  const atOnce = (model: Reviewer) => (saved ? readingCredits(model.model!, preview.models[model.id]?.atOnce ?? 0, pdfs) : 0);
   const reread = models.reduce((sum, model) => sum + atOnce(model), 0);
   // How many settled papers the change would move if they were checked again. They keep their result unless that is asked for.
   const again = saved ? preview.again : 0;
   const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
+  // A new paper from Zotero can come as its PDF, which a model is sent whole: the price of a new paper says so.
+  const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!)) ? `, ${PDF_COSTS_MORE}` : "";
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
   const heldNow = open?.modelsNow ?? null;
   const lines = saved && changing ? effectItems(saved, draft, preview, { me, wallet, waiting: heldNow === "waiting" }) : [];
@@ -522,8 +535,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What its plan lets one screening hold: papers, and models reading them.
   const overPapers = setup?.limits.papers !== undefined && setup.limits.papers !== null && papers > setup.limits.papers ? setup.limits.papers : null;
   const overModels = setup && models.length > setup.limits.models ? setup.limits.models : null;
+  // Papers that are only a PDF none of its reviewers can read: they would wait for a vote nobody casts.
+  const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const lacking: Block | null = unasked ?? (needsCriteria ? { text: models.length > 1 ? "Add a criterion for the models" : "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: `Your plan screens up to ${num(overPapers)} papers at once`, section: "papers" } : overModels !== null ? { text: `A screening runs up to ${overModels} models`, section: "reviewers" } : owed > wallet && fresh ? { text: `${credits(owed - wallet)} credits short` } : null);
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: models.length > 1 ? "Add a criterion for the models" : "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: `Your plan screens up to ${num(overPapers)} papers at once`, section: "papers" } : overModels !== null ? { text: `A screening runs up to ${overModels} models`, section: "reviewers" } : orphaned ? { text: `${plural(orphaned, "paper is", "papers are")} only a PDF, which ${models.length > 1 ? "these models" : "this model"} can't read. Add a person`, section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: `${credits(owed - wallet)} credits short` } : null);
   const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast: what a row's chips open.
   const votesOf = (reviewer: Reviewer) => reviewer.tally?.cast ?? 0;
@@ -536,8 +551,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const soFar = reading ? " so far" : "";
   // The PDFs it was handed, each read once as it was added, which the workspace paid for then.
   const handedPdfs = fresh ? sources.reduce((sum, source) => sum + (source.set?.kind === "pdf" ? baseTotal(source) : 0), 0) : 0;
-  // Why it can't start yet: it needs papers and a reviewer first.
-  const stop: Block | null = !papers
+  // Why it can't start yet: it needs papers and a reviewer first. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
+  const stop: Block | null = !papers || reading
     ? { text: reading ? "Reading its papers" : "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
@@ -698,7 +713,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ? { rows: [...(picked && searches.page === 1 && !words ? [searchOffer(picked)] : []), ...searches.items.filter((search) => search.id !== picked?.id).map(searchOffer)], pager: searches, loading: searches.isLoading }
       : kind === "collection"
         ? { rows: [...(collections.page === 1 ? [{ ref: "saved", name: "All saved papers", detail: "This workspace's library", total: savedCount ?? 0, set: { kind: "saved" as const } }] : []), ...collections.items.map((one) => ({ ref: `collection:${one._id}`, name: one.name, detail: "", total: one.itemCount, set: { kind: "collection" as const, collectionId: one._id } }))], pager: collections, loading: collections.isLoading || savedCount === undefined }
-        : { rows: screenings.items.filter((one) => one.id !== id && one.counts.include > 0).map((one) => ({ ref: `screening:${one.id}`, name: includedIn(one.name), detail: one.finishedAt ? "Finished screening" : "Running screening", total: one.counts.include, set: { kind: "screening" as const, jobId: one.id } })), pager: screenings, loading: screenings.isLoading };
+        : { rows: withIncluded.items.filter((one) => one.id !== id).map((one) => ({ ref: `screening:${one.id}`, name: includedIn(one.name), detail: one.finishedAt ? "Finished screening" : "Running screening", total: one.counts.include, set: { kind: "screening" as const, jobId: one.id } })), pager: withIncluded, loading: withIncluded.isLoading };
   const importable = draft.sources.flatMap((source) => (source.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })));
   const importSearches = new Set(importable.map(({ source }) => source.id)).size;
   const suggested = draft.name || draft.sources[0] ? includedIn(draft.name || draft.sources[0]!.name) : "Included papers";
@@ -1043,7 +1058,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? (draft.sources.length === 1 ? "Checks its source" : `Checks its ${draft.sources.length} sources`) : `Checks ${growing(draft).length} of its ${draft.sources.length} sources`}</Chip>
                       <Chip icon={Clock}>{saved?.living ? `Next check ${day(draft.living.next)}` : fresh ? `First check ${day(draft.living.next)}` : "First check as soon as this is saved"}</Chip>
-                      {models.length ? <Chip icon={Coins}>{credits(perNew)} credits a new paper</Chip> : null}
+                      {models.length ? <Chip icon={Coins}>{credits(perNew)} credits a new paper{pdfsCome}</Chip> : null}
                     </div>
                   ) : (
                     <p className="bg-warning/10 px-4 py-2.5 text-sm ink-warning">{draft.sources.length ? "None of these sources gains papers. Add a search, a collection or a community to check." : "Add a search, a collection or a community to check."}</p>
@@ -1142,7 +1157,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         <>
                           {/* The short name follows the question's words until someone has written one. */}
                           <div className="min-w-0 flex-1 @max-3xl/criteria:basis-[calc(100%-1.75rem)]">
-                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.short === shortOf(criterion.text) ? shortOf(event.target.value) : criterion.short })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
+                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: isNamed(criterion) ? criterion.short : shortOf(event.target.value) })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
                             {/* What counts and what doesn't. A reviewer opens it with "Guidance" under the question on Screen, and a model is given it with the question. */}
                             <div className="flex items-start gap-1 ps-1 text-muted-foreground">
                               <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
@@ -1245,7 +1260,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{MODELS_SAY.paused.row}</StateChip> : null}
                                 <Chip icon={Coins}>{perPaper(reviewer.model)}</Chip>
                                 {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
-                                {pdfs.papers && !readsFiles(reviewer.model) ? <StateChip tone="warning" icon={FileText}>Can&apos;t read PDFs: {plural(pdfs.papers, "paper gets", "papers get")} no vote from it</StateChip> : null}
+                                {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText}>{pdfsMissed(reviewer.model, pdfs).why === "text" ? "Can't read PDFs" : "Can't read the longest PDFs"}: {plural(pdfsMissed(reviewer.model, pdfs).papers, "paper gets", "papers get")} no vote from it</StateChip> : null}
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{credits(due(reviewer))} credits for {plural(left, "paper", "papers")}</Chip>
                                 ) : null}
@@ -1444,8 +1459,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">No papers yet</span> : null}</span>
                   </JumpLink>
                 ))}
-                {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{plural(pdfs.papers, "paper is", "papers are")} read as {pdfs.papers === 1 ? "its PDF" : "their PDFs"}, {plural(pdfs.pages, "page", "pages")} in all.</span></p> : null}
-                {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">First reading of {plural(handedPdfs, "PDF", "PDFs")}, paid as {handedPdfs === 1 ? "it was" : "they were"} added</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">About {credits(handedPdfs * lookCredits)} credits</span></div> : null}
+                {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{plural(pdfs.papers, "paper is", "papers are")} read as {pdfs.papers === 1 ? "its PDF" : "their PDFs"}, {plural(pdfs.pages, "page", "pages")} in all{pdfCost ? `: up to ${credits(pdfCost)} of these credits` : ""}.</span></p> : null}
+                {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">First reading of {plural(handedPdfs, "PDF", "PDFs")}, paid as {handedPdfs === 1 ? "it was" : "they were"} added</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">Up to {credits(handedPdfs * lookCredits)} credits</span></div> : null}
                 {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? `Answering the new ${draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length === 1 ? "criterion" : "criteria"} on papers already read` : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? (handedPdfs && lookCredits ? `Still to pay${soFar}, at most` : `Total${soFar}, at most`) : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>
@@ -1458,7 +1473,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {spentSoFar ? <Chip>{credits(spentSoFar)} spent so far</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
-                    <Chip icon={RefreshCw}>{credits(perNew)} credits a new paper{lastCheck ? `, ${credits(lastCheck.added * perNew)} for the last ${lastCheck.added}` : ""}</Chip>
+                    <Chip icon={RefreshCw}>{credits(perNew)} credits a new paper{pdfsCome}{lastCheck ? `, ${credits(lastCheck.added * perNew)} for the last ${lastCheck.added}` : ""}</Chip>
                   ) : null}
                 </div>
                 {ahead_ && models.length ? <LinkChip href={overviewHref(ahead_.id)} icon={MODELS_SAY.waiting.icon} className="w-fit max-w-full [&>span]:shrink">{MODELS_SAY.waiting.says} {ahead_.name}</LinkChip> : null}
@@ -1668,7 +1683,7 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
           </li>
         ))}
       </ul>
-      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel="left out" steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total }} /> : null}
+      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel="left out" steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
     </div>
   );
 }

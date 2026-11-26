@@ -23,7 +23,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
-import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, shortOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
+import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, criterionLabel, excludeGroups, failedLabel, inOrder, isNamed, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -376,7 +376,8 @@ const NAME_TAG = "shrink-0 rounded-full bg-foreground/[0.07] px-2 text-2xs font-
 export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name"> & { left?: number }; you?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      <span className="truncate">{reviewer.name}</span>
+      {/* A name cut short by its column is read in full on hover. */}
+      <TooltipHint label={reviewer.name} onlyWhenClipped><span className="truncate">{reviewer.name}</span></TooltipHint>
       {you ? <YouTag /> : reviewer.kind === "model" ? <span className={NAME_TAG}>AI</span> : null}
       {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}
       {reviewer.left ? <span className={NAME_TAG}>Taken off</span> : null}
@@ -493,7 +494,7 @@ export function Reason({ reason, criteria, unclear = false, wrap = false, classN
   if (!criterion) return <span className={cn("truncate", className)}>{reasonLabel(reason, criteria)}</span>;
   const { icon: Icon, tone } = ANSWER_SIGN[unclear ? "unclear" : "no"];
   // A name nobody wrote is the question's own words cut short: the question is shown instead, and the room it stands in cuts it where it must, with the rest a hover away.
-  const name = criterion.short === shortOf(criterion.text) ? criterion.text.replace(/[?.]$/, "") : criterion.short;
+  const name = criterionLabel(criterion);
   return (
     <span className={cn("inline-flex min-w-0 max-w-full gap-1", wrap ? "items-start" : "items-center", className)}>
       <Icon role="img" aria-label={unclear ? "Unclear on" : "Not met,"} className={cn("size-3.5 shrink-0", wrap && "mt-0.5", TONE[tone].ink)} />
@@ -673,7 +674,7 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
   if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? "Another reason…" : reasonLabel(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const named = criteria.find((criterion) => criterion.key === reason);
-  const question = asked && named && named.short !== shortOf(named.text) ? questionOf(reason, criteria) : undefined;
+  const question = asked && named && isNamed(named) ? questionOf(reason, criteria) : undefined;
   return (
     <span className="min-w-0">
       <Reason reason={reason} criteria={criteria} wrap />

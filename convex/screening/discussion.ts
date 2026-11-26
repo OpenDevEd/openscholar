@@ -104,7 +104,7 @@ export const say = workspaceMutation({
     if (to) {
       // A question put to one reviewer is written into the screening's activity too, where someone looks for what was asked lately.
       const asked = await ctx.db.get("users", to);
-      await logChange(ctx, actor, job, "asked", { detail: nameOf(asked), more: [{ code: "paper", detail: paper.title }] });
+      await logChange(ctx, actor, job, "asked", { detail: nameOf(asked), more: [{ code: "paper", detail: paper.title }, { code: "paperId", detail: paperId }] });
     }
     return null;
   },

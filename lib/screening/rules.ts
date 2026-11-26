@@ -149,12 +149,17 @@ export function takesOver(paper: string, person: string, before: number, waiting
  */
 export const seesVotes = (blind: Rule["blind"], result: Result | undefined, mine: Ballot["status"] | undefined, finished: boolean) => blind === "always" || finished || isFinal(result) || mine !== "waiting";
 
+/** The papers a reviewer has got through: the ones voted on, and for a model the ones it tried and couldn't read. Every row, sheet and figure of how far someone is counts with this. */
+export const gotThrough = (tally: { cast?: number; failed?: number } | undefined) => (tally?.cast ?? 0) + (tally?.failed ?? 0);
+/** The papers that are a reviewer's to get through: what they were given, less the ones settled without them (convex/screening/dealing.ts `waitingOf`). */
+export const theirsOf = (tally: { dealt?: number; closed?: number } | undefined) => Math.max(0, (tally?.dealt ?? 0) - (tally?.closed ?? 0));
+
 /**
  * How far a screening's models have read, as the one figure every page shows: the model furthest behind, by the papers
  * it has got through (read, or tried and couldn't) of the ones that are its to read. Null where none has a paper left.
  */
 export function modelsProgress(models: Array<{ dealt: number; cast?: number; failed?: number; closed?: number }>): { done: number; of: number } | null {
-  const behind = models.map((one) => ({ done: (one.cast ?? 0) + (one.failed ?? 0), of: Math.max(0, one.dealt - (one.closed ?? 0)) })).filter((one) => one.done < one.of);
+  const behind = models.map((one) => ({ done: gotThrough(one), of: theirsOf(one) })).filter((one) => one.done < one.of);
   return behind.length ? behind.reduce((slow, one) => (one.done / one.of < slow.done / slow.of ? one : slow)) : null;
 }
 
@@ -162,6 +167,14 @@ export function modelsProgress(models: Array<{ dealt: number; cast?: number; fai
 export const SOMEONE = "Someone who left";
 /** A model as a reviewer before it has a row: the model at one effort. The server and the pages name it the same way. */
 export const modelKey = (model: string, effort?: string) => `model:${model}:${effort ?? ""}`;
+/**
+ * One model put on a screening at two efforts is two reviewers: each then says its effort, so a row, a filter or a
+ * vote names the one it means. `same` is the model's own id, however the caller holds it.
+ */
+export function twinsNamed<T extends { name: string; model?: { name: string; effort?: string } }>(reviewers: T[], same: (model: NonNullable<T["model"]>) => string): T[] {
+  const twice = (one: T) => one.model !== undefined && reviewers.some((other) => other !== one && other.model !== undefined && same(other.model) === same(one.model!));
+  return reviewers.map((one) => (one.model && twice(one) ? { ...one, name: one.model.effort ? `${one.model.name}, ${one.model.effort} effort` : one.model.name } : one));
+}
 /** Who settles conflicts once the one who did is taken off: whoever started the screening where they are still on it, else the first person still on it, else whoever started it. Conflicts always have someone to settle them. */
 export const nextResolver = <Person extends string>(createdBy: Person, people: Person[]): Person => (people.includes(createdBy) ? createdBy : (people[0] ?? createdBy));
 

@@ -13,6 +13,7 @@ import { ExternalLink, FileText } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { Spinner } from "@/components/ui/spinner";
 import { pdfAssets } from "@/lib/pdf-assets";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
@@ -59,7 +60,8 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
             key={paper.id}
             file={url}
             options={PDF_OPTIONS}
-            loading={null}
+            // While the file is fetched its first page's place says so: an empty column reads as a PDF that failed.
+            loading={<div role="status" aria-label="The PDF is on its way" style={{ minHeight: Math.round(width * shape) }} className="flex items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div>}
             error={<p className="rounded-xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">This PDF can&apos;t be shown here. Open it in a new tab.</p>}
             onLoadSuccess={(file) => void file.getPage(1).then((first) => { const view = first.getViewport({ scale: 1 }); setRead({ of: paper.id, pages: file.numPages, shape: view.height / view.width }); })}
             className="flex flex-col"

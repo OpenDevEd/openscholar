@@ -78,7 +78,7 @@ export const look = workspaceAction({
   },
 });
 
-/** The papers the index holds for these DOIs, by DOI: ours first, then OpenAlex for the ones it lacks. */
+/** The papers the index holds for these DOIs, by DOI: ours first, then OpenAlex for the ones it lacks. Each as the index gives it: one that comes with no abstract is given one, where one is held, as its source hands it to the screening (`withAbstracts`). */
 export async function byDois(dois: string[], spend: Spend): Promise<Map<string, SearchPaper>> {
   const found = new Map<string, SearchPaper>();
   const keep = (work: Work | null | undefined) => {
@@ -104,28 +104,28 @@ export async function byDois(dois: string[], spend: Spend): Promise<Map<string, 
     }
   }
   for (const doi of odd) keep(await readWork<Work>(`https://doi.org/${encodeURIComponent(doi)}`, SCREENING_FIELDS, spend).catch(() => null));
-  // A paper our own index holds with no abstract takes OpenAlex's.
-  const filled = await withAbstracts([...found.values()], spend);
-  for (const paper of filled) { const doi = normalDoi(paper.doi); if (doi) found.set(doi, paper); }
   return found;
 }
 
 /**
- * OpenAlex's abstract for each of these papers that came without one. Our own index holds fewer abstracts than
- * OpenAlex does: of 12 papers a search on it gave with none, OpenAlex had the abstract of 6. A paper is not left out
- * of a screening for want of an abstract OpenAlex has. The abstract is taken only from the work that carries the
- * paper's own title: an index can name the wrong OpenAlex work for a paper (ours gave one its PubMed number as its
- * OpenAlex one), and that work's abstract is another paper's.
+ * The abstract of each of these papers that came without one, from where one is held: OpenAlex first, then the
+ * record Crossref or DataCite registered under the paper's DOI. One place, for every source's papers
+ * (./gathering.ts `give`). Our own index holds fewer abstracts than OpenAlex does: of 12 papers a search on it gave
+ * with none, OpenAlex had the abstract of 6. A paper is not left out of a screening for want of an abstract someone
+ * holds. OpenAlex's is taken only from the work that carries the paper's own title: an index can name the wrong
+ * OpenAlex work for a paper (ours gave one its PubMed number as its OpenAlex one), and that work's abstract is
+ * another paper's. Without `spend`, the person's allowance to ask OpenAlex, only the registries are asked.
  */
-export async function withAbstracts(papers: SearchPaper[], spend: Spend): Promise<SearchPaper[]> {
-  const bare = papers.filter((paper) => !paper.abstract?.trim() && /^openalex:W\d+$/.test(paper.paper));
+export async function withAbstracts(papers: SearchPaper[], spend: Spend | null): Promise<SearchPaper[]> {
   const found = new Map<string, string>();
+  const lacks = (paper: SearchPaper) => !paper.abstract?.trim() && !found.has(paper.paper);
+  const bare = spend ? papers.filter((paper) => lacks(paper) && /^openalex:W\d+$/.test(paper.paper)) : [];
   const titled = new Map(bare.map((paper) => [paper.paper, paper.title]));
   const sameWork = (one: string, other: string) => sameTitle(one, other) || (plainTitle(one) !== "" && plainTitle(one) === plainTitle(other));
   for (let at = 0; at < bare.length; at += DOIS_A_REQUEST) {
     const ids = bare.slice(at, at + DOIS_A_REQUEST).map((paper) => paper.paper.slice("openalex:".length));
     // A paper OpenAlex can't be asked about now is screened, or left out, as it came.
-    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,title,abstract_inverted_index" }, spend).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
+    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,title,abstract_inverted_index" }, spend!).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
     for (const work of works) {
       const paper = work.id ? toPaper(work) : null;
       if (!paper?.abstract) continue;
@@ -133,6 +133,9 @@ export async function withAbstracts(papers: SearchPaper[], spend: Spend): Promis
       else console.warn("[screening] OpenAlex holds another work under a paper's ID: its abstract isn't taken", { paper: paper.paper, ours: titled.get(paper.paper)?.slice(0, 120), theirs: paper.title.slice(0, 120) });
     }
   }
+  // ponytail: a pasted DOI no index holds, whose registry record has no abstract, is asked of the registries a second time here. Carry "already asked" with the paper if that ever costs.
+  const byDoi = new Map(papers.flatMap((paper) => { const doi = lacks(paper) ? normalDoi(paper.doi) : null; return doi ? [[doi, paper.paper] as const] : []; }));
+  for (const [doi, record] of byDoi.size ? await registered([...byDoi.keys()]) : []) if (record.abstract) found.set(byDoi.get(doi)!, record.abstract);
   return found.size ? papers.map((paper) => (found.has(paper.paper) ? { ...paper, abstract: found.get(paper.paper)! } : paper)) : papers;
 }
 
@@ -168,7 +171,8 @@ async function lookModel(ctx: Pick<QueryCtx, "db">, working: { userId: Id<"users
   const pick = await resolveTaskPick(ctx as QueryCtx, working, "overview");
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
   const pricing = model ? await pricingOf(ctx as QueryCtx, model._id) : null;
-  return model && pricing ? { slug: model.modelId, ...pricing, files: readsPdfs(model.inputModalities) } : null;
+  // A PDF's first pages are a short prompt: the model's price for a long one never applies to them.
+  return model && pricing ? { slug: model.modelId, input: pricing.input, output: pricing.output, files: readsPdfs(model.inputModalities) } : null;
 }
 
 /**
@@ -238,15 +242,12 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
   // A record whose DOI the index knows is that paper, so it can be saved to a library and found again. Without the allowance to ask, it is screened as the file gives it.
   const dois = records.flatMap((record) => normalDoi(record.doi) ?? []);
   const found = dois.length ? await byDois(dois, spend).catch(() => new Map<string, SearchPaper>()) : new Map<string, SearchPaper>();
-  // A record with no abstract whose DOI the index has no record of takes the abstract Crossref or DataCite registered, as a pasted DOI does.
-  const elsewhere = await registered(records.flatMap((record) => { const doi = normalDoi(record.doi); return doi && !record.abstract && !found.has(doi) ? [doi] : []; }));
   const papers = records.map((record, at): SearchPaper => {
-    const doi = normalDoi(record.doi) ?? "";
-    const known = found.get(doi);
+    const known = found.get(normalDoi(record.doi) ?? "");
     // What the person brought is what is screened: the file's own title and abstract where it has them.
     return known
       ? { ...known, title: record.title || known.title, ...(record.abstract ?? known.abstract ? { abstract: record.abstract ?? known.abstract } : {}) }
-      : fromRecord({ ...record, ...(record.abstract ? {} : { abstract: elsewhere.get(doi)?.abstract }) }, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
+      : fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` }));
   });
   return { papers, left: [] };
 }

@@ -12,7 +12,8 @@ import { availableCredits } from "../billing/accounts";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { screeningPool } from "../workpool";
 import { readsPdfs } from "../../lib/assistant/files";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
+import { pricingOf } from "../../lib/pricing/estimate";
 import { bookkeepLater } from "./bookkeeping";
 import { modelsFree, reviewersOf, touched } from "./dealing";
 import { startWaitingVotes } from "./slots";
@@ -36,7 +37,7 @@ export const context = internalQuery({
       paper: v.object({ title: v.string(), abstract: v.optional(v.string()), file: v.optional(v.id("_storage")), pages: v.optional(v.number()) }),
       effort: v.optional(effortValidator),
       // `available: false` when the model was hidden or retired since it was put on the screening. `files`: it takes a PDF as a file. `room`: the tokens one call to it holds.
-      model: v.object({ slug: v.string(), name: v.string(), input: v.number(), output: v.number(), available: v.boolean(), files: v.boolean(), room: v.optional(v.number()) }),
+      model: v.object({ slug: v.string(), name: v.string(), input: v.number(), output: v.number(), long: v.optional(longPromptValidator), available: v.boolean(), files: v.boolean(), room: v.optional(v.number()) }),
     }),
   ),
   handler: async (ctx, { voteId }) => {
@@ -56,7 +57,7 @@ export const context = internalQuery({
       criteria: job.criteria ?? [],
       paper: { title: paper.title, ...(paper.abstract ? { abstract: paper.abstract } : {}), ...(paper.file ? { file: paper.file } : {}), ...(paper.pages === undefined ? {} : { pages: paper.pages }) },
       ...(reviewer.effort ? { effort: reviewer.effort } : {}),
-      model: { slug: model.modelId, name: model.name, input: model.inputPricePerMillion, output: model.outputPricePerMillion, available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities), ...(model.contextLength === undefined ? {} : { room: model.contextLength }) },
+      model: { slug: model.modelId, name: model.name, ...pricingOf(model), available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities), ...(model.contextLength === undefined ? {} : { room: model.contextLength }) },
     };
   },
 });

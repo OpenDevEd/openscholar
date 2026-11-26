@@ -29,6 +29,8 @@ const rawModelSchema = z.object({
     input_cache_read: optionalText, input_cache_write: optionalText,
     internal_reasoning: optionalText,
     image: optionalText, audio: optionalText,
+    // Dearer prices for a long prompt: every token of a call whose prompt reaches `min_prompt_tokens` is charged at them.
+    overrides: z.array(z.object({ min_prompt_tokens: optionalNumber, prompt: optionalText, completion: optionalText })).nullish(),
   }).optional(),
   context_length: optionalNumber,
   architecture: z.object({
@@ -86,6 +88,19 @@ function parsePerMillion(value?: string | null): number | null {
   return n * 1_000_000;
 }
 
+/**
+ * What a model charges once a prompt is long, where it charges more: from how many prompt tokens, and the prices
+ * then. A model with several such steps is taken at its first step and its dearest prices, so an estimate made
+ * from it is never under what a call costs.
+ */
+function longPromptOf(overrides: NonNullable<OpenRouterModel["pricing"]>["overrides"]) {
+  const steps = (overrides ?? []).flatMap((step) => {
+    const [input, output] = [parsePerMillion(step.prompt), parsePerMillion(step.completion)];
+    return typeof step.min_prompt_tokens === "number" && step.min_prompt_tokens > 0 && input !== null && output !== null ? [{ from: step.min_prompt_tokens, input, output }] : [];
+  });
+  return steps.length ? { from: Math.min(...steps.map((step) => step.from)), input: Math.max(...steps.map((step) => step.input)), output: Math.max(...steps.map((step) => step.output)) } : undefined;
+}
+
 /** Extract provider prefix from an OpenRouter model ID. */
 function extractProvider(modelId: string): string {
   const slashIdx = modelId.indexOf("/");
@@ -126,6 +141,7 @@ export function transformModel(raw: OpenRouterModel) {
 
     inputPricePerMillion,
     outputPricePerMillion,
+    longPrompt: longPromptOf(raw.pricing?.overrides),
     cacheReadPricePerMillion: parsePerMillion(raw.pricing?.input_cache_read) ?? undefined,
     cacheWritePricePerMillion: parsePerMillion(raw.pricing?.input_cache_write) ?? undefined,
     reasoningPricePerMillion: parsePerMillion(raw.pricing?.internal_reasoning) ?? undefined,

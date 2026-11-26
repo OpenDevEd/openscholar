@@ -1,10 +1,11 @@
 import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
+import { PDF_BANDS } from "../../lib/pricing/estimate";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
 import { librarySourceValidator } from "../evidenceLibraries/validators";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -302,7 +303,7 @@ export const voteConfidencesValidator = capped(v.optional(v.record(v.string(), v
 export const optionalPassagesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
 
 /** A model on a screening. `files`: it takes a PDF as a file, so a paper that is only its PDF is given to it. */
-const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), effort: v.optional(effortValidator), available: v.boolean(), files: v.boolean() });
+const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), name: v.string(), inputPricePerMillion: v.number(), outputPricePerMillion: v.number(), longPrompt: v.optional(longPromptValidator), contextLength: v.optional(v.number()), effort: v.optional(effortValidator), available: v.boolean(), files: v.boolean() });
 
 /**
  * A reviewer as every page shows them. `id` is what a vote, a rule or a link names them by: a person's account, and
@@ -371,6 +372,8 @@ export const sourceViewValidator = v.object({
   // Of the ones taken, how many are screened as their own PDF, and the pages those have.
   filed: v.number(),
   filePages: v.number(),
+  // Those pages by the length of the paper they are in (lib/pricing/estimate.ts `Pdfs`).
+  fileSpread: capped(v.optional(v.record(v.string(), v.object({ papers: v.number(), pages: v.number() }))), PDF_BANDS),
   // Its reading stopped at the most papers the workspace's plan gives one screening.
   capped: v.optional(v.literal(true)),
   checkedAt: v.optional(v.number()),

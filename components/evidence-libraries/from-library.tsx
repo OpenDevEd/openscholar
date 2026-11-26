@@ -5,6 +5,7 @@
 // screening asked, which extraction takes as they are and screening takes where they're yes or no.
 
 import { useState } from "react";
+import { SCREENINGS_PATH } from "@/lib/screening/links";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useTranslations } from "next-intl";
 import { AiIcon, AlignLeft, ArrowUpRight, Folder, Hash, ListChecks, MessagesSquare, Search, ToggleLeft, Unlink, type AppIcon } from "@/components/icons";
@@ -56,7 +57,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
   if ("gone" in opened || "error" in opened.found) {
     return (
       <PageWrapper>
-        <LibraryPageShell title={t("gone")} backHref="/screening" backLabel={tc("cancel")}>
+        <LibraryPageShell title={t("gone")} backHref={SCREENINGS_PATH} backLabel={tc("cancel")}>
           <ListEmpty icon={Unlink}>{why}</ListEmpty>
         </LibraryPageShell>
       </PageWrapper>
@@ -93,7 +94,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
 
   return (
     <PageWrapper>
-      <LibraryPageShell icon={null} image={library.faviconUrl} title={t("title", { library: library.name })} backHref="/screening" backLabel={tc("cancel")} allowOverflow>
+      <LibraryPageShell icon={null} image={library.faviconUrl} title={t("title", { library: library.name })} backHref={SCREENINGS_PATH} backLabel={tc("cancel")} allowOverflow>
         <div className="space-y-8 p-4 pb-24 sm:p-6">
           <Zone label={ts("papers")} aside={<Chip icon={FROM_ICON[from]}>{t(`from.${from}`)}</Chip>}>
             <div className={LIST}>

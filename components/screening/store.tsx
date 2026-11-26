@@ -12,10 +12,10 @@ import type { MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { readsPdfs } from "@/lib/assistant/files";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { screeningPaperCredits, screeningPdfsCredits } from "@/lib/pricing/estimate";
+import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCredits, type Pdfs } from "@/lib/pricing/estimate";
 import { modelsProgress, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, baseTaken, keptOf, num, paperTotal, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, baseTaken, keptOf, modelsOf, num, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -24,27 +24,56 @@ export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"]
 export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) {
   return screeningPaperCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion });
 }
-type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "inputs">;
-/** Whether a model is given a paper that is only its PDF: it takes a file (convex/screening/dealing.ts `teamFor`). */
-export const readsFiles = (model: Pick<MapModel, "inputs">) => readsPdfs(model.inputs);
-/** The papers of a screening a model is given: all of them, less the ones that are only a PDF where it takes no files. */
-export const readableBy = (model: Pick<MapModel, "inputs">, papers: number, pdfs: { papers: number }) => (readsFiles(model) ? papers : Math.max(0, papers - pdfs.papers));
-/** The papers a screening's sources took that are screened as their own PDF, and the pages those have. */
-export const pdfsOf = (sources: Source[]) => sources.reduce((sum, source) => ({ papers: sum.papers + (source.read?.filed ?? 0), pages: sum.pages + (source.read?.filePages ?? 0) }), { papers: 0, pages: 0 });
+type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "longPrompt" | "inputs" | "contextLength">;
+/** The papers of a screening that are screened as their own PDF, by length (lib/pricing/estimate.ts `Pdfs`). */
+export function pdfsOf(sources: Source[]): Pdfs {
+  const spread: NonNullable<Pdfs["spread"]> = {};
+  let [papers, pages] = [0, 0];
+  for (const { read } of sources) {
+    papers += read?.filed ?? 0;
+    pages += read?.filePages ?? 0;
+    for (const [band, held] of Object.entries(read?.fileSpread ?? {})) spread[band] = { papers: (spread[band]?.papers ?? 0) + held.papers, pages: (spread[band]?.pages ?? 0) + held.pages };
+  }
+  return { papers, pages, spread };
+}
+/** Whether a model takes a PDF as a file. */
+export const takesFiles = (model: Pick<MapModel, "inputs">) => readsPdfs(model.inputs);
+/** Of those, the ones a model is given: the server's own rule (convex/screening/dealing.ts `teamFor`), by what the model takes and holds. */
+export const pdfsGiven = (model: Pick<MapModel, "inputs" | "contextLength">, pdfs: Pdfs) => pdfsFor({ files: takesFiles(model), ...(model.contextLength === undefined ? {} : { room: model.contextLength }) }, pdfs);
+/** How many of them it is not given, and why: it takes no file, or they are longer than one call to it holds. */
+export function pdfsMissed(model: Pick<MapModel, "inputs" | "contextLength">, pdfs: Pdfs) {
+  const papers = pdfs.papers - pdfsGiven(model, pdfs).papers;
+  return { papers, why: takesFiles(model) ? ("long" as const) : ("text" as const) };
+}
 /**
- * What a model's reading of `ahead` of a screening's `papers` costs at most. A paper read as its PDF costs by the
- * page, far more than one read as an abstract: such papers are taken for the same share of the ones ahead as they
- * are of them all. Every page that prices a model's reading does it with this one sum, or with `readingOf`.
+ * The papers that are only a PDF none of a screening's reviewers can read. With a person on it there are none:
+ * people read every paper. With models alone, such a paper gets no place, and waits for a vote nobody casts.
  */
-export function readingCredits(model: Priced, ahead: number, papers: number, pdfs: { papers: number; pages: number }) {
-  // A model that takes no files is given none of the papers that are only a PDF: every paper ahead of it has an abstract.
-  if (!readsFiles(model)) return paperCredits(model) * ahead;
-  const share = pdfs.papers && papers ? Math.min(1, ahead / papers) : 0;
-  const filed = pdfs.papers * share;
-  return paperCredits(model) * Math.max(0, ahead - filed) + (filed ? screeningPdfsCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, filed, pdfs.pages * share) : 0);
+export function unreadPdfs(screening: Pick<Screening, "reviewers" | "sources">) {
+  // Someone invited by email reads them once they join.
+  if (peopleOf(screening).length) return 0;
+  const models = modelsOf(screening).filter((one) => one.model);
+  return models.length ? Math.min(...models.map((one) => pdfsMissed(one.model!, pdfsOf(screening.sources)).papers)) : 0;
+}
+/** The papers of a screening a model is given: all of them, less the ones that are only a PDF it can't read. */
+export const readableBy = (model: Pick<MapModel, "inputs" | "contextLength">, papers: number, pdfs: Pdfs) => Math.max(0, papers - pdfsMissed(model, pdfs).papers);
+/**
+ * What a model's reading of `ahead` of a screening's papers costs at most. A paper read as its PDF costs by the
+ * page, far more than one read as an abstract, and nobody knows which papers are still ahead: the PDFs it is
+ * given are taken to be among them, the longest first. Every page that prices a model's reading does it with
+ * this one sum, or with `readingOf`.
+ */
+export function readingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
+  const filed = longestPdfs(pdfsGiven(model, pdfs), ahead);
+  return paperCredits(model) * Math.max(0, ahead - filed.papers) + pdfReadingCredits(model, ahead, pdfs);
+}
+/** The part of that which is the papers read as their PDFs. */
+export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
+  const filed = longestPdfs(pdfsGiven(model, pdfs), ahead);
+  return filed.papers ? screeningPdfsCredits(pricingOf(model), filed) : 0;
 }
 /** What `count` of one screening's papers cost a model at most. */
-export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, paperTotal(screening.sources), pdfsOf(screening.sources));
+export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
 /** What a model charges to read one paper, as every page says it. */
@@ -65,7 +94,7 @@ export function toReviewer(row: Summary["reviewers"][number]): Reviewer {
     kind: row.kind,
     name: row.name,
     ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
-    ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.effort ? { effort: row.model.effort } : {}), /* What it takes besides text, as far as a screening asks: a file. */ inputs: row.model.files ? ["file"] : [] } } : {}),
+    ...(row.model ? { model: { _id: row.model._id, id: row.model.modelId, name: stripProviderPrefix(row.model.name), inputPricePerMillion: row.model.inputPricePerMillion, outputPricePerMillion: row.model.outputPricePerMillion, ...(row.model.longPrompt ? { longPrompt: row.model.longPrompt } : {}), ...(row.model.contextLength === undefined ? {} : { contextLength: row.model.contextLength }), ...(row.model.effort ? { effort: row.model.effort } : {}), /* What it takes besides text, as far as a screening asks: a file. */ inputs: row.model.files ? ["file"] : [] } } : {}),
     ...(row.guest ? { guest: true } : {}),
     addedAt: row.addedAt,
     ...(row.left === undefined ? {} : { left: row.left }),
@@ -91,7 +120,7 @@ function toSource(source: View["sources"][number]): Source {
     duplicates: source.duplicates,
     set: source.set as Source["set"],
     ...(refOf(source.set as NonNullable<Source["set"]>) ? { ref: refOf(source.set as NonNullable<Source["set"]>) } : {}),
-    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, filed: source.filed, filePages: source.filePages, ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
+    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, filed: source.filed, filePages: source.filePages, ...(source.fileSpread ? { fileSpread: source.fileSpread } : {}), ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
     addedAt: source.addedAt,
   };
 }

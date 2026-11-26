@@ -33,7 +33,7 @@ export const readPaper = internalAction({
     const context = await ctx.runQuery(internal.screening.readings.context, { voteId });
     if (!context?.go) return { read: false, why: "held" };
     if (!context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
-    const pricing = { input: context.model.input, output: context.model.output };
+    const pricing = { input: context.model.input, output: context.model.output, ...(context.model.long ? { long: context.model.long } : {}) };
     const questions = context.criteria.map(asked);
     // A paper with no abstract is read as the PDF it is, every page of it, the way the assistant gives a model a file.
     const { file, pages = 0 } = context.paper.abstract ? { file: undefined } : context.paper;

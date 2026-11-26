@@ -1,7 +1,7 @@
 import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
 
 /** Shape of a single model entry from the sync action. */
 const modelEntryValidator = v.object({
@@ -20,6 +20,7 @@ const modelEntryValidator = v.object({
 
   inputPricePerMillion: v.number(),
   outputPricePerMillion: v.number(),
+  longPrompt: v.optional(longPromptValidator),
   cacheReadPricePerMillion: v.optional(v.number()),
   cacheWritePricePerMillion: v.optional(v.number()),
   reasoningPricePerMillion: v.optional(v.number()),

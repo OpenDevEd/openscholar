@@ -22,6 +22,7 @@ import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
 import { activeSource } from "../lib/searchSource";
 import { toPaperKey } from "../../lib/papers/paper-ref";
+import { onceEach } from "../../lib/papers/paper-detail";
 
 /** The fields a screening paper keeps. */
 export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location,best_oa_location,type,open_access";
@@ -129,7 +130,7 @@ export type Work = {
 };
 
 export function toPaper(work: Work): SearchPaper {
-  const authors = (work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
+  const authors = onceEach(work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
     paper: toPaperKey(work.id)!,
     title: work.title ?? work.display_name ?? "",

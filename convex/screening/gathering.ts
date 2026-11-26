@@ -23,12 +23,14 @@ import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type Search
 import { actorIn } from "../workspaces/actor";
 import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, dealNew, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
+import { countDealt, dealable, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
 import { papersIn } from "./estimate";
+import { pdfBand } from "../../lib/pricing/estimate";
 import { plainTitle } from "../../lib/screening/files";
+import { readersFor } from "../../lib/screening/rules";
 import { handedPapers, handedStart, withAbstracts, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
@@ -44,6 +46,8 @@ const READ_ACTION_MS = 4 * 60_000;
 /** How long a check may go without a step before its reading is set off again, and how often that is tried before it is left as failed. */
 const QUIET_MS = 15 * 60_000;
 const RESTARTS = 3;
+/** Places one `fill` gives at most. A step's papers are given in as many fills as that takes: a paper that goes to many reviewers is many rows, and a transaction holds only so many (`npm run test:size` proves a step at the most it writes). */
+const FILL_PLACES = 2_000;
 /** How long a check waits before it looks again at PDFs whose first reading hasn't ended. */
 const PDFS_WAIT_MS = 3_000;
 /** How much of why a source couldn't be read is kept. */
@@ -53,12 +57,12 @@ const FAILURE_SHOWN = 600;
 export const doiKeyOf = (doi: string | undefined | null) => normalDoi(doi) ?? undefined;
 export const titleKeyOf = (title: string, year: number | undefined) => `${plainTitle(title)}|${year ?? ""}`;
 
-type Reading = { gone?: true; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
+type Reading = { gone?: true; places: number; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
 /** The next of a check's sources that still has papers to read, with where its reading stands. Null once every source is read, or the check has ended. */
 export const next = internalQuery({
   args: { checkId: v.id("screeningChecks") },
-  returns: v.union(v.null(), v.object({ sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces"), gone: v.optional(v.literal(true)) })),
+  returns: v.union(v.null(), v.object({ places: v.number(), sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces"), gone: v.optional(v.literal(true)) })),
   handler: async (ctx, { checkId }): Promise<Reading | null> => {
     const check = await ctx.db.get("screeningChecks", checkId);
     const job = check?.state === "running" ? await ctx.db.get("screeningJobs", check.jobId) : null;
@@ -71,7 +75,10 @@ export const next = internalQuery({
     // Where its screening has moved, it is read in the workspace it was added from, while that person is still in it.
     const adder = source.workspaceId ? await ctx.db.get("users", source.addedBy) : null;
     const gone = source.workspaceId !== undefined && !(adder && (await actorIn(ctx, adder, source.workspaceId)));
-    return { ...(gone ? { gone: true as const } : {}), sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: source.workspaceId ?? job.workspaceId };
+    // The places a paper is given as it arrives: its people, as many as the rule asks for, and every model that reads.
+    const reviewers = await reviewersOf(ctx, job._id);
+    const places = readersFor(job.rule?.each ?? "all", reviewers.filter(dealable).length) + reviewers.filter(readingModel).length;
+    return { ...(gone ? { gone: true as const } : {}), places, sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: source.workspaceId ?? job.workspaceId };
   },
 });
 
@@ -148,9 +155,17 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
   const give = async (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => {
-    // A paper an index holds with no abstract takes OpenAlex's, where it has one, whichever source brought it.
-    const who: { clerkId: string } | null = papers.some((paper) => !paper.abstract?.trim()) ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
-    await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers: who ? await withAbstracts(papers, spender(ctx, who.clerkId)) : papers, read, ended, ...(resume ? { resume } : {}), ...(leftOut?.length ? { leftOut } : {}) });
+    // A paper that came with no abstract takes the one OpenAlex holds, and failing that the one registered under its DOI, whichever source brought it.
+    const bare = papers.some((paper) => !paper.abstract?.trim());
+    const who: { clerkId: string } | null = bare ? await ctx.runQuery(internal.screening.held.reader, reader) : null;
+    const ready = bare ? await withAbstracts(papers, who ? spender(ctx, who.clerkId) : null) : papers;
+    // The source's place moves on with the last of them only: a reading cut short before that reads these papers again, and the ones it gave already are passed over.
+    const each = Math.max(1, Math.floor(FILL_PLACES / Math.max(1, source.places)));
+    for (let at = 0; at === 0 || at < ready.length; at += each) {
+      const last = at + each >= ready.length;
+      const goesOn = last ? resume : source.resume;
+      await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) });
+    }
   };
   const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;
   if (source.state === "waiting") {
@@ -209,7 +224,7 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     const withFiles = async (read: Array<SearchPaper & { key: string }>): Promise<SearchPaper[]> => {
       const bare = read.filter((one) => !one.abstract?.trim());
       const fresh: string[] = bare.length ? await ctx.runQuery(internal.screening.gathering.lacking, { checkId, papers: bare.map((one) => one.paper) }) : [];
-      const files: Array<{ key: string; file: Id<"_storage">; pages: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key) }) : [];
+      const files: Array<{ key: string; file: Id<"_storage">; pages: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: [...new Set(bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key))] }) : [];
       return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages } : paper; });
     };
     // A step's papers go to `fill` a step of an index's at a time, the reading's end with the last of them.
@@ -326,18 +341,21 @@ export const fill = internalMutation({
     const dealt = new Map<Id<"screeningReviewers">, number>();
     const now = Date.now();
     let [taken, duplicates, left, bare, back, filed, filePages] = [0, 0, 0, 0, 0, 0, 0];
+    const fileSpread = { ...source.fileSpread };
     // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
     let capped = false;
+    // This reading of the source: each time it is read from its start is a pass of its own (./dealing.ts `readAgain`).
+    const pass = source.pass ?? 0;
     const leave = async (name: string, why: Why, paperKey?: string) => {
       const was = paperKey ? await ctx.db.query("screeningLeftOut").withIndex("by_source_and_paperKey", (q) => q.eq("sourceId", sourceId).eq("paperKey", paperKey)).first() : null;
-      // A source that holds a paper twice, as a Zotero library does one filed in two collections, leaves it out once.
-      if (was?.checkId === checkId) return;
+      // A source that holds a paper twice, as a Zotero library does one filed in two collections, leaves it out once in one reading.
+      if (was?.pass === pass) return;
       left++;
       if (why === "abstract") bare++;
-      // A check that reads a source again finds what it left out before: counted again, and named once, with why as it is now.
-      if (was) await ctx.db.patch("screeningLeftOut", was._id, { checkId, why });
-      else await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, checkId, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
+      // A later reading finds what an earlier one left out: counted again, and named once, with why as it is now.
+      if (was) await ctx.db.patch("screeningLeftOut", was._id, { pass, why });
+      else await ctx.db.insert("screeningLeftOut", { jobId: job._id, sourceId, pass, name: name.slice(0, 300), why, ...(paperKey ? { paperKey } : {}) });
     };
     for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     for (const sent of papers) {
@@ -389,10 +407,15 @@ export const fill = internalMutation({
       });
       await dealNew(ctx, job, { _id: resultId, place, abstract, file: paper.file, pages: paper.pages }, reviewers, reads, dealt);
       taken++;
-      if (!abstract) { filed++; filePages += paper.pages ?? 0; }
+      if (!abstract) {
+        filed++;
+        filePages += paper.pages ?? 0;
+        const band = fileSpread[pdfBand(paper.pages ?? 0)];
+        if (paper.pages) fileSpread[pdfBand(paper.pages)] = { papers: (band?.papers ?? 0) + 1, pages: (band?.pages ?? 0) + paper.pages };
+      }
     }
     if (back) await bookkeepLater(ctx);
-    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(filed ? { filed: (source.filed ?? 0) + filed, filePages: (source.filePages ?? 0) + filePages } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
+    await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(filed ? { filed: (source.filed ?? 0) + filed, filePages: (source.filePages ?? 0) + filePages, fileSpread } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
     await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now, ...(taken ? { bySource: { ...check.bySource, [sourceId]: (check.bySource?.[sourceId] ?? 0) + taken } } : {}) });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);

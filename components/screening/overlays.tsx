@@ -20,7 +20,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { collectionName, growing, modelsOf, num, peopleOf, plural, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
+import { collectionName, growing, modelsOf, num, peopleOf, plural, withTwins, withoutReviewer, type Reviewer, type Screening, inQuotes } from "./data";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
@@ -183,7 +183,7 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
   const counted = useSWR(change ? ["screening-add", id, reviewer!.id] : null, () => previewChange({ jobId: id, change: change! }), { revalidateOnFocus: false });
   const preview = counted.data ?? NO_PREVIEW;
   const noCriteria = Boolean(reviewer?.model && !screening.criteria.length);
-  const after: Screening | null = reviewer ? { ...screening, reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer] } : null;
+  const after: Screening | null = reviewer ? withTwins({ ...screening, reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer] }) : null;
   return (
     <ConfirmChange open={reviewer !== null} title={reviewer ? `Add ${reviewer.name} as a reviewer?` : ""} confirm="Add as reviewer" disabled={noCriteria || (change !== null && counted.isLoading)} onClose={onClose} onConfirm={() => void (reviewer && onConfirm(reviewer).catch(failed))}>
       {reviewer && after ? (

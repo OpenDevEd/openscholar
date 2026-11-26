@@ -62,9 +62,9 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
   const last = said.at(-1);
-  // Who can be asked: the people still on the screening who vote on this paper, and the person who settles its conflicts. Someone taken off keeps their vote here and can't be asked about it.
+  // Who can be asked: the people still on the screening who vote on this paper or have written about it here, and the person who settles its conflicts. Someone taken off keeps their vote and their words here and can't be asked about them.
   const on = new Set(activeReviewers(screening).filter((one) => one.kind === "person").map((one) => one.id));
-  const people = [...new Set([...paper.cast.map((one) => one.reviewer).filter((id) => on.has(id)), screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personIn(screening, id) ?? []);
+  const people = [...new Set([...paper.cast.map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me).flatMap((id) => personIn(screening, id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
   // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
   const waiting = waitingQuestions(said);

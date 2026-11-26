@@ -20,6 +20,8 @@ import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE } from "./libraryValidators";
 /** How long a library's collections are shown as they were last read, and how long a reading may take before another is set off. */
 const FRESH_MS = 10 * 60_000;
 const STUCK_MS = 5 * 60_000;
+/** How often a reading that went quiet is started again before the library is said to have failed. */
+const RESTARTS = 2;
 /** Rows one step counts or clears, and rows a page of the form's list shows at most. */
 const COUNT_STEP = 100;
 const PAGE_MAX = 50;
@@ -42,7 +44,14 @@ export async function ensure(ctx: MutationCtx, userId: Id<"users">, groupId: str
   const tree = await treeOf(ctx, userId, library);
   const now = Date.now();
   if (tree && now - tree.readAt < (tree.state === "done" ? FRESH_MS : tree.state === "failed" ? 0 : STUCK_MS)) return stateOf(tree);
-  const reading = { state: "reading" as const, readAt: now, total: tree?.total ?? 0, read: 0 };
+  // A reading that went quiet without saying it failed, its action cut short, is started again a few times and then
+  // left as failed: a screening that waits on it is told, and doesn't wait for good (../screening/gathering.ts).
+  const tries = tree && (tree.state === "reading" || tree.state === "counting") ? (tree.tries ?? 0) + 1 : 0;
+  if (tree && tries > RESTARTS) {
+    await ctx.db.patch("zoteroTrees", tree._id, { state: "failed", readAt: now, tries: 0 });
+    return { state: "failed" as const, total: tree.total, read: tree.read };
+  }
+  const reading = { state: "reading" as const, readAt: now, total: tree?.total ?? 0, read: 0, tries };
   const treeId = tree ? (await ctx.db.patch("zoteroTrees", tree._id, reading), tree._id) : await ctx.db.insert("zoteroTrees", { userId, library, ...reading });
   await ctx.scheduler.runAfter(0, internal.zotero.tree.step, { treeId, userId, ...(groupId ? { groupId } : {}), readAt: now, start: 0 });
   return { state: "reading" as const, total: reading.total, read: 0 };
