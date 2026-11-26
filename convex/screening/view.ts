@@ -385,7 +385,7 @@ export const getAction = defineUserQuery({
       blind: v.union(v.literal("after"), v.literal("always")),
       sources: sourceViewsValidator,
       // Where its included papers go.
-      destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), prune: v.boolean() }),
+      destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), libraryId: v.optional(v.id("evidenceLibraries")), libraryCollection: v.optional(v.string()), prune: v.boolean() }),
       // Whether its workspace is out of credits for its models, and what the workspace has, for someone who may see that.
       outOfCredits: v.boolean(),
       credits: v.optional(v.number()),
@@ -427,7 +427,7 @@ export const getAction = defineUserQuery({
       blind: rule.blind,
       sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
       destination: job.libraryDestination
-        ? { kind: "community" as const, name: job.libraryDestination.name, prune: job.prune === true }
+        ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true }
         : job.newCollection
           ? { kind: "new" as const, name: job.newCollection, prune: job.prune === true }
           : collection

@@ -8,6 +8,7 @@ import { SERVER_MODEL_SLUG } from "../ai/config";
 import { encrypt } from "../lib/crypto";
 import { shelve } from "../screening/bookkeeping";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { give, paper, runAll } from "../screening/reviewers.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const KEY = "1".repeat(64);
@@ -232,4 +233,28 @@ it("asks a library that didn't answer again for its own writes while the rest go
   expect(calls.slice(sent)).toEqual([]);
   expect(await waiting()).toEqual([]);
   expect(await t.run(async (ctx) => (await ctx.db.get("screeningResults", late))?.libraryWrite ?? null)).toBeNull();
+});
+
+it("sends a running screening with reviewers to a collection in a community: the papers it has included go there, and the ones it includes next follow", async () => {
+  const { t, libraryId, calls, person, clerkUserId } = await setup("libsent");
+  const workspaceId = (await person.query(api.workspaces.queries.personal, {}))!;
+  const userId = (await t.run((ctx) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique()))!._id;
+  const { jobId } = await t.mutation(internal.screening.screenings.open, { userId, workspaceId, author: "user", name: "Tutoring", criteria: [], rule: { each: 1, settle: "one", blind: "after" }, sources: [{ set: { kind: "saved" }, name: "Saved papers" }], people: [userId], models: [], saveTo: { kind: "none" } });
+  const [first, second] = (await give(t, jobId, 0, [paper(1), paper(2)])).papers;
+  const run = () => runAll(t, vi.runAllTimers);
+  const written = (paperId: Id<"screeningResults">) => t.run(async (ctx) => (await ctx.db.get("screeningResults", paperId))?.libraryWrite ?? null);
+  await person.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId: first!._id, decision: "include" });
+  await run();
+  expect(await written(first!._id)).toBeNull();
+
+  await person.action(api.screening.settings.saveToCommunity, { workspaceId, jobId, change: { saveTo: { kind: "libraryCollection", libraryId, collection: READ } } });
+  await run();
+  expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ unsaved: true, libraryDestination: { libraryId, collection: READ, name: "Reading list" } });
+  // The community was asked which of its records the paper is, as the person.
+  expect(calls.some((call) => call.path === "/api/v1/openscholar/records/match")).toBe(true);
+  expect(await written(first!._id)).not.toBeNull();
+
+  await person.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId: second!._id, decision: "include" });
+  await run();
+  expect(await written(second!._id)).not.toBeNull();
 });

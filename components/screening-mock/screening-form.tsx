@@ -15,6 +15,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
+import { LibrarySelect, useLibrarySources } from "@/components/screening/library-sources";
 import { AnimatedNumber, Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
 import { PaperScope, PickMark } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
@@ -38,6 +39,7 @@ import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useGenerateScreeningCriteria } from "@/lib/ai/client/router";
+import { LIBRARY_COLLECTION_NAME_MAX, fittingCollectionName } from "@/lib/evidence-libraries/source-address";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -108,9 +110,15 @@ const criterionOf = (screening: Screening) => (criterion: Criterion) => {
 const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: screening.rule.each === "all" ? ("all" as const) : Number(screening.rule.each), settle: screening.rule.settle, blind: screening.rule.blind, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
 const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
 const saveToOf = (screening: Screening) =>
-  screening.destination.kind === "none" ? { kind: "none" as const }
+  screening.destination.kind === "community" && screening.destination.community
+    ? screening.destination.community.collection === "new"
+      ? { kind: "newLibraryCollection" as const, libraryId: screening.destination.community.libraryId as Id<"evidenceLibraries">, name: communityCollectionName(screening), private: screening.destination.community.private, requestId: screening.destination.community.requestId }
+      : { kind: "libraryCollection" as const, libraryId: screening.destination.community.libraryId as Id<"evidenceLibraries">, collection: screening.destination.community.collection }
+  : screening.destination.kind === "none" ? { kind: "none" as const }
   : screening.destination.kind === "collection" && screening.destination.collection ? { kind: "collection" as const, collectionId: screening.destination.collection as Id<"collections"> }
   : { kind: "new" as const, name: screening.destination.name.trim() || includedIn(screening.name) };
+/** The name a new collection in a community gets: the one typed, else the screening's own, cut to what a community takes. */
+const communityCollectionName = (screening: Screening) => (screening.destination.name.trim() || fittingCollectionName(includedIn(screening.name), screening.name.trim() || "Included papers")).slice(0, LIBRARY_COLLECTION_NAME_MAX);
 /** The members of the workspace among a screening's people: someone from outside joins by sharing, once it is there to share. */
 const membersOf = (screening: Screening) => activeReviewers(screening).filter((one) => one.kind === "person" && !one.guest && !one.email);
 const modelOf = (reviewer: Reviewer) => ({ model: reviewer.model!.id, ...(reviewer.model!.effort ? { effort: reviewer.model!.effort } : {}) });
@@ -355,8 +363,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const savedCount = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {})).data;
   const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, ...(kind === "screening" && words ? { text: words } : {}) }), OFFER_PAGE);
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
+  // The communities the person reads in, with their collections there: where included papers can go beside their own library.
+  const communities = useLibrarySources();
   const create = useWorkspaceAction(api.screening.screenings.create);
   const saveChange = useWorkspaceMutation(api.screening.settings.save);
+  const saveToCommunity = useWorkspaceAction(api.screening.settings.saveToCommunity);
   const previewChange = useWorkspaceAction(api.screening.effects.preview);
   const { execute: writeQuestions } = useGenerateScreeningCriteria();
   const share = useSharing((saved?.id ?? "") as Id<"screeningJobs">);
@@ -579,7 +590,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left));
-      await saveChange({ jobId: saved.id, change });
+      // A community's collection is checked, or made, there before the save.
+      if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
+      else await saveChange({ jobId: saved.id, change });
       await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
       // The page stays where it is: Changes keeps what the save did until the next edit.
       setLastSave({ edits, lines, moves });
@@ -633,6 +646,40 @@ export function ScreeningForm({ id }: { id?: string }) {
     <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere" facts={<Chip>Kept in the screening</Chip>} />,
   ];
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
+  // In a community: one of the person's collections there that they can change, or a new one of theirs.
+  const there = draft.destination.kind === "community" ? draft.destination.community : undefined;
+  const community = communities.libraries.find((one) => one.libraryId === there?.libraryId) ?? communities.libraries[0];
+  const toCommunity = (libraryId: string, collection = "new", name = "") => set({ destination: { ...draft.destination, kind: "community", name, collection: undefined, community: { libraryId, collection, private: there?.private ?? true, requestId: there?.requestId || crypto.randomUUID() } } });
+  const toOwn = () => set({ destination: ownCollection ? { ...ownCollection, prune: draft.destination.prune } : { kind: "new", name: "", prune: draft.destination.prune } });
+  const theirs = (communities.contents.find((one) => one.libraryId === community?.libraryId)?.rows ?? []).filter((row) => (row.what === "yours" || (row.what !== "library" && row.access === "editor")) && "readerCollection" in row.source && row.source.readerCollection);
+  const communityPlaces = community ? [
+    <Destination
+      key="new"
+      on={there?.collection === "new"}
+      onPick={() => { if (there?.collection !== "new") toCommunity(community.libraryId); }}
+      icon={FolderPlus}
+      name="New collection"
+      below={there?.collection === "new" ? (
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2 px-4 pb-3 ps-11">
+          <div className="flex min-w-48 max-w-md flex-1 flex-col gap-1.5">
+            <label htmlFor="community-collection-name" className="text-xs font-medium text-muted-foreground">Collection name</label>
+            <Input id="community-collection-name" value={draft.destination.name} maxLength={LIBRARY_COLLECTION_NAME_MAX} onChange={(event) => set({ destination: { ...draft.destination, name: event.target.value } })} placeholder={communityCollectionName({ ...draft, destination: { ...draft.destination, name: "" } })} className="h-9 bg-card text-sm" />
+          </div>
+          <label className="flex h-9 items-center gap-2 text-sm">
+            <Lock className="size-3.5 text-muted-foreground" />
+            Private
+            <Switch checked={there.private} onCheckedChange={(next) => set({ destination: { ...draft.destination, community: { ...there, private: next } } })} aria-label="Keep the new collection private" />
+          </label>
+        </div>
+      ) : null}
+    />,
+    ...theirs.map((row) => {
+      const collection = "readerCollection" in row.source ? (row.source.readerCollection ?? "") : "";
+      return <Destination key={collection} on={there?.collection === collection} onPick={() => toCommunity(community.libraryId, collection, row.label)} icon={row.private ? Lock : Folder} name={`Add to ${row.label}`} facts={<Chip>{plural(row.records, "paper", "papers")}</Chip>} />;
+    }),
+    // One it was sent to that the community no longer lists among the first, or that is its own already.
+    ...(there && there.collection !== "new" && !theirs.some((row) => "readerCollection" in row.source && row.source.readerCollection === there.collection) ? [<Destination key={there.collection} on onPick={() => {}} icon={Folder} name={`Add to ${draft.destination.name || "its collection"}`} />] : []),
+  ] : [];
 
   // The summary beside the form: one line for each part, which opens it.
   const resolver = joined.find((person) => person.id === draft.rule.resolver) ?? joined[0];
@@ -1190,9 +1237,11 @@ export function ScreeningForm({ id }: { id?: string }) {
             id="goes-to"
             title="Where included papers go"
             help={<><Help title="Where included papers go">Papers whose result is Included are added to the collection you pick, in your library or in a community, with the stars from Scoring. Nowhere keeps them in the screening only.</Help>{changed("goes-to")}</>}
+            aside={communities.libraries.length || there ? <Segmented label="Where included papers go" value={there ? "community" : "openscholar"} onChange={(next) => (next === "openscholar" ? toOwn() : community ? toCommunity(community.libraryId) : undefined)} options={[{ id: "openscholar" as const, label: "Your library" }, { id: "community" as const, label: "A community" }]} /> : undefined}
           >
+            {there && community ? <LibrarySelect libraries={communities.libraries} value={community.libraryId} onChange={(libraryId) => toCommunity(libraryId)} /> : null}
             <div className={cn(LIST, "bg-card")} role="radiogroup" aria-label="Where included papers go">
-              {places}
+              {there ? (communities.loaded ? communityPlaces : <ListLoading compact label="Reading the community's collections" />) : places}
             </div>
             {fromCollection ? (
               <label className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">

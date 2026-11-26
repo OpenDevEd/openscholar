@@ -6,12 +6,13 @@
  */
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { newCollection } from "../library/collections";
-import { workspaceMutation } from "../lib/userActions";
+import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import type { Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
@@ -24,7 +25,7 @@ import { destination } from "./mutations";
 import { addModel, addPerson, takeOff } from "./reviewers";
 import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, NEEDS_CRITERIA, ruleInput, sourceInput, starsFrom } from "./screenings";
 import { startWaitingVotes } from "./slots";
-import { everyValidator, prunable, saveToValidator, SCREENING_TEXT } from "./validators";
+import { everyValidator, libraryDestinationValidator, prunable, saveToValidator, SCREENING_TEXT } from "./validators";
 
 /** What one save changes: only the parts named are touched. */
 export const changeValidator = v.object({
@@ -114,79 +115,105 @@ const partsOf = (change: Change) => [
 export const save = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), change: changeValidator },
   returns: v.null(),
-  handler: async (ctx, actor, { jobId, change }) => {
-    const job = await requireMember(ctx, actor, jobId);
-    const plan = await planned(ctx, job, change);
-    const now = Date.now();
-    const name = change.name?.trim();
-    if (change.name !== undefined && (!name || name.length > SCREENING_TEXT.name)) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
-    if ((change.question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
-    const settles = await ctx.db.get("users", plan.rule.resolver);
-    if (!settles || !((await actorIn(ctx, settles, job.workspaceId)) || plan.reviewers.some((one) => one.userId === settles._id && one.left === undefined))) throw createError("VALIDATION_ERROR", "Conflicts are settled by someone on this screening.");
-    const sources = await sourcesOf(ctx, jobId);
-    if (sources.filter((one) => one.removedAt === undefined && !change.removeSources?.includes(one._id)).length + (change.addSources?.length ?? 0) > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads up to ${MAX_SOURCES} sources.`);
-    const writer = { userId: actor.userId, workspaceId: job.workspaceId };
-    const later = change.saveTo?.kind === "new" ? change.saveTo.name.trim() : undefined;
-    if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") throw createError("VALIDATION_ERROR", "Send its papers to a community's collection when you start a screening.");
-    const prune = change.prune ?? job.prune === true;
-    if (prune && !sources.some((source) => source.removedAt === undefined && prunable(source.set.kind === "upload" || source.set.kind === "pdf" || source.set.kind === "dois" ? undefined : source.set))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+  handler: (ctx, actor, { jobId, change }) => apply(ctx, actor, jobId, change),
+});
 
-    // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
-    await ctx.db.patch("screeningJobs", jobId, {
-      ...(name ? { name } : {}),
-      ...(change.question !== undefined ? { question: change.question.trim() || undefined } : {}),
-      ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars) } : {}),
-      rule: plan.rule,
-      ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
-      ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, ...(later ? { newCollection: later } : await destination(ctx, writer, change.saveTo)) } : {}),
-      ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
-      ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
-      ...touched(now),
-    });
-    const saved = (await ctx.db.get("screeningJobs", jobId))!;
+const toCommunity = (saveTo: Change["saveTo"]) => saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection";
 
-    for (const { reviewer, discard } of plan.leaving) await takeOff(ctx, saved, reviewer, discard);
-    for (const { userId } of plan.joining) {
-      const person = await ctx.db.get("users", userId);
-      if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
-      await addPerson(ctx, saved, userId, actor.userId);
-    }
-    for (const model of plan.models) await addModel(ctx, saved, model, actor.userId);
-
-    for (const sourceId of change.removeSources ?? []) {
-      const source = sources.find((one) => one._id === sourceId && one.removedAt === undefined);
-      if (!source) continue;
-      await ctx.db.patch("screeningSources", sourceId, { removedAt: now });
-      await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: null });
-    }
-    // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
-    for (const range of change.ranges ?? []) {
-      const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
-      if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined });
-    }
-    for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
-    // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
-    const reads = Boolean(change.addSources?.length || change.ranges?.length);
-    if (change.living && !job.living && !reads) await check(ctx, saved, actor.userId);
-    else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId, saved.totalPapers);
-
-    // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
-    if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {
-      await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck ? ["waiting", "conflict", "include", "maybe", "exclude"] : change.stars && !plan.decides ? ["include", "maybe", "exclude", "waiting", "conflict"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
-    }
-    // The papers it has included go to a collection it is newly sent to.
-    if (change.saveTo && change.saveTo.kind !== "none") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: null });
-
-    const more: Line[] = [
-      ...partsOf(change).map((part) => ({ code: "part", detail: part })),
-      ...(change.recheck ? [{ code: "rechecked" }] : []),
-      ...(await Promise.all(plan.joining.map(async ({ userId }) => { const user = await ctx.db.get("users", userId); return { code: "joinedBy", detail: nameOf(user) }; }))),
-      ...plan.leaving.flatMap(({ discard }) => (discard ? [{ code: "votesDiscarded" }] : [])),
-    ];
-    await logChange(ctx, actor, job, "settings", { more });
+/**
+ * The same save, where its included papers are sent to a community's collection: one the person changes there, or a
+ * new one of theirs, checked or made in the community before anything is saved here.
+ */
+export const saveToCommunity = workspaceAction({
+  args: { jobId: v.id("screeningJobs"), change: changeValidator },
+  returns: v.null(),
+  handler: async (ctx, actor, { jobId, change }): Promise<null> => {
+    const saveTo = change.saveTo;
+    if (saveTo?.kind !== "libraryCollection" && saveTo?.kind !== "newLibraryCollection") throw createError("VALIDATION_ERROR", "Pick a community's collection.");
+    const libraryDestination = await ctx.runAction(internal.evidenceLibraries.sourceActions.destination, { userId: actor.userId, saveTo });
+    await ctx.runMutation(internal.screening.settings.saveSent, { userId: actor.userId, workspaceId: actor.workspaceId, jobId, change, libraryDestination });
     return null;
   },
 });
+export const saveSent = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("screeningJobs"), change: changeValidator, libraryDestination: libraryDestinationValidator },
+  returns: v.null(),
+  handler: (ctx, { userId, workspaceId, jobId, change, libraryDestination }) => apply(ctx, { userId, workspaceId }, jobId, change, libraryDestination),
+});
+
+async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces">; author?: "user" | "assistant" }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator>): Promise<null> {
+  const job = await requireMember(ctx, actor, jobId);
+  const plan = await planned(ctx, job, change);
+  const now = Date.now();
+  const name = change.name?.trim();
+  if (change.name !== undefined && (!name || name.length > SCREENING_TEXT.name)) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
+  if ((change.question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
+  const settles = await ctx.db.get("users", plan.rule.resolver);
+  if (!settles || !((await actorIn(ctx, settles, job.workspaceId)) || plan.reviewers.some((one) => one.userId === settles._id && one.left === undefined))) throw createError("VALIDATION_ERROR", "Conflicts are settled by someone on this screening.");
+  const sources = await sourcesOf(ctx, jobId);
+  if (sources.filter((one) => one.removedAt === undefined && !change.removeSources?.includes(one._id)).length + (change.addSources?.length ?? 0) > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads up to ${MAX_SOURCES} sources.`);
+  const writer = { userId: actor.userId, workspaceId: job.workspaceId };
+  const later = change.saveTo?.kind === "new" ? change.saveTo.name.trim() : undefined;
+  // A community's collection is checked, or made, before the save (`saveToCommunity`).
+  if (toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
+  const prune = change.prune ?? job.prune === true;
+  if (prune && !sources.some((source) => source.removedAt === undefined && prunable(source.set.kind === "upload" || source.set.kind === "pdf" || source.set.kind === "dois" ? undefined : source.set))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+
+  // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
+  await ctx.db.patch("screeningJobs", jobId, {
+    ...(name ? { name } : {}),
+    ...(change.question !== undefined ? { question: change.question.trim() || undefined } : {}),
+    ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars) } : {}),
+    rule: plan.rule,
+    ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
+    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await destination(ctx, writer, change.saveTo)) } : {}),
+    ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
+    ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
+    ...touched(now),
+  });
+  const saved = (await ctx.db.get("screeningJobs", jobId))!;
+
+  for (const { reviewer, discard } of plan.leaving) await takeOff(ctx, saved, reviewer, discard);
+  for (const { userId } of plan.joining) {
+    const person = await ctx.db.get("users", userId);
+    if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
+    await addPerson(ctx, saved, userId, actor.userId);
+  }
+  for (const model of plan.models) await addModel(ctx, saved, model, actor.userId);
+
+  for (const sourceId of change.removeSources ?? []) {
+    const source = sources.find((one) => one._id === sourceId && one.removedAt === undefined);
+    if (!source) continue;
+    await ctx.db.patch("screeningSources", sourceId, { removedAt: now });
+    await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: null });
+  }
+  // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
+  for (const range of change.ranges ?? []) {
+    const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
+    if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0, capped: undefined });
+  }
+  for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
+  // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
+  const reads = Boolean(change.addSources?.length || change.ranges?.length);
+  if (change.living && !job.living && !reads) await check(ctx, saved, actor.userId);
+  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId, saved.totalPapers);
+
+  // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
+  if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {
+    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck ? ["waiting", "conflict", "include", "maybe", "exclude"] : change.stars && !plan.decides ? ["include", "maybe", "exclude", "waiting", "conflict"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
+  }
+  // The papers it has included go to a collection it is newly sent to.
+  if (change.saveTo && change.saveTo.kind !== "none") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: null });
+
+  const more: Line[] = [
+    ...partsOf(change).map((part) => ({ code: "part", detail: part })),
+    ...(change.recheck ? [{ code: "rechecked" }] : []),
+    ...(await Promise.all(plan.joining.map(async ({ userId }) => { const user = await ctx.db.get("users", userId); return { code: "joinedBy", detail: nameOf(user) }; }))),
+    ...plan.leaving.flatMap(({ discard }) => (discard ? [{ code: "votesDiscarded" }] : [])),
+  ];
+  await logChange(ctx, actor, job, "settings", { more });
+  return null;
+}
 
 /** Papers one step of what follows a save handles. */
 const FOLLOW = 100;
@@ -252,14 +279,18 @@ export const shelveIncluded = internalMutation({
   returns: v.null(),
   handler: async (ctx, { jobId, cursor }) => {
     let job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.unsaved) return null;
+    if (!job || (job.unsaved && !job.libraryDestination)) return null;
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "include")).paginate({ cursor, numItems: SHELVE });
     if (page.page.length && job.newCollection && !job.targetCollectionId) {
       const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection);
       await ctx.db.patch("screeningJobs", jobId, { targetCollectionId, newCollection: undefined });
       job = { ...job, targetCollectionId, newCollection: undefined };
     }
-    for (const paper of page.page) await saveQualified(ctx, job, paper);
+    for (const paper of page.page) {
+      if (!job.unsaved) await saveQualified(ctx, job, paper);
+      // A community's collection gets them through the community's own writes.
+      if (job.libraryDestination) await queueLibraryWrite(ctx, job, paper, "add", job.libraryDestination);
+    }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: page.continueCursor });
     return null;
   },

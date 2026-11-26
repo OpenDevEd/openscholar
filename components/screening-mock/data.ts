@@ -190,7 +190,7 @@ export type Rule = {
 };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
-export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean };
+export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
@@ -398,7 +398,7 @@ export { sentencesOf } from "@/lib/screening/passages";
 export function collectionName(screening: Pick<Screening, "destination" | "name">) {
   const to = screening.destination;
   if (to.kind === "none") return null;
-  if (to.kind === "new") return to.name || includedIn(screening.name);
+  if (to.kind === "new" || to.community?.collection === "new") return to.name || includedIn(screening.name);
   // A collection there already is, in the workspace or in a community, has the name it has there.
   return to.name || null;
 }
