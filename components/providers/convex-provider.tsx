@@ -3,6 +3,7 @@
 
 import { useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache/provider";
 import { readConsent } from "@/lib/consent-cookie";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import type { LocalizationResource } from "@clerk/nextjs/types";
@@ -67,6 +68,8 @@ export function ConvexClientProvider({
   return (
     <ClerkProvider localization={clerkLocalization} appearance={clerkAppearance}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        {/* A page left keeps its queries live for a while, so going back to it shows what it showed, kept up to date, instead of reading it all again. */}
+        <ConvexQueryCacheProvider>
         <AuthReadinessProvider>
           <FeatureFlagProvider preloadedFlags={preloadedFlags}>
             <BillingCatalogProvider preloadedCatalog={preloadedCatalog}>
@@ -74,6 +77,7 @@ export function ConvexClientProvider({
             </BillingCatalogProvider>
           </FeatureFlagProvider>
         </AuthReadinessProvider>
+        </ConvexQueryCacheProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

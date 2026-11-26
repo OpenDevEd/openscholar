@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createParser, useQueryState } from "nuqs";
-import { useQueries } from "convex/react";
+import { useQueries } from "convex-helpers/react/cache/hooks";
 import { getFunctionName, type FunctionReference, type PaginationResult, type paginationOptsValidator } from "convex/server";
 import { ConvexError, type Infer } from "convex/values";
 import { useAuthReadiness } from "@/components/providers/convex-provider";

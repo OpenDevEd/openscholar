@@ -52,6 +52,8 @@ export default defineConfig({
       { find: "@", replacement: path.resolve(__dirname, ".") },
       // Every Convex test runs under Convex's transaction limits (#350).
       { find: /^convex-test$/, replacement: path.resolve(__dirname, "tests/convex-test-with-limits.ts") },
+      // The cached hooks read through convex/react in tests (tests/convex-cache-hooks.ts).
+      { find: /^convex-helpers\/react\/cache\/hooks$/, replacement: path.resolve(__dirname, "tests/convex-cache-hooks.ts") },
     ],
   },
   test: {
