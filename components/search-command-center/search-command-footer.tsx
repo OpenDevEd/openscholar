@@ -360,7 +360,7 @@ Return a more targeted version of this query.`;
                   variant="ghost"
                   size="sm"
                   type="button"
-                  onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
+                  onClick={() => phase === "authenticated" ? router.push(`/screening/new?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
                   className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"

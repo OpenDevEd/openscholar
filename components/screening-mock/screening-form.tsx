@@ -41,6 +41,7 @@ import { useGenerateScreeningCriteria } from "@/lib/ai/client/router";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { useWatchedSearch } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -79,6 +80,13 @@ const DESTINATION_PAGE = 6;
 /** Something a tab offers to add: what the server reads it from, the name its list gave it, and how many papers that list counted. `ref` tells two apart where they share a name. */
 type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[] };
 /** A list read a page at a time, as its pager needs it. */
+/** A saved search as something to add, with the questions its own page screens with. */
+const searchOffer = (search: SearchResult): Offer => ({ ref: `search:${search.id}`, name: search.query, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
+/** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
+const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
+/** A criterion made from a question as it was written. */
+const criterionFrom = (question: string, more: { short?: string; terms?: string[] } = {}): Criterion => ({ key: `new:${hash(question)}`, text: question, short: more.short ?? shortOf(question), must: true, terms: more.terms ?? [], addedAt: Date.now() });
+
 type Pager = { page: number; canPrevious: boolean; canNext: boolean; hasPages: boolean; previous: () => void; next: () => void; offset: number; items: unknown[]; isStale: boolean };
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
@@ -281,6 +289,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const frame = useFrame();
   const saved = id ? frame?.open.screening : undefined;
   const open = id ? frame?.open : undefined;
+  // The search is read while the form shows, so the store has it whether the person came from its results or from a link.
+  useWatchedSearch(fromSearch ?? undefined);
+  const picked = useSearchHistoryStore((state) => (fromSearch ? state.searchHistory.find((item) => item.id === fromSearch) : undefined));
   const copiedRead = useOpenScreening(!id && from ? from : "");
   const copied = !id && from ? (copiedRead?.screening ?? undefined) : undefined;
   // Who is making it, what the workspace has to pay its models with, and a screening whose models would read before this one's.
@@ -291,11 +302,16 @@ export function ScreeningForm({ id }: { id?: string }) {
   const made = useMemo<Screening | null>(() => {
     if (!setup) return null;
     const start = blank(setup.me);
+    // Screen all on a results page: the form starts on that search, named after it, with the questions its page screens with as criteria.
+    if (!copied && picked) {
+      const criteria = searchOffer(picked).questions?.map((question) => criterionFrom(question)) ?? [];
+      return { ...start, name: picked.query.slice(0, 200), sources: [sourceFrom(searchOffer(picked))], criteria, scoring: defaultScoring(criteria) };
+    }
     if (!copied) return start;
     const mine = (one: Reviewer) => one.kind === "model" || !one.guest;
     return { ...start, name: `${copied.name}, again`, question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id })), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
-  }, [setup?.me.id, copied?.id]);
+  }, [setup?.me.id, copied?.id, picked?.id]);
   const origin = saved ?? made;
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
   const key = id ?? `new:${from ?? ""}:${fromSearch ?? ""}`;
@@ -335,7 +351,6 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What can be added, a page of each at a time. Every kind is read up front, so switching between them moves nothing.
   const words = useDebouncedValue(find.trim(), 300);
   const searches = useSearchList({ sort: "recent", pageSize: OFFER_PAGE, text: kind === "search" ? words : "" });
-  const picked = useSearchHistoryStore((state) => (fromSearch ? state.searchHistory.find((item) => item.id === fromSearch) : undefined));
   const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), OFFER_PAGE);
   const savedCount = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {})).data;
   const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, ...(kind === "screening" && words ? { text: words } : {}) }), OFFER_PAGE);
@@ -445,7 +460,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const addSource = (offer: Offer) =>
     setDraft((d) => {
       if (d.sources.some((source) => source.ref === offer.ref)) return d;
-      return { ...d, sources: [...d.sources, { id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) }] };
+      return { ...d, sources: [...d.sources, sourceFrom(offer)] };
     });
   // A source picked from a list opens to which of its papers are taken.
   const pick = (offer: Offer) => {
@@ -460,8 +475,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     setDraft((d) => {
       const clean = question.trim();
       if (!clean || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
-      const criterionKey = `new:${hash(clean)}`;
-      return withCriteria(d, [...d.criteria, { key: criterionKey, text: clean, short: more.short ?? shortOf(clean), must: true, terms: more.terms ?? [], addedAt: Date.now() }], { ...d.scoring.points, [criterionKey]: [1, 0, 0] });
+      const made = criterionFrom(clean, more);
+      return withCriteria(d, [...d.criteria, made], { ...d.scoring.points, [made.key]: [1, 0, 0] });
     });
   const patchCriterion = (criterionKey: string, patch: Partial<Criterion>) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === criterionKey ? { ...criterion, ...patch } : criterion)) }));
   // Another screening's criteria are read when they are asked for, and added to the ones here with their points.
@@ -587,7 +602,6 @@ export function ScreeningForm({ id }: { id?: string }) {
 
   // What each tab offers, a page at a time: the workspace's saved searches, its library and collections, and the included papers of its other screenings.
   const taken_ = (ref: string) => draft.sources.some((source) => source.ref === ref);
-  const searchOffer = (search: SearchResult): Offer => ({ ref: `search:${search.id}`, name: search.query, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
   const offered: { rows: Offer[]; pager?: Pager; loading: boolean } =
     kind === "search"
       ? { rows: [...(picked && searches.page === 1 && !words ? [searchOffer(picked)] : []), ...searches.items.filter((search) => search.id !== picked?.id).map(searchOffer)], pager: searches, loading: searches.isLoading }
