@@ -7960,7 +7960,7 @@
         "noneMine": "まだどの論文にも採用の投票をしていません。"
       },
       "votes": {
-        "title": "{voters, plural, other {レビュアー # 人}}による{votes, plural, other {# 票}}{hidden, select, true {（一部はあなたには非表示）} other {}}",
+        "title": "{voters, plural, other {レビュアー # 人}}による{votes, plural, other {# 票}}",
         "help": "各論文の各レビュアーにつき 1 行です。投票と理由、メモ、各基準への回答、論文の現在の状態が入ります。まだ投票していないレビュアーや、論文を読み取れなかったモデルにも行があります。",
         "leftOut": "あなたがまだ投票していない{count, plural, other {論文 # 件}}へのほかの人の投票は、あなたの投票に影響しないよう除いています。",
         "whose": "誰の投票か",
@@ -8215,7 +8215,6 @@
         "all": "{count, plural, other {# 件すべて}}",
         "inSource": "{count, plural, other {取得元に # 件}}",
         "readAsPdf": "{count, plural, other {# 件を PDF から読み取り}}",
-        "alreadyElsewhere": "{count, plural, other {# 件はほかの取得元にあります}}",
         "checkedEvery": "{every, select, day {毎日確認} week {毎週確認} other {毎月確認}}",
         "couldntBeRead": "読み取れませんでした",
         "keep": "残す",
@@ -9507,8 +9506,7 @@
         "title": "タイトルなし",
         "doi": "存在しない DOI",
         "record": "記録なし",
-        "broken": "開けません",
-        "twice": "二重に登録"
+        "broken": "開けません"
       },
       "pdf": {
         "known": "インデックスにあり",

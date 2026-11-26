@@ -7961,7 +7961,7 @@
         "noneMine": "Sie haben noch bei keinem Artikel für Einschließen gestimmt."
       },
       "votes": {
-        "title": "{votes, plural, one {# Stimme} other {# Stimmen}} von {voters, plural, one {# Reviewer} other {# Reviewern}}{hidden, select, true {, einige vor Ihnen verborgen} other {}}",
+        "title": "{votes, plural, one {# Stimme} other {# Stimmen}} von {voters, plural, one {# Reviewer} other {# Reviewern}}",
         "help": "Eine Zeile pro Reviewer und Artikel: die Stimme mit Grund, Notiz und der Antwort auf jedes Kriterium, und wo der Artikel jetzt steht. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte.",
         "leftOut": "Wie die anderen über die {count, plural, one {# Artikel} other {# Artikel}} abgestimmt haben, über die Sie noch abstimmen, ist ausgenommen, damit es Ihre Stimme nicht beeinflusst.",
         "whose": "Wessen Stimmen",
@@ -8216,7 +8216,6 @@
         "all": "{count, plural, other {Alle #}}",
         "inSource": "{count, plural, other {# in der Quelle}}",
         "readAsPdf": "{count, plural, one {# als PDF gelesen} other {# als PDFs gelesen}}",
-        "alreadyElsewhere": "{count, plural, other {# bereits in einer anderen Quelle}}",
         "checkedEvery": "{every, select, day {Jeden Tag abgefragt} week {Jede Woche abgefragt} other {Jeden Monat abgefragt}}",
         "couldntBeRead": "Nicht lesbar",
         "keep": "Behalten",
@@ -9508,8 +9507,7 @@
         "title": "Kein Titel",
         "doi": "DOI existiert nicht",
         "record": "Kein Eintrag gefunden",
-        "broken": "Lässt sich nicht öffnen",
-        "twice": "Doppelt aufgeführt"
+        "broken": "Lässt sich nicht öffnen"
       },
       "pdf": {
         "known": "Im Index",

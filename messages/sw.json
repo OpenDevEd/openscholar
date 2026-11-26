@@ -7961,7 +7961,7 @@
         "noneMine": "Bado hujapigia Jumuisha makala yoyote."
       },
       "votes": {
-        "title": "{votes, plural, one {kura #} other {kura #}} za {voters, plural, one {mkaguzi #} other {wakaguzi #}}{hidden, select, true {, baadhi zimefichwa kwako} other {}}",
+        "title": "{votes, plural, one {kura #} other {kura #}} za {voters, plural, one {mkaguzi #} other {wakaguzi #}}",
         "help": "Safu moja kwa kila mkaguzi kwenye kila makala: kura yake na sababu yake, dokezo lake na jibu kwa kila kigezo, na mahali makala ilipo sasa. Mkaguzi ambaye bado hajapiga kura ana safu pia, na hivyo pia modeli ambayo haikuweza kusoma makala.",
         "leftOut": "Jinsi wengine walivyopigia kura {count, plural, one {makala #} other {makala #}} ambazo bado hujapigia kura kumeachwa, ili kusiathiri kura yako.",
         "whose": "Kura za nani",
@@ -8216,7 +8216,6 @@
         "all": "{count, plural, other {Zote #}}",
         "inSource": "{count, plural, other {# kwenye chanzo}}",
         "readAsPdf": "{count, plural, one {# inasomwa kutoka PDF yake} other {# zinasomwa kutoka PDF zake}}",
-        "alreadyElsewhere": "{count, plural, other {# tayari ziko kwenye chanzo kingine}}",
         "checkedEvery": "{every, select, day {Kinakaguliwa kila siku} week {Kinakaguliwa kila wiki} other {Kinakaguliwa kila mwezi}}",
         "couldntBeRead": "Haikuweza kusomwa",
         "keep": "Weka",
@@ -9508,8 +9507,7 @@
         "title": "Hakuna kichwa",
         "doi": "DOI hiyo haipo",
         "record": "Hakuna rekodi yake",
-        "broken": "Haifunguki",
-        "twice": "Imeorodheshwa mara mbili"
+        "broken": "Haifunguki"
       },
       "pdf": {
         "known": "Iko kwenye faharasa",

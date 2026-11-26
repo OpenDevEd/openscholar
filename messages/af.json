@@ -7961,7 +7961,7 @@
         "noneMine": "Jy het nog op geen artikel Sluit in gestem nie."
       },
       "votes": {
-        "title": "{votes, plural, one {# stem} other {# stemme}} deur {voters, plural, one {# beoordelaar} other {# beoordelaars}}{hidden, select, true {, sommige vir jou versteek} other {}}",
+        "title": "{votes, plural, one {# stem} other {# stemme}} deur {voters, plural, one {# beoordelaar} other {# beoordelaars}}",
         "help": "Een ry vir elke beoordelaar op elke artikel: hul stem met sy rede, sy nota en die antwoord op elke kriterium, en waar die artikel nou staan. ’n Beoordelaar wat nog moet stem, het ook ’n ry, en so ook ’n model wat die artikel nie kon lees nie.",
         "leftOut": "Hoe die ander gestem het op die {count, plural, one {# artikel} other {# artikels}} waarop jy nog moet stem, word uitgelaat sodat dit joune nie kan beïnvloed nie.",
         "whose": "Wie se stemme",
@@ -8216,7 +8216,6 @@
         "all": "{count, plural, other {Al #}}",
         "inSource": "{count, plural, other {# in die bron}}",
         "readAsPdf": "{count, plural, one {# as sy PDF gelees} other {# as PDF’e gelees}}",
-        "alreadyElsewhere": "{count, plural, other {# reeds in ’n ander bron}}",
         "checkedEvery": "{every, select, day {Elke dag gekontroleer} week {Elke week gekontroleer} other {Elke maand gekontroleer}}",
         "couldntBeRead": "Kon nie gelees word nie",
         "keep": "Hou",
@@ -9508,8 +9507,7 @@
         "title": "Geen titel nie",
         "doi": "Geen sodanige DOI nie",
         "record": "Geen rekord daarvan nie",
-        "broken": "Gaan nie oop nie",
-        "twice": "Twee keer gelys"
+        "broken": "Gaan nie oop nie"
       },
       "pdf": {
         "known": "In die indeks",

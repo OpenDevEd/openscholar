@@ -7960,7 +7960,7 @@
         "noneMine": "你还没有对任何论文投入选。"
       },
       "votes": {
-        "title": "{voters, plural, other {# 名审核人}}的 {votes, plural, other {# 票}}{hidden, select, true {，部分对你隐藏} other {}}",
+        "title": "{voters, plural, other {# 名审核人}}的 {votes, plural, other {# 票}}",
         "help": "每位审核人在每篇论文上占一行：其投票及原因、备注、对每条标准的答案，以及论文当前的状态。还没投票的审核人也有一行，无法读取论文的模型也有。",
         "leftOut": "对于你还没投票的 {count, plural, other {# 篇论文}}，其他人的投票不包含在内，以免影响你的判断。",
         "whose": "谁的投票",
@@ -8215,7 +8215,6 @@
         "all": "{count, plural, other {全部 # 篇}}",
         "inSource": "{count, plural, other {来源中有 # 篇}}",
         "readAsPdf": "{count, plural, other {# 篇按 PDF 读取}}",
-        "alreadyElsewhere": "{count, plural, other {# 篇已在另一个来源中}}",
         "checkedEvery": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
         "couldntBeRead": "无法读取",
         "keep": "保留",
@@ -9507,8 +9506,7 @@
         "title": "无标题",
         "doi": "DOI 不存在",
         "record": "找不到记录",
-        "broken": "无法打开",
-        "twice": "列出了两次"
+        "broken": "无法打开"
       },
       "pdf": {
         "known": "在索引中",

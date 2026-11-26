@@ -7960,7 +7960,7 @@
         "noneMine": "Awukavoti ngokuthi Faka kunoma yiliphi iphepha okwamanje."
       },
       "votes": {
-        "title": "{votes, plural, one {# ivoti} other {# amavoti}} {voters, plural, one {lombuyekezi ongu-#} other {lababuyekezi abangu-#}}{hidden, select, true {, amanye afihliwe kuwe} other {}}",
+        "title": "{votes, plural, one {# ivoti} other {# amavoti}} {voters, plural, one {lombuyekezi ongu-#} other {lababuyekezi abangu-#}}",
         "help": "Umugqa owodwa wombuyekezi ngamunye ephepheni ngalinye: ivoti labo nesizathu salo, inothi lalo nempendulo yombandela ngamunye, kanye nalapho iphepha limi khona manje. Umbuyekezi ongakavoti naye unomugqa, kanjalo nemodeli engakwazanga ukufunda iphepha.",
         "leftOut": "Indlela abanye abavote ngayo {count, plural, one {ku-# iphepha} other {kumaphepha angu-#}} ongakavoti kuwo ishiywe ngaphandle, ukuze ingalithonyi elakho.",
         "whose": "Amavoti kabani",
@@ -8215,7 +8215,6 @@
         "all": "{count, plural, other {Onke angu-#}}",
         "inSource": "{count, plural, other {# emthonjeni}}",
         "readAsPdf": "{count, plural, one {# lifundwe njenge-PDF yalo} other {# afundwe njengama-PDF}}",
-        "alreadyElsewhere": "{count, plural, other {# asevele kwenye imithombo}}",
         "checkedEvery": "{every, select, day {Kuhlolwa nsuku zonke} week {Kuhlolwa masonto onke} other {Kuhlolwa njalo ngenyanga}}",
         "couldntBeRead": "Akukwazanga ukufundwa",
         "keep": "Gcina",
@@ -9507,8 +9506,7 @@
         "title": "Akukho sihloko",
         "doi": "Ayikho i-DOI enjalo",
         "record": "Ayikho irekhodi lalo",
-        "broken": "Alivuleki",
-        "twice": "Libhalwe kabili"
+        "broken": "Alivuleki"
       },
       "pdf": {
         "known": "Kunkomba",

@@ -7961,7 +7961,7 @@
         "noneMine": "Ainda não votou Incluir em nenhum artigo."
       },
       "votes": {
-        "title": "{votes, plural, one {# voto} other {# votos}} de {voters, plural, one {# revisor} other {# revisores}}{hidden, select, true {, alguns ocultos para si} other {}}",
+        "title": "{votes, plural, one {# voto} other {# votos}} de {voters, plural, one {# revisor} other {# revisores}}",
         "help": "Uma linha por revisor em cada artigo: o voto com o motivo, a nota e a resposta a cada critério, e em que ponto está o artigo agora. Um revisor que ainda não votou também tem uma linha, e um modelo que não conseguiu ler o artigo também.",
         "leftOut": "Como os outros votaram {count, plural, one {no # artigo} other {nos # artigos}} em que ainda não votou fica de fora, para não influenciar o seu voto.",
         "whose": "Votos de quem",
@@ -8216,7 +8216,6 @@
         "all": "{count, plural, other {Todos os #}}",
         "inSource": "{count, plural, other {# na fonte}}",
         "readAsPdf": "{count, plural, one {# lido a partir do PDF} other {# lidos a partir do PDF}}",
-        "alreadyElsewhere": "{count, plural, other {# já noutra fonte}}",
         "checkedEvery": "{every, select, day {Verificada todos os dias} week {Verificada todas as semanas} other {Verificada todos os meses}}",
         "couldntBeRead": "Não foi possível ler",
         "keep": "Manter",
@@ -9508,8 +9507,7 @@
         "title": "Sem título",
         "doi": "DOI inexistente",
         "record": "Sem registo",
-        "broken": "Não abre",
-        "twice": "Listado duas vezes"
+        "broken": "Não abre"
       },
       "pdf": {
         "known": "No índice",
