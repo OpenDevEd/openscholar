@@ -855,11 +855,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={KINDS.find((one) => one.id === kind)!.find ?? `Find a ${KINDS.find((one) => one.id === kind)!.label.toLowerCase()}`} aria-label="Find a source" className="h-8 rounded-full bg-card ps-8 text-sm" />
                         </div>
                       ) : null}
-                      {/* The list keeps a page's height from the first frame, so what loads, and a short last page, move nothing under it. */}
-                      <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: OFFER_PAGE * 57 }}>
+                      {/* While a list is read, and while it runs to more than a page, it keeps a page's height, so a short last page moves nothing under it. A list that turns out shorter slides to its own height. */}
+                      <AutoHeight>
+                      <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
                         {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? "Nothing by that name." : kind === "screening" ? "No other screening has included a paper yet." : kind === "search" ? "No saved searches yet." : "Nothing here yet."}</p> : null}
                       </div>
+                      </AutoHeight>
                       {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel="sources" steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length }} /> : null}
                     </div>
                   </TabsContent>

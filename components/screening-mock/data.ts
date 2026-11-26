@@ -94,6 +94,14 @@ export type SourceSet =
   | { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> }
   | { kind: "pdf"; files: Array<{ file: Id<"_storage">; name: string }> }
   | { kind: "dois"; file: Id<"_storage"> };
+/** What tells one source from another where two share a name: the thing it reads. A source the form offers and one the screening already has are the same source where this is the same. */
+export const refOf = (set: SourceSet) =>
+  set.kind === "search" ? `search:${set.searchId}`
+  : set.kind === "collection" ? `collection:${set.collectionId}`
+  : set.kind === "screening" ? `screening:${set.jobId}`
+  : set.kind === "zotero" ? `zotero:${set.groupId ?? ""}:${set.collectionKey ?? ""}`
+  : set.kind === "saved" ? "saved"
+  : undefined;
 /** How a source's reading stands on the server, once the screening exists: what was read of it, taken, merged with another source's and left out. */
 export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; checkedAt?: number; removedAt?: number };
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */

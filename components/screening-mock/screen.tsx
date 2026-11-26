@@ -1049,11 +1049,12 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
 /** A sentence of the abstract, with the criteria's words marked, the picked criterion's standing out, and the whole of it marked where it is the sentence a model named. */
 function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; quoted: boolean; terms: string[]; /** The words of the criterion being looked at. */ lit: string[] }) {
   const words = [...new Set(terms)].sort((a, b) => b.length - a.length);
-  const strong = new Set(lit.map((term) => term.toLowerCase()));
-  const parts = words.length ? text.split(new RegExp(`\\b(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi")) : [text];
+  const strong = lit.map((term) => term.toLowerCase());
+  // A marked word is found with whatever ending the abstract gives it: "programme" marks "programmes" too.
+  const parts = words.length ? text.split(new RegExp(`\\b((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\w*)`, "gi")) : [text];
   return (
     <span data-sentence={at} className={cn("scroll-my-6 rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
-      {parts.map((part, i) => (i % 2 ? <mark key={i} className={cn("rounded-sm text-foreground transition-colors duration-200", strong.has(part.toLowerCase()) ? "bg-warning/40" : "bg-primary/15")}>{part}</mark> : part))}{" "}
+      {parts.map((part, i) => (i % 2 ? <mark key={i} className={cn("rounded-sm text-foreground transition-colors duration-200", strong.some((term) => part.toLowerCase().startsWith(term)) ? "bg-warning/40" : "bg-primary/15")}>{part}</mark> : part))}{" "}
     </span>
   );
 }

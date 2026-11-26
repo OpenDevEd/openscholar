@@ -14,7 +14,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
 import type { Answer } from "@/lib/screening/setup";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, keptOf, num, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, keptOf, num, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -67,6 +67,7 @@ function toSource(source: View["sources"][number]): Source {
     range: [source.first ?? 1, source.last ?? total],
     duplicates: source.duplicates,
     set: source.set as Source["set"],
+    ...(refOf(source.set as NonNullable<Source["set"]>) ? { ref: refOf(source.set as NonNullable<Source["set"]>) } : {}),
     read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
     addedAt: source.addedAt,
   };
@@ -109,7 +110,8 @@ export type Ballot = { decision: Decision; reason?: string; note?: string; answe
  */
 export function useOpenScreening(id: string) {
   const jobId = id as Id<"screeningJobs">;
-  const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), { jobId })).data;
+  // With no screening named there is none to read: the form that starts a new one asks for the one it copies only where it copies one.
+  const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), id ? { jobId } : "skip")).data;
   const screening = useMemo(() => (view ? toScreening(view) : null), [view]);
   const vote = useWorkspaceMutation(api.screening.voting.vote);
   const voteMany = useWorkspaceMutation(api.screening.voting.voteMany);

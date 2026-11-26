@@ -271,7 +271,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const leavingVotes = leaving?.tally?.cast ?? 0;
   // What taking them off would do, counted by the server for that change before it is made.
   const previewChange = useWorkspaceAction(api.screening.effects.preview);
-  const counted = useSWR(leaving?.row ? ["screening-leave", screening.id, leaving.row, discard] : null, () => previewChange({ jobId: screening.id, change: { remove: [{ reviewerId: leaving!.row!, ...(discard ? { discard: true } : {}) }] } }), { revalidateOnFocus: false, keepPreviousData: true });
+  const leavingRow = leaving?.row;
+  const counted = useSWR(leavingRow ? ["screening-leave", screening.id, leavingRow, discard] : null, () => previewChange({ jobId: screening.id, change: { remove: [{ reviewerId: leavingRow!, ...(discard ? { discard: true } : {}) }] } }), { revalidateOnFocus: false, keepPreviousData: true });
   const preview = counted.data ?? NO_PREVIEW;
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
   const [a, b] = reviewers;
