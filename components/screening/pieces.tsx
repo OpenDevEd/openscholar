@@ -688,7 +688,7 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
  * unchosen one only darkens its border, so it never reads as chosen. `pointed` outlines it dashed, where a person's
  * answers point to it. What follows its name (a key) is its children.
  */
-export function VoteButton({ decision, on = false, pointed = false, size = "lg", className, children, onClick, ...rest }: Omit<ComponentProps<"button">, "type"> & { decision: Decision; on?: boolean; pointed?: boolean; size?: "lg" | "sm" }) {
+export function VoteButton({ decision, on = false, pointed = false, size = "lg", className, children, ...rest }: Omit<ComponentProps<"button">, "type"> & { decision: Decision; on?: boolean; pointed?: boolean; size?: "lg" | "sm" }) {
   const words = useWords();
   const Icon = RESULT_STYLE[decision].icon;
   const look = {
@@ -697,8 +697,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
     exclude: on ? "bg-destructive text-destructive-foreground" : "border-destructive/30 ink-destructive hover:border-destructive/60",
   }[decision];
   return (
-    // The second click of a double-click does nothing: after a vote the next paper can already be open under the pointer.
-    <button {...rest} onClick={(event) => event.detail < 2 && onClick?.(event)} type="button" aria-pressed={on} className={cn("flex items-center justify-center border font-semibold transition-colors", size === "lg" ? "h-10 w-full gap-1.5 rounded-xl text-sm" : "h-7 gap-1 rounded-lg px-2.5 text-xs", look, on && "border-transparent", !on && pointed && "border-dashed border-current", className)}>
+    <button {...rest} type="button" aria-pressed={on} className={cn("flex items-center justify-center border font-semibold transition-colors", size === "lg" ? "h-10 w-full gap-1.5 rounded-xl text-sm" : "h-7 gap-1 rounded-lg px-2.5 text-xs", look, on && "border-transparent", !on && pointed && "border-dashed border-current", className)}>
       <Icon className={size === "lg" ? "size-4" : "size-3.5"} />
       {words.decision(decision)}
       {children}

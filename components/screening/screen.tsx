@@ -250,6 +250,8 @@ function Screen({ open }: { open: Open }) {
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("notSaved")));
 
   const [advance, setAdvance] = useState(true);
+  // When a vote last opened the next paper. A press within a double-click's half second of it is the same press again (Safari counts each tap of a double tap as one click), not a vote on a paper nobody has read.
+  const advancedAt = useRef(0);
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
   // On a phone the queue opens over the paper.
@@ -336,7 +338,10 @@ function Screen({ open }: { open: Open }) {
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
     // The next one down that still waits, or failing that the first that does: a paper skipped earlier comes round again once the end is reached.
     const next = advance && queue !== "done" ? (items.find((one, index) => index > at && waits(one)) ?? items.find(waits)) : undefined;
-    if (next) openIt(next);
+    if (next) {
+      advancedAt.current = Date.now();
+      openIt(next);
+    }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
     else if (!picked) void setPlace({ paper: paper.id }, { history: "replace" });
   };
@@ -351,7 +356,7 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).catch(failed);
   };
   const press = (decision: Decision) => {
-    if (!paper || !mayDecide) return;
+    if (!paper || !mayDecide || Date.now() - advancedAt.current < 500) return;
     // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
     const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers, ...answers[paper.id] }, criteria).reason : undefined;
     // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
