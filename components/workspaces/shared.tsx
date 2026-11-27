@@ -4,7 +4,7 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
-import { collectionHref } from "@/lib/library/search-params";
+import { collectionHref } from "@/lib/library/links";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useDeferredValue, useState } from "react";
 import { useRouter } from "next/navigation";

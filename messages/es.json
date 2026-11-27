@@ -5103,7 +5103,6 @@
     },
     "find": "Buscar",
     "everyRecord": "Todos los registros de {library}",
-    "allRecords": "Todos los registros",
     "recordsFrom": "Registros de {library}",
     "private": "Privada",
     "public": "Pública",
@@ -8581,6 +8580,7 @@
         "movesToFinished": "Pasa a Terminados en la lista, y se puede reabrir o cambiar en cualquier momento"
       },
       "delete": {
+        "collectionStays": "{collection} se queda en su Biblioteca",
         "title": "¿Eliminar {name}?",
         "goes": "Los votos y los ajustes se eliminan con él",
         "saved": "{count, plural, one {El # artículo guardado en {collection} se queda ahí} other {Los # artículos guardados en {collection} se quedan ahí}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} esperando votos",
       "inConflictFor": "{count} en conflicto, que resuelve {who}",
       "upToDate": "Al día",
-      "allSettled": "Todos los artículos están resueltos",
+      "allSettled": "Todos los artículos están resueltos, listo para terminar",
       "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
       "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
       "showEvery": "Mostrar todos los cribados",
@@ -8737,7 +8737,7 @@
       },
       "discussion": {
         "title": "Conversación",
-        "about": "{models, select, true {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta, y queda en Le esperan en su página de Cribado hasta que responda. A un modelo no se le puede preguntar. Pulse una de sus marcas en la tabla para ver el pasaje que leyó.} other {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta, y queda en Le esperan en su página de Cribado hasta que responda.}}",
+        "about": "{models, select, true {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta, y queda en Le esperan en su página de Cribado hasta que responda. A un modelo no se le puede preguntar. Pulse la marca de un modelo en la tabla para ver el pasaje que leyó.} other {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta, y queda en Le esperan en su página de Cribado hasta que responda.}}",
         "blind": "Este cribado oculta lo que se escribe sobre un artículo a un revisor solo mientras el artículo aún espera el voto de ese revisor.",
         "shut": "Aquí los revisores comentan un artículo. Queda oculto para que no influya en su voto.",
         "notSent": "No se envió. Inténtelo de nuevo.",
@@ -9089,7 +9089,7 @@
         "pageItems": "artículos"
       },
       "answersHelp": {
-        "says": "Cada columna es un criterio, y la marca es la respuesta que dieron sus revisores.",
+        "says": "Cada columna es un criterio, y cada marca es la respuesta de un revisor.",
         "yes": "Sí",
         "no": "No",
         "unclear": "Dudoso",
@@ -9192,7 +9192,7 @@
         "sources": "Ninguna fuente añade artículos"
       },
       "notReviewer": {
-        "shared": "Este cribado se comparte con usted para leerlo. Solo votan sus revisores.",
+        "shared": "Este cribado se comparte con usted para leerlo, así que no puede votar en él.",
         "finished": "No es revisor de este cribado, y ya ha terminado.",
         "join": "No es revisor de este cribado. Únase como revisor para votar."
       },
@@ -9660,6 +9660,8 @@
           "one": "Decide el primer voto"
         },
         "means": {
+          "mostAdvice": "Un artículo queda decidido cuando todas las personas a las que se asignó han votado y más de la mitad votó igual. Los votos de los modelos son consejo y solo resuelven un artículo que no tiene ninguna persona. Sin esa mayoría hay un conflicto.",
+          "allAdvice": "Un artículo queda resuelto cuando han votado todas las personas asignadas y todas votaron lo mismo. Los votos de los modelos son consejo y solo resuelven un artículo que no tiene ninguna persona. Cualquier división entre las personas es un conflicto.",
           "all": "Un artículo queda resuelto cuando han votado todos los revisores asignados y todos votaron lo mismo. Cualquier división es un conflicto.",
           "most": "Un artículo queda decidido cuando todos los revisores a los que se asignó han votado y más de la mitad votó igual. Donde cuentan los votos de los modelos, al menos una persona debe estar en esa mayoría. Sin esa mayoría hay un conflicto.",
           "one": "Un artículo queda resuelto con su primer voto, así que nunca hay conflicto. Si una persona recibe el artículo, lo resuelve el voto de la primera persona. El voto de un modelo solo resuelve un artículo que no tiene ninguna persona."

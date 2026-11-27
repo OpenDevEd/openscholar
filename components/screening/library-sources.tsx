@@ -161,11 +161,12 @@ export function rowIcon(row: LibraryRow, libraries: Array<Pick<ReaderLibrary, "l
   return ICON[row.what];
 }
 
-/** A row's name: all of a library is every record in it, a search with no words all its records, records a library handed over the records from it. */
+/** A row's name: all of a library is every record in it, a search with no words says so as every search does, records a library handed over the records from it. */
 export function useRowLabel() {
   const t = useTranslations("librarySources");
+  const common = useTranslations("common");
   return (row: LibraryRow) =>
-    row.what === "search" ? row.label || t("allRecords") : row.what === "all" ? t("everyRecord", { library: row.label }) : row.what === "records" && "records" in row.source && row.source.records.length > 1 ? t("recordsFrom", { library: row.label }) : row.label;
+    row.what === "search" ? row.label || common("noQuery") : row.what === "all" ? t("everyRecord", { library: row.label }) : row.what === "records" && "records" in row.source && row.source.records.length > 1 ? t("recordsFrom", { library: row.label }) : row.label;
 }
 
 /** Picks one of the person's libraries: each by its mark and name, with their role there and how many records it holds. */

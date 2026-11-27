@@ -69,6 +69,14 @@ export function decide(answers: Record<string, Answer>, criteria: Pick<Criterion
 }
 
 /**
+ * Why an exclusion stands without asking: a must-have the person's own answers say no to, or a note they wrote, which
+ * is another reason. Settling a conflict, only a note says. Null where the reason has to be asked, on Screen as in the
+ * Papers drawer.
+ */
+export const givenReason = (criteria: Pick<Criterion, "key" | "must">[], answers: Record<string, Answer> | undefined, note: string, settling = false) =>
+  (settling ? undefined : decide(answers ?? {}, criteria).reason) ?? (note.trim() ? OTHER_REASON : null);
+
+/**
  * One reviewer's place on a paper. `waiting` and `closed` are places nobody has voted from yet, `failed` is a model
  * that couldn't read the paper and has no say in it, and `discarded` is a vote thrown out with its reviewer.
  */

@@ -14,7 +14,7 @@ import { isFinal, modelKey, seesVotes, showsEarly, type Decision, type Result } 
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, invitedTo, keptByOthers, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
+import { dealable, invitedTo, keptPage, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -139,7 +139,7 @@ export const step = internalQuery({
   },
 });
 
-const startReturns = v.object({ total: v.number(), places: v.number(), removed: v.number(), included: v.number(), decides: v.boolean(), discards: v.boolean(), cast: v.record(v.string(), v.number()), dealt: v.record(v.string(), v.number()) });
+const startReturns = v.object({ papers: v.number(), places: v.number(), taken: v.number(), leaving: v.array(v.id("screeningSources")), others: v.array(v.id("screeningSources")), included: v.number(), decides: v.boolean(), discards: v.boolean(), cast: v.record(v.string(), v.number()), dealt: v.record(v.string(), v.number()) });
 type Start = Infer<typeof startReturns>;
 
 /** What is known of a change without looking at a paper: what the screening has, what the change takes out, the votes of whoever it takes off, and the papers each person has before it. */
@@ -152,19 +152,32 @@ export const start = internalQuery({
     const progress = await progressRow(ctx, jobId);
     const all = await sourcesOf(ctx, jobId);
     const leaving = all.filter((source) => change.removeSources?.includes(source._id) && source.removedAt === undefined);
-    // What another source still holds stays (./settings.ts `withdraw`): only the rest leave.
-    const removed = Math.max(0, leaving.reduce((sum, source) => sum + source.taken, 0) - (leaving.length ? await keptByOthers(ctx, all, new Set(leaving.map((source) => source._id))) : 0));
     const gone = new Set<Id<"screeningReviewers">>(plan.leaving.map(({ reviewer }) => reviewer._id));
     return {
-      total: Math.max(0, papersOf(job, progress) - removed),
+      papers: papersOf(job, progress),
       places: job.totalPapers,
-      removed,
+      taken: leaving.reduce((sum, source) => sum + source.taken, 0),
+      leaving: leaving.map((source) => source._id),
+      others: leaving.length ? all.filter((source) => source.removedAt === undefined && !leaving.includes(source)).map((source) => source._id) : [],
       included: progress?.counts?.include ?? 0,
       decides: plan.decides,
       discards: plan.leaving.some(({ discard }) => discard),
       cast: Object.fromEntries(plan.leaving.map(({ reviewer }) => [reviewer._id, progress?.reviewers?.[reviewer._id]?.cast ?? 0])),
       dealt: Object.fromEntries([...plan.reviewers.filter((one) => dealable(one) && !gone.has(one._id)).map((one) => [one._id, one.dealt] as const), ...plan.joining.map((one) => { const old = plan.reviewers.find((row) => row.kind === "person" && row.userId === one.userId); return old ? ([old._id, old.dealt] as const) : ([one.userId, 0] as const); })]),
     };
+  },
+});
+
+/** A page of what one source still in the screening keeps of the sources a change takes out (./dealing.ts `keptPage`). */
+export const kept = internalQuery({
+  args: { ...stepArgs, sourceId: v.id("screeningSources"), leaving: v.array(v.id("screeningSources")), cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ kept: v.number(), cursor: v.union(v.string(), v.null()) }),
+  handler: async (ctx, { userId, workspaceId, jobId, sourceId, leaving, cursor }) => {
+    await requireMember(ctx, { userId, workspaceId }, jobId);
+    const sources = await sourcesOf(ctx, jobId);
+    const source = sources.find((one) => one._id === sourceId);
+    if (!source) return { kept: 0, cursor: null };
+    return await keptPage(ctx, source, new Set(leaving), sources, cursor);
   },
 });
 
@@ -200,7 +213,19 @@ export const preview = workspaceAction({
   handler: async (ctx, { userId, workspaceId }, { jobId, change }): Promise<Preview> => {
     const asked = { userId, workspaceId, jobId, change };
     const base: Start = await ctx.runQuery(internal.screening.effects.start, asked);
-    const counted: Preview = { ...nothing(), total: base.total, removed: base.removed, included: base.included, leaving: Object.fromEntries(Object.entries(base.cast).map(([id, cast]) => [id, { cast, unvoted: 0, voted: 0, to: [], settled: 0, waiting: 0 }])) };
+    // What another source still holds stays (./settings.ts `withdraw`): only the rest leave. Each source's merged records are read a page after a page, side by side.
+    const keptBy = await Promise.all(base.others.map(async (sourceId) => {
+      let cursor: string | null = null;
+      let kept = 0;
+      do {
+        const read: { kept: number; cursor: string | null } = await ctx.runQuery(internal.screening.effects.kept, { ...asked, sourceId, leaving: base.leaving, cursor });
+        kept += read.kept;
+        cursor = read.cursor;
+      } while (cursor);
+      return kept;
+    }));
+    const removed = Math.max(0, base.taken - keptBy.reduce((sum, kept) => sum + kept, 0));
+    const counted: Preview = { ...nothing(), total: Math.max(0, base.papers - removed), removed, included: base.included, leaving: Object.fromEntries(Object.entries(base.cast).map(([id, cast]) => [id, { cast, unvoted: 0, voted: 0, to: [], settled: 0, waiting: 0 }])) };
     const loads: Record<string, number> = {};
     // The papers still open are settled again under the change. The settled ones are looked at only where the change can move them: a check of them, or votes thrown out.
     // Each result is its own range of papers, and each result is cut by the papers' places into slices of about the same size: every slice is counted side by side, a page after a page within one, so a screening ten times larger takes about as long while it has slices to spare.

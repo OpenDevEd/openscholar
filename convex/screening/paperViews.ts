@@ -14,7 +14,7 @@ import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
 import { isFinal, leansOpen, nameHas, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { askedOf, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
+import { askedOf, invitationsTo, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { progressRow } from "./bookkeeping";
@@ -104,6 +104,34 @@ const byJob = { jobId: v.id("screeningJobs") };
 /** Papers one page holds at most, and rows a page looks through for the ones its filters keep. */
 const PAGE_MAX = 100;
 const FILTER_ROWS = 1_500;
+/** A search page's cursor: the search's batch and how far into it the page got. One from before this shape starts over. */
+const readCursor = (cursor: string | null): [string | null, number] => {
+  try {
+    const read: unknown = cursor ? JSON.parse(cursor) : null;
+    return Array.isArray(read) && (read[0] === null || typeof read[0] === "string") && typeof read[1] === "number" ? [read[0], read[1]] : [null, 0];
+  } catch {
+    return [null, 0];
+  }
+};
+/** Papers a page of a search reads at once to find the ones its filters keep. */
+const SEARCH_SCAN = 200;
+
+/**
+ * A page of papers found by their words, kept to what `keep` says, so a page is never cut before its filters are
+ * applied. It reads the search a batch at a time, by the search's own cursor; its cursor is that batch's and how far
+ * into it the page got, so the next page goes on from the same paper and the search runs past any number of matches.
+ */
+async function searchPage<Row>(read: (options: { cursor: string | null; numItems: number }) => Promise<{ page: Paper[]; isDone: boolean; continueCursor: string }>, cursor: string | null, numItems: number, keep: (paper: Paper) => Promise<Row | null>) {
+  const [batch, skip] = readCursor(cursor);
+  const found = await read({ cursor: batch, numItems: SEARCH_SCAN });
+  const kept = await Promise.all(found.page.slice(skip).map(keep));
+  const page: Row[] = [];
+  let at = 0;
+  for (; at < kept.length && page.length < numItems; at++) if (kept[at] !== null) page.push(kept[at]!);
+  // The batch read to its end: the next page starts the search's next batch.
+  if (at === kept.length) return { page, isDone: found.isDone, continueCursor: JSON.stringify([found.continueCursor, 0]) };
+  return { page, isDone: false, continueCursor: JSON.stringify([batch, skip + at]) };
+}
 
 export const paperAction = defineUserQuery({
   path: "screening/paperViews:paper",
@@ -166,7 +194,7 @@ export const counts = workspaceQuery({
     if (!row) return null;
     // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
     const others = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
-    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values())) return null;
+    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length)) return null;
     const votes = ctx.db.query("screeningVotes");
     const theirs = await (voted === "none" || voted === "failed"
       ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
@@ -206,11 +234,14 @@ export const queueAction = defineUserQuery({
     const todo = job.finishedAt === undefined;
     if (needle) {
       // Found by its words, best match first, then kept to the queue.
-      const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(options);
-      // A paper whose source was taken out is in no queue, found by its words or not.
-      const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn && holdsAll(paper, needle)));
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
-      return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
+      const inQueue = (row: PaperView) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted));
+      return await searchPage((page) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(page), paginationOpts.cursor, options.numItems, async (paper) => {
+        // A paper whose source was taken out is in no queue, found by its words or not.
+        if (paper.withdrawn || !holdsAll(paper, needle)) return null;
+        const [row] = await views(ctx, looking, [paper]);
+        return row && inQueue(row) ? row : null;
+      });
     }
     if (queue === "conflicts") {
       const read = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "conflict")).paginate(options);
@@ -262,7 +293,7 @@ export const listAction = defineUserQuery({
     if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     // While the others' votes are kept from the person (./view.ts `keepsVotes`), nothing worked out from those votes orders or narrows what they are given.
-    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values());
+    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length);
     // How divided a paper's votes are, and the points their answers give it, put the papers in an order that says how the others voted: asked for then, the papers come as they were added.
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
@@ -280,7 +311,6 @@ export const listAction = defineUserQuery({
     };
     const needle = text?.trim() ?? "";
     if (needle) {
-      const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(options);
       // Found by its words and still kept to the reviewer and the vote asked for, by what the person may see of them: a vote kept from them is no match for any way of voting.
       const of = reviewer ? rowOf(reviewer) : undefined;
       const settler = reviewer && voted === "settled" ? ctx.db.normalizeId("users", reviewer) : null;
@@ -292,8 +322,11 @@ export const listAction = defineUserQuery({
         if (!on) return false;
         return voted === "none" ? !on.vote && !on.hidden && !on.failed : voted === "failed" ? on.failed === true : voted ? on.vote?.decision === voted : on.vote !== undefined || on.hidden === true;
       };
-      const found = read.page.filter((paper) => keeps(paper) && holdsAll(paper, needle) && (!settler || paper.resolved?.by === settler));
-      return { ...read, page: (await withVotes(found)).filter(theirs) };
+      return await searchPage((page) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(page), paginationOpts.cursor, options.numItems, async (paper) => {
+        if (!keeps(paper) || !holdsAll(paper, needle) || (settler && paper.resolved?.by !== settler)) return null;
+        const [row] = await withVotes([paper]);
+        return row && theirs(row) ? row : null;
+      });
     }
     const papers = stream(ctx.db, schema).query("screeningResults");
     // The conflicts one person settled: by whoever settled them, who needn't be one of its reviewers.

@@ -401,7 +401,7 @@ function CollectionFilterSection({
             {/* No search results */}
             {hasSearch && !collections.isLoading && collections.items.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-3">
-                {t("noCollections")}
+                {t("noCollectionsMatchSearch")}
               </p>
             )}
           </div>

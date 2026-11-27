@@ -285,7 +285,9 @@ export const withdraw = internalMutation({
       // Another source still in the screening holds it too, merged into it: it stays, with its votes, as that source's paper (./dealing.ts `keeperOf`). That source counts it as one it brought, its PDF and the PDF's length with it, and no longer as a duplicate merged; an included paper is counted under it.
       const kept = await keeperOf(ctx, paper._id, new Set([sourceId]), sources);
       if (kept) {
-        const { source: keeper, row } = kept;
+        const { row } = kept;
+        // Read again for each paper: an earlier paper of this step may have moved to the same source.
+        const keeper = (await ctx.db.get("screeningSources", kept.source._id))!;
         await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, record: undefined, doneAt: ctx.db.vars.commitTs });
         const filed = !paper.abstract && paper.file;
         const band = pdfBand(paper.pages ?? 0);

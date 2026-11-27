@@ -14,7 +14,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
-import { LibrarySources, useLibrarySources } from "./library-sources";
+import { LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -31,7 +31,7 @@ import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { rowKey, setOfRow } from "@/lib/evidence-libraries/reader-sources";
+import { rowKey, setOfRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { COLUMN_KEYS, FILE_MAX_BYTES, REFERENCES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -709,9 +709,11 @@ export function CommunityTab({ sources, onAdd }: { sources: Source[]; onAdd: (ad
   const libraries = useLibrarySources();
   const added = (ref: string) => sources.some((source) => source.ref === ref);
   const t = useTranslations("screening.sources");
-  const add = (row: Parameters<typeof rowKey>[0] & { label: string; records: number; what: string }, library: { name: string }) => {
+  // Named as a community's hand-off names it (./library-sources.tsx `useRowLabel`).
+  const labelOf = useRowLabel();
+  const add = (row: LibraryRow, library: { name: string }) => {
     const ref = `evidenceLibrary:${rowKey(row)}`;
-    if (!added(ref)) onAdd({ ref, name: row.label, detail: t("in", { name: library.name }), total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
+    if (!added(ref)) onAdd({ ref, name: labelOf(row), detail: t("in", { name: library.name }), total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
   };
   return <LibrarySources state={libraries} isOn={(row) => added(`evidenceLibrary:${rowKey(row)}`)} onToggle={(row, library) => add(row, library)} onPasted={(held) => add(held.row, held.library)} scope={() => null} />;
 }

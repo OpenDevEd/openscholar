@@ -407,3 +407,28 @@ describe("another screening's included papers as a source", () => {
     expect(read.page).toMatchObject([{ file, pages: 3 }]);
   });
 });
+
+describe("a search through a reviewer's queue", () => {
+  it("finds every paper still to vote on, however many matching papers were voted on before them, the first within the reads one page takes", async () => {
+    const made = await team(["ann"]);
+    const { workspaceId } = made;
+    const { jobId, papers } = await started(made, ["ann"], 230);
+    // Most of the papers that match are voted on already: the few still to do come after a search's first batches.
+    for (const one of papers.slice(0, 215)) await voter(made, jobId)("ann", one._id, "include");
+    await settleAll(made.t);
+    const found: string[] = [];
+    let cursor: string | null = null;
+    // The reads before the first paper shows: a page reads on past a short one, five reads at most (lib/hooks/use-cursor-page.ts).
+    let firstShownAfter = 0;
+    for (let reads = 1; reads <= 50; reads++) {
+      const read: { page: Array<{ id: string }>; isDone: boolean; continueCursor: string } = await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "todo", text: "Paper", paginationOpts: { cursor, numItems: 10 } });
+      found.push(...read.page.map((one) => one.id));
+      if (read.page.length && !firstShownAfter) firstShownAfter = reads;
+      if (read.isDone) break;
+      cursor = read.continueCursor;
+    }
+    expect(new Set(found)).toEqual(new Set(papers.slice(215).map((one) => one._id)));
+    expect(firstShownAfter).toBeGreaterThan(0);
+    expect(firstShownAfter).toBeLessThanOrEqual(5);
+  });
+});

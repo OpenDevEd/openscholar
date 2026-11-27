@@ -1,4 +1,5 @@
 import { openalexWork, paperPage, ownWork } from "../../lib/papers/paper-ref";
+import { collectionHref } from "../../lib/library/links";
 import { screeningPath } from "../../lib/screening/links";
 
 /**
@@ -29,7 +30,7 @@ const searchUrl = (id: string) => `/results/${encodeURIComponent(id).replace(/[(
 const KINDS = {
   // A search with no query yet is named by its questions, as the @ picker names it.
   search: { href: (row: Row) => text(row.id) && searchUrl(row.id as string), name: (row: Row) => text(row.query) ?? row.questionText },
-  collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
+  collection: { href: (row: Row) => text(row._id) && collectionHref(String(row._id)), name: (row: Row) => row.name },
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
   screening: { href: (row: Row) => text(row.id ?? row._id) && screeningPath(String(row.id ?? row._id)), name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
@@ -121,7 +122,7 @@ function withLink(row: unknown, kind: Kind): unknown {
 /** A mention the @ picker found: each kind of its own. */
 const MENTIONS: Record<string, (id: string) => string> = {
   search: searchUrl,
-  collection: (id) => `/library?col=${id}`,
+  collection: (id) => collectionHref(id),
   paper: (id) => paperUrl(id) ?? "",
 };
 

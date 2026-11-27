@@ -324,6 +324,8 @@ export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, confl
 };
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));
+/** Whether anyone but you reads what a reviewer writes on a paper: another person on the screening, or one invited. Alone, a note is for the record. */
+export const othersRead = (screening: Pick<Screening, "reviewers">, me: string, pending: Pending[] = []) => screening.reviewers.some((one) => one.kind === "person" && !one.left && one.id !== me) || invitedOf(screening, pending) > 0;
 /** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */
 export const invitedOf = (screening: Pick<Screening, "reviewers">, pending: Pending[] = []) =>
   new Set([...screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).map((reviewer) => reviewer.email!.toLowerCase()), ...pending.flatMap((one) => one.email?.toLowerCase() ?? [])]).size + pending.filter((one) => !one.email).length;

@@ -5102,7 +5102,6 @@
     },
     "find": "Find",
     "everyRecord": "Every record in {library}",
-    "allRecords": "All records",
     "recordsFrom": "Records from {library}",
     "private": "Private",
     "public": "Public",
@@ -8580,6 +8579,7 @@
         "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
       },
       "delete": {
+        "collectionStays": "{collection} stays in your Library",
         "title": "Delete {name}?",
         "goes": "The votes and settings are deleted with it",
         "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} waiting for votes",
       "inConflictFor": "{count} in conflict, for {who} to settle",
       "upToDate": "Up to date",
-      "allSettled": "Every paper is settled",
+      "allSettled": "Every paper is settled, ready to finish",
       "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
       "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
       "showEvery": "Show every screening",
@@ -8736,7 +8736,7 @@
       },
       "discussion": {
         "title": "Discussion",
-        "about": "{models, select, true {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer. A model can't be asked. Press one of its marks in the table for the passage it read.} other {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer.}}",
+        "about": "{models, select, true {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer. A model can't be asked. Press a model's mark in the table to see the passage it read.} other {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer.}}",
         "blind": "This screening hides what is written about a paper from a reviewer only while the paper still waits for that reviewer's own vote.",
         "shut": "Reviewers talk a paper over here. It stays out of sight so it can't sway your vote.",
         "notSent": "That wasn't sent. Try again.",
@@ -9088,7 +9088,7 @@
         "pageItems": "papers"
       },
       "answersHelp": {
-        "says": "Each column is a criterion, and the mark is the answer its reviewers gave.",
+        "says": "Each column is a criterion, and each mark is how a reviewer answered it.",
         "yes": "Yes",
         "no": "No",
         "unclear": "Unclear",
@@ -9191,7 +9191,7 @@
         "sources": "No source gains papers"
       },
       "notReviewer": {
-        "shared": "This screening is shared with you to read. Only its reviewers vote.",
+        "shared": "This screening is shared with you to read, so you can't vote on it.",
         "finished": "You aren't a reviewer on this screening, and it is finished.",
         "join": "You aren't a reviewer on this screening. Join as a reviewer to vote."
       },
@@ -9659,6 +9659,8 @@
           "one": "First vote decides"
         },
         "means": {
+          "mostAdvice": "A paper is settled once every person given it has voted and more than half of them voted the same way. The models' votes are advice, and settle only a paper no person has. With no such majority it is a conflict.",
+          "allAdvice": "A paper is settled once every person given it has voted and all of them voted the same way. The models' votes are advice, and settle only a paper no person has. Any split among the people is a conflict.",
           "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
           "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. Where the models' votes count, at least one person has to be in that majority. With no such majority it is a conflict.",
           "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."

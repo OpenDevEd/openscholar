@@ -225,7 +225,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
       {/* Whoever made it deletes it, or an admin of its workspace (convex/workspaces/actor.ts `requireMakerOrAdmin`): the menu offers it to nobody else. */}
       {/* Once confirmed, it leads away at once, before the screening's pages can redraw it as gone: the page it leads to takes this entry's place, and Forward never returns to the dialog. If the server refuses, a toast says so. */}
       <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; gone(); void state.remove().catch(failed(t)); }}>
-        <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : []), t("delete.final")]} />
+        <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : collection && screening.destination.collection ? [t("delete.collectionStays", { collection: words.quoted(collection) })] : []), t("delete.final")]} />
       </ConfirmChange>
       {/* A guest gives up their own place: what they voted stays, and what they hadn't goes to the others, as when a member takes them off. */}
       <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; gone(); void leave({ id }).catch(failed(t)); }}>

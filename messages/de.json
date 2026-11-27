@@ -5103,7 +5103,6 @@
     },
     "find": "Finden",
     "everyRecord": "Jeder Datensatz in {library}",
-    "allRecords": "Alle Datensätze",
     "recordsFrom": "Datensätze aus {library}",
     "private": "Privat",
     "public": "Öffentlich",
@@ -8581,6 +8580,7 @@
         "movesToFinished": "Es wandert in der Liste zu Abgeschlossen und kann jederzeit wieder geöffnet oder geändert werden"
       },
       "delete": {
+        "collectionStays": "{collection} bleibt in Ihrer Bibliothek",
         "title": "{name} löschen?",
         "goes": "Die Stimmen und Einstellungen werden mit gelöscht",
         "saved": "{count, plural, one {Der # in {collection} gespeicherte Artikel bleibt dort} other {Die # in {collection} gespeicherten Artikel bleiben dort}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} warten auf Stimmen",
       "inConflictFor": "{count} im Konflikt, {who} entscheidet",
       "upToDate": "Aktuell",
-      "allSettled": "Alle Artikel sind entschieden",
+      "allSettled": "Alle Artikel sind entschieden, bereit zum Abschließen",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
       "showEvery": "Alle Screenings anzeigen",
@@ -8737,7 +8737,7 @@
       },
       "discussion": {
         "title": "Diskussion",
-        "about": "{models, select, true {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Seite unter Für Sie, bis sie antwortet. Ein Modell kann man nicht fragen. Klicken Sie auf eine seiner Markierungen in der Tabelle, um die gelesene Textstelle zu sehen.} other {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Seite unter Für Sie, bis sie antwortet.}}",
+        "about": "{models, select, true {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Seite unter Für Sie, bis sie antwortet. Ein Modell kann man nicht fragen. Klicken Sie in der Tabelle auf die Markierung eines Modells, um die gelesene Textstelle zu sehen.} other {Hier besprechen die Reviewer und die Person, die Konflikte entscheidet, einen Artikel, mit allen Beteiligten oder mit einer Person. Eine Nachricht an eine Person ist eine Frage und bleibt auf deren Screening-Seite unter Für Sie, bis sie antwortet.}}",
         "blind": "Dieses Screening verbirgt, was über einen Artikel geschrieben wurde, vor einem Reviewer nur, solange der Artikel noch auf dessen eigene Stimme wartet.",
         "shut": "Hier besprechen die Reviewer einen Artikel. Es bleibt verborgen, damit es Ihre Stimme nicht beeinflusst.",
         "notSent": "Das wurde nicht gesendet. Versuchen Sie es erneut.",
@@ -9089,7 +9089,7 @@
         "pageItems": "Artikel"
       },
       "answersHelp": {
-        "says": "Jede Spalte ist ein Kriterium, und die Markierung ist die Antwort, die seine Reviewer gegeben haben.",
+        "says": "Jede Spalte ist ein Kriterium, und jede Markierung ist die Antwort eines Reviewers darauf.",
         "yes": "Ja",
         "no": "Nein",
         "unclear": "Unklar",
@@ -9192,7 +9192,7 @@
         "sources": "Keine Quelle erhält Artikel"
       },
       "notReviewer": {
-        "shared": "Dieses Screening ist zum Lesen mit Ihnen geteilt. Nur seine Reviewer stimmen ab.",
+        "shared": "Dieses Screening ist zum Lesen mit Ihnen geteilt, daher können Sie nicht abstimmen.",
         "finished": "Sie sind kein Reviewer dieses Screenings, und es ist abgeschlossen.",
         "join": "Sie sind kein Reviewer dieses Screenings. Treten Sie als Reviewer bei, um abzustimmen."
       },
@@ -9660,6 +9660,8 @@
           "one": "Erste Stimme entscheidet"
         },
         "means": {
+          "mostAdvice": "Ein Artikel ist entschieden, sobald jede Person, der er zugeteilt ist, abgestimmt hat und mehr als die Hälfte gleich gestimmt hat. Die Stimmen der Modelle sind Rat und entscheiden nur einen Artikel, den keine Person hat. Ohne eine solche Mehrheit ist es ein Konflikt.",
+          "allAdvice": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Personen abgestimmt haben und alle gleich gestimmt haben. Die Stimmen der Modelle sind Rat und entscheiden nur einen Artikel, den keine Person hat. Jede Abweichung unter den Personen ist ein Konflikt.",
           "all": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und alle gleich gestimmt haben. Jede Abweichung ist ein Konflikt.",
           "most": "Ein Artikel ist entschieden, sobald jeder Reviewer, dem er zugeteilt ist, abgestimmt hat und mehr als die Hälfte gleich gestimmt hat. Wo die Stimmen der Modelle zählen, muss mindestens eine Person zu dieser Mehrheit gehören. Ohne eine solche Mehrheit ist es ein Konflikt.",
           "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt. Bekommt eine Person den Artikel, entscheidet ihn die Stimme der ersten Person. Die Stimme eines Modells entscheidet nur einen Artikel, den keine Person hat."

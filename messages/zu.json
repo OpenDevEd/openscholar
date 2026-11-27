@@ -5102,7 +5102,6 @@
     },
     "find": "Thola",
     "everyRecord": "Wonke amarekhodi ku-{library}",
-    "allRecords": "Wonke amarekhodi",
     "recordsFrom": "Amarekhodi avela ku-{library}",
     "private": "Eyimfihlo",
     "public": "Esidlangalaleni",
@@ -8580,6 +8579,7 @@
         "movesToFinished": "Kuya ku-Kuqediwe ohlwini, futhi kungavulwa futhi noma kushintshwe noma nini"
       },
       "delete": {
+        "collectionStays": "{collection} isala ku-Umtapo wolwazi wakho",
         "title": "Susa i-{name}?",
         "goes": "Amavoti nezilungiselelo kususwa nakho",
         "saved": "{count, plural, one {Iphepha elingu-# eligcinwe ku-{collection} lihlala lapho} other {Amaphepha angu-# agcinwe ku-{collection} ahlala lapho}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} alinde amavoti",
       "inConflictFor": "{count} ayangqubuzana, alinde u-{who} ukuthi akuxazulule",
       "upToDate": "Kusesikhathini",
-      "allSettled": "Onke amaphepha axazululiwe",
+      "allSettled": "Onke amaphepha axazululiwe, sekulungele ukuqedwa",
       "none": "{show, select, you {Akukho okudinga wena.} finished {Azikho izinkuskrini eziqediwe.} open {Azikho izinkuskrini eziqhubekayo.} other {Azikho izinkuskrini.}}",
       "noneCalled": "{show, select, you {Akukho okubizwa ngokuthi {name} okudinga wena.} finished {Azikho izinkuskrini eziqediwe ezibizwa ngokuthi {name}.} open {Azikho izinkuskrini eziqhubekayo ezibizwa ngokuthi {name}.} other {Azikho izinkuskrini ezibizwa ngokuthi {name}.}}",
       "showEvery": "Bonisa zonke izinkuskrini",
@@ -8736,7 +8736,7 @@
       },
       "discussion": {
         "title": "Ingxoxo",
-        "about": "{models, select, true {Ababuyekezi nomuntu oxazulula ukungqubuzana baxoxa ngephepha lapha, nabo bonke abakulo noma nomuntu oyedwa. Umugqa oya kumuntu oyedwa ungumbuzo, futhi uhlala ngaphansi kuka-Kudinga wena ekhasini lakhe lokuskrini aze aphendule. Imodeli ayikwazi ukubuzwa. Cindezela olunye lwamamaki ayo etafuleni ukuze ubone isiqephu eyasifunda.} other {Ababuyekezi nomuntu oxazulula ukungqubuzana baxoxa ngephepha lapha, nabo bonke abakulo noma nomuntu oyedwa. Umugqa oya kumuntu oyedwa ungumbuzo, futhi uhlala ngaphansi kuka-Kudinga wena ekhasini lakhe lokuskrini aze aphendule.}}",
+        "about": "{models, select, true {Ababuyekezi nomuntu oxazulula ukungqubuzana baxoxa ngephepha lapha, nabo bonke abakulo noma nomuntu oyedwa. Umugqa oya kumuntu oyedwa ungumbuzo, futhi uhlala ngaphansi kuka-Kudinga wena ekhasini lakhe lokuskrini aze aphendule. Imodeli ayikwazi ukubuzwa. Cindezela imaki yemodeli etafuleni ukuze ubone isiqephu eyasifunda.} other {Ababuyekezi nomuntu oxazulula ukungqubuzana baxoxa ngephepha lapha, nabo bonke abakulo noma nomuntu oyedwa. Umugqa oya kumuntu oyedwa ungumbuzo, futhi uhlala ngaphansi kuka-Kudinga wena ekhasini lakhe lokuskrini aze aphendule.}}",
         "blind": "Lokhu kuskrini kufihlela umbuyekezi okubhaliwe ngephepha kuphela uma iphepha lisalinde ivoti lalowo mbuyekezi.",
         "shut": "Ababuyekezi baxoxa ngephepha lapha. Kuhlala kungabonakali ukuze kungalithonyi ivoti lakho.",
         "notSent": "Lokho akuthunyelwanga. Zama futhi.",
@@ -9088,7 +9088,7 @@
         "pageItems": "amaphepha"
       },
       "answersHelp": {
-        "says": "Ikholomu ngayinye ingumbandela, futhi imaki iyimpendulo ababuyekezi bawo abayinika.",
+        "says": "Ikholomu ngayinye ingumbandela, futhi imaki ngayinye iyimpendulo yombuyekezi.",
         "yes": "Yebo",
         "no": "Cha",
         "unclear": "Akucacile",
@@ -9191,7 +9191,7 @@
         "sources": "Awukho umthombo othola amaphepha"
       },
       "notReviewer": {
-        "shared": "Lokhu kuskrini kwabelwe wena ukuze ukufunde. Ababuyekezi bokuskrini kuphela yibo abavotayo.",
+        "shared": "Lokhu kuskrini kwabelwe wena ukuze ukufunde, ngakho awukwazi ukuvota kukho.",
         "finished": "Awusiye umbuyekezi kulokhu kuskrini, futhi sekuqediwe.",
         "join": "Awusiye umbuyekezi kulokhu kuskrini. Joyina njengombuyekezi ukuze uvote."
       },
@@ -9659,6 +9659,8 @@
           "one": "Ivoti lokuqala liyanquma"
         },
         "means": {
+          "mostAdvice": "Iphepha linqunywa uma bonke abantu abalinikiwe sebevotile futhi ngaphezu kwengxenye yabo bevote ngendlela efanayo. Amavoti amamodeli ayiseluleko, futhi anquma kuphela iphepha elingenamuntu. Ngaphandle kwenani elinjalo kungukungqubuzana.",
+          "allAdvice": "Iphepha lixazululwa uma bonke abantu abalinikiwe sebevotile futhi bonke bavote ngendlela efanayo. Amavoti amamodeli ayiseluleko, futhi anquma kuphela iphepha elingenamuntu. Noma yikuphi ukwehlukana phakathi kwabantu kungukungqubuzana.",
           "all": "Iphepha lixazululwa uma bonke ababuyekezi abalinikiwe sebevotile futhi bonke bavote ngendlela efanayo. Noma yikuphi ukwehlukana kungukungqubuzana.",
           "most": "Iphepha linqunywa uma bonke ababuyekezi abalinikiwe sebevotile futhi ngaphezu kwengxenye yabo bevote ngendlela efanayo. Lapho amavoti amamodeli ebalwa khona, okungenani umuntu oyedwa kufanele abe kuleyo ningi. Ngaphandle kwenani elinjalo kungukungqubuzana.",
           "one": "Iphepha lixazululwa yivoti lokuqala kulo, ngakho akukaze kube khona ukungqubuzana. Lapho umuntu enikwe iphepha, ivoti lomuntu wokuqala yilo elilixazululayo. Ivoti lemodeli lixazulula kuphela iphepha okungekho muntu onalo."

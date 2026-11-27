@@ -176,24 +176,23 @@ export async function keeperOf(ctx: Pick<QueryCtx, "db">, paperId: Id<"screening
 const MERGED_LOOKED = 20;
 
 /**
- * How many papers of the sources being taken out another source keeps (`keeperOf`), for what a change says before it
- * is made: the papers that leave are the ones no other source holds. Read from the other sources' merged records.
+ * A page of one source's merged records, for what a change says before it is made: how many papers of the sources
+ * being taken out this source keeps (`keeperOf`). Each is counted under its keeper alone, the first source that holds
+ * it, so a paper two sources hold counts once. The papers that leave are the ones no other source holds.
  */
-export async function keptByOthers(ctx: Pick<QueryCtx, "db">, sources: Doc<"screeningSources">[], leaving: Set<Id<"screeningSources">>) {
-  const kept = new Set<Id<"screeningResults">>();
-  for (const source of sources) {
-    if (leaving.has(source._id) || source.removedAt !== undefined) continue;
-    const rows = await ctx.db.query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", source._id).gte("pass", wholePass(source))).take(MERGED_COUNTED);
-    for (const row of rows) {
-      if (kept.has(row.into) || !inWhole(source, row)) continue;
-      const paper = await ctx.db.get("screeningResults", row.into);
-      if (paper && !paper.withdrawn && paper.sourceId && leaving.has(paper.sourceId)) kept.add(row.into);
-    }
+export async function keptPage(ctx: Pick<QueryCtx, "db">, source: Doc<"screeningSources">, leaving: Set<Id<"screeningSources">>, sources: Doc<"screeningSources">[], cursor: string | null) {
+  const page = await ctx.db.query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", source._id).gte("pass", wholePass(source))).paginate({ cursor, numItems: MERGED_COUNTED });
+  let kept = 0;
+  for (const row of page.page) {
+    if (!inWhole(source, row)) continue;
+    const paper = await ctx.db.get("screeningResults", row.into);
+    if (!paper || paper.withdrawn || !paper.sourceId || !leaving.has(paper.sourceId)) continue;
+    if ((await keeperOf(ctx, paper._id, leaving, sources))?.row._id === row._id) kept++;
   }
-  return kept.size;
+  return { kept, cursor: page.isDone ? null : page.continueCursor };
 }
-/** One source's merged records read for that count: a source merges few of its records into another's papers. */
-const MERGED_COUNTED = 2000;
+/** One source's merged records read in a step of that count, each with its paper and its keeper. */
+const MERGED_COUNTED = 300;
 
 /**
  * Whether the person looking sees how a paper's other reviewers voted, and so what was written about it: once the
