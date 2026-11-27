@@ -8358,6 +8358,7 @@
         "addModel": "Voeg ’n model by"
       },
       "decided": {
+        "seeingAdvice": "Die modelle se advies wys voor 'n stem",
         "seeingNothing": "Elke stem is sigbaar met een persoon op elke artikel",
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",

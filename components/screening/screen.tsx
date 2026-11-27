@@ -45,7 +45,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedOn, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
@@ -470,7 +470,7 @@ function Screen({ open }: { open: Open }) {
   const through = queue !== "done" && items.length > 0 && !listed.canNext && items.every(dealtWith);
   const state = paper ? settledOf(paper) : undefined;
   // Whoever the paper waits for: the reviewers on it, and anyone invited who holds a place in the rule without having joined.
-  const waitsOn = paper && state?.result === "waiting" ? [...awaitedOn(screening, paper).map((one) => (one.id === open.me ? words.t("youInline") : shortName(one))), ...(invitedOn(screening, paper, open.invited) ? [words.t("invitedWaiting", { count: invitedOn(screening, paper, open.invited) })] : [])] : [];
+  const waitsOn = paper && state?.result === "waiting" ? [...awaitedOn(screening, paper).map((one) => (one.id === open.me ? words.t("youInline") : shortName(one))), ...(invitedSaid(words, screening, paper, open.invited) ? [invitedSaid(words, screening, paper, open.invited)!] : [])] : [];
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts : queue === "again" ? open.flagged : toDo;
   const narrowed = Boolean(find.trim()) || (queue === "done" && voted !== "any");
@@ -1234,6 +1234,23 @@ function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: {
 }
 
 /** Each reviewer's answer to each criterion, and their vote: who said what. */
+/**
+ * Brings what just opened into view above the vote bar, by its own measure. The browser's scrollIntoView stops at the
+ * table's sideways scroller, which shows it whole already, and on a phone the page never moved: the passage opened
+ * behind the bar. It moves whatever scrolls up and down around it, never so far that the top leaves the view.
+ */
+function revealOverBar(node: HTMLElement) {
+  let scroller: Element | null = node.parentElement;
+  while (scroller && !(/(auto|scroll)/.test(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight)) scroller = scroller.parentElement;
+  const page = !scroller || scroller === document.body || scroller === document.documentElement;
+  const view = page ? { top: 0, bottom: window.innerHeight } : scroller!.getBoundingClientRect();
+  const bar = [...document.querySelectorAll<HTMLElement>("[data-action-bar]")].find((one) => one.getClientRects().length)?.getBoundingClientRect();
+  const floor = Math.min(view.bottom, bar && bar.top > view.top ? bar.top : view.bottom) - 12;
+  const box = node.getBoundingClientRect();
+  const by = Math.min(box.bottom - floor, box.top - view.top - (view.bottom - view.top) / 4);
+  if (by > 0) (page ? window : scroller!).scrollBy({ top: by, behavior: "smooth" });
+}
+
 export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, settled = false, passage }: {
   criteria: Criterion[];
   cast: Array<{ reviewer: Reviewer; vote?: Vote; failed?: boolean; /** They voted, and how is kept from the person looking. */ hidden?: boolean }>;
@@ -1295,7 +1312,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
             {/* The passage opens under its own row. It takes the grid's width and never widens it. It has no margin of its own, so closed it takes no room at all. */}
             <AnimatePresence initial={false}>
               {passage && shown?.criterion === criterion.key ? (
-                <motion.div ref={opened} key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} onAnimationComplete={() => opened.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })} className="col-span-full my-0! overflow-hidden [contain:inline-size] max-lg:scroll-mb-48">
+                <motion.div ref={opened} key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} onAnimationComplete={() => opened.current && revealOverBar(opened.current)} className="col-span-full my-0! overflow-hidden [contain:inline-size]">
                   <div className="py-[7px]">{passage}</div>
                 </motion.div>
               ) : null}

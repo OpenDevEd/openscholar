@@ -8357,6 +8357,7 @@
         "addModel": "Ajouter un modèle"
       },
       "decided": {
+        "seeingAdvice": "L'avis des modèles s'affiche avant le vote",
         "seeingNothing": "Avec une seule personne par article, chaque vote est visible",
         "votesAgree": "Votes concordants",
         "settled": "Tranché",
