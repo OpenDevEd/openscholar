@@ -210,6 +210,7 @@ export const SCREENING_TEXT = TEXT;
 /** A criterion taken off, as a reason it was a criterion for still names it. */
 export const retiredCriterionValidator = v.object({ key: v.string(), text: v.string(), short: v.string(), must: v.boolean() });
 export const RETIRED_CRITERIA = 200;
+export const retiredCriteriaValidator = capped(v.array(retiredCriterionValidator), RETIRED_CRITERIA);
 export const criterionValidator = v.object({
   key: v.string(),
   text: v.string(),
