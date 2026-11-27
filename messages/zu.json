@@ -9173,6 +9173,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Kusukela efayeleni {name}",
       "required": "Kudingekile",
       "starsOf": "{count} kwa-{of} izinkanyezi",
       "modelsSay": {

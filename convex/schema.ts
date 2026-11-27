@@ -1475,6 +1475,8 @@ export default defineSchema({
     record: v.optional(v.string()),
     // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
     file: v.optional(v.id("_storage")),
+    // The name of the PDF it came in, where it was dropped in as a file.
+    fileName: v.optional(v.string()),
     pages: v.optional(v.number()),
     // Its first page's height for its width (lib/screening/files.ts `pageShapeOf`).
     shape: v.optional(v.number()),

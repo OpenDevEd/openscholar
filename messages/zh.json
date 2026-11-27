@@ -9173,6 +9173,7 @@
       }
     },
     "pieces": {
+      "fromFile": "来自文件 {name}",
       "required": "必填",
       "starsOf": "{count} / {of} 星",
       "modelsSay": {

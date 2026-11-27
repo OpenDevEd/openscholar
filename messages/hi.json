@@ -9173,6 +9173,7 @@
       }
     },
     "pieces": {
+      "fromFile": "फ़ाइल {name} से",
       "required": "आवश्यक",
       "starsOf": "{of} में से {count} सितारे",
       "modelsSay": {
