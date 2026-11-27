@@ -1458,7 +1458,8 @@ export function ScreeningForm({ id }: { id?: string }) {
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
               <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, each) ? { detail: t("decided.seeingAdvice") } : {})}>
                 {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
-                {models.length && advisory(draft.rule) && !hidesVotes(draft.rule, each) ? (
+                {/* Whether the choice could hide anything at all, asked as if votes were hidden until one votes: under At any time nothing is hidden either way. */}
+                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, each) ? (
                   <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
                 ) : (
                   <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
