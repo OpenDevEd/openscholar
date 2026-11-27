@@ -36,5 +36,8 @@ describe("pageShapeOf", () => {
     pdf.getPage(0).setRotation(degrees(0));
     pdf.getPage(0).setCropBox(0, 0, 400, 400);
     expect(pageShapeOf(pdf)).toBe(1);
+    // A crop past the page's edge shows only the page.
+    pdf.getPage(0).setCropBox(0, 0, 1000, 400);
+    expect(pageShapeOf(pdf)).toBe(0.475);
   });
 });
