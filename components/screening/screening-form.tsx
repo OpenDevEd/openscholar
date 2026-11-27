@@ -799,6 +799,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
+      // Invitations taken back go first: they free their guest places for anyone invited in the same save, and the papers waiting for them are then settled without them.
+      if (uninviting.length) await Promise.all(uninviting.map((email) => share.uninvite(email)));
+      setUninviting([]);
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
       const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
@@ -812,9 +815,6 @@ export function ScreeningForm({ id }: { id?: string }) {
         showStyledToast("error", t("toast.notInvited", { names: words.listed(refused.map(({ one }) => one.name)) }), { description: getErrorMessage(refused[0]!.why, t("toast.failed")) });
         return;
       }
-      // Invitations taken back go first: the papers waiting for them are then settled by the save without them.
-      if (uninviting.length) await Promise.all(uninviting.map((email) => share.uninvite(email)));
-      setUninviting([]);
       // A community's collection is checked, or made, there before the save.
       if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
       else if (changing) await saveChange({ jobId: saved.id, change });

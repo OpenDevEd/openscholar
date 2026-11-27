@@ -409,8 +409,11 @@ function Screen({ open }: { open: Open }) {
   const undo = () => {
     if (!last?.mayUndo) return;
     // Only while what it did still stands: a vote or settlement changed since, here or in another tab, is left as it is.
-    if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).catch(failed);
-    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, last.saved === undefined ? {} : { onlyAt: last.saved }).catch(failed);
+    // What it puts back is stamped anew: the step before it on the same paper names that moment, so a second Undo still works.
+    const earlier = history.findLast((one) => one !== last && one.paper.id === last.paper.id && one.resolved === last.resolved);
+    const restamp = (at: number | null) => { if (at !== null && earlier) earlier.saved = at; };
+    if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
+    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, last.saved === undefined ? {} : { onlyAt: last.saved }).then(restamp, failed);
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
   };

@@ -301,21 +301,23 @@ export const guestChanged = internalMutation({
  * for them go to the others (`takeOff`). One the screening is shared with as a guest who votes stays on it.
  */
 export const memberLeft = internalMutation({
-  args: { organizationId: v.id("organizations"), clerkUserId: v.string() },
+  args: { organizationId: v.id("organizations"), clerkUserId: v.string(), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
-  handler: async (ctx, { organizationId, clerkUserId }) => {
+  handler: async (ctx, { organizationId, clerkUserId, cursor }) => {
     const [workspace, person] = await Promise.all([
       ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique(),
       ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique(),
     ]);
     if (!workspace || !person) return null;
-    // ponytail: the 200 screenings they were last put on; page them if one person is ever on more in one organization.
-    for (const reviewer of await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", person._id)).order("desc").take(200)) {
+    // Every screening they are on, a step at a time: the ones of this organization are taken off them.
+    const page = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", person._id)).paginate({ cursor: cursor ?? null, numItems: STEP });
+    for (const reviewer of page.page) {
       if (reviewer.left !== undefined) continue;
       const job = await ctx.db.get("screeningJobs", reviewer.jobId);
       if (job?.workspaceId !== workspace._id || (await grantOf(ctx, job._id, person._id))?.role === "editor") continue;
       await takeOff(ctx, job, reviewer, false);
     }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.memberLeft, { organizationId, clerkUserId, cursor: page.continueCursor });
     return null;
   },
 });

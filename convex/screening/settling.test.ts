@@ -331,7 +331,7 @@ describe("what a change takes out", () => {
     const first = papers.find((one) => benOn.includes(one.title))!;
     await vote("ben", first._id, "include");
     await run(made.t);
-    const organizationId = await made.t.run(async (ctx) => (await ctx.db.get("workspaces", made.workspaceId))!.organizationId!);
+    const organizationId = await made.t.run(async (ctx) => { const workspace = (await ctx.db.get("workspaces", made.workspaceId))!; if (workspace.kind !== "organization") throw new Error("not an organization"); return workspace.organizationId; });
     await made.t.mutation(internal.screening.reviewers.memberLeft, { organizationId, clerkUserId: "ben" });
     await run(made.t);
     const after = await standingOf(made.t, jobId);
