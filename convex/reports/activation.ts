@@ -268,8 +268,8 @@ const KEPT = "This report can't go live now, so what you paid stays in your publ
 
 /**
  * Starts an activation, under the workspace's purchase lock: its record, whose id is the idempotency key of what it
- * buys and names its holds at Autumn, with what pays, the report's price and the code a card's part would be paid
- * with. `price` is what the page showed the report costs: one changed since is refused, so what is bought and what is
+ * buys and names its holds at Autumn, with what pays and the report's price. An event's `code` (`once`) is refused to
+ * someone who used it before. `price` is what the page showed the report costs: one changed since is refused, so what is bought and what is
  * spent are the one price the person saw. Refuses while a payment of the workspace's is still to be made, for this
  * report or another: what that payment buys lands in the same balance, and nothing else is spent from it until that
  * report has its own.
@@ -289,16 +289,16 @@ export const begin = internalMutation({
     if ((await priceFor(ctx, report)) !== price) throw createError("CONFLICT", "This report's price changed since this page read it. Check what is due, then activate again.", { reason: "changed" });
     // New reports closed, or this period's places taken: it waits for the next. Read here, with the row that takes the place.
     await refuseClosed(ctx, (await reportSettings(ctx)).intake);
-    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price, ...(code && { code: code.toUpperCase() }) });
+    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price });
   },
 });
 
-/** What a card buys for an activation, in dollars of the balance: kept with its record once that is known. */
+/** What a card buys for an activation, in dollars of the balance, and the code it buys with: kept with its record once that is known. A code is kept only once something is bought with it, in capitals, as an event's is looked up (`usedBefore`). */
 export const buying = internalMutation({
-  args: { activationId: v.id("reportActivations"), bought: v.number() },
+  args: { activationId: v.id("reportActivations"), bought: v.number(), code: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { activationId, bought }) => {
-    if (await ctx.db.get("reportActivations", activationId)) await ctx.db.patch("reportActivations", activationId, { bought });
+  handler: async (ctx, { activationId, bought, code }) => {
+    if (await ctx.db.get("reportActivations", activationId)) await ctx.db.patch("reportActivations", activationId, { bought, ...(code && { code: code.toUpperCase() }) });
     return null;
   },
 });
@@ -733,7 +733,7 @@ export const activate = action({
             return await changed(CHANGED);
           }
           if (funds.currency) throw currencyRefused(funds.currency);
-          await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
+          await ctx.runMutation(internal.reports.activation.buying, { activationId, bought, ...(code && { code }) });
           // Nothing is bought while a payment of the customer's is open.
           await payableCustomer(first.customerId, {});
           const quote = () => autumn.previewAttach(first.customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, dollars(bought)).catch(refusedCode<AutumnPreview>(code));
@@ -741,7 +741,7 @@ export const activate = action({
           const sized = code ? size(1 - linesOf(quoted) / bought) : bought;
           if (Math.abs(sized - bought) > 0.005) {
             bought = sized;
-            await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
+            await ctx.runMutation(internal.reports.activation.buying, { activationId, bought, ...(code && { code }) });
             quoted = await quote();
           }
           // What a card pays now. A saved card pays what the Stripe credit leaves. With no card saved: nothing when the

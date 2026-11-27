@@ -569,7 +569,9 @@ describe("activating a report", () => {
   it("settles a charge once, keeps its code through the bank's confirmation, and needs nobody still an admin", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")], world.author, world.lab);
-    const activationId = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "orgadmin", world.lab), key, payWith: "balance", price: 10, code: "HALFOFF" });
+    const activationId = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "orgadmin", world.lab), key, payWith: "balance", price: 10 });
+    // What a card buys with the code, kept as the activation sizes it.
+    await world.t.mutation(internal.reports.activation.buying, { activationId, bought: 5, code: "HALFOFF" });
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_3ds", url: "https://bank.example/confirm" } });
     // The bank's page is the payer's: the organisation's admins get it, its members only that the payment waits.
     expect(await world.orgAdmin.query(api.reports.activation.terms, { workspaceId: world.lab, key })).toMatchObject({ pending: { url: "https://bank.example/confirm", checkout: false } });
@@ -701,17 +703,19 @@ describe("activating a report", () => {
       vi.setSystemTime(Date.now() + 86_400_000);
       return await checked(world, [passed("byline")]);
     };
-    const [first, second, third] = [await report(), await report(), await report()];
-    autumnStub({});
+    const [first, second, third, fourth] = [await report(), await report(), await report(), await report()];
+    autumnStub({ kept: 10 });
     const free = (key: string, code: string) => world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, code, expect: 0 });
+    // The balance pays for the first: the code takes nothing off, and stays unused.
     expect(await free(first.key, "AFEW26")).toEqual({ live: true });
+    expect(await free(second.key, "AFEW26")).toEqual({ live: true });
     const used = { data: expect.objectContaining({ code: "VALIDATION_ERROR", reason: "codeUsed" }) };
     // Typed in any case, as Stripe takes it.
     await expect(world.author.action(api.reports.activation.quoteCode, { workspaceId: world.own, code: "afew26", amount: 10 })).rejects.toMatchObject(used);
-    await expect(free(second.key, "AFEW26")).rejects.toMatchObject(used);
-    expect(await row(world.t, second.key)).not.toMatchObject({ status: "live" });
-    expect(await free(second.key, "FREEDOI")).toEqual({ live: true });
+    await expect(free(third.key, "AFEW26")).rejects.toMatchObject(used);
+    expect(await row(world.t, third.key)).not.toMatchObject({ status: "live" });
     expect(await free(third.key, "FREEDOI")).toEqual({ live: true });
+    expect(await free(fourth.key, "FREEDOI")).toEqual({ live: true });
     vi.unstubAllGlobals();
   });
 
