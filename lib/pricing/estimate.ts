@@ -31,6 +31,8 @@ export const CALL_TOKENS = {
   pdfIndex: { input: 50_000, output: 0 },
   /** One search, translation or question-writing helper, or one paper's title and abstract translated: at most 1,960 in and 1,433 out. */
   helper: { input: 2_000, output: 1_500 },
+  /** What one helper call usually reads and writes, said on its button: on shared dev on 2026-11-27, 21 presses (translating a query, enhancing a search, writing screening or extraction questions) cost 13% to 46% of \`helper\`, a quarter at the median. */
+  helperUsual: { input: 1_500, output: 300 },
   /** What a chat reply's first request reads and writes: a conversation of some length. */
   chatMessage: { input: 20_000, output: 1_000 },
   /** One AI overview of a search (#967), all its steps: measured on 2026-10-29 on Claude Haiku 5.5 at medium effort at most 13,887 in and 1,504 out. */

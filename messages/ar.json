@@ -202,8 +202,8 @@
     "calendarMonth": "اختر الشهر",
     "calendarYear": "اختر السنة",
     "calendarNavigation": "التنقل في التقويم",
-    "upToCredits": "حتى {credits}",
-    "upToCreditsEach": "حتى {credits} لكل مقالة"
+    "aboutCredits": "نحو {credits}",
+    "aboutCreditsEach": "نحو {credits} لكل مقالة"
   },
   "home": {
     "tagline": "ابحث وافرز واستخلص الأدلة من البحوث الأكاديمية",

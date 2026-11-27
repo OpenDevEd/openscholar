@@ -202,8 +202,8 @@
     "calendarMonth": "Kies die maand",
     "calendarYear": "Kies die jaar",
     "calendarNavigation": "Kalendernavigasie",
-    "upToCredits": "Tot {credits}",
-    "upToCreditsEach": "Tot {credits} per artikel"
+    "aboutCredits": "Ongeveer {credits}",
+    "aboutCreditsEach": "Ongeveer {credits} per artikel"
   },
   "home": {
     "tagline": "Soek, sif en onttrek bewyse uit akademiese navorsing",

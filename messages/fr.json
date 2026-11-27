@@ -202,8 +202,8 @@
     "calendarMonth": "Choisir le mois",
     "calendarYear": "Choisir l'année",
     "calendarNavigation": "Navigation du calendrier",
-    "upToCredits": "Jusqu'à {credits}",
-    "upToCreditsEach": "Jusqu'à {credits} par article"
+    "aboutCredits": "Environ {credits}",
+    "aboutCreditsEach": "Environ {credits} par article"
   },
   "home": {
     "tagline": "Recherchez, filtrez et extrayez des preuves de la recherche académique",
