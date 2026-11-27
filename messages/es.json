@@ -1751,17 +1751,7 @@
     "savedToLibrary": "<n>{count, number}</n> añadidos a {name} en {library}",
     "notInLibrary": "<n>{count, number}</n> fuera de {library}",
     "savesToLibrary": "Añade los artículos incluidos a {name} en {library}",
-    "notInLibraryFilter": "Fuera de {library}",
-    "libraryProblem": {
-      "role": "No se puede añadir a {name}: ahora solo tiene permiso de lectura",
-      "notFound": "{name} ya no está en {library}",
-      "unreadable": "{library} no respondió: algunos artículos no se añadieron"
-    },
-    "pruneProblem": {
-      "role": "No se pueden quitar artículos de {name}: ahora solo tiene permiso de lectura",
-      "notFound": "{name} ya no está en {library}",
-      "unreadable": "{library} no respondió: algunos artículos no se quitaron"
-    }
+    "notInLibraryFilter": "Fuera de {library}"
   },
   "connectionsPage": {
     "connectedApps": "Aplicaciones conectadas",
@@ -7903,6 +7893,7 @@
         "scheduledNone": "La comprobación programada no encontró artículos nuevos",
         "known": "{count, plural, one {# ya estaba} other {# ya estaban}} en el cribado",
         "leftOut": "{count, plural, one {# se descartó} other {# se descartaron}}",
+        "unread": "{count, plural, one {# fuente no se pudo leer} other {# fuentes no se pudieron leer}}",
         "joined": "{count, plural, one {# artículo entró} other {# artículos entraron}} en el cribado",
         "reopenedByCheck": "El cribado vuelve a estar abierto",
         "changed": "Cambió {parts}",
@@ -8758,6 +8749,7 @@
         "loading": "Leyendo la conversación"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Mostrar # página} other {Mostrar las # páginas}}",
         "readAs": "{pages, plural, =0 {Leído del PDF} one {Leído del PDF, # página} other {Leído del PDF, # páginas}}",
         "openTab": "Abrir el PDF en una pestaña nueva",
         "onItsWay": "El PDF está en camino",
@@ -8906,6 +8898,7 @@
         "startedIt": "lo empezó {ago}"
       },
       "included": {
+        "problem": "{why, select, role {Ahora solo puede ver {name}, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} notFound {{name} ya no está en la Evidence Community, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} other {La Evidence Community no respondió, así que algunos artículos incluidos {adding, select, true {no se añadieron a {name}} other {no se quitaron de {name}}}}}",
         "title": "Los artículos incluidos van a",
         "helpTitle": "Adónde van los artículos incluidos",
         "savedEach": "Se guarda cada uno al incluirse",
@@ -8951,6 +8944,7 @@
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} ya estaban",
         "leftOut": "{count, plural, one {# omitido} other {# omitidos}}",
+        "unread": "{count, plural, one {No pudo leer # fuente} other {No pudo leer # fuentes}}",
         "added": "{count, number} añadidos",
         "newFrom": "{count, number} nuevos de {source}",
         "result": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
@@ -9456,7 +9450,8 @@
           "unread": "No se pudo leer",
           "pdfTooBig": "Supera {mb, number} MB",
           "unsent": "No se pudo enviar",
-          "allUnsent": "No se pudieron enviar"
+          "allUnsent": "No se pudieron enviar",
+          "priceComing": "Un PDF se añade cuando se muestra su precio. Vuelva a añadirlo en un momento"
         },
         "drop": "Suelte aquí archivos de referencias o PDF",
         "helpTitle": "Archivos",
@@ -9465,6 +9460,7 @@
         "aboutFiles": "Un archivo de referencias es lo que exporta una base de datos o un gestor de referencias. Cada uno de sus registros con título y resumen es un artículo.",
         "aboutPdfs": "Un PDF se lee en cuanto se añade, para obtener su título y su DOI. Si el índice de Openscholar tiene ese DOI, el artículo aparece con el título y el resumen del índice. Si no, el artículo es el propio PDF. La persona que lo criba lee el archivo, y también cada modelo de IA que lee PDF, página por página. Un modelo que solo lee texto, o que no admite un PDF tan largo, no tiene voto en él. Un escaneo se lee igual. Un archivo que no se abre se descarta.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF o un archivo de texto con DOI, cualquier cantidad a la vez",
+        "pricing": "Calculando cuánto cuesta un PDF",
         "pdfCost": "Un modelo lee las primeras páginas de cada PDF para obtener su título y su DOI. Eso cuesta hasta {credits, plural, one {# crédito} other {# créditos}} por PDF, y se paga al añadirlo",
         "filesLabel": "Archivos para subir",
         "choose": "Elegir archivos",
@@ -9497,6 +9493,8 @@
         "add": "Añadir DOI"
       },
       "zotero": {
+        "gone": "Esta colección ya no está en Zotero",
+        "openAbove": "Abrir {name}",
         "myLibrary": "Mi biblioteca",
         "loading": "Cargando Zotero",
         "loadingCollections": "Cargando las colecciones",

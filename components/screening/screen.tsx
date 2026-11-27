@@ -39,7 +39,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, modelsAdvise, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -295,9 +295,10 @@ function Screen({ open }: { open: Open }) {
   // No vote is cast, and no conflict settled, in a finished screening: the buttons give way to a line that says so.
   const finished = Boolean(screening.finishedAt);
   // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
-  const [arrivedQueue, setArrivedQueue] = useState(queue);
-  if (arrived && arrivedQueue !== queue) setArrivedQueue(queue);
-  const switching = arrivedQueue !== queue && !picked;
+  // Any change to the list asked for counts (another queue, order, vote picked in Done, or search): the paper of the list before is never voted on while the new one is read.
+  const [arrivedList, setArrivedList] = useState(holding);
+  if (arrived && arrivedList !== holding) setArrivedList(holding);
+  const switching = arrivedList !== holding && !picked;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
   const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
   const answering = !resolving && open.isReviewer && !switching;
@@ -567,7 +568,8 @@ function Screen({ open }: { open: Open }) {
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
   // One the counts say is empty says so at once.
-  const known = queue !== "done" && !narrowed && !picked && left === 0;
+  // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked.
+  const known = !searched && !picked && queueTotal === 0;
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -927,7 +929,7 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" || !mayDecide ? (listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" || !mayDecide ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
@@ -989,7 +991,7 @@ function Screen({ open }: { open: Open }) {
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                  <Input maxLength={NOTE_LENGTH} autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
                     <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
@@ -1018,8 +1020,8 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input data-note onKeyDown={leaveNote} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                        <Textarea data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
                   </AutoHeight>

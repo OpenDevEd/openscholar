@@ -25,7 +25,7 @@ import { progressRow } from "./bookkeeping";
 import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { INVITED_SHOWN, invitedViewValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { INVITED_SHOWN, invitedViewValidator, libraryWriteProblemValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -368,6 +368,7 @@ const checkValidator = v.object({
   added: v.number(),
   // Of what it found, the records left out: the rest of what it found was in the screening already.
   left: v.optional(v.number()),
+  unread: v.optional(v.number()),
   // Where the papers it added stand now, for a check that added few enough to count.
   counts: v.optional(countsValidator),
   // The papers a later check added, by the source that brought them.
@@ -401,7 +402,7 @@ export const getAction = defineUserQuery({
       modelVotes: modelVotesValidator,
       sources: sourceViewsValidator,
       // Where its included papers go.
-      destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), libraryId: v.optional(v.id("evidenceLibraries")), libraryCollection: v.optional(v.string()), prune: v.boolean() }),
+      destination: v.object({ kind: v.union(v.literal("none"), v.literal("new"), v.literal("collection"), v.literal("community")), name: v.optional(v.string()), collectionId: v.optional(v.id("collections")), libraryId: v.optional(v.id("evidenceLibraries")), libraryCollection: v.optional(v.string()), prune: v.boolean(), problem: v.optional(libraryWriteProblemValidator), pruneProblem: v.optional(libraryWriteProblemValidator) }),
       // The papers its workspace's models read at once, as its plan gives.
       atOnce: v.number(),
       // Whether it emails the person looking: new papers to vote on, conflicts to settle, a colleague's reminder. Theirs to turn off (./notices.ts `setEmails`).
@@ -452,7 +453,7 @@ export const getAction = defineUserQuery({
       modelVotes: rule.models ?? "vote",
       sources: sources.map((source) => ({ id: source._id, set: source.set, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.facts?.length ? { facts: source.facts } : {}), ...(source.first === undefined ? {} : { first: source.first }), ...(source.last === undefined ? {} : { last: source.last }), addedAt: source.addedAt, ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }), state: source.state, ...(source.failure ? { failure: source.failure } : {}), ...(source.total === undefined ? {} : { total: source.total }), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare ?? 0, filed: source.filed ?? 0, filePages: source.filePages ?? 0, ...(source.fileSpread ? { fileSpread: source.fileSpread } : {}), ...(source.capped ? { capped: true as const } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) })),
       destination: job.libraryDestination
-        ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true }
+        ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true, ...(job.libraryWriteProblem ? { problem: job.libraryWriteProblem } : {}), ...(job.libraryPruneProblem ? { pruneProblem: job.libraryPruneProblem } : {}) }
         : job.newCollection
           ? { kind: "new" as const, name: job.newCollection, prune: job.prune === true }
           : collection
@@ -508,7 +509,7 @@ export const figuresAction = defineUserQuery({
       pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
       recent: Object.fromEntries(recent),
       startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
-      checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0) },
+      checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread ?? 0) > 0).length },
       // What the methods paragraph says was changed: the settings, and who reviews.
       changes: saves.filter((row) => CHANGED.has(row.code ?? "")).length,
     };
@@ -599,7 +600,7 @@ export const checksAction = defineUserQuery({
       for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
       return counts;
     };
-    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(check.unread ? { unread: check.unread } : {}), ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
   },
 });
 export const checks = userQuery(checksAction);

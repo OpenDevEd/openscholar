@@ -1751,17 +1751,7 @@
     "savedToLibrary": "<n>{count, number}</n> bygevoeg by {name} in {library}",
     "notInLibrary": "<n>{count, number}</n> nie in {library} nie",
     "savesToLibrary": "Voeg ingesluite artikels by {name} in {library}",
-    "notInLibraryFilter": "Nie in {library} nie",
-    "libraryProblem": {
-      "role": "Kan nie by {name} voeg nie: jy kan dit nou net sien",
-      "notFound": "{name} is nie meer in {library} nie",
-      "unreadable": "{library} het nie geantwoord nie: sommige artikels is nie bygevoeg nie"
-    },
-    "pruneProblem": {
-      "role": "Kan nie artikels uit {name} verwyder nie: jy kan dit nou net sien",
-      "notFound": "{name} is nie meer in {library} nie",
-      "unreadable": "{library} het nie geantwoord nie: sommige artikels is nie verwyder nie"
-    }
+    "notInLibraryFilter": "Nie in {library} nie"
   },
   "connectionsPage": {
     "connectedApps": "Gekoppelde programme",
@@ -7903,6 +7893,7 @@
         "scheduledNone": "Die geskeduleerde kontrole het geen nuwe artikels gevind nie",
         "known": "{count, plural, one {# was} other {# was}} reeds in die siftering",
         "leftOut": "{count, plural, one {# is uitgelaat} other {# is uitgelaat}}",
+        "unread": "{count, plural, one {# bron kon nie gelees word nie} other {# bronne kon nie gelees word nie}}",
         "joined": "{count, plural, one {# artikel het} other {# artikels het}} by die siftering aangesluit",
         "reopenedByCheck": "Die siftering is weer oop",
         "changed": "Het {parts} verander",
@@ -8758,6 +8749,7 @@
         "loading": "Lees die bespreking"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Wys die # bladsy} other {Wys al # bladsye}}",
         "readAs": "{pages, plural, =0 {Uit die PDF gelees} one {Uit die PDF gelees, # bladsy} other {Uit die PDF gelees, # bladsye}}",
         "openTab": "Maak die PDF in ’n nuwe oortjie oop",
         "onItsWay": "Die PDF is op pad",
@@ -8906,6 +8898,7 @@
         "startedIt": "het dit {ago} begin"
       },
       "included": {
+        "problem": "{why, select, role {Jy kan {name} nou net bekyk, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} notFound {{name} is nie meer in die Evidence Community nie, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} other {Die Evidence Community het nie geantwoord nie, so sommige ingesluite artikels {adding, select, true {is nie by {name} gevoeg nie} other {is nie uit {name} gehaal nie}}}}",
         "title": "Ingesluite artikels gaan na",
         "helpTitle": "Waarheen ingesluite artikels gaan",
         "savedEach": "Gestoor soos elkeen ingesluit word",
@@ -8951,6 +8944,7 @@
         "found": "{count, number} gevind",
         "alreadyIn": "{count, number} reeds daarin",
         "leftOut": "{count, plural, one {# uitgelaat} other {# uitgelaat}}",
+        "unread": "{count, plural, one {Kon # bron nie lees nie} other {Kon # bronne nie lees nie}}",
         "added": "{count, number} bygevoeg",
         "newFrom": "{count, number} nuut uit {source}",
         "result": "{result, select, include {{count, number} ingesluit} maybe {{count, number} miskien} exclude {{count, number} uitgesluit} conflict {{count, number} in konflik} other {{count, number} wag vir stemme}}",
@@ -9456,7 +9450,8 @@
           "unread": "Dit kon nie gelees word nie",
           "pdfTooBig": "Groter as {mb, number} MB",
           "unsent": "Dit kon nie gestuur word nie",
-          "allUnsent": "Hulle kon nie gestuur word nie"
+          "allUnsent": "Hulle kon nie gestuur word nie",
+          "priceComing": "Word bygevoeg sodra die koste van ’n PDF wys. Voeg dit oor ’n oomblik weer by"
         },
         "drop": "Los verwysingslêers of PDF’e hier",
         "helpTitle": "Lêers",
@@ -9465,6 +9460,7 @@
         "aboutFiles": "’n Verwysingslêer is wat ’n databasis of ’n verwysingsbestuurder uitvoer. Elkeen van sy rekords met ’n titel en ’n opsomming is ’n artikel.",
         "aboutPdfs": "’n PDF word gelees sodra dit bygevoeg word, vir sy titel en sy DOI. Waar Openscholar se indeks daardie DOI het, verskyn die artikel met die indeks se titel en opsomming. Anders is die artikel die PDF self. ’n Persoon wat dit sif, lees die lêer, en so ook elke KI-model wat PDF’e lees, elke bladsy daarvan. ’n Model wat net teks lees, of nie so ’n lang PDF kan neem nie, kry geen stem daarop nie. ’n Skandering word op dieselfde manier gelees. ’n Lêer wat nie oopgaan nie, word uitgelaat.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF of ’n tekslêer met DOI’s, enige aantal gelyk",
+        "pricing": "Bereken wat ’n PDF kos",
         "pdfCost": "’n Model lees elke PDF se eerste bladsye vir sy titel en DOI. Dit kos tot {credits, plural, one {# krediet} other {# krediete}} per PDF, betaal wanneer dit bygevoeg word",
         "filesLabel": "Lêers om op te laai",
         "choose": "Kies lêers",
@@ -9497,6 +9493,8 @@
         "add": "Voeg DOI’s by"
       },
       "zotero": {
+        "gone": "Hierdie versameling is nie meer in Zotero nie",
+        "openAbove": "Maak {name} oop",
         "myLibrary": "My biblioteek",
         "loading": "Laai Zotero",
         "loadingCollections": "Laai die versamelings",

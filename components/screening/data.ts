@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 // The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
@@ -171,7 +171,8 @@ export function removedOf(sources: Source[]) {
 export type Rule = Omit<SharedRule, "each" | "models"> & { each: `${number}` | "all"; models: NonNullable<SharedRule["models"]> };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
-export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
+export type WriteProblem = "role" | "notFound" | "unreadable";
+export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** A community that refused or didn't answer the last write of included papers, adding them or taking them out, until one gets through. */ problem?: WriteProblem; pruneProblem?: WriteProblem; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
@@ -217,8 +218,8 @@ export const bylineOf = (paper: Pick<Paper, "authors" | "year" | "venue">, short
 export const awaitedOn = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) => castOf(screening, paper).filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer);
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
-/** Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes. */
-export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0));
+/** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */
+export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && gotThrough(one.tally) > 0));
 /** The most points a paper can earn under the screening's scoring. */
 export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => scoreOf(screening.criteria.map(({ key }) => { const [yes, no, unclear] = screening.scoring.points[key] ?? [1, 0, 0]; return { key, points: { yes, no, unclear } }; }), [], []).of;
 /** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */

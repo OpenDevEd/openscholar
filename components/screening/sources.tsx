@@ -213,12 +213,13 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
     onAdd({ ref: refOf(file), name: file.name, detail: t("upload.table"), total: tableCounts(table, picked).records, set: { kind: "upload", file: kept, columns: picked as Record<string, string> } });
   };
   const take = async (list: FileList) => {
-    // A PDF is paid for as it is added: nothing is taken until its price is on the screen.
-    if (lookCredits === undefined) return;
     const files = [...list];
     setRefused([]);
-    const [pdfs, references] = [files.filter((file) => PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
-    for (const file of files) if (!pdfs.includes(file) && !references.includes(file)) refuse(file.name, t("upload.why.notReadable"));
+    // A PDF is paid for as it is added: none is taken until its price is on the screen, and each one dropped before then says so.
+    const priced = lookCredits !== undefined;
+    const [pdfs, references] = [files.filter((file) => priced && PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
+    if (!priced) for (const file of files) if (PDF_FILES.test(file.name)) refuse(file.name, t("upload.why.priceComing"));
+    for (const file of files) if (!pdfs.includes(file) && !references.includes(file) && !(PDF_FILES.test(file.name) && !priced)) refuse(file.name, t("upload.why.notReadable"));
     const reads = references.map((file) => file.name);
     setReading((now) => [...now, ...reads]);
     const sent = sendPdfs(pdfs);
@@ -317,9 +318,18 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
         </p>
         <p className="text-xs text-muted-foreground">{t("upload.kinds")}</p>
         {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. Its line is held while the price is read. */}
-        {lookCredits === null || lookCredits === 0 ? null : <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", lookCredits === undefined && "invisible")}><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.creditsOf(lookCredits ?? 0) })}</p>}
+        {/* While the price is read, its line says so in the room the price will take. */}
+        {lookCredits === null || lookCredits === 0 ? null : (
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Coins aria-hidden className="mt-px size-3.5 shrink-0" />
+            <span className="grid">
+              <span className={cn("col-start-1 row-start-1", lookCredits === undefined && "invisible")}>{t("upload.pdfCost", { credits: words.creditsOf(lookCredits ?? 0) })}</span>
+              {lookCredits === undefined ? <span className="col-start-1 row-start-1">{t("upload.pricing")}</span> : null}
+            </span>
+          </p>
+        )}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
-        <Button variant="outline" size="sm" className="mt-2" disabled={lookCredits === undefined} onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>
       {reading.length || pending.length || sending.length ? (
         <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
@@ -502,6 +512,8 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const known = { ...Object.fromEntries((named ?? []).map((one) => [one.key, one])), ...seen.folders };
   const resolving = keys.some((key) => !known[key]) && named === undefined;
   const path = keys.flatMap((key) => (known[key] ? [known[key]] : []));
+  // A collection the address names that Zotero no longer has: said, and nothing wider is listed in its place until the person moves up.
+  const gone = !resolving && keys.some((key) => !known[key]);
   const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
   // The search over the library's collections is in the address with them: starting and clearing it are steps.
@@ -523,7 +535,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   useSWR(connected ? ["zotero-open", library.id ?? ""] : null, () => openTree(of), { revalidateOnFocus: false });
   const tree = useProtectedQuery(api.zotero.tree.state, inWorkspace(workspaceId, connected ? of : "skip")).data;
   const here = path.at(-1);
-  const level = useCursorPageAt("folderPage", api.zotero.tree.level, inWorkspace(workspaceId, connected && !words && !resolving ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
+  const level = useCursorPageAt("folderPage", api.zotero.tree.level, inWorkspace(workspaceId, connected && !words && !resolving && !gone ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
   const found = useCursorPageAt("folderPage", api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
   const listed = words ? found : level;
 
@@ -672,7 +684,13 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
             />
           ))}
           {loading && rows.length < PAGE ? <ListRowsSkeleton rows={PAGE - rows.length} height={ROW} icon={false} label={t("zotero.loadingCollections")} className="*:px-1" /> : null}
-          {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
+          {gone ? (
+            <div className="flex flex-col items-center gap-2 px-4 py-6 text-center text-sm text-muted-foreground">
+              <p>{t("zotero.gone")}</p>
+              <Button variant="outline" size="sm" onClick={() => go(path)}>{t("zotero.openAbove", { name: path.at(-1)?.name ?? library.name })}</Button>
+            </div>
+          ) : null}
+          {!gone && !reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
         </div>
       </div>
       {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside, pageCount: Math.max(1, Math.ceil(here.inside / PAGE)) }) }} /> : null}

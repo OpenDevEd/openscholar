@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ExternalLink, FileText } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -30,7 +31,7 @@ const A4 = 1.414;
 const GAP = 8;
 const escaped = (text: string) => text.replace(/[&<>]/g, (sign) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[sign]!);
 
-export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">; paper: Pick<Paper, "id" | "title" | "pdf">; /** The words the criteria mark, which stand out on the pages as they do in an abstract. */ terms: string[] }) {
+export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: Id<"screeningJobs">; paper: Pick<Paper, "id" | "title" | "pdf">; /** The words the criteria mark, which stand out on the pages as they do in an abstract. */ terms: string[]; /** Its first page only, until asked for the rest: where the vote comes after the paper, as in the Papers drawer. */ firstPage?: boolean }) {
   const t = useTranslations("screening.list");
   const url = useProtectedQuery(api.screening.paperViews.pdf, inWorkspace(usePageWorkspace(), { jobId: id, paperId: paper.id })).data;
   const column = useRef<HTMLDivElement>(null);
@@ -45,12 +46,14 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
   }, []);
   // How many pages, and their shape, as the server counted them until the file itself says.
   const [read, setRead] = useState<{ of: Id<"screeningResults">; pages: number; shape: number } | null>(null);
-  const { pages, shape } = read?.of === paper.id ? read : { pages: paper.pdf?.pages ?? 1, shape: A4 };
+  const { pages: all, shape } = read?.of === paper.id ? read : { pages: paper.pdf?.pages ?? 1, shape: A4 };
+  const [whole, setWhole] = useState<string | null>(null);
+  const pages = firstPage && whole !== paper.id ? 1 : all;
   const pattern = termsPattern(terms);
   const mark = pattern ? ({ str }: { str: string }) => str.split(pattern).map((part, i) => (i % 2 ? `<mark class="rounded-sm bg-primary/25 text-transparent">${escaped(part)}</mark>` : escaped(part))).join("") : undefined;
 
   return (
-    <div className="space-y-3">
+    <div data-pdf className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <Chip icon={FileText}>{t("pdf.readAs", { pages: paper.pdf?.pages ?? 0 })}</Chip>
         {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>{t("pdf.openTab")}<ExternalLink aria-hidden className="size-3" /></a> : null}
@@ -74,6 +77,7 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
         ) : null}
       </div>
       </div>
+      {pages < all ? <Button variant="outline" size="sm" className="w-full" onClick={() => setWhole(paper.id)}><FileText />{t("pdf.showAll", { count: all })}</Button> : null}
     </div>
   );
 }

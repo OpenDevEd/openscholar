@@ -645,7 +645,8 @@ function Unread({ open, model }: { open: Open; model: Reviewer }) {
           ))}
         </ul>
       </ScrollArea>
-      {papers.hasPages ? <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><Button variant="ghost" size="xs" disabled={!papers.canPrevious} onClick={papers.previous}>{t("unread.earlier")}</Button><Button variant="ghost" size="xs" disabled={!papers.canNext} onClick={papers.next}>{t("unread.more")}</Button></div> : null}
+      {/* The pager stands from the first frame where the count says there is more than a page. */}
+      {papers.hasPages || (papers.isLoading && (model.tally?.failed ?? 0) > UNREAD_PAGE) ? <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><Button variant="ghost" size="xs" disabled={!papers.canPrevious} onClick={papers.previous}>{t("unread.earlier")}</Button><Button variant="ghost" size="xs" disabled={!papers.canNext} onClick={papers.next}>{t("unread.more")}</Button></div> : null}
     </>
   );
 }
@@ -833,6 +834,8 @@ function Facts({ open }: { open: Open }) {
           ) : (
             <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />{t("included.nowhereYet")}</p>
           )}
+          {/* A community that refused or didn't answer: said where the papers were to go, until a later write gets through. */}
+          {to.problem || to.pruneProblem ? <p className="flex items-start gap-2 text-sm ink-warning"><TriangleAlert className="mt-0.5 size-4 shrink-0" />{t("included.problem", { why: to.problem ?? to.pruneProblem!, adding: String(Boolean(to.problem)), name: collection ?? "" })}</p> : null}
           <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon} className="w-fit">
             {t.rich("included.count", { count: counts.include, saved: String(Boolean(collection)), num: () => <AnimatedNumber value={counts.include} /> })}
           </LinkChip>
@@ -974,9 +977,11 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                             </div>
                           ) : null}
                         </>
-                      ) : (
+                      ) : check.unread ? null : (
                         <Chip>{t("checks.nothingNew")}</Chip>
                       )}
+                      {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
+                      {check.unread ? <StateChip tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread })}</StateChip> : null}
                     </div>
                   </div>
                 </motion.div>

@@ -28,11 +28,13 @@ export function useOpenInAddress<T extends string>(key: string, values: readonly
   const own = [key, ...inner];
   // Where the browser has no Navigation API: the address this page opened it over.
   const openedOver = useRef<string | null>(null);
+  const openedAt = useRef<number | null>(null);
   /** How many steps back the page under it is, where every step since it opened is its own; else none, and it closes in place. */
   const stepsBack = () => {
     const list = navigation();
     const current = list?.currentEntry;
-    if (!list || !current) return openedOver.current === without(window.location.href, own) ? 1 : 0;
+    // Without it, the steps it took are the entries added since it opened (its tabs and choices), counted by the history's length.
+    if (!list || !current) return openedOver.current === without(window.location.href, own) && openedAt.current !== null ? 1 + Math.max(0, window.history.length - openedAt.current) : 0;
     const entries = list.entries();
     const under = without(window.location.href, own);
     // Back from here, the first entry without it open is the page it was opened over.
@@ -47,11 +49,14 @@ export function useOpenInAddress<T extends string>(key: string, values: readonly
   };
   const set = (next: T | null, { inPlace = false }: { /** Closed where something else takes its step in the history (a paper picked from it, a link followed), not by stepping back. */ inPlace?: boolean } = {}) => {
     if (next) {
-      if (open === null) openedOver.current = without(window.location.href, own);
-      void setState({ [key]: next }, open === null ? undefined : { history: "replace" });
+      if (open === null) {
+        openedOver.current = without(window.location.href, own);
+        void setState({ [key]: next }).then(() => { openedAt.current = window.history.length; });
+      } else void setState({ [key]: next }, { history: "replace" });
     } else if (open !== null) {
       const steps = inPlace ? 0 : stepsBack();
       openedOver.current = null;
+      openedAt.current = null;
       if (steps > 0) window.history.go(-steps);
       else void setState(Object.fromEntries(own.map((one) => [one, null])), { history: "replace" });
     }

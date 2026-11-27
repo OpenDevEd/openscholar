@@ -5,7 +5,7 @@
 // reviewer, taking one off and making one a viewer. Both places open these same ones, so they say
 // and do the same.
 
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { useOpenInAddress } from "./address";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ import { useWords } from "./words";
 /** This part's messages, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
+const CHANGES = ["add", "off", "viewer"] as const;
 export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails", "confirm"] as const;
 export type Over = (typeof OVERS)[number];
 const EXPORT_TABS = ["papers", "votes", "flow", "methods", "record"] as const;
@@ -97,7 +98,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
 export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDeleted?: () => void } = {}) {
   const t = useTranslations("screening.frame");
   const words = useWords();
-  const [over, setOver] = useOpenInAddress("over", OVERS, { inner: ["tab", "whose", "group", "row"] });
+  const [over, setOver] = useOpenInAddress("over", OVERS, { inner: ["tab", "whose", "group", "row", "who", "change"] });
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
   const [emailsLink, setEmailsLink] = useQueryState("emails");
   // The Export dialog's tab, in the address with it: each tab is a step, Back returns to the one before, and closing Export goes back over all of them.
@@ -108,11 +109,13 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const [demoting, setDemoting] = useState<Reviewer | null>(null);
-  // A confirmation is open over the page as anything else is (`over=confirm`), taking People's place when asked from there and going back to it once answered.
+  // A confirmation is open over the page as anything else is (`over=confirm`), a step of its own: asked from People, it goes back to People once answered.
   const [fromPeople, setFromPeople] = useState(false);
-  // A delete or leave under way: the dialog stays until the page it leads to replaces this one.
+  // A delete or leave confirmed: the dialog's own close is skipped, since leading away closes it.
   const going = useRef(false);
-  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean) => { set(reviewer); setFromPeople(people); setOver("confirm"); };
+  // Who a confirmation is about, and the change, are in the address with it: Forward or a reload asks about the same reviewer again.
+  const [about, setAbout] = useQueryStates({ who: parseAsString, change: parseAsStringLiteral(CHANGES) }, { history: "push", scroll: false });
+  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean, change: (typeof CHANGES)[number]) => { set(reviewer); setFromPeople(people); void setAbout({ who: reviewer.id, change }); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
@@ -120,8 +123,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   const controls = {
     show: (next: Over) => setOver(next),
     exportTo: (tab: ExportTab) => { setExportTab(tab); setOver("export"); },
-    add: (reviewer: Reviewer) => ask(setAdding, reviewer, false),
-    takeOff: (reviewer: Reviewer) => ask(setLeaving, reviewer, false),
+    add: (reviewer: Reviewer) => ask(setAdding, reviewer, false, "add"),
+    takeOff: (reviewer: Reviewer) => ask(setLeaving, reviewer, false, "off"),
   };
   if (!state) return { ...controls, overlays: null };
 
@@ -129,10 +132,15 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   const { id } = screening;
   const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); };
   // A screening deleted or left: its own pages lead away to the list in place of this entry; over the list, the dialog takes itself out of the address.
-  const gone = () => { going.current = false; if (onDeleted) onDeleted(); else setOver(null, { inPlace: true }); };
-  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) setOver("people"); else close(); };
+  const gone = () => { if (onDeleted) onDeleted(); else setOver(null, { inPlace: true }); };
+  // Asked from People, the confirmation is a step on top of it: answering it steps back to People, as Back would.
+  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) window.history.back(); else close(); };
   // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
-  const confirming = over === "confirm" && Boolean(adding || leaving || demoting);
+  // Someone on the screening is found again by the id the address names. Someone being added comes from People's list, and without it People opens, where they were picked.
+  const named = (change: (typeof CHANGES)[number]) => (about.change === change && about.who ? (screening.reviewers.find((one) => one.id === about.who && !one.left) ?? null) : null);
+  const leavingNow = leaving ?? named("off");
+  const demotingNow = demoting ?? named("viewer");
+  const confirming = over === "confirm" && Boolean(adding || leavingNow || demotingNow);
   const unsettled = state.counts.conflict + state.counts.waiting;
   const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = words.collectionName(screening);
@@ -144,7 +152,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
       <ActivitySheet open={over === "activity"} onClose={close} state={state} />
       {/* Its files are read only once it is opened. */}
       {over === "export" ? <ExportDialog open onClose={close} state={state} tab={exportTab} onTab={setExportTab} /> : null}
-      <PeopleDialog open={over === "people" || (over === "confirm" && !confirming)} onClose={close} state={state} onAdd={(reviewer) => ask(setAdding, reviewer, true)} onRemove={(reviewer) => ask(setLeaving, reviewer, true)} onDemote={(reviewer) => ask(setDemoting, reviewer, true)} />
+      <PeopleDialog open={over === "people" || (over === "confirm" && !confirming)} onClose={close} state={state} onAdd={(reviewer) => ask(setAdding, reviewer, true, "add")} onRemove={(reviewer) => ask(setLeaving, reviewer, true, "off")} onDemote={(reviewer) => ask(setDemoting, reviewer, true, "viewer")} />
       <MoveDialog
         open={over === "move"}
         onOpenChange={(next) => !next && close()}
@@ -193,12 +201,12 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         {unsettled ? <OpenPapersChips id={id} conflict={state.counts.conflict} waiting={state.counts.waiting} /> : null}
       </ConfirmChange>
       {/* Whoever made it deletes it, or an admin of its workspace (convex/workspaces/actor.ts `requireMakerOrAdmin`): the menu offers it to nobody else. */}
-      {/* Once confirmed, it doesn't step back to the page it was asked on, which is gone: the page it leads to takes that entry's place, and Forward never returns to it. */}
-      <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; void state.remove().then(gone, (error) => { going.current = false; failed(t)(error); }); }}>
+      {/* Once confirmed, it leads away at once, before the screening's pages can redraw it as gone: the page it leads to takes this entry's place, and Forward never returns to the dialog. If the server refuses, a toast says so. */}
+      <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; gone(); void state.remove().catch(failed(t)); }}>
         <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : []), t("delete.final")]} />
       </ConfirmChange>
       {/* A guest gives up their own place: what they voted stays, and what they hadn't goes to the others, as when a member takes them off. */}
-      <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; void leave({ id }).then(gone, (error) => { going.current = false; failed(t)(error); }); }}>
+      <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; gone(); void leave({ id }).catch(failed(t)); }}>
         <EffectList
           lines={[
             mine?.cast ? t("leave.votesCount", { count: mine.cast }) : t("leave.noVotes"),
@@ -208,8 +216,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         />
       </ConfirmChange>
       <AddReviewer open={state} reviewer={confirming ? adding : null} onConfirm={confirmAdd} onClose={answered} />
-      <TakeOff open={state} reviewer={confirming ? leaving : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
-      <TakeOff open={state} reviewer={confirming ? demoting : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? leavingNow : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? demotingNow : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
     </>
   );
   return { ...controls, overlays };

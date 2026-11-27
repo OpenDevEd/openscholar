@@ -1750,17 +1750,7 @@
     "savedToLibrary": "<n>{count, number}</n> kungezwe ku-{name} ku-{library}",
     "notInLibrary": "<n>{count, number}</n> akukho ku-{library}",
     "savesToLibrary": "Engeza amaphepha afakiwe ku-{name} ku-{library}",
-    "notInLibraryFilter": "Akukho ku-{library}",
-    "libraryProblem": {
-      "role": "Ayikwazi ukungeza ku-{name}: manje ungaqapha kuphela",
-      "notFound": "I-{name} ayisekho ku-{library}",
-      "unreadable": "I-{library} ayiphendulanga: amanye amaphepha awengezwanga"
-    },
-    "pruneProblem": {
-      "role": "Ayikwazi ukususa amaphepha ku-{name}: manje ungaqapha kuphela",
-      "notFound": "I-{name} ayisekho ku-{library}",
-      "unreadable": "I-{library} ayiphendulanga: amanye amaphepha awasuswanga"
-    }
+    "notInLibraryFilter": "Akukho ku-{library}"
   },
   "connectionsPage": {
     "connectedApps": "Izinhlelo ezixhunyiwe",
@@ -7902,6 +7892,7 @@
         "scheduledNone": "Ukuhlola okuhleliwe akutholanga maphepha amasha",
         "known": "{count, plural, one {# belisevele} other {# abesevele}} ekuskrinini",
         "leftOut": "{count, plural, one {# lishiywe ngaphandle} other {# ashiywe ngaphandle}}",
+        "unread": "{count, plural, one {# umthombo awukwazanga ukufundwa} other {# imithombo ayikwazanga ukufundwa}}",
         "joined": "{count, plural, one {# iphepha lijoyine} other {# amaphepha ajoyine}} ukuskrini",
         "reopenedByCheck": "Ukuskrini kuvulekile futhi",
         "changed": "Kushintshwe {parts}",
@@ -8757,6 +8748,7 @@
         "loading": "Kufundwa ingxoxo"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Bonisa # ikhasi} other {Bonisa wonke amakhasi angu-#}}",
         "readAs": "{pages, plural, =0 {Lifundwe ku-PDF} one {Lifundwe ku-PDF, # ikhasi} other {Lifundwe ku-PDF, # amakhasi}}",
         "openTab": "Vula i-PDF kuthebhu entsha",
         "onItsWay": "I-PDF isendleleni",
@@ -8905,6 +8897,7 @@
         "startedIt": "ukuqale {ago}"
       },
       "included": {
+        "problem": "{why, select, role {Manje ungabuka kuphela i-{name}, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} notFound {I-{name} ayisekho ku-Evidence Community, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} other {I-Evidence Community ayiphendulanga, ngakho amanye amaphepha afakiwe {adding, select, true {awengezwanga ku-{name}} other {awasuswanga ku-{name}}}}}",
         "title": "Amaphepha afakiwe aya ku-",
         "helpTitle": "Lapho amaphepha afakiwe aya khona",
         "savedEach": "Agcinwa njengoba ngalinye lifakwa",
@@ -8950,6 +8943,7 @@
         "found": "{count, number} atholakele",
         "alreadyIn": "{count, number} asevele ekhona",
         "leftOut": "{count, plural, one {# kushiywe ngaphandle} other {# kushiywe ngaphandle}}",
+        "unread": "{count, plural, one {Akukwazanga ukufunda # umthombo} other {Akukwazanga ukufunda # imithombo}}",
         "added": "{count, number} engeziwe",
         "newFrom": "{count, number} amasha avela ku-{source}",
         "result": "{result, select, include {{count, number} afakiwe} maybe {{count, number} mhlawumbe} exclude {{count, number} akhishiwe} conflict {{count, number} ayangqubuzana} other {{count, number} alinde amavoti}}",
@@ -9455,7 +9449,8 @@
           "unread": "Alikwazanga ukufundwa",
           "pdfTooBig": "Ngaphezu kuka-{mb, number} MB",
           "unsent": "Alikwazanga ukuthunyelwa",
-          "allUnsent": "Awakwazanga ukuthunyelwa"
+          "allUnsent": "Awakwazanga ukuthunyelwa",
+          "priceComing": "Lingezwa uma izindleko ze-PDF sezivela. Lingeze futhi ngemuva kwesikhashana"
         },
         "drop": "Lahla amafayela ezinkomba noma ama-PDF lapha",
         "helpTitle": "Amafayela",
@@ -9464,6 +9459,7 @@
         "aboutFiles": "Ifayela lezinkomba yilokho okukhishwa yidathabheyisi noma umphathi wezinkomba. Irekhodi lalo ngalinye elinesihloko nesifingqo liyiphepha.",
         "aboutPdfs": "I-PDF ifundwa ngokushesha nje uma ingezwa, ukuze kutholakale isihloko sayo ne-DOI yayo. Lapho inkomba ka-Openscholar inaleyo DOI, iphepha livela nesihloko nesifingqo senkomba. Uma kungenjalo iphepha liyi-PDF uqobo. Umuntu oliskrinayo ufunda ifayela, kanjalo nemodeli ye-AI ngayinye efunda ama-PDF, wonke amakhasi alo. Imodeli efunda umbhalo kuphela, noma engakwazi ukuthatha i-PDF ende kangako, ayitholi ivoti kulo. Iskena sifundwa ngendlela efanayo. Ifayela elingavuleki lishiywa ngaphandle.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, noma ifayela lombhalo lama-DOI, noma mangaki ngesikhathi esisodwa",
+        "pricing": "Kubalwa izindleko ze-PDF",
         "pdfCost": "Imodeli ifunda amakhasi okuqala e-PDF ngayinye ukuze ithole isihloko ne-DOI. Lokho kubiza kuze kufike ku-{credits, plural, one {# ikhredithi} other {# amakhredithi}} nge-PDF ngayinye, akhokhwa njengoba ingezwa",
         "filesLabel": "Amafayela okulayishwa",
         "choose": "Khetha amafayela",
@@ -9496,6 +9492,8 @@
         "add": "Engeza ama-DOI"
       },
       "zotero": {
+        "gone": "Leli qoqo alisekho ku-Zotero",
+        "openAbove": "Vula i-{name}",
         "myLibrary": "Umtapo wami wolwazi",
         "loading": "Kulayishwa i-Zotero",
         "loadingCollections": "Kulayishwa amaqoqo",

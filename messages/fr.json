@@ -1750,17 +1750,7 @@
     "savedToLibrary": "<n>{count, number}</n> ajoutés à {name} dans {library}",
     "notInLibrary": "<n>{count, number}</n> absents de {library}",
     "savesToLibrary": "Ajoute les articles inclus à {name} dans {library}",
-    "notInLibraryFilter": "Absents de {library}",
-    "libraryProblem": {
-      "role": "Impossible d'ajouter à {name} : vous ne pouvez plus que la consulter",
-      "notFound": "{name} n'existe plus dans {library}",
-      "unreadable": "{library} n'a pas répondu : des articles n'ont pas été ajoutés"
-    },
-    "pruneProblem": {
-      "role": "Impossible de retirer des articles de {name} : vous ne pouvez plus que la consulter",
-      "notFound": "{name} n'existe plus dans {library}",
-      "unreadable": "{library} n'a pas répondu : des articles n'ont pas été retirés"
-    }
+    "notInLibraryFilter": "Absents de {library}"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",
@@ -7902,6 +7892,7 @@
         "scheduledNone": "La vérification programmée n'a trouvé aucun nouvel article",
         "known": "{count, plural, one {# était} other {# étaient}} déjà dans le criblage",
         "leftOut": "{count, plural, one {# a été écarté} other {# ont été écartés}}",
+        "unread": "{count, plural, one {# source n'a pas pu être lue} other {# sources n'ont pas pu être lues}}",
         "joined": "{count, plural, one {# article a rejoint} other {# articles ont rejoint}} le criblage",
         "reopenedByCheck": "Le criblage est rouvert",
         "changed": "A modifié {parts}",
@@ -8757,6 +8748,7 @@
         "loading": "Lecture de la discussion"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Afficher # page} other {Afficher les # pages}}",
         "readAs": "{pages, plural, =0 {Lu depuis le PDF} one {Lu depuis le PDF, # page} other {Lu depuis le PDF, # pages}}",
         "openTab": "Ouvrir le PDF dans un nouvel onglet",
         "onItsWay": "Le PDF arrive",
@@ -8905,6 +8897,7 @@
         "startedIt": "l'a démarré {ago}"
       },
       "included": {
+        "problem": "{why, select, role {Vous ne pouvez plus que consulter {name}, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} notFound {{name} n'est plus dans l'Evidence Community, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} other {L'Evidence Community n'a pas répondu, donc certains articles inclus {adding, select, true {n'ont pas été ajoutés à {name}} other {n'ont pas été retirés de {name}}}}}",
         "title": "Les articles inclus vont dans",
         "helpTitle": "Où vont les articles inclus",
         "savedEach": "Enregistrés à mesure qu'ils sont inclus",
@@ -8950,6 +8943,7 @@
         "found": "{count, number} trouvés",
         "alreadyIn": "{count, number} déjà présents",
         "leftOut": "{count, plural, one {# écarté} other {# écartés}}",
+        "unread": "{count, plural, one {N'a pas pu lire # source} other {N'a pas pu lire # sources}}",
         "added": "{count, number} ajoutés",
         "newFrom": "{count, number} nouveaux depuis {source}",
         "result": "{result, select, include {{count, number} inclus} maybe {{count, number} peut-être} exclude {{count, number} exclus} conflict {{count, number} en désaccord} other {{count, number} en attente de votes}}",
@@ -9455,7 +9449,8 @@
           "unread": "Il n'a pas pu être lu",
           "pdfTooBig": "Plus de {mb, number} Mo",
           "unsent": "Il n'a pas pu être envoyé",
-          "allUnsent": "Ils n'ont pas pu être envoyés"
+          "allUnsent": "Ils n'ont pas pu être envoyés",
+          "priceComing": "Un PDF s'ajoute une fois son prix affiché. Ajoutez-le de nouveau dans un instant"
         },
         "drop": "Déposez ici des fichiers de références ou des PDF",
         "helpTitle": "Fichiers",
@@ -9464,6 +9459,7 @@
         "aboutFiles": "Un fichier de références est ce qu'exporte une base de données ou un gestionnaire de références. Chacune de ses notices qui a un titre et un résumé est un article.",
         "aboutPdfs": "Un PDF est lu dès qu'il est ajouté, pour son titre et son DOI. Si l'index d'Openscholar contient ce DOI, l'article s'affiche avec le titre et le résumé de l'index. Sinon, l'article est le PDF lui-même. Une personne qui le crible lit le fichier, et chaque modèle d'IA qui lit les PDF aussi, en entier. Un modèle qui ne lit que du texte, ou qui ne peut pas prendre un PDF aussi long, n'a pas de vote dessus. Un document scanné est lu de la même façon. Un fichier qui ne s'ouvre pas est écarté.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF ou un fichier texte de DOI, autant que vous voulez à la fois",
+        "pricing": "Calcul du coût d'un PDF",
         "pdfCost": "Un modèle lit les premières pages de chaque PDF pour trouver son titre et son DOI. Cela coûte jusqu'à {credits, plural, one {# crédit} other {# crédits}} par PDF, à payer lors de l'ajout",
         "filesLabel": "Fichiers à importer",
         "choose": "Choisir des fichiers",
@@ -9496,6 +9492,8 @@
         "add": "Ajouter des DOI"
       },
       "zotero": {
+        "gone": "Cette collection n'est plus dans Zotero",
+        "openAbove": "Ouvrir {name}",
         "myLibrary": "Ma bibliothèque",
         "loading": "Chargement de Zotero",
         "loadingCollections": "Chargement des collections",

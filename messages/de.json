@@ -1751,17 +1751,7 @@
     "savedToLibrary": "<n>{count, number}</n> zu {name} in {library} hinzugefügt",
     "notInLibrary": "<n>{count, number}</n> nicht in {library}",
     "savesToLibrary": "Fügt eingeschlossene Artikel zu {name} in {library} hinzu",
-    "notInLibraryFilter": "Nicht in {library}",
-    "libraryProblem": {
-      "role": "Hinzufügen zu {name} nicht möglich: Sie können sie jetzt nur ansehen",
-      "notFound": "{name} ist nicht mehr in {library}",
-      "unreadable": "{library} hat nicht geantwortet: Einige Artikel wurden nicht hinzugefügt"
-    },
-    "pruneProblem": {
-      "role": "Artikel können nicht aus {name} entfernt werden: Sie können sie jetzt nur ansehen",
-      "notFound": "{name} ist nicht mehr in {library}",
-      "unreadable": "{library} hat nicht geantwortet: Einige Artikel wurden nicht entfernt"
-    }
+    "notInLibraryFilter": "Nicht in {library}"
   },
   "connectionsPage": {
     "connectedApps": "Verbundene Apps",
@@ -7903,6 +7893,7 @@
         "scheduledNone": "Die geplante Abfrage hat keine neuen Artikel gefunden",
         "known": "{count, plural, one {# war} other {# waren}} bereits im Screening",
         "leftOut": "{count, plural, one {# wurde ausgelassen} other {# wurden ausgelassen}}",
+        "unread": "{count, plural, one {# Quelle konnte nicht gelesen werden} other {# Quellen konnten nicht gelesen werden}}",
         "joined": "{count, plural, one {# Artikel kam} other {# Artikel kamen}} ins Screening",
         "reopenedByCheck": "Das Screening ist wieder offen",
         "changed": "Hat {parts} geändert",
@@ -8758,6 +8749,7 @@
         "loading": "Die Diskussion wird gelesen"
       },
       "pdf": {
+        "showAll": "{count, plural, one {# Seite anzeigen} other {Alle # Seiten anzeigen}}",
         "readAs": "{pages, plural, =0 {Aus dem PDF gelesen} one {Aus dem PDF gelesen, # Seite} other {Aus dem PDF gelesen, # Seiten}}",
         "openTab": "PDF in neuem Tab öffnen",
         "onItsWay": "Das PDF ist unterwegs",
@@ -8906,6 +8898,7 @@
         "startedIt": "hat es {ago} gestartet"
       },
       "included": {
+        "problem": "{why, select, role {Sie können {name} jetzt nur noch ansehen, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} notFound {{name} ist nicht mehr in der Evidence Community, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} other {Die Evidence Community hat nicht geantwortet, daher wurden einige eingeschlossene Artikel {adding, select, true {nicht zu {name} hinzugefügt} other {nicht aus {name} entfernt}}}}",
         "title": "Ziel für eingeschlossene Artikel",
         "helpTitle": "Wohin eingeschlossene Artikel gehen",
         "savedEach": "Gespeichert, sobald jeder eingeschlossen ist",
@@ -8951,6 +8944,7 @@
         "found": "{count, number} gefunden",
         "alreadyIn": "{count, number} bereits enthalten",
         "leftOut": "{count, plural, one {# ausgelassen} other {# ausgelassen}}",
+        "unread": "{count, plural, one {Konnte # Quelle nicht lesen} other {Konnte # Quellen nicht lesen}}",
         "added": "{count, number} hinzugefügt",
         "newFrom": "{count, number} neu aus {source}",
         "result": "{result, select, include {{count, number} eingeschlossen} maybe {{count, number} vielleicht} exclude {{count, number} ausgeschlossen} conflict {{count, number} im Konflikt} other {{count, number} warten auf Stimmen}}",
@@ -9456,7 +9450,8 @@
           "unread": "Sie konnte nicht gelesen werden",
           "pdfTooBig": "Über {mb, number} MB",
           "unsent": "Sie konnte nicht gesendet werden",
-          "allUnsent": "Sie konnten nicht gesendet werden"
+          "allUnsent": "Sie konnten nicht gesendet werden",
+          "priceComing": "Ein PDF wird hinzugefügt, sobald sein Preis angezeigt wird. Fügen Sie es gleich noch einmal hinzu"
         },
         "drop": "Literaturdateien oder PDFs hier ablegen",
         "helpTitle": "Dateien",
@@ -9465,6 +9460,7 @@
         "aboutFiles": "Eine Literaturdatei ist das, was eine Datenbank oder ein Literaturverwaltungsprogramm exportiert. Jeder ihrer Einträge mit Titel und Abstract ist ein Artikel.",
         "aboutPdfs": "Ein PDF wird gelesen, sobald es hinzugefügt ist, um Titel und DOI zu finden. Enthält der Index von Openscholar diese DOI, erscheint der Artikel mit Titel und Abstract aus dem Index. Sonst ist der Artikel das PDF selbst. Eine Person, die ihn prüft, liest die Datei, und ebenso jedes KI-Modell, das PDFs liest, jede Seite davon. Ein Modell, das nur Text liest oder ein so langes PDF nicht aufnehmen kann, hat dazu keine Stimme. Ein Scan wird genauso gelesen. Eine Datei, die sich nicht öffnen lässt, wird ausgelassen.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF oder eine Textdatei mit DOIs, beliebig viele auf einmal",
+        "pricing": "Es wird ermittelt, was ein PDF kostet",
         "pdfCost": "Ein Modell liest die ersten Seiten jedes PDFs, um Titel und DOI zu finden. Das kostet bis zu {credits, plural, one {# Credit} other {# Credits}} pro PDF, bezahlt beim Hinzufügen",
         "filesLabel": "Hochzuladende Dateien",
         "choose": "Dateien wählen",
@@ -9497,6 +9493,8 @@
         "add": "DOIs hinzufügen"
       },
       "zotero": {
+        "gone": "Diese Sammlung ist nicht mehr in Zotero",
+        "openAbove": "{name} öffnen",
         "myLibrary": "Meine Bibliothek",
         "loading": "Zotero wird geladen",
         "loadingCollections": "Sammlungen werden geladen",

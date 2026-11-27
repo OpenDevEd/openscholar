@@ -51,7 +51,7 @@ import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
 import { searchHistory, useOpenInAddress } from "./address";
-import { decide, OTHER_REASON, type Answer } from "@/lib/screening/rules";
+import { decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
@@ -885,7 +885,7 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
     return (
       <form data-reason-note className="space-y-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
         {/* Escape anywhere in the note's form goes back to the reasons, as its Back button shows, and never closes what it sits in. */}
-        <Input autoFocus value={note} onChange={(event) => setNote(event.target.value)} placeholder={screen("exclude.why")} aria-label={screen("exclude.whyLabel")} className="h-8 bg-card text-sm" />
+        <Input maxLength={NOTE_LENGTH} autoFocus value={note} onChange={(event) => setNote(event.target.value)} placeholder={screen("exclude.why")} aria-label={screen("exclude.whyLabel")} className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setWriting(false)}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
           <Button type="submit" variant="destructive" className="h-9 rounded-xl" disabled={!note.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
@@ -941,7 +941,9 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     const said = withNote ?? (notes[kind].trim() || undefined);
     // Saved at once, with a way back, as a vote on Screen and a settling over a selection have: what stood before is put back. Refused, the toast that said it was done goes, and the note written comes back to be sent again.
     const typed = notes[kind];
-    const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); notSaved(t, error); };
+    // Refused, the editor the vote came from opens again with what was written, so nothing is written twice.
+    const wasOpen = deciding === kind;
+    const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); if (wasOpen) setDeciding(kind); notSaved(t, error); };
     if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch(refused);
     else open.resolve(paper.id, decision, said, reason).catch(refused);
     const undo = () => (kind === "vote" ? open.vote(paper.id, mine ? { decision: mine.decision, answers: mine.answers, ...(mine.reason ? { reason: mine.reason } : {}), ...(mine.note ? { note: mine.note } : {}) } : null) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason)).catch((error) => notSaved(t, error));
@@ -964,7 +966,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={notes[kind]} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
     ) : (
       <div className="space-y-2">
-        <Input value={notes[kind]} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="h-8 bg-card text-sm" />
+        <Input maxLength={NOTE_LENGTH} value={notes[kind]} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-3 gap-2">
           {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>
@@ -988,7 +990,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PdfRoom pages={1} more={(paper.pdf.pages ?? 1) > 1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (
