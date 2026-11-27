@@ -18,7 +18,7 @@ import { nextResolver, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
 import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
-import { keeperOf, readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { keepVersion, keeperOf, readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./gathering";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -185,6 +185,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
+  // A change to its rule or its criteria is a version of them from now on, which the whole record lists.
+  if (JSON.stringify(job.rule) !== JSON.stringify(saved.rule) || JSON.stringify(job.criteria ?? []) !== JSON.stringify(saved.criteria ?? [])) await keepVersion(ctx, saved, actor.userId);
 
   for (const { reviewer, discard } of plan.leaving) await takeOff(ctx, saved, reviewer, discard);
   for (const { userId } of plan.joining) {

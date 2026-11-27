@@ -9036,6 +9036,7 @@
         "byPlaceLabel": "حسب ترتيب التكليف"
       },
       "settledBy": "{you, select, true {حسمتها أنت} other {حسمها {name}}}",
+      "votedToast": "صوّتّ بـ{decision} على {count, number}",
       "settledToast": "حُسمت {count, number} بنتيجة {result}",
       "undo": "تراجع",
       "filter": {
@@ -9091,6 +9092,8 @@
         "selected": "{count, plural, other {# محددة}}",
         "everyPage": "تحديد كل الصفحات",
         "all": "{count, plural, other {تحديد الكل (#)}}",
+        "voteAs": "{count, plural, other {صوّت على الـ# التي تنتظرك بـ}}",
+        "notYours": "{count, plural, other {# غيرها لا تنتظر صوتك}}",
         "settleAs": "{count, plural, other {حسم الـ# المتعارضة بنتيجة}}",
         "ris": "ملف RIS، لمدير المراجع",
         "csvSeen": "ملف CSV، مع الأصوات التي تستطيع رؤيتها",

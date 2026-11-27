@@ -9036,6 +9036,7 @@
         "byPlaceLabel": "In der Reihenfolge der Zuweisung"
       },
       "settledBy": "{you, select, true {Von Ihnen entschieden} other {Von {name} entschieden}}",
+      "votedToast": "{count, plural, one {# Artikel} other {# Artikel}} mit {decision} abgestimmt",
       "settledToast": "{count, number} als {result} entschieden",
       "undo": "Rückgängig",
       "filter": {
@@ -9091,6 +9092,8 @@
         "selected": "{count, plural, other {# ausgewählt}}",
         "everyPage": "Alle Seiten auswählen",
         "all": "{count, plural, other {Alle # auswählen}}",
+        "voteAs": "{count, plural, other {Über # wartende abstimmen als}}",
+        "notYours": "{count, plural, one {# weiterer wartet nicht auf Ihre Stimme} other {# weitere warten nicht auf Ihre Stimme}}",
         "settleAs": "{count, plural, other {# im Konflikt entscheiden als}}",
         "ris": "RIS-Datei, für ein Literaturverwaltungsprogramm",
         "csvSeen": "CSV-Datei, mit den Stimmen, die Sie sehen können",

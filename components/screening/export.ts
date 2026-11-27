@@ -480,12 +480,13 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const { criteria, rule, scoring, destination } = screening;
   const of = { workspaceId, jobId: screening.id };
   // Its papers, what its reviewers wrote to each other, what was changed, and what each source held that it didn't take or merged.
-  const [papers, said, logged, leftOut, merged] = await Promise.all([
+  const [papers, said, logged, leftOut, merged, versions] = await Promise.all([
     everyPaper(convex, of),
     allOf((paginationOpts) => convex.query(api.screening.discussion.all, { ...of, paginationOpts })),
     allOf((paginationOpts) => convex.query(api.screening.view.activity, { ...of, paginationOpts })),
     Promise.all(screening.sources.map((source) => (leftOf(source) ? allOf((paginationOpts) => convex.query(api.screening.view.leftOut, { ...of, sourceId: source.id as Id<"screeningSources">, paginationOpts })) : []))),
     Promise.all(screening.sources.map((source) => (source.read?.duplicates ? allOf((paginationOpts) => convex.query(api.screening.view.merged, { ...of, sourceId: source.id as Id<"screeningSources">, paginationOpts })) : []))),
+    allOf((paginationOpts) => convex.query(api.screening.view.versions, { ...of, paginationOpts })),
   ]);
   // A file's words are English whoever downloads it: the activity's sentences are made from the English messages, which are read when a record is asked for and at no other time.
   const messages = (await import("@/messages/en-GB.json")).default;
@@ -522,7 +523,15 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: reviewer.model.effort ?? effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
     // Each source with the records it held and the screening didn't take, by name and with why, and the records it merged, each with the paper that stands for it (in `papers`, under the source that brought it first).
     sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, set: source.set ?? null, filters: source.filters ?? [], records_taken: source.scope === "range" ? { first: source.range[0], last: source.range[1] } : "all", last_checked_at: source.read?.checkedAt ? iso(source.read.checkedAt) : null, last_read_failed: source.read?.state === "failed" ? (source.read.failure ?? true) : null, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
-    papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null })),
+    papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null, settled_at: papers[i]!.settledAt ? iso(papers[i]!.settledAt!) : null })),
+    // What its rule and criteria were from each moment on, the first first: a paper's result is read against the version in force at its settled_at. Changes made before these were kept are not in it.
+    history: versions.map((one) => ({
+      from: iso(one.at),
+      // Null where nobody made the change by hand: who settles conflicts passed on when they left.
+      by: one.by,
+      rule: { people_on_each_paper: one.rule.each === "all" ? "Everyone" : one.rule.each, settled_when: SETTLE_LABEL[one.rule.settle], models_votes: one.rule.settle === "one" ? "Advice on papers a person has" : one.rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: one.rule.settle === "one" ? null : nameOn(screening, one.rule.resolver), other_votes_seen: one.rule.blind === "after" ? "After they vote" : "At any time" },
+      criteria: one.criteria.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null })),
+    })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{
       paper_id: paper.id,

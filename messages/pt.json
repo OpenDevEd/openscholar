@@ -9036,6 +9036,7 @@
         "byPlaceLabel": "Pela ordem de atribuição"
       },
       "settledBy": "{you, select, true {Decidido por si} other {Decidido por {name}}}",
+      "votedToast": "Votou {decision} em {count, plural, one {# artigo} other {# artigos}}",
       "settledToast": "{count, number} decididos como {result}",
       "undo": "Anular",
       "filter": {
@@ -9091,6 +9092,8 @@
         "selected": "{count, plural, one {# selecionado} other {# selecionados}}",
         "everyPage": "Selecionar todas as páginas",
         "all": "{count, plural, other {Selecionar todos os #}}",
+        "voteAs": "{count, plural, one {Votar # que espera por você como} other {Votar os # que esperam por você como}}",
+        "notYours": "{count, plural, one {# outro não espera seu voto} other {# outros não esperam seu voto}}",
         "settleAs": "{count, plural, other {Decidir # em conflito como}}",
         "ris": "Ficheiro RIS, para um gestor de referências",
         "csvSeen": "Ficheiro CSV, com os votos que pode ver",
