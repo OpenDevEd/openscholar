@@ -826,7 +826,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const musts = draft.criteria.filter((criterion) => criterion.must).length;
   const reviewersNow = inOrder(activeReviewers(draft), me);
   // Who reviews it, counted: people, those invited and not joined yet, and models.
-  const whoCounts = [joined.length ? words.count("people", joined.length) : "", people.length > joined.length ? t("summary.invited", { count: people.length - joined.length }) : "", models.length ? words.count("models", models.length) : ""].filter(Boolean);
+  const whoCounts = [joined.length ? words.count("people", joined.length) : "", invited ? t("summary.invited", { count: invited }) : "", models.length ? words.count("models", models.length) : ""].filter(Boolean);
   // `unset`: a part left empty that the screening can start without. It gets no tick, which would read as done.
   const summary: Array<{ id: string; label: string; value: string; problem: boolean; unset?: boolean; aside?: ReactNode }> = [
     { id: "papers", label: t("part.papers"), value: papers ? t("summary.papers", { state: upTo ? "upTo" : reading ? "soFar" : "none", papers, sources: draft.sources.length }) : reading ? t("block.reading") : t("summary.noPapers"), problem: !papers },
