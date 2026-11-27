@@ -4,6 +4,7 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { nameHas } from "@/lib/screening/rules";
 import { collectionHref } from "@/lib/library/links";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useDeferredValue, useState } from "react";
@@ -76,7 +77,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
   const rows = loading ? kept : results;
   // The invitations come with the page, from the first frame: the rows never move down for them.
   const invitations = useWaitingInvitations(initial?.invitations);
-  const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle.toLowerCase())));
+  const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && nameHas(row.name, needle));
   const kinds = (Object.keys(SHARED_KINDS) as SharedKind[]).filter((one) => counts?.[one]);
 
   return (
@@ -346,8 +347,8 @@ export function WaitingInvitations({ rows, kind, text = "" }: { rows: WaitingInv
   const router = useRouter();
   const respond = useWorkspaceAction(api.sharing.invitations.respond);
   const [answering, setAnswering] = useState<string | null>(null);
-  const needle = text.trim().toLowerCase();
-  const shown = (rows ?? []).filter((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle)));
+  // Matched as the lists match their own rows: every word, in any order.
+  const shown = (rows ?? []).filter((row) => (!kind || row.kind === kind) && nameHas(row.name, text.trim()));
   if (!shown.length) return null;
   const answer = (row: WaitingInvitation, accept: boolean) => {
     setAnswering(row.invitationId);

@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
+    // Typed text runs the way its language does: Arabic from the right, in a page set to English too.
     <input
       type={type}
+      dir="auto"
       data-slot="input"
       className={cn(
         "file:text-foreground placeholder:text-subtle-foreground selection:bg-primary selection:text-primary-foreground border-input h-9 w-full min-w-0 rounded-md border bg-field px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",

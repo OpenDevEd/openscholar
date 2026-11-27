@@ -287,7 +287,7 @@ function Screen({ open }: { open: Open }) {
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number }>>([]);
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number; pending?: Promise<unknown> }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
@@ -362,9 +362,11 @@ function Screen({ open }: { open: Open }) {
     const gap = history.length ? (Date.now() - history.at(-1)!.at) / 1000 : Infinity;
     if (gap < 300) setKept({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
     const stamped = (at: number | null) => { if (at !== null) (cast as { saved?: number }).saved = at; };
-    if (resolving) open.resolve(paper.id, decision, note, reason).then(stamped, refused);
-    // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
-    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).then(stamped, refused);
+    // Undo waits for this save's answer, so it always names the moment it took back.
+    (cast as { pending?: Promise<unknown> }).pending = resolving
+      ? open.resolve(paper.id, decision, note, reason).then(stamped, refused)
+      // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
+      : open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).then(stamped, refused);
     // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
     const fromSheet = tablet && reasonSheet !== null;
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
@@ -412,8 +414,12 @@ function Screen({ open }: { open: Open }) {
     // What it puts back is stamped anew: the step before it on the same paper names that moment, so a second Undo still works.
     const earlier = history.findLast((one) => one !== last && one.paper.id === last.paper.id && one.resolved === last.resolved);
     const restamp = (at: number | null) => { if (at !== null && earlier) earlier.saved = at; };
-    if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
-    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, last.saved === undefined ? {} : { onlyAt: last.saved }).then(restamp, failed);
+    void (last.pending ?? Promise.resolve()).then(() => {
+      // A save the server refused was never made: there is nothing to take back.
+      if (last.saved === undefined) return;
+      if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
+      else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then(restamp, failed);
+    });
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
   };

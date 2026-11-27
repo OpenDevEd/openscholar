@@ -67,7 +67,7 @@ import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText
 import { useScreeningsCrumb, overviewHref, papersHref, reviewerHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { SENTENCE_CHIP, settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
+import { SENTENCE_CHIP, settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL, FilterMenu } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -331,6 +331,9 @@ function CriterionPart({ label, hint, paired = false, children }: { label: strin
 const oneLine = (event: KeyboardEvent<HTMLTextAreaElement>) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) event.preventDefault(); };
 const unbroken = (text: string) => text.replace(/\s*\n\s*/g, " ");
 
+/** How many people a screening's "on each paper" choices stand side by side for: more than that, they are a list to pick from. */
+const EACH_SIDE_BY_SIDE = 5;
+
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
   const tFrame = useTranslations("screening.frame");
@@ -392,15 +395,16 @@ export function ScreeningForm({ id }: { id?: string }) {
     }
     if (!copied) return start;
     // A copy takes the papers the one it copies took: the same part of each source. Whoever votes on that one from outside its workspace is not on the copy: a screening is shared with a guest once it exists (`guestsLeft`).
-    // A copy made in another workspace than the one it copies (a guest copying what was shared with them) takes none of that workspace's people, nor where it sent its papers: the copy is theirs, with them on it and settling it.
+    // A copy made in another workspace than the one it copies (a guest copying what was shared with them) takes none of that workspace's people, sources or destination: those are that workspace's, and a saved-papers source would read the guest's own library under the copied name. The copy is theirs, with its criteria and rule, them on it and settling it, and sources they add.
     const here = copied.workspace.id === workspaceId;
     const mine = (one: Reviewer) => one.kind === "model" || (here && !one.guest);
-    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: [...(here ? [] : start.reviewers), ...activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id }))], rule: here ? copied.rule : { ...copied.rule, resolver: start.rule.resolver }, scoring: copied.scoring, destination: here ? { ...copied.destination, name: "" } : start.destination };
+    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set && here).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: [...(here ? [] : start.reviewers), ...activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id }))], rule: here ? copied.rule : { ...copied.rule, resolver: start.rule.resolver }, scoring: copied.scoring, destination: here ? { ...copied.destination, name: "" } : start.destination };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
   }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
   // The guests who vote on the screening this one is copied from, by name: they are not on the copy, and the form says how they get on it.
-  const guestsLeft = !id && copied ? activeReviewers(copied).filter((one) => one.kind === "person" && one.guest).map((one) => one.name) : [];
+  // A copy made in another workspace takes none of the people: it says nothing of whom it left behind, the person copying it among them.
+  const guestsLeft = !id && copied && copied.workspace.id === workspaceId ? activeReviewers(copied).filter((one) => one.kind === "person" && one.guest).map((one) => one.name) : [];
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
   // A new screening being filled in is its maker's, in the workspace it was begun in: its files, its searches and what was read of them are that workspace's.
   const key = id ?? `new:${workspaceId ?? ""}:${setup?.me.id ?? ""}:${from ?? ""}:${fromSearch ?? ""}:${fromHandoff ?? ""}`;
@@ -611,7 +615,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What its models have cost so far.
   const spentSoFar = saved ? saved.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0) : 0;
   // Invitations to take back on Save, by address.
-  const [uninviting, setUninviting] = useState<string[]>([]);
+  // Kept in the draft, with the other unsaved changes: leaving Settings or undoing Discard keeps them too.
+  const uninviting = draft.uninviting ?? [];
+  const setUninviting = (next: (now: string[]) => string[]) => setDraft((now) => ({ ...now, uninviting: next(now.uninviting ?? []) }));
   const edits = saved ? [...changesOf(say, saved, draft), ...(uninviting.length ? [{ text: t("edit.removedReviewers", { count: uninviting.length, names: words.listed(uninviting.slice(0, 2)) }), section: "reviewers" as EffectSection }] : [])] : [];
   const dirty = edits.length > 0;
   // Paused models read nothing until someone resumes them: their rows and the cost say so.
@@ -799,15 +805,21 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
-      // Invitations taken back go first: they free their guest places for anyone invited in the same save, and the papers waiting for them are then settled without them.
-      if (uninviting.length) await Promise.all(uninviting.map((email) => share.uninvite(email)));
-      setUninviting([]);
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
       const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left) && !(one.email && waiting.has(one.email.toLowerCase())));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
-      const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      const send = (some: typeof outside) => Promise.allSettled(some.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      // The invitations taken back go after the new ones, so no paper settles between them without the newcomer. Where the guest places are full, they go first and free their places for the ones that couldn't be sent.
+      let sent = await send(outside);
+      if (uninviting.length) {
+        await Promise.all(uninviting.map((email) => share.uninvite(email)));
+        // Taken back now: a save tried again doesn't take them back twice.
+        setUninviting(() => []);
+        const again = outside.filter((_, at) => sent[at]!.status === "rejected");
+        if (again.length) { const retried = await send(again); sent = sent.map((one, at) => (one.status === "rejected" ? retried[again.indexOf(outside[at]!)]! : one)); }
+      }
       // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
       const refused = outside.flatMap((one, at) => (sent[at]!.status === "rejected" ? [{ one, why: (sent[at] as PromiseRejectedResult).reason as unknown }] : []));
       if (refused.length) {
@@ -833,7 +845,6 @@ export function ScreeningForm({ id }: { id?: string }) {
   const discard = () => {
     const was = kept;
     setRecheck(false);
-    setUninviting([]);
     keep(key, () => undefined);
     toast(t("toast.discarded"), { action: { label: t("toast.undo"), onClick: () => keep(key, () => was) } });
   };
@@ -1522,7 +1533,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <span className="text-sm text-muted-foreground">{t("decided.onePerson")}</span>
                 ) : readers ? (
                   // Every number up to the team's size, invited people included, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
-                  <Segmented wraps label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
+                  (() => {
+                    const value = draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each;
+                    const options = [...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }];
+                    // Up to five people the numbers stand side by side; a larger team picks its number from a list, as long lists are picked.
+                    return readers <= EACH_SIDE_BY_SIDE
+                      ? <Segmented wraps label={t("decided.each")} value={value} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={options} />
+                      : <FilterMenu name={t("decided.each")} value={value} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} narrows={false} choices={options.map((one) => ({ value: one.id, label: one.label }))} />;
+                  })()
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
               <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, saved ? (open?.invited ?? []) : []), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>

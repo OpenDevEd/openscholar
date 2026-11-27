@@ -1052,11 +1052,13 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
     // When the server stamped it: Undo puts back what stood before only while this one still stands.
     let stamped: number | undefined;
     const stampedAt = (at: number | null) => { if (at !== null) stamped = at; done(); };
-    if (kind === "vote") {
-      setSent({ paper: paper.id, decision, reason });
-      open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).then(stampedAt, failed);
-    } else open.resolve(paper.id, decision, said, reason).then(stampedAt, failed);
-    const undo = () => (kind === "vote" ? open.vote(paper.id, saved ? { decision: saved.decision, answers: saved.answers, ...(saved.reason ? { reason: saved.reason } : {}), ...(saved.note ? { note: saved.note } : {}) } : null, stamped === undefined ? {} : { onlyAt: stamped }) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason, stamped)).catch((error) => notSaved(t, error));
+    if (kind === "vote") setSent({ paper: paper.id, decision, reason });
+    // Undo waits for this save's answer, so it always names the moment it took back.
+    const saving = kind === "vote" ? open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).then(stampedAt, failed) : open.resolve(paper.id, decision, said, reason).then(stampedAt, failed);
+    const undo = () => saving.then(() => {
+      if (stamped === undefined) return;
+      return (kind === "vote" ? open.vote(paper.id, saved ? { decision: saved.decision, answers: saved.answers, ...(saved.reason ? { reason: saved.reason } : {}), ...(saved.note ? { note: saved.note } : {}) } : null, { onlyAt: stamped }) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason, stamped)).catch((error) => notSaved(t, error));
+    });
     // Undo puts back only what you did: a result someone else settled is theirs, and isn't put back in your name.
     const mayUndo = kind === "vote" || !state.resolvedBy || state.resolvedBy === open.me;
     const shownToast = toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);

@@ -3,10 +3,12 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useItemHome } from "@/components/workspaces/item-home";
 import { leaveBehind } from "./address";
 import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
@@ -205,8 +207,12 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     </>
   );
 
+  // A screening of another of the person's workspaces, opened by its plain address (an email, the assistant, an invitation taken up after joining): the page waits while the workspace it is in is read and the page goes there (../workspaces/item-home.tsx), never saying "not found" on the way.
+  const home = useItemHome(read === null ? { kind: "screening", id } : null);
+  const slug = useWorkspaceSlug();
+  const goingHome = read === null && (home === undefined || (home !== null && (home.slug ?? null) !== (slug ?? null)));
   // While it is read the frame holds its place: the name the list showed, or a line where it will be, the strip of pages, and lines where the page will be.
-  if (read === undefined) {
+  if (read === undefined || goingHome) {
     const name = listedNames.get(id);
     return (
       <PageWrapper className={view === "screen" ? "lg:[&>footer]:hidden" : undefined}>
@@ -495,8 +501,6 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   const list = useTranslations("screening.list");
   const words = useWords();
   const format = useFormatter();
-  // Drawn again each minute, so "just now" moves on to "2 min ago" while the page stays open.
-  const now = useNow({ updateInterval: 60_000 }).getTime();
   if (!kind) return null;
   const tone = TONE[BANNER_TONE[kind]];
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
@@ -509,7 +513,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at, now), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
+        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
         <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />{t("banner.screenNew", { count: open.latest.mine })}</NextLink></Button>
       </div>
     );
@@ -537,7 +541,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
       <div className={row}>
         <CircleCheck className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          {words.ago(at, now) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at, now) })}
+          {words.ago(at) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at) })}
           <Help title={t("banner.finishedTitle")}>{t("banner.finishedHelp", { member: String(open.canChange), workspace })}</Help>
         </span>
         {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw />{t("checkReopens")}</Button> : null}
@@ -572,8 +576,6 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   const t = useTranslations("screening.frame");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
-  // Drawn again each minute, so "just now" moves on while the page stays open.
-  const now = useNow({ updateInterval: 60_000 }).getTime();
   const says = "@max-[48rem]/strip:sr-only";
   // On a phone's strip the sign alone stays, so the four tabs keep their room.
   const figures = "tabular-nums text-muted-foreground @max-[30rem]/strip:sr-only";
@@ -608,6 +610,6 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
   if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at, now) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at, now) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
+  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
   return null;
 }

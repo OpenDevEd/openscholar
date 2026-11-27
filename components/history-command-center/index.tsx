@@ -242,6 +242,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   // A chooser sits in its host's frame with its own toolbar; the page puts its controls in the page bar.
   if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={pickedView} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
   return <HistoryPageFrame
+    text={searchFilter}
     intro={runBy.filter}
     tabs={<ViewModeSwitch value={pickedView} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
@@ -260,11 +261,11 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 }
 
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
-function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
+function HistoryPageFrame({ children, text = "", ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode; /** The search typed, which narrows the invitations as it does the list. */ text?: string }) {
   const tc = useTranslations("common");
-  // Searches shared with the person that wait for their answer, above their own.
+  // Searches shared with the person that wait for their answer, above their own. The list waits for them, so they never push it down.
   const invitations = useWaitingInvitations();
-  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}><WaitingInvitations rows={invitations} kind="search" />{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}><WaitingInvitations rows={invitations} kind="search" text={text} />{invitations === undefined ? <ListLoading label={tc("loading")} /> : children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {

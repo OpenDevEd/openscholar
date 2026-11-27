@@ -7,7 +7,7 @@
 import { AutoHeight } from "@/components/ui/auto-height";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useState, type ComponentProps } from "react";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { collectionHref } from "@/lib/library/links";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -971,8 +971,6 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
   const workspaceId = usePageWorkspace();
   const t = useTranslations("screening.overview");
   const words = useWords();
-  // Drawn again each minute, so a check "just now" moves on while the page stays open.
-  const now = useNow({ updateInterval: 60_000 }).getTime();
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
   // The latest checks, a page at a time once every one is asked for. The look it started with is its own row under them.
@@ -1030,7 +1028,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                   <div className="flex items-start gap-3 px-4 py-3">
                     {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t("checks.checkedBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at, now)}</span></p>
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t("checks.checkedBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at)}</span></p>
                       {check.state === "failed" ? (
                         <StateChip tone="destructive">{t("checks.failed")}</StateChip>
                       ) : check.found ? (
@@ -1086,7 +1084,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt, now)}</span></p>
+              <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
               {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
               {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>

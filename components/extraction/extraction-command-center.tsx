@@ -102,7 +102,8 @@ export function ExtractionCommandCenter() {
       {/* Extractions shared with the person that wait for their answer, above their own. */}
       <WaitingInvitations rows={invitations} kind="extraction" text={searchFilter} />
       <div className={cn(jobs.isStale && "pointer-events-none opacity-60")}>
-        {jobs.isLoading ? <ListLoading label={tc("loading")} /> : <CommandCenterList
+        {/* The list waits for the invitations above it too, so they never push it down. */}
+        {jobs.isLoading || invitations === undefined ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={jobs.items}
           viewMode={extractionViewMode}
           keyExtractor={(job) => job._id}

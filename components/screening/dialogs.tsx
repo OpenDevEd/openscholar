@@ -162,7 +162,9 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   const room = useProtectedQuery(api.sharing.guests.room, shared).data;
   const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: PAGE });
   const invited = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: PAGE });
-  const membersRead = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && addAs === "reviewer" ? { text, exclude: peopleOf(screening).map((one) => one.id), paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
+  // An address typed is looked up among every member, the reviewers too, so one who has it already is never invited: as a viewer to add, the members are looked up for that alone.
+  const typedEmail = /^\S+@\S+\.\S+$/.test(text.trim());
+  const membersRead = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && (addAs === "reviewer" || typedEmail) ? { text, ...(typedEmail ? {} : { exclude: peopleOf(screening).map((one) => one.id) }), paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
   // While the next letter's members are read, the last ones found stay: the list never empties under the typing.
   const [lastMembers, setLastMembers] = useState(membersRead);
   if (membersRead !== undefined && membersRead !== lastMembers) setLastMembers(membersRead);

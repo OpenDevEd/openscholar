@@ -3,6 +3,7 @@
 // Adding a reviewer to a screening: a member of the workspace, an address to invite from outside it,
 // or any model in the catalogue at any effort. Used by the form and by the open screening.
 
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { useState, type ReactNode } from "react";
 import { Mail, UserPlus } from "@/components/icons";
 import { ModelPicker } from "@/components/models/model-picker";
@@ -32,6 +33,8 @@ import type { Pdfs } from "@/lib/pricing/estimate";
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
 export function AddPerson({ exclude, screening, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
+  const frame = useTranslations("screening.frame");
+  const workspaceName = useCurrentWorkspace()?.name;
   const words = useWords();
   const [open, setOpen] = useState(false);
   // The pointer over the button or the keyboard on it: the members are read from then, so the picker opens with them in it.
@@ -61,6 +64,9 @@ export function AddPerson({ exclude, screening, onPick, children }: { exclude: s
   const guest = email === null ? undefined : guests.results.find((one) => one.email.toLowerCase() === email);
   const guestAlready = guest !== undefined && exclude.includes(guest.userId);
   const already = email !== null && ((known !== undefined && !member) || invitedAlready || guestAlready);
+  // The plan's places for people from outside, as the People dialog counts them: those invited in this form and not saved yet take one each. Full, nobody more from outside is offered, and the list says why.
+  const room = useProtectedQuery(api.sharing.guests.room, inWorkspace(workspaceId, screening && (open || near) ? { kind: "screening" as const, id: screening } : "skip")).data;
+  const outsideFull = room?.limit != null && room.used + exclude.filter((one) => one.startsWith("invite:")).length >= room.limit ? frame("peopleDialog.full", { workspace: workspaceName ?? "", count: room.limit }) : null;
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
@@ -113,7 +119,8 @@ export function AddPerson({ exclude, screening, onPick, children }: { exclude: s
                 </CommandItem>
               </CommandGroup>
             ) : null}
-            {email && !member && !already && !guest ? (
+            {email && !member && !already && !guest && outsideFull ? <p className="px-3 py-2 text-sm text-muted-foreground">{outsideFull}</p> : null}
+            {email && !member && !already && !guest && !outsideFull ? (
               <CommandGroup heading={t("invite")}>
                 <CommandItem value={email} disabled={read === undefined || !sharedRead} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>

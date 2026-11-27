@@ -5,7 +5,7 @@
 // (how a paper is settled, why a record was left out, a reason for excluding). A page takes them from
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { NAMED_REASONS, NO_REASON, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed, nameOn as nameOnScreening } from "./data";
 
@@ -16,12 +16,14 @@ type Peopled = { reviewers: Array<{ id: string; name: string }>; people: Record<
 const DAY = 86_400_000;
 
 /** The shared messages' translator and the formatter of numbers, dates and lists, for whichever language. `effort` names a model's reasoning effort as the model picker does, where the language isn't English. */
-type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter>; effort?: (level: string) => string };
+type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter>; effort?: (level: string) => string; /** The clock "how long ago" is told by: a page's ticks each minute, so "just now" moves on. */ clock?: number };
 
 /** The shared words of the reader's own language. */
 export function useWords() {
   const efforts = useTranslations("settingsAi.efforts");
-  return wordsOf({ t: useTranslations("screening.words"), format: useFormatter(), effort: (level) => (efforts.has(level as "high") ? efforts(level as "high") : level) });
+  // A clock that moves on each minute: every "how long ago" on the page is told by it, and the page draws again as it moves.
+  const clock = useNow({ updateInterval: 60_000 }).getTime();
+  return wordsOf({ t: useTranslations("screening.words"), format: useFormatter(), effort: (level) => (efforts.has(level as "high") ? efforts(level as "high") : level), clock });
 }
 
 /**
@@ -30,7 +32,7 @@ export function useWords() {
  */
 /** An amount of credits as it is shown: whole numbers from 10, a tenth below, and never 0 for something that costs. */
 const creditsOf = (n: number) => (n <= 0 ? 0 : n < 10 ? Math.max(0.1, Math.round(n * 10) / 10) : Math.ceil(n));
-export function wordsOf({ t, format, effort = (level) => level }: Said) {
+export function wordsOf({ t, format, effort = (level) => level, clock }: Said) {
 
   /** A number as people read it: "1,204". */
   const num = (n: number) => format.number(n);
@@ -120,7 +122,7 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
     /** What stands where no paper has a result: on a Papers tab and in the Export dialog. "Yet" only while the screening is running. */
     empty: (result: Result | "all", finished: boolean) => (result === "all" || result === "conflict" || result === "waiting" ? t(`empty.${result}`) : t(`empty.${result}`, { finished: String(finished) })),
     /** A date as a page shows it: how long ago for the last week, the day before that. */
-    ago: (at: number, now = Date.now()) => {
+    ago: (at: number, now = clock ?? Date.now()) => {
       const minutes = Math.max(0, Math.round((now - at) / 60_000));
       if (minutes < 1) return t("ago.now");
       if (minutes < 60) return t("ago.minutes", { count: minutes });

@@ -86,6 +86,7 @@ export function ScreeningsIndex() {
   const begun = useKept((store) => store.drafts);
   const draft = Object.entries(begun).flatMap(([key, held]) => { const one = draftOf(key); return one && one.workspace === (here ?? "") ? [{ name: held.name.trim(), href: newHref(one.started) }] : []; })[0];
   const t = useTranslations("screening.list");
+  const tShared = useTranslations("workspaces.shared");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
   const runBy = useRunBy("screeningJobs", { label: "startedBy", compact: true });
@@ -115,12 +116,15 @@ export function ScreeningsIndex() {
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
-  // An invitation needs the person as much as a vote does: counted in Needs you, as the rail's badge counts it.
-  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length + (invitations ?? []).filter((row) => row.kind === "screening").length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
-  const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
+  // An invitation needs the person as much as a vote does, and so does a screening waiting in another workspace (the rows above the list): counted in Needs you, as the rail's badge counts them.
+  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length + (invitations ?? []).filter((row) => row.kind === "screening").length + (elsewhere?.length ?? 0), open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
+  // The first-use block is for someone with no screening of their own: an invitation waiting doesn't make them a user of the list.
+  const invitedCount = (invitations ?? []).filter((row) => row.kind === "screening").length;
+  const empty = counts !== undefined && counts.all === 0 && counts.you - invitedCount - (elsewhere?.length ?? 0) === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
-  const none = searched ? t("noneCalled", { show, name: words.quoted(searched) }) : t("none", { show });
+  // Under Needs you, an empty list below an invitation says how to answer it, not that nothing needs the person.
+  const none = searched ? t("noneCalled", { show, name: words.quoted(searched) }) : show === "you" && invited.length ? tShared("emptyInvited") : t("none", { show });
   // A count still being read holds a digit's room, so the tabs keep their place when it arrives.
   const count = (value: number | undefined, tone?: "primary" | "success") => (value === undefined ? <span aria-hidden className="invisible tabular-nums">0</span> : <TabCount value={value} tone={tone} />);
 
