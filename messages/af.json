@@ -8150,6 +8150,7 @@
         "failed": "Dit het nie gewerk nie. Probeer weer.",
         "notAdded": "{names} kon nie bygevoeg word nie. Probeer weer onder Mense.",
         "modelsHeld": "Die modelle het nog nie begin lees nie. Druk Hervat in die siftering om hulle te laat begin.",
+        "guestsHeld": "{names} kon nie uitgenooi word nie, dus wag die modelle vir hulle. Nooi hulle weer uit onder Mense en hervat dan die modelle.",
         "notInvited": "{names} kon nie uitgenooi word nie, dus is nog niks gestoor nie, en elke verandering hier wag nog. Stoor weer om weer te probeer.",
         "notStarted": "Die siftering kon nie begin word nie. Probeer weer.",
         "saved": "Veranderinge gestoor",

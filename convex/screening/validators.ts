@@ -355,7 +355,7 @@ export const reviewerViewValidator = v.object({
 export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
 /** Invitations to vote on one screening that wait for an answer, as its Overview lists them among its reviewers: the first of them. Its list of people pages through every one. */
 export const INVITED_SHOWN = 20;
-export const invitedViewValidator = capped(v.optional(v.array(v.object({ email: v.string() }))), INVITED_SHOWN);
+export const invitedViewValidator = capped(v.optional(v.array(v.object({ email: v.string(), /** Its email couldn't be sent: inviting again sends it. */ undelivered: v.optional(v.literal(true)) }))), INVITED_SHOWN);
 
 /** Screenings in the person's other workspaces that one page points at. */
 export const ELSEWHERE_MAX = 20;

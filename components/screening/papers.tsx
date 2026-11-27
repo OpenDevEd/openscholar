@@ -45,7 +45,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -246,7 +246,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const paper = opened && read !== null ? (found ?? held) : undefined;
   // The paper before, kept while the one asked for is read (by its id, or by its place on a page still loading): dimmed and out of reach.
   const stale = Boolean(paper && (turning || (openId && paper.id !== openId)));
-  const at = paper ? shown.findIndex((one) => one.id === paper.id) : -1;
+  // Its place in a list still being read is not known: no position is said and no step is offered until the rows come.
+  const at = paper && !listed.isStale ? shown.findIndex((one) => one.id === paper.id) : -1;
   const inView = at >= 0;
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
 
@@ -322,12 +323,23 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   const conflictsPicked = pickedPapers.filter((one) => one.result === "conflict");
   // Many papers are settled a few at a time: hundreds of saves at once would each wait on the others.
-  const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => { for (let at = 0; at < papers.length; at += SETTLED_AT_ONCE) await Promise.all(papers.slice(at, at + SETTLED_AT_ONCE).map(save)); };
-  const settleAll = (decision: Decision, why?: { reason: string; note?: string }) => {
+  // Each save's outcome is kept: what is said, and what Undo takes back, is only what the server took.
+  const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => {
+    const saved: Paper[] = [];
+    let refused: unknown;
+    for (let at = 0; at < papers.length; at += SETTLED_AT_ONCE) {
+      const batch = papers.slice(at, at + SETTLED_AT_ONCE);
+      (await Promise.allSettled(batch.map(save))).forEach((done, i) => (done.status === "fulfilled" ? saved.push(batch[i]!) : (refused ??= done.reason)));
+    }
+    return { saved, refused };
+  };
+  const settleAll = async (decision: Decision, why?: { reason: string; note?: string }) => {
     const settling = conflictsPicked;
-    each(settling, (one) => open.resolve(one.id, decision, why?.note, why?.reason)).catch((error) => notSaved(t, error));
-    setPicked([]);
-    toast(t("settledToast", { count: settling.length, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void each(settling, (one) => open.resolve(one.id, null)).catch((error) => notSaved(t, error)) } });
+    const { saved, refused } = await each(settling, (one) => open.resolve(one.id, decision, why?.note, why?.reason));
+    // The ones the server refused stay picked, to try again.
+    setPicked(settling.filter((one) => !saved.includes(one)));
+    if (refused) notSaved(t, refused);
+    if (saved.length) toast(t("settledToast", { count: saved.length, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.resolve(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
@@ -375,7 +387,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           value={from}
           onChange={(next) => go({ source: next === "all" ? null : next })}
           className={trigger}
-          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, count: keptOf(source) }; })]}
+          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.filter((source) => !source.read?.removedAt || source.id === from).map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, count: keptOf(source) }; })]}
         />
       ) : null}
       {/* Any number of reviewers: with several, the table shows the papers all of them voted on. The menu stays open while they are picked. */}
@@ -889,7 +901,7 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
     return (
       <form data-reason-note className="space-y-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
         {/* Escape anywhere in the note's form goes back to the reasons, as its Back button shows, and never closes what it sits in. */}
-        <Input maxLength={NOTE_LENGTH} autoFocus value={note} onChange={(event) => setNote(event.target.value)} placeholder={screen("exclude.why")} aria-label={screen("exclude.whyLabel")} className="h-8 bg-card text-sm" />
+        <ReasonNoteField value={note} onChange={setNote} className="bg-card" />
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setWriting(false)}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
           <Button type="submit" variant="destructive" className="h-9 rounded-xl" disabled={!note.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
@@ -1039,7 +1051,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
                 <li key={reviewer.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <ReviewerMark reviewer={reviewer} className="size-5" />
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><ReviewerName reviewer={reviewer} className="font-medium" /><VoteFacts vote={undefined} failed criteria={screening.criteria} /></span>
-                  {open.canChange ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} className="justify-self-start max-sm:col-start-2" /> : null}
+                  {open.canChange && !open.screening.finishedAt ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} className="justify-self-start max-sm:col-start-2" /> : null}
                 </li>
               );
             })}

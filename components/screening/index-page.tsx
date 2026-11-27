@@ -104,12 +104,12 @@ export function ScreeningsIndex() {
   // Under the default order what waits for the person leads the first page, and the pages after it never repeat one.
   const pinned = sort === "you" && show !== "finished" && listed.page === 1 ? needs.filter((row) => show === "all" || !row.finishedAt) : [];
   const paged = show === "you" ? [] : listed.items.filter((row) => !(sort === "you" && show !== "finished" && waiting.has(row.id)));
-  const rows = (show === "you" ? needs : [...pinned, ...paged, ...(show === "all" && listed.page === 1 ? shared.filter((row) => !waiting.has(row.id)) : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
+  const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? shared.filter((row) => !waiting.has(row.id) && (show === "all" || (show === "finished") === Boolean(row.finishedAt))) : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || (show !== "you" && listed.isLoading);
-  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt && needing(row)).length, finished: tally.finished } : undefined;
+  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
   const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;

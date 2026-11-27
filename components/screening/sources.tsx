@@ -38,7 +38,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
-import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs";
+import { parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { searchHistory } from "./address";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { hash, type Source, type SourceSet } from "./data";
@@ -503,7 +503,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const openTree = useWorkspaceMutation(api.zotero.tree.open);
   const own: ZoteroLibrary = { name: t("zotero.myLibrary") };
   // The library and the collections opened on the way to where the list stands, the last of them the one it stands in, are in the address together: each one opened is a step in the history, and Back returns to a folder with the library it is in. What each is, is kept as it was read.
-  const [where, setWhere] = useQueryStates({ zoteroLibrary: parseAsString, folder: parseAsArrayOf(parseAsString), zoteroFind: parseAsString.withDefault("") }, { history: "push", scroll: false });
+  const [where, setWhere] = useQueryStates({ zoteroLibrary: parseAsString, folder: parseAsArrayOf(parseAsString), zoteroFind: parseAsString.withDefault(""), zoteroAll: parseAsBoolean.withDefault(true) }, { history: "push", scroll: false });
+  // Whether a collection is taken with its sub-collections: a choice in the address with the rest, so Back undoes it.
+  const deep = where.zoteroAll;
+  const setDeep = (next: boolean) => void setWhere({ zoteroAll: next ? null : false });
   const [seen, setSeen] = useState<{ libraries: Record<string, ZoteroLibrary>; folders: Record<string, ZoteroCollection> }>({ libraries: {}, folders: {} });
   const keys = where.folder ?? [];
   // A folder opened before a reload, or before the tab was left, is read back by its key.
@@ -514,7 +517,6 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const path = keys.flatMap((key) => (known[key] ? [known[key]] : []));
   // A collection the address names that Zotero no longer has: said, and nothing wider is listed in its place until the person moves up.
   const gone = !resolving && keys.some((key) => !known[key]);
-  const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
   // The search over the library's collections is in the address with them: starting and clearing it are steps.
   const find = where.zoteroFind;

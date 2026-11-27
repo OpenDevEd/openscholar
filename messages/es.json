@@ -8150,6 +8150,7 @@
         "failed": "No funcionó. Inténtelo de nuevo.",
         "notAdded": "No se pudo añadir a {names}. Vuelva a intentarlo desde Personas.",
         "modelsHeld": "Los modelos aún no han empezado a leer. Pulse Reanudar en el cribado para que empiecen.",
+        "guestsHeld": "No se pudo invitar a {names}, así que los modelos los esperan. Vuelva a invitarlos desde Personas y luego reanude los modelos.",
         "notInvited": "No se pudo invitar a {names}, así que aún no se guardó nada, y cada cambio aquí sigue pendiente. Vuelva a guardar para intentarlo de nuevo.",
         "notStarted": "No se pudo iniciar el cribado. Inténtelo de nuevo.",
         "saved": "Cambios guardados",

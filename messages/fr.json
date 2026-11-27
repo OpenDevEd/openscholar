@@ -8149,6 +8149,7 @@
         "failed": "Cela n'a pas marché. Réessayez.",
         "notAdded": "Impossible d'ajouter {names}. Réessayez depuis Personnes.",
         "modelsHeld": "Les modèles n'ont pas encore commencé à lire. Appuyez sur Reprendre dans le criblage pour les lancer.",
+        "guestsHeld": "Impossible d'inviter {names}, donc les modèles les attendent. Invitez-les de nouveau depuis Personnes, puis reprenez les modèles.",
         "notInvited": "Impossible d'inviter {names}, donc rien n'a encore été enregistré, et chaque modification ici attend toujours. Enregistrez de nouveau pour réessayer.",
         "notStarted": "Le criblage n'a pas pu démarrer. Réessayez.",
         "saved": "Modifications enregistrées",

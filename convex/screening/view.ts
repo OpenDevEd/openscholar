@@ -467,7 +467,7 @@ export const getAction = defineUserQuery({
       ...(guest ? { guest } : {}),
       flagged,
       guests: await countOf(ctx, itemGuestsOf(jobId)),
-      ...(member ? { invited: (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(INVITED_SHOWN)).flatMap((one) => (one.role === "editor" ? [{ email: one.email }] : [])) } : {}),
+      ...(member ? { invited: (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(INVITED_SHOWN)).flatMap((one) => (one.role === "editor" ? [{ email: one.email, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) }] : [])) } : {}),
       ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
       ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !paper.withdrawn && !isFinal(paper.result)).length, mine: theirs } } : {}),
     };

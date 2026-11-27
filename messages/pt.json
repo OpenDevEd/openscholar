@@ -8150,6 +8150,7 @@
         "failed": "Não funcionou. Tente novamente.",
         "notAdded": "Não foi possível adicionar {names}. Tente de novo em Pessoas.",
         "modelsHeld": "Os modelos ainda não começaram a ler. Prima Retomar na triagem para os iniciar.",
+        "guestsHeld": "Não foi possível convidar {names}, por isso os modelos esperam por eles. Convide-os de novo em Pessoas e depois retome os modelos.",
         "notInvited": "Não foi possível convidar {names}, por isso ainda nada foi guardado, e todas as alterações aqui continuam à espera. Guarde de novo para tentar outra vez.",
         "notStarted": "Não foi possível iniciar a triagem. Tente novamente.",
         "saved": "Alterações guardadas",

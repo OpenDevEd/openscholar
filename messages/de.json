@@ -8150,6 +8150,7 @@
         "failed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
         "notAdded": "Das Hinzufügen von {names} ist fehlgeschlagen. Fügen Sie sie unter Personen erneut hinzu.",
         "modelsHeld": "Die Modelle haben noch nicht mit dem Lesen begonnen. Klicken Sie im Screening auf Fortsetzen, um sie zu starten.",
+        "guestsHeld": "Die Einladung an {names} ist fehlgeschlagen, daher warten die Modelle auf sie. Laden Sie sie unter Personen erneut ein und setzen Sie dann die Modelle fort.",
         "notInvited": "Die Einladung an {names} ist fehlgeschlagen, daher wurde noch nichts gespeichert, und jede Änderung hier wartet noch. Speichern Sie erneut, um es noch einmal zu versuchen.",
         "notStarted": "Das Screening konnte nicht gestartet werden. Versuchen Sie es erneut.",
         "saved": "Änderungen gespeichert",

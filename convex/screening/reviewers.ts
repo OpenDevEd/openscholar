@@ -367,6 +367,8 @@ export const retry = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (reviewer?.jobId !== jobId || !readingModel(reviewer)) throw createError("NOT_FOUND", "That model isn't on this screening.");
+    // A finished screening reads nothing: its failed readings wait for it to be reopened.
+    if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to read those papers again.");
     await ctx.scheduler.runAfter(0, internal.screening.reviewers.reread, { jobId, reviewerId });
     const failed = (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())?.reviewers?.[reviewerId]?.failed;
     await logChange(ctx, actor, job, "retried", { detail: await calledOf(ctx, reviewer), ...(failed ? { count: failed } : {}) });

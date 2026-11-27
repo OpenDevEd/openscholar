@@ -97,6 +97,8 @@ export async function modelFor(ctx: Pick<MutationCtx, "db">, slug: string) {
 const setup = {
   /** Its models wait to read until the people the form invites are on it (`resume` with `quiet`), so a paper meant for them isn't settled first. */
   hold: v.optional(v.boolean()),
+  /** People from outside the workspace the form invites as reviewers once it is made: they count as its reviewers. */
+  guests: v.optional(v.number()),
   name: v.string(),
   question: v.optional(v.string()),
   criteria: v.array(criterionInput),
@@ -226,14 +228,14 @@ export const sweepDrafts = internalMutation({
 export const open = internalMutation({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), ...setup, draft: v.optional(v.id("screeningJobs")), libraryDestination: v.optional(libraryDestinationValidator), pruneName: v.optional(v.string()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, workspaceId, author, hold, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, draft, libraryDestination, pruneName }) => {
+  handler: async (ctx, { userId, workspaceId, author, hold, guests, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, draft, libraryDestination, pruneName }) => {
     const user = await requireActiveUser(ctx, userId);
     const writer = { userId, workspaceId };
     const title = name.trim();
     if (!title || title.length > SCREENING_TEXT.name) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
     if ((question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
     if (!sources.length || sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads 1 to ${MAX_SOURCES} sources.`);
-    if (!people.length && !models.length) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
+    if (!people.length && !models.length && !guests) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
     if (new Set(people).size !== people.length || new Set(models.map((one) => `${one.model}:${one.effort ?? ""}`)).size !== models.length) throw createError("VALIDATION_ERROR", "Each reviewer is on a screening once.");
     const most = await modelsLimit(ctx, workspaceId);
     if (models.length > most) throw createError("VALIDATION_ERROR", `This workspace's plan runs up to ${most} models on a screening.`);

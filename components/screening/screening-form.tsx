@@ -726,17 +726,18 @@ export function ScreeningForm({ id }: { id?: string }) {
     const name = draft.name.trim() || draft.sources[0]?.name || t("untitled");
     try {
       // People from outside the workspace are given it, or invited to it, once it is there to share: to vote, or to look. Its models wait for them, so no paper meant for them is settled first.
-      const voters = activeReviewers(draft).some((one) => one.kind === "person" && one.guest);
-      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(early ? { draft: early.jobId } : {}), ...(voters ? { hold: true } : {}) });
+      const guests = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).length;
+      const voters = guests > 0;
+      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(early ? { draft: early.jobId } : {}), ...(voters ? { hold: true, guests } : {}) });
       // From here the screening exists: whatever fails after, the person is taken to it, and told what is left to do there.
       const outside = [...activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).map((one) => ({ one, role: "editor" as const })), ...(draft.viewers ?? []).map((one) => ({ one, role: "viewer" as const }))];
       const sent = await Promise.allSettled(outside.map(({ one, role }) => (one.email ? invite({ kind: "screening", id: jobId, email: one.email, role }) : give({ kind: "screening", id: jobId, personId: one.id as Id<"users">, role }))));
       const refused = outside.flatMap(({ one }, at) => (sent[at]!.status === "rejected" ? [{ one, why: (sent[at] as PromiseRejectedResult).reason as unknown }] : []));
-      if (refused.length) showStyledToast("error", t("toast.notAdded", { names: words.listed(refused.map(({ one }) => one.name)) }), { description: getErrorMessage(refused[0]!.why, t("toast.failed")) });
-      // A voting guest who couldn't be invited leaves the models held: they would settle papers that wait for that person. The screening's banner lets them go once that is sorted.
+      // A voting guest who couldn't be invited leaves the models held: they would settle papers that wait for that person. One message says who, why, and what to do, in that order.
       const votersMissing = refused.some(({ one }) => outside.find((each) => each.one === one)?.role === "editor");
-      if (voters && votersMissing) showStyledToast("error", t("toast.modelsHeld"));
-      else if (voters) await resume({ jobId, quiet: true }).catch(() => showStyledToast("error", t("toast.modelsHeld")));
+      const names = words.listed(refused.map(({ one }) => one.name));
+      if (refused.length) showStyledToast("error", voters && votersMissing ? t("toast.guestsHeld", { names }) : t("toast.notAdded", { names }), { description: getErrorMessage(refused[0]!.why, t("toast.failed")) });
+      if (voters && !votersMissing) await resume({ jobId, quiet: true }).catch(() => showStyledToast("error", t("toast.modelsHeld")));
       flushSync(() => setSent(draft));
       keep(key, () => undefined);
       // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
@@ -752,7 +753,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
-      const waiting = new Set((open?.invited ?? []).map((one) => one.email.toLowerCase()));
+      const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).map((one) => one.email.toLowerCase()));
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left) && !(one.email && waiting.has(one.email.toLowerCase())));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
       const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));

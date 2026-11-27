@@ -8149,6 +8149,7 @@
         "failed": "Lokho akuphumelelanga. Zama futhi.",
         "notAdded": "Akukwazekanga ukwengeza {names}. Zama futhi kusuka ku-Abantu.",
         "modelsHeld": "Amamodeli awakaqali ukufunda. Cindezela okuthi Qhubekisa ekuskrinini ukuze uwaqalise.",
+        "guestsHeld": "Akukwazekanga ukumema {names}, ngakho amamodeli abalindile. Bameme futhi kusuka ku-Abantu, bese uqhubekisa amamodeli.",
         "notInvited": "Akukwazekanga ukumema {names}, ngakho akukagcinwa lutho okwamanje, futhi zonke izinguquko lapha zisalindile. Gcina futhi ukuze uzame futhi.",
         "notStarted": "Ukuskrini akukwazanga ukuqalwa. Zama futhi.",
         "saved": "Izinguquko zigciniwe",

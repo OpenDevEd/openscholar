@@ -8150,6 +8150,7 @@
         "failed": "Hilo halikufanikiwa. Jaribu tena.",
         "notAdded": "Haikuwezekana kuongeza {names}. Jaribu tena kutoka Watu.",
         "modelsHeld": "Modeli bado hazijaanza kusoma. Bonyeza Endeleza kwenye uchujaji ili kuzianzisha.",
+        "guestsHeld": "Haikuwezekana kualika {names}, kwa hiyo modeli zinawasubiri. Waalike tena kutoka Watu, kisha endeleza modeli.",
         "notInvited": "Haikuwezekana kualika {names}, kwa hiyo bado hakuna kilichohifadhiwa, na kila badiliko hapa bado linasubiri. Hifadhi tena ili kujaribu tena.",
         "notStarted": "Uchujaji haukuweza kuanzishwa. Jaribu tena.",
         "saved": "Mabadiliko yamehifadhiwa",
