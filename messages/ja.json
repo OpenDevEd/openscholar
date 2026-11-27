@@ -9576,8 +9576,7 @@
         "known": "インデックスにあり",
         "file": "PDF から読み取り",
         "broken": "開けません",
-        "waiting": "読み取り中",
-        "costsMore": "PDF から読み取る論文 1 件あたりの追加分"
+        "waiting": "読み取り中"
       },
       "removed": {
         "merged": "重複をまとめました",

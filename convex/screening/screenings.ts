@@ -38,6 +38,12 @@ export const criterionInput = v.object({
   points: v.optional(v.object({ yes: v.number(), no: v.number(), unclear: v.number() })),
 });
 export const ruleInput = v.object({ each: v.union(v.number(), v.literal("all")), settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")), resolver: v.optional(v.id("users")), blind: v.union(v.literal("after"), v.literal("always")), models: v.optional(modelVotesValidator) });
+/** How many people read each paper, when a paper is settled, who sees the votes and how a model's counts, as a screening keeps them. Under "first vote decides" a paper goes to one person: a second would read it for nothing. */
+export function ruleFrom(sent: Infer<typeof ruleInput>) {
+  const each = sent.settle === "one" ? 1 : sent.each === "all" ? ("all" as const) : Math.floor(sent.each);
+  if (each !== "all" && !(each >= 0 && each <= MAX_REVIEWERS)) throw createError("VALIDATION_ERROR", "Pick how many people read each paper.");
+  return { each, settle: sent.settle, blind: sent.blind, models: sent.models ?? ("vote" as const) };
+}
 export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), facts: v.optional(v.array(v.string())), first: v.optional(v.number()), last: v.optional(v.number()) });
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
@@ -233,9 +239,7 @@ export const open = internalMutation({
     const criteria = criteriaFrom(sent, [], now);
     if (!criteria.length && models.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
     const stars = starsFrom(sentStars, criteria.length);
-    // The first vote settles a paper, so it goes to one person: a second would read it for nothing.
-    const each = rule.settle === "one" ? 1 : rule.each === "all" ? ("all" as const) : Math.floor(rule.each);
-    if (each !== "all" && (each < 0 || each > MAX_REVIEWERS)) throw createError("VALIDATION_ERROR", "Pick how many people read each paper.");
+    const kept = ruleFrom(rule);
     // People vote as members of the workspace. Someone from outside is invited from the screening's People panel.
     const members = await Promise.all(people.map((id) => ctx.db.get("users", id)));
     for (const member of members) if (!member || member.state !== "active" || !(await actorIn(ctx, member, workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Invite anyone else by email.");
@@ -253,7 +257,7 @@ export const open = internalMutation({
       ...(question?.trim() ? { question: question.trim() } : {}),
       criteria,
       stars,
-      rule: { each, settle: rule.settle, resolver, blind: rule.blind, ...(rule.models === "advice" ? { models: "advice" as const } : {}) },
+      rule: { ...kept, resolver },
       ...(living ? { living: { every: living, next: now + EVERY_MS[living] } } : {}),
       ...legacyOf(criteria, stars),
       ...(later ? { newCollection: later } : await destination(ctx, writer, saveTo)),

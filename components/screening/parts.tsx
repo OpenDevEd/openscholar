@@ -7,7 +7,9 @@ import { motion, useReducedMotion, useSpring, useTransform } from "motion/react"
 import { Asterisk, Star, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { cn } from "@/lib/utils";
-import type { PaperSet } from "@/lib/screening/setup";
+import type { Infer } from "convex/values";
+import type { paperSetValidator } from "@/convex/screening/validators";
+type PaperSet = Infer<typeof paperSetValidator>;
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 
 /** Where a screening's papers came from, each with its kind's icon (components/record-kinds.ts). */
@@ -29,7 +31,8 @@ export function Chip({ icon: Icon, children, className }: { icon?: AppIcon; chil
   );
 }
 
-export function Stars({ count, of = 5 }: { count: number; of?: number }) {
+export function Stars({ count }: { count: number }) {
+  const of = 5;
   const t = useTranslations("screening.pieces");
   return (
     <span role="img" aria-label={t("starsOf", { count, of })} className="inline-flex shrink-0 items-center gap-0.5">

@@ -329,7 +329,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 { key: `ris:${group}`, format: "RIS", run: async () => save(fileName(out, GROUP_FILE[group], "ris", Date.now()), "application/x-research-info-systems", risOf(await every(papersOf(group)))), off: !included },
               ]
             : tab === "votes"
-              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), "text/csv", votesCsv(state.filed, state.me, await every({}), whose === "all" ? undefined : whose)), off: !total }]
+              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), "text/csv", votesCsv(state.filed, await every({}), whose === "all" ? undefined : whose)), off: !total }]
               : tab === "flow"
                 ? [
                     { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: false },

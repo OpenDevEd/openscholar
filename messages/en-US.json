@@ -9576,8 +9576,7 @@
         "known": "In the index",
         "file": "Read as its PDF",
         "broken": "Doesn't open",
-        "waiting": "Reading it",
-        "costsMore": "more for one read as its PDF"
+        "waiting": "Reading it"
       },
       "removed": {
         "merged": "Duplicates merged",

@@ -9577,8 +9577,7 @@
         "known": "Iko kwenye faharasa",
         "file": "Inasomwa kutoka PDF yake",
         "broken": "Haifunguki",
-        "waiting": "Inaisoma",
-        "costsMore": "zaidi kwa makala inayosomwa kutoka PDF yake"
+        "waiting": "Inaisoma"
       },
       "removed": {
         "merged": "Marudio yameunganishwa",

@@ -147,37 +147,6 @@ export const readingJob = internalQuery({
 });
 
 /**
- * Get real-time progress of a screening job.
- *
- * Returns a reactive progress object for the UI, or null if:
- * - User is not authenticated
- * - Job does not exist
- * - Job belongs to another user (user isolation, no info leak)
- */
-export const getScreeningProgress = query({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      status: screeningJobStatusValidator,
-      totalPapers: v.number(),
-      processedPapers: v.number(),
-      failedPapers: v.number(),
-      qualifiedPapers: v.number(),
-      percentComplete: v.number(),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await actorIn(ctx, user, job.workspaceId))) return null;
-    return await readJobProgressSnapshot(ctx, job);
-  },
-});
-
-/**
  * A screening job as its page shows it, for its workspace's members and for a guest of it
  * (#653); null for anyone else, and when it doesn't exist.
  */
@@ -304,51 +273,6 @@ async function libraryDestinationOf(ctx: QueryCtx, destination: NonNullable<Doc<
 export const getScreeningJob = userQuery(getScreeningJobAction, { signedOut: null });
 export const getScreeningJobForAssistant = assistantQuery(getScreeningJobAction);
 
-/**
- * Get the latest active screening job progress for the authenticated user.
- *
- * Returns the newest processing job with aggregate-backed progress for shell UI,
- * or null when the user is unauthenticated or has no active job.
- */
-export const getActiveScreeningJobProgress = workspaceQuery({
-  args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      jobId: v.id("screeningJobs"),
-      status: screeningJobStatusValidator,
-      totalPapers: v.number(),
-      processedPapers: v.number(),
-      failedPapers: v.number(),
-      qualifiedPapers: v.number(),
-      percentComplete: v.number(),
-    }),
-  ),
-  signedOut: null,
-  handler: async (ctx, { workspaceId }) => {
-    const activeJob = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_workspace_status", (q) =>
-        q.eq("workspaceId", workspaceId).eq("status", "processing"),
-      )
-      .order("desc")
-      .first();
-
-    if (!activeJob) return null;
-
-    const progress = await readJobProgressSnapshot(ctx, activeJob);
-    return {
-      jobId: activeJob._id,
-      status: activeJob.status,
-      totalPapers: activeJob.totalPapers,
-      processedPapers: progress.processedPapers,
-      failedPapers: progress.failedPapers,
-      qualifiedPapers: progress.qualifiedPapers,
-      percentComplete: progress.percentComplete,
-    };
-  },
-});
-
 // `by`: only the jobs that member ran (#656).
 const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator), by: v.optional(v.id("users")) };
 const jobListValidator = paginationResultValidator(
@@ -437,15 +361,6 @@ export const listJobsAction = defineUserQuery({
 });
 export const listJobs = userQuery(listJobsAction);
 export const listJobsForAssistant = assistantQuery(listJobsAction);
-
-/** How many screening jobs the person has, from the kept count (research/recordCounts.ts). */
-export const countUserScreeningJobs = workspaceQuery({
-  args: {},
-  returns: v.number(),
-  signedOut: 0,
-  // Someone with no job has no count; one from before counts were kept gets theirs from migrations/countScreeningJobs.
-  handler: async (ctx, { workspaceId }) => (await countRow(ctx, "screeningJobs", workspaceId))?.count ?? 0,
-});
 
 const screeningResultRowValidator = v.object({
   ...sourceMetadataFields,

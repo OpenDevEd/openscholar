@@ -9576,8 +9576,7 @@
         "known": "在索引中",
         "file": "按 PDF 读取",
         "broken": "无法打开",
-        "waiting": "正在读取",
-        "costsMore": "按 PDF 读取一篇需额外支付"
+        "waiting": "正在读取"
       },
       "removed": {
         "merged": "已合并重复项",

@@ -143,7 +143,6 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
   const reviewers = inOrder(votingReviewers(screening), open.me);
   const criteria = screening.criteria;
-  const blind = screening.rule.blind === "after";
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const narrow = useNarrow(id, open.me);
@@ -311,7 +310,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
-    if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, open.me, pickedPapers));
+    if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, pickedPapers));
     else save(fileName({ ...open, screening: open.filed }, "selected-papers", "ris", Date.now()), "application/x-research-info-systems", risOf(pickedPapers));
   };
 
@@ -485,7 +484,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       </div>
 
       {/* A filter by how someone else voted can't count the votes hidden from the person looking: it says how many it leaves out, as the Overview and the files do. */}
-      {blind && who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
+      {open.keepsVotes && who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
       {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">

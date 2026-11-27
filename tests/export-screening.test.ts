@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { Readable } from 'node:stream';
 import ExcelJS from 'exceljs';
 import {
-  generateScreeningXLSXWorkbook as buildWorkbook,
   formatScreeningAnswer,
   screeningExportFiles,
   type ScreeningExportJob,
@@ -20,9 +19,6 @@ function generateScreeningJSON({ job, results }: ScreeningExportData) {
   const file = screeningExportFiles(job).json;
   return file.start(new Date()) + results.map(file.item).join('') + file.end(results.length);
 }
-// The workbook takes its results a page at a time.
-const generateScreeningXLSXWorkbook = ({ job, results }: ScreeningExportData) =>
-  buildWorkbook(job, (async function* () { yield results.slice(0, 1); yield results.slice(1); })());
 
 const mockData: ScreeningExportData = {
   job: {
@@ -83,7 +79,7 @@ const mockData: ScreeningExportData = {
 };
 
 describe('Screening Export', () => {
-  it('preserves long search provenance once per CSV part and across spreadsheet cells', async () => {
+  it('preserves long search provenance once per CSV part, across cells', async () => {
     const snapshot = { request: { oql: 'بحث😀'.repeat(12_000), sort: 'relevance_score:desc' } };
     const data = { ...mockData, job: { ...mockData.job, snapshot } };
     const sheet = await new ExcelJS.Workbook().csv.read(Readable.from([generateScreeningCSV(data)]));
@@ -93,17 +89,8 @@ describe('Screening Export', () => {
     expect(metadata.every(cell => cell.length <= 32_000)).toBe(true);
     expect(JSON.parse(metadata.join('')).searchSnapshot).toEqual(snapshot);
     expect(JSON.parse(String(sheet.getRow(3).getCell(columns[0]).value))).toEqual({ jobId: mockData.job._id, revision: null });
-    const workbook = await generateScreeningXLSXWorkbook(data);
-    const saved = new ExcelJS.Workbook();
-    await saved.xlsx.load(await workbook.xlsx.writeBuffer());
-    const parts: string[] = [];
-    saved.getWorksheet('Summary')!.eachRow(row => {
-      if (String(row.getCell(1).value).startsWith('Search snapshot')) parts.push(String(row.getCell(2).value));
-    });
-    expect(parts.every(cell => cell.length <= 32_000)).toBe(true);
-    expect(JSON.parse(parts.join(''))).toEqual(snapshot);
   });
-  it('round-trips CSV and XLSX bytes with provenance, zero confidence and quoted Unicode authors', async () => {
+  it('round-trips CSV bytes with provenance, zero confidence and quoted Unicode authors', async () => {
     const data = { ...mockData, results: [{ ...mockData.results[0], title: 'بحث, "quoted"\nsecond line', modelAnswers: { q1: false, q2: null }, modelConfidences: { q1: 0 }, decisions: { q1: { by: 'person' as const, at: 1 } } }] };
     const csv = new ExcelJS.Workbook();
     const sheet = await csv.csv.read(Readable.from([generateScreeningCSV(data)]));
@@ -114,15 +101,6 @@ describe('Screening Export', () => {
     expect(read('q1: decided by')).toBe('person');
     expect(JSON.parse(String(read('Run provenance')))).toMatchObject({ jobId: mockData.job._id, scoringConfig: { minimumScore: 1 } });
     expect(sheet.getRow(2).cellCount).toBe(sheet.getRow(1).cellCount);
-    const original = await generateScreeningXLSXWorkbook(data);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await original.xlsx.writeBuffer());
-    expect(workbook.getWorksheet('Results')!.getRow(2).getCell(1).value).toBe(data.results[0].title);
-    const summary = workbook.getWorksheet('Summary')!;
-    const metadata = new Map<unknown, unknown>();
-    summary.eachRow((row) => metadata.set(row.getCell(1).value, row.getCell(2).value));
-    expect(metadata.get('Minimum score')).toBe(1);
-    expect(metadata.get('Job ID')).toBe(mockData.job._id);
   });
   describe('formatScreeningAnswer', () => {
     it('returns Yes for true', () => {
@@ -258,100 +236,6 @@ describe('Screening Export', () => {
       const json = generateScreeningJSON(mockData);
       // Check that lines are indented with 2 spaces
       expect(json).toContain('\n  ');
-    });
-  });
-
-  describe('generateScreeningXLSXWorkbook', () => {
-    it('creates Results sheet with correct headers and data', async () => {
-      const workbook = await generateScreeningXLSXWorkbook(mockData);
-      const resultsSheet = workbook.getWorksheet('Results');
-      expect(resultsSheet).toBeDefined();
-
-      // Check headers
-      const headerRow = resultsSheet!.getRow(1);
-      const headers = headerRow.values as (string | undefined)[];
-      // ExcelJS row values are 1-indexed (index 0 is undefined)
-      expect(headers).toContain('Title');
-      expect(headers).toContain('Authors');
-      expect(headers).toContain('Year');
-      expect(headers).toContain('DOI');
-      expect(headers).toContain('OpenAlex ID');
-      expect(headers).toContain('q1: Is this a clinical trial?');
-      expect(headers).toContain('q2: Sample size > 100?');
-      expect(headers).toContain('Score');
-      expect(headers).toContain('Stars');
-      expect(headers).toContain('Qualified');
-      expect(headers).toContain('Status');
-
-      // Check first data row
-      const dataRow = resultsSheet!.getRow(2);
-      const values = dataRow.values as (string | number | undefined)[];
-      expect(values).toContain('A Great Paper');
-      expect(values).toContain('openalex:W123');
-    });
-
-    it('creates Summary sheet with job info section', async () => {
-      const workbook = await generateScreeningXLSXWorkbook(mockData);
-      const summarySheet = workbook.getWorksheet('Summary');
-      expect(summarySheet).toBeDefined();
-
-      // Job Info header
-      const firstRow = summarySheet!.getRow(1);
-      expect(firstRow.values).toContain('Job Info');
-    });
-
-    it('creates Summary sheet with scoring rules and star thresholds', async () => {
-      const workbook = await generateScreeningXLSXWorkbook(mockData);
-      const summarySheet = workbook.getWorksheet('Summary');
-      expect(summarySheet).toBeDefined();
-
-      // Find scoring rules section by scanning rows
-      let foundScoringRules = false;
-      let foundStarThresholds = false;
-      summarySheet!.eachRow((row) => {
-        const vals = row.values as (string | number | undefined)[];
-        if (vals?.includes('Scoring Rules')) foundScoringRules = true;
-        if (vals?.includes('Star Thresholds')) foundStarThresholds = true;
-      });
-      expect(foundScoringRules).toBe(true);
-      expect(foundStarThresholds).toBe(true);
-    });
-
-    it('creates Summary sheet with statistics', async () => {
-      const workbook = await generateScreeningXLSXWorkbook(mockData);
-      const summarySheet = workbook.getWorksheet('Summary');
-      expect(summarySheet).toBeDefined();
-
-      let foundStatistics = false;
-      summarySheet!.eachRow((row) => {
-        const vals = row.values as (string | number | undefined)[];
-        if (vals?.includes('Statistics')) foundStatistics = true;
-      });
-      expect(foundStatistics).toBe(true);
-    });
-
-    it('handles failed/skipped results without crashing', async () => {
-      const dataWithSkipped: ScreeningExportData = {
-        ...mockData,
-        results: [
-          {
-            paper: 'openalex:W999',
-            title: 'Skipped Paper',
-            status: 'skipped',
-          },
-          {
-            paper: 'openalex:W789',
-            title: 'Failed Paper',
-            status: 'failed',
-          },
-        ],
-      };
-      // Should not throw
-      const workbook = await generateScreeningXLSXWorkbook(dataWithSkipped);
-      const resultsSheet = workbook.getWorksheet('Results');
-      expect(resultsSheet).toBeDefined();
-      // Should have header + 2 data rows
-      expect(resultsSheet!.rowCount).toBe(3);
     });
   });
 });

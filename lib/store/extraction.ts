@@ -9,7 +9,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { PaperSet } from "@/lib/screening/setup";
+import type { Infer } from "convex/values";
+import type { paperSetValidator } from "@/convex/screening/validators";
+type PaperSet = Infer<typeof paperSetValidator>;
 import type { HeldRow } from "@/lib/evidence-libraries/reader-sources";
 import type { ExtractionQuestion } from "@/lib/types";
 
