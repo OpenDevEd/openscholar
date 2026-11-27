@@ -8865,7 +8865,7 @@
         "noOtherPerson": "Aucune autre personne avec qui comparer",
         "noPeople": "Aucune personne avec qui comparer",
         "nothingYet": "Rien à comparer pour l'instant",
-        "agrees": "{share, number, percent}<muted>{person, select, true { même vote que les autres} other { même vote que les personnes}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { même vote que les autres} other { même vote que les personnes}}</muted><all>, {count, plural, one {# vote comparé} other {# votes comparés}}</all>",
         "missedOf": "A voté Exclure sur {missed, number} des {included, number} inclus",
         "ofPairs": "sur {count, plural, one {# paire de votes} other {# paires de votes}}",
         "more": "Plus",

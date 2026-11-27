@@ -8865,7 +8865,7 @@
         "noOtherPerson": "没有其他人可比较",
         "noPeople": "没有人可比较",
         "nothingYet": "暂无可比较的内容",
-        "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted><all>（比较了 {count, plural, other {# 票}}）</all>",
         "missedOf": "对 {included, number} 篇入选论文中的 {missed, number} 篇投了排除",
         "ofPairs": "共 {count, plural, other {# 对投票}}",
         "more": "更多",

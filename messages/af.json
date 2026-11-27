@@ -8866,7 +8866,7 @@
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
         "noPeople": "Geen mense om mee te vergelyk nie",
         "nothingYet": "Nog niks om te vergelyk nie",
-        "agrees": "{share, number, percent}<muted>{person, select, true { dieselfde stem as die ander} other { dieselfde stem as die mense}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { dieselfde stem as die ander} other { dieselfde stem as die mense}}</muted><all>, {count, plural, one {# stem vergelyk} other {# stemme vergelyk}}</all>",
         "missedOf": "Het Sluit uit gestem op {missed, number} van {included, number} ingesluites",
         "ofPairs": "van {count, plural, one {# paar stemme} other {# pare stemme}}",
         "more": "Meer",

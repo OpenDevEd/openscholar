@@ -8866,7 +8866,7 @@
         "noOtherPerson": "Hakuna mtu mwingine wa kulinganisha naye",
         "noPeople": "Hakuna watu wa kulinganisha nao",
         "nothingYet": "Bado hakuna cha kulinganisha",
-        "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted><all>, {count, plural, one {kura # imelinganishwa} other {kura # zimelinganishwa}}</all>",
         "missedOf": "Ilipiga kura Tenga kwa {missed, number} kati ya {included, number} zilizojumuishwa",
         "ofPairs": "kati ya {count, plural, one {jozi # ya kura} other {jozi # za kura}}",
         "more": "Zaidi",

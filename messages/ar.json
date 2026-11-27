@@ -8866,7 +8866,7 @@
         "noOtherPerson": "لا شخص آخر للمقارنة",
         "noPeople": "لا أشخاص للمقارنة",
         "nothingYet": "لا شيء للمقارنة بعد",
-        "agrees": "{share, number, percent}<muted>{person, select, true { الصوت نفسه مع الآخرين} other { الصوت نفسه مع الأشخاص}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { الصوت نفسه مع الآخرين} other { الصوت نفسه مع الأشخاص}}</muted><all>، {count, plural, zero {لا أصوات مقارنة} one {صوت واحد مقارن} two {صوتان مقارنان} few {# أصوات مقارنة} many {# صوتًا مقارنًا} other {# صوت مقارن}}</all>",
         "missedOf": "صوّت بـ«استبعاد» على {missed, number} من أصل {included, number} مُدرَجة",
         "ofPairs": "من أصل {count, plural, zero {# زوج من الأصوات} one {زوج أصوات واحد} two {زوجي أصوات} few {# أزواج من الأصوات} many {# زوجًا من الأصوات} other {# زوج من الأصوات}}",
         "more": "المزيد",
