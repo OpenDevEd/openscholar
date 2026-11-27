@@ -40,8 +40,8 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
         <p class="role">{m.role}</p>
         <a class="org" href={org.url}>{org.name}<Fragment set:html={Out} /></a>
         {m.links.length > 0 && <ul class="links" aria-label={`Where to find ${m.name}`}>
-          {services.map(([kind, url]) => <li><a class="svc" href={url} rel="me" aria-label={`${m.name} on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}
-          {sites.map(([kind, url, label]) => <li><a class="site" href={url} rel="me"><Mark kind={kind} size={18} />{label}<Fragment set:html={Out} /></a></li>)}
+          {services.map(([kind, url]) => <li><a class="svc" href={url} target="_blank" rel="me noopener" aria-label={`${m.name} on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}
+          {sites.map(([kind, url, label]) => <li><a class="site" href={url} target="_blank" rel="me noopener"><Mark kind={kind} size={18} />{label}<Fragment set:html={Out} /></a></li>)}
         </ul>}
       </div>
     </div>
@@ -80,7 +80,7 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   .org { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 17px; color: rgb(255 255 255 / .78); transition: color .15s var(--ease); } .org :global(svg) { opacity: .7; transition: translate .25s var(--ease), opacity .15s var(--ease); } .org:is(:hover, :focus-visible) { color: #fff; } .org:is(:hover, :focus-visible) :global(svg) { translate: 2px -2px; opacity: 1; }
   /* Under a finger the organisation's link is as tall as the buttons around it, without moving anything. */
   @media (pointer: coarse) { .org { padding-block: 10px; margin-block: -6px -10px; } }
-  /* Where else to find them. Each service is a round button (.svc, in about.css); any other page is a pill with its name. */
+  /* Where else to find them. Each service is a round button (.svc, in global.css); any other page is a pill with its name. */
   .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
   .site { display: inline-flex; align-items: center; gap: 9px; height: 52px; padding-inline: 16px 18px; border-radius: 999px; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); font-size: 15px; white-space: nowrap; transition: background .12s var(--ease), color .12s var(--ease), translate .3s var(--ease); } .site :global(svg) { flex: none; } .site :global(svg:last-child) { opacity: .7; } .site:focus-visible { background: #fff; color: var(--ink); translate: 0 -4px; } @media (hover: hover) { :global(html:not(.cold)) .site:hover { background: #fff; color: var(--ink); translate: 0 -4px; } }
   /* What they say about themselves carries on down the name's column, beside the foot of the hanging frame: the first

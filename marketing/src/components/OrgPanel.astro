@@ -17,7 +17,7 @@ const { id, except, h = 3 } = Astro.props, Tag = `h${h}`, o = ORGS[id], people =
     <p>{o.line}</p>
     <ul class="base" aria-label="Offices">{o.base.map(([cc, city]) => <li><img src={flag(cc)} width="20" height="15" alt="" />{city}</li>)}</ul>
     {people.length > 0 && <ul class="faces" aria-label={`People from ${o.name}`}>{people.map((m) => <li><a href={`/about/${m.slug}/`} aria-label={m.name} style={`--at:${PLACE[m.place].bg}`}><img src={`/img/team/${m.key}-face.avif`} width="52" height="52" alt="" loading="lazy" data-portrait={m.slug} /></a></li>)}</ul>}
-    <div class="go"><a class="btn" href={o.url}>{o.host}<Arrow /></a><ul class="soc">{o.links.map(([kind, url]) => <li><a class="svc" href={url} aria-label={`${o.short} on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}</ul></div>
+    <div class="go"><a class="btn" href={o.url} target="_blank" rel="noopener">{o.host}<Arrow /></a><ul class="soc">{o.links.map(([kind, url]) => <li><a class="svc" href={url} target="_blank" rel="noopener" aria-label={`${o.short} on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}</ul></div>
   </div>
 </article></div>
 <style>
