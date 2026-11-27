@@ -8156,7 +8156,6 @@
         "orphaned": "{many, select, true {{count, plural, one {# article n'est qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne}}} other {{count, plural, one {# article n'est qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne}}}}",
         "creditsShort": "{credits, plural, one {Il manque # crédit} other {Il manque # crédits}}",
         "reading": "Lecture des articles",
-        "addPapers": "Ajoutez des articles pour démarrer",
         "addReviewer": "Ajoutez un évaluateur pour démarrer"
       },
       "unread": "{count, plural, one {# illisible} other {# illisibles}}",
@@ -8802,7 +8801,7 @@
       "empty": {
         "arriving": "Les articles arrivent",
         "arrivingSays": "{reviewer, select, true {Ils s'affichent ici à mesure qu'ils arrivent des sources. Vous pouvez commencer le criblage dès l'arrivée des premiers.} other {Ils s'affichent ici à mesure qu'ils arrivent des sources.}}",
-        "noPaper": "{sources, select, true {Les sources ne contenaient aucun article pouvant être criblé.} other {Ce criblage n'a aucune source d'où prendre des articles.}}",
+        "noPaper": "{sources, select, true {Les sources ne contenaient aucun article pouvant être criblé.} other {Il attend des articles. Ajoutez une source, et ses articles vont aux évaluateurs.}}",
         "toSources": "{sources, select, true {Voir les sources} other {Ajouter une source}}"
       },
       "progress": {
@@ -9184,6 +9183,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Du fichier {name}",
       "required": "Obligatoire",
       "starsOf": "{count} étoiles sur {of}",
       "modelsSay": {

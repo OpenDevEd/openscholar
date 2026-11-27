@@ -242,7 +242,7 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
       const key = paperKey({ source: "upload", file: file.file });
       if (file.state === "broken") { left.push({ name: file.name, why: "broken", key }); continue; }
       // Its own PDF goes with the paper either way: the index's paper is screened on its abstract where it has one, or its first reading found one, and on the file where there is none.
-      const own = { file: file.file, ...(file.pages === undefined ? {} : { pages: file.pages }), ...(file.shape === undefined ? {} : { shape: file.shape }) };
+      const own = { file: file.file, fileName: file.name, ...(file.pages === undefined ? {} : { pages: file.pages }), ...(file.shape === undefined ? {} : { shape: file.shape }) };
       const paper = file.known && file.doi ? known.get(file.doi) : undefined;
       papers.push({ ...(paper ? { ...paper, ...(paper.abstract?.trim() || !file.abstract ? {} : { abstract: file.abstract }) } : { paper: key, title: file.title ?? file.name.replace(/\.pdf$/i, ""), ...(file.authors?.length ? { authors: file.authors } : {}), ...(file.year === undefined ? {} : { publicationYear: file.year }) }), ...own, record: file.file });
     }

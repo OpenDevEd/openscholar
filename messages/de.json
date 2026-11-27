@@ -8157,7 +8157,6 @@
         "orphaned": "{many, select, true {{count, plural, one {# Artikel ist nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu}}} other {{count, plural, one {# Artikel ist nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu}}}}",
         "creditsShort": "{credits, plural, one {# Credit zu wenig} other {# Credits zu wenig}}",
         "reading": "Die Artikel werden gelesen",
-        "addPapers": "Fügen Sie Artikel hinzu, um zu starten",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu starten"
       },
       "unread": "{count, plural, other {# nicht lesbar}}",
@@ -8803,7 +8802,7 @@
       "empty": {
         "arriving": "Die Artikel sind unterwegs",
         "arrivingSays": "{reviewer, select, true {Sie erscheinen hier, sobald sie aus den Quellen ankommen. Sie können mit dem Prüfen beginnen, sobald die ersten da sind.} other {Sie erscheinen hier, sobald sie aus den Quellen ankommen.}}",
-        "noPaper": "{sources, select, true {Die Quellen enthielten keinen Artikel, der geprüft werden kann.} other {Dieses Screening hat keine Quelle, aus der es Artikel nehmen kann.}}",
+        "noPaper": "{sources, select, true {Die Quellen enthielten keinen Artikel, der geprüft werden kann.} other {Es wartet auf Artikel. Fügen Sie eine Quelle hinzu, und ihre Artikel gehen an die Reviewer.}}",
         "toSources": "{sources, select, true {Quellen ansehen} other {Quelle hinzufügen}}"
       },
       "progress": {
@@ -9185,6 +9184,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Aus der Datei {name}",
       "required": "Erforderlich",
       "starsOf": "{count} von {of} Sternen",
       "modelsSay": {
