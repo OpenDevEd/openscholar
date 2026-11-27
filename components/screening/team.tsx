@@ -31,7 +31,7 @@ import { useWords } from "./words";
 import type { Pdfs } from "@/lib/pricing/estimate";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
-export function AddPerson({ exclude, screening, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
+export function AddPerson({ exclude, screening, freeing = 0, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; /** Invitations this form takes back on Save: their places are free for the ones it adds. */ freeing?: number; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   const frame = useTranslations("screening.frame");
   const workspaceName = useCurrentWorkspace()?.name;
@@ -66,7 +66,7 @@ export function AddPerson({ exclude, screening, onPick, children }: { exclude: s
   const already = email !== null && ((known !== undefined && !member) || invitedAlready || guestAlready);
   // The plan's places for people from outside, as the People dialog counts them: those invited in this form and not saved yet take one each. Full, nobody more from outside is offered, and the list says why.
   const room = useProtectedQuery(api.sharing.guests.room, inWorkspace(workspaceId, screening && (open || near) ? { kind: "screening" as const, id: screening } : "skip")).data;
-  const outsideFull = room?.limit != null && room.used + exclude.filter((one) => one.startsWith("invite:")).length >= room.limit ? frame("peopleDialog.full", { workspace: workspaceName ?? "", count: room.limit }) : null;
+  const outsideFull = room?.limit != null && room.used - freeing + exclude.filter((one) => one.startsWith("invite:")).length >= room.limit ? frame("peopleDialog.full", { workspace: workspaceName ?? "", count: room.limit }) : null;
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);

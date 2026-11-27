@@ -333,7 +333,8 @@ export const memberLeft = internalMutation({
       // The screenings they settle conflicts on, reviewer or not, pass to someone who can still open them: a person reviewing it, else whoever made it.
       for (const status of ["processing", "completed"] as const) {
         for (const job of await ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", person._id).eq("status", status)).take(STEP)) {
-          if (job.workspaceId !== workspace._id || !job.rule) continue;
+          // One the screening is shared with to vote on still opens it, and still settles its conflicts.
+          if (job.workspaceId !== workspace._id || !job.rule || (await grantOf(ctx, job._id, person._id))?.role === "editor") continue;
           const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one.kind === "person" && one.userId && one.userId !== person._id).flatMap((one) => one.userId ?? []);
           const maker = job.createdBy !== person._id ? job.createdBy : undefined;
           const next = people[0] ?? maker;

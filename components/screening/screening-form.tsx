@@ -1511,7 +1511,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </AnimatePresence>
               {guestsLeft.length ? <p className="flex items-start gap-2 px-4 py-2.5 text-xs text-muted-foreground"><Users aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("reviewers.guestsLeft", { count: guestsLeft.length, names: words.listed(guestsLeft) })}</span></p> : null}
               <div className="grid gap-2 px-4 py-2.5 sm:grid-cols-2">
-                <AddPerson exclude={people.map((person) => person.id)} {...(saved ? { screening: saved.id } : {})} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
+                <AddPerson exclude={people.map((person) => person.id)} {...(saved ? { screening: saved.id } : {})} freeing={uninviting.length} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />{t("reviewers.addPerson")}</Button>
                 </AddPerson>
                 <AddModel taken={models.map((model) => modelKey(model.model!))} pdfs={pdfs} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>
