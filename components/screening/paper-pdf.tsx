@@ -22,12 +22,11 @@ import { useTranslations } from "next-intl";
 import { termsPattern, type Paper } from "./data";
 import { Chip } from "./parts";
 import { INLINE_LINK } from "./pieces";
+import { A4_SHAPE } from "@/lib/screening/files";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 /** One object for every document: react-pdf loads a PDF again when its options change. */
 const PDF_OPTIONS = pdfAssets(pdfjs.version);
-/** A page's height for its width until the file says its own: A4's. */
-const A4 = 1.414;
 const GAP = 8;
 const escaped = (text: string) => text.replace(/[&<>]/g, (sign) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[sign]!);
 
@@ -46,7 +45,7 @@ export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: 
   }, []);
   // How many pages, and their shape, as the server counted them until the file itself says.
   const [read, setRead] = useState<{ of: Id<"screeningResults">; pages: number; shape: number } | null>(null);
-  const { pages: all, shape } = read?.of === paper.id ? read : { pages: paper.pdf?.pages ?? 1, shape: A4 };
+  const { pages: all, shape } = read?.of === paper.id ? read : { pages: paper.pdf?.pages ?? 1, shape: paper.pdf?.shape ?? A4_SHAPE };
   const [whole, setWhole] = useState<string | null>(null);
   const pages = firstPage && whole !== paper.id ? 1 : all;
   const pattern = termsPattern(terms);
@@ -65,7 +64,7 @@ export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: 
       <div ref={column} style={{ minHeight: width ? pages * (Math.round(width * shape) + GAP) - GAP : `calc(${pages * shape} * 100cqw + ${(pages - 1) * GAP}px)` }}>
         {/* Its address still coming, or none to be had: said in the page's own place, never a blank one. */}
         {url === null ? <p className="rounded-xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">{t("pdf.cantShow")}</p> : null}
-        {url === undefined ? <div role="status" aria-label={t("pdf.onItsWay")} className="flex aspect-[1/1.414] items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div> : null}
+        {url === undefined ? <div role="status" aria-label={t("pdf.onItsWay")} style={{ aspectRatio: `1 / ${shape}` }} className="flex items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div> : null}
         {url && width ? (
           <Document
             key={paper.id}

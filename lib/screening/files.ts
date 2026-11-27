@@ -10,6 +10,23 @@ export type FileRecord = { title: string; abstract?: string; authors?: string[];
 const DOI = /10\.\d{4,9}\/\S+/;
 const BOM = /^\uFEFF/;
 /** The most a file a screening reads may weigh: what Zotero's importer takes in one request. */
+/**
+ * A PDF's first page's height for its width, as it shows: a page turned a quarter is as tall as it was wide. Kept with
+ * the paper, so its pages hold their room at their own shape before the file is read (components/screening/paper-pdf.tsx).
+ */
+/** A page's height for its width where a file's own is not known: A4's. */
+export const A4_SHAPE = 1.414;
+type Box = { x: number; y: number; width: number; height: number };
+export const pageShapeOf = (pdf: { getPage: (at: number) => { getCropBox: () => Box; getMediaBox: () => Box; getRotation: () => { angle: number } } }) => {
+  const page = pdf.getPage(0);
+  // What a viewer draws (pdf.js) is the page's crop box within its media box: the file may cut the page smaller.
+  const [crop, media] = [page.getCropBox(), page.getMediaBox()];
+  const width = Math.min(crop.x + crop.width, media.x + media.width) - Math.max(crop.x, media.x);
+  const height = Math.min(crop.y + crop.height, media.y + media.height) - Math.max(crop.y, media.y);
+  const turned = Math.abs(page.getRotation().angle) % 180 === 90;
+  return width > 0 && height > 0 ? Math.round((turned ? width / height : height / width) * 1000) / 1000 : undefined;
+};
+
 export const FILE_MAX_BYTES = 5 * 1024 * 1024;
 /** How a reference file starts one of its records, in the formats databases and reference managers export: RIS, PubMed, EndNote, Web of Science, EndNote XML and BibTeX. A file with none of these is read as a table. */
 export const REFERENCES = /^(?:TY {1,2}- |PMID-|%0 |FN |PT [A-Z]\s*$)|<record>|^\s*@\w+\s*[{(]/m;

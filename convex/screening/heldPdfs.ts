@@ -16,7 +16,7 @@ import { executeAIOperation } from "../../lib/ai/core/execute";
 import { MAX_PDF_BYTES } from "../../lib/assistant/files";
 import { normalDoi } from "../../lib/papers/paper-ref";
 import { PDF_LOOK_PAGES, pdfLookCredits } from "../../lib/pricing/estimate";
-import { sameTitle } from "../../lib/screening/files";
+import { pageShapeOf, sameTitle } from "../../lib/screening/files";
 import { outOfCredits, withUserCredits } from "../ai/helpers";
 import { openRouterModel } from "../ai/provider";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -46,10 +46,12 @@ export const look = internalAction({
     if (!blob || blob.size > MAX_PDF_BYTES) return { state: "broken" };
     let firstPages: Uint8Array;
     let pages: number;
+    let shape: number | undefined;
     try {
       const whole = await PDFDocument.load(new Uint8Array(await blob.arrayBuffer()), { updateMetadata: false });
       pages = whole.getPageCount();
       if (!pages) return { state: "broken" };
+      shape = pageShapeOf(whole);
       const part = await PDFDocument.create();
       for (const page of await part.copyPages(whole, Array.from({ length: Math.min(pages, PDF_LOOK_PAGES) }, (_, i) => i))) part.addPage(page);
       firstPages = await part.save();
@@ -60,7 +62,7 @@ export const look = internalAction({
     }
     const who = await ctx.runQuery(internal.screening.held.reader, { userId: held.userId, workspaceId: held.workspaceId });
     // With no model that reads a PDF, or no credits to read one with, the file is still the paper: under its own name.
-    if (!who?.model?.files) return { state: "read", pages };
+    if (!who?.model?.files) return { state: "read", pages, ...(shape ? { shape } : {}) };
     const model = who.model;
     const pricing = { input: model.input, output: model.output };
     let read: z.infer<typeof printed>;
@@ -86,7 +88,7 @@ export const look = internalAction({
         },
       ));
     } catch (error) {
-      if (outOfCredits(error)) return { state: "read", pages };
+      if (outOfCredits(error)) return { state: "read", pages, ...(shape ? { shape } : {}) };
       throw error;
     }
     const title = read.title.trim().slice(0, TITLE_MAX);
@@ -100,6 +102,7 @@ export const look = internalAction({
     return {
       state: "read",
       pages,
+      ...(shape ? { shape } : {}),
       ...(title ? { title: found && known ? found.title : title } : {}),
       ...(read.authors.length ? { authors: read.authors.slice(0, MAX_AUTHORS).map((name) => name.slice(0, 300)) } : {}),
       ...(read.year ? { year: read.year } : {}),

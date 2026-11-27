@@ -816,7 +816,7 @@ function Screen({ open }: { open: Open }) {
                       </div>
                       <div className="space-y-3">
                         {/* A paper with no abstract is read as the PDF it is. */}
-                        {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1}><PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /></PdfRoom> : (
+                        {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1} shape={paper.pdf.shape}><PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /></PdfRoom> : (
                         <p dir="auto" className="text-[0.95rem] leading-7">
                           {sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} lit={current?.terms ?? []} />)}
                         </p>

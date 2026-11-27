@@ -234,8 +234,8 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     const withFiles = async (read: Array<SearchPaper & { key: string }>): Promise<SearchPaper[]> => {
       const bare = read.filter((one) => !one.abstract?.trim());
       const fresh: string[] = bare.length ? await ctx.runQuery(internal.screening.gathering.lacking, { checkId, papers: bare.map((one) => one.paper) }) : [];
-      const files: Array<{ key: string; file: Id<"_storage">; pages: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: [...new Set(bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key))] }) : [];
-      return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages } : paper; });
+      const files: Array<{ key: string; file: Id<"_storage">; pages: number; shape?: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: [...new Set(bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key))] }) : [];
+      return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages, ...(own.shape ? { shape: own.shape } : {}) } : paper; });
     };
     // A step's papers go to `fill` a step of an index's at a time, the reading's end with the last of them.
     // Where the reading goes on is kept with the last of them only: one cut short before that reads these collections again, and the papers it gave already are passed over.
@@ -419,7 +419,7 @@ export const fill = internalMutation({
         ...identity,
         title,
         ...(abstract ? { abstract } : {}),
-        ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }) } : {}),
+        ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }), ...(paper.shape === undefined ? {} : { shape: paper.shape }) } : {}),
         ...(paper.record ? { record: paper.record } : {}),
         authors: paper.authors?.slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,

@@ -76,6 +76,8 @@ export const screeningPaperInputValidator = v.object({
   /** The paper's own PDF, handed over by whoever added it, and how many pages it has: what a paper with no abstract is screened on. */
   file: v.optional(v.id("_storage")),
   pages: v.optional(v.number()),
+  /** Its first page's height for its width (lib/screening/files.ts `pageShapeOf`), which its pages show at before the file is read. */
+  shape: v.optional(v.number()),
   /** Which of its source's records it is, where the source is a file: a row or a DOI by its place in the file, a PDF by its file. Two of a file's records can be one paper, and each stays a record of its own. */
   record: v.optional(v.string()),
   authors: screeningAuthorsValidator,
@@ -288,6 +290,8 @@ export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read")
 export const pdfReadValidator = v.object({
   state: v.union(v.literal("read"), v.literal("broken")),
   pages: v.optional(v.number()),
+  /** Its first page's height for its width (lib/screening/files.ts `pageShapeOf`). */
+  shape: v.optional(v.number()),
   title: v.optional(v.string()),
   authors: screeningAuthorsValidator,
   year: v.optional(v.number()),
@@ -428,7 +432,7 @@ export const paperViewValidator = v.object({
   doi: v.optional(v.string()),
   abstract: v.string(),
   // It has no abstract and is screened as its own PDF, of this many pages (./paperViews.ts `pdf` gives the file).
-  pdf: v.optional(v.object({ pages: v.optional(v.number()) })),
+  pdf: v.optional(v.object({ pages: v.optional(v.number()), shape: v.optional(v.number()) })),
   source: v.optional(v.id("screeningSources")),
   batch: v.optional(v.id("screeningChecks")),
   // When a later check brought it, for a paper that wasn't there from the start.
