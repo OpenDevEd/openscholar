@@ -4,7 +4,7 @@
 // methods section, and the whole record.
 
 import { copyText, dismissCopied } from "@/components/copy-text";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -53,8 +53,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // What was last taken out, so its button says so: a download gives no other sign. A file of every paper takes a moment to read: its button says so while it does.
   const [done, setDone] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  // A copy toast is about the tab it was asked on: it goes with it, and never sits over another tab's buttons.
-  const setTab = (next: Parameters<typeof onTab>[0]) => { dismissCopied(); onTab(next); };
+  // A copy toast is about the tab it was asked on (sonner's toasts are the outside system): it goes when the tab changes, by a click or by Back, and when the dialog closes, never sitting over another tab or page.
+  useEffect(() => dismissCopied, [tab]);
   // Whose votes the votes file holds: everyone's, or one reviewer's.
   // Whose votes and which papers are in the address with the dialog's tab: each choice is a step, and Forward or a reload shows the same file.
   const [chosen, setChosen] = useQueryStates({ whose: parseAsString.withDefault("all"), group: parseAsStringLiteral(GROUPS) }, { history: "push", scroll: false });
@@ -186,7 +186,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription className="sr-only">{t("description")}</DialogDescription>
           {/* On a phone the five make rows of two, the last across both, so none is cut off. */}
-          <Segmented label={t("tabsLabel")} value={tab} onChange={setTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center max-sm:[&>*:last-child]:col-span-2" options={(["papers", "votes", "flow", "methods", "record"] as const).map((one) => ({ id: one, label: t(`tab.${one}`) }))} />
+          <Segmented label={t("tabsLabel")} value={tab} onChange={onTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center max-sm:[&>*:last-child]:col-span-2" options={(["papers", "votes", "flow", "methods", "record"] as const).map((one) => ({ id: one, label: t(`tab.${one}`) }))} />
         </DialogHeader>
         <ScrollArea shades className="min-h-0 flex-1">
         <div className="space-y-4 p-5">

@@ -251,7 +251,8 @@ export function ScreeningsIndex() {
                               at: (chunks) => <span className="whitespace-nowrap">{chunks}</span>,
                             })}
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={{ kind: row.workspace.kind, name: row.workspace.name, imageUrl: row.workspace.imageUrl, colour: row.workspace.colour, workspaceId: row.workspace.id }} /></span> : null}
-                            {row.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">{words.living(row.living.every)}</Chip> : null}
+                            {/* Found by a search or under All, a finished one says so on its card, as the Show filter would. */}
+                            {row.finishedAt ? <Chip icon={CircleCheck} className="h-5 px-1.5">{t("show.finished")}</Chip> : row.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">{words.living(row.living.every)}</Chip> : null}
                             {/* A member who isn't one of its reviewers can still change it: only someone it was shared with is a viewer. */}
                             {!row.isReviewer ? <Chip icon={Eye} className="h-5 px-1.5">{words.looker(row.member)}</Chip> : null}
                           </span>
