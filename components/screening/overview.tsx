@@ -735,7 +735,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall, t("kappa.none"))}</span>
               <span className="text-sm">
                 <span className="font-medium">{t("agreement.mean")}</span>
-                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
+                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, left: pairs.filter((one) => one.pair).length - known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
@@ -776,12 +776,13 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <li key={`${a.id}:${b.id}`}>
                 <NextLink href={pairHref(screening.id, a, b)} className="flex items-center gap-3 px-4 py-2.5 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
                   <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
-                  <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{words.listed([b.name, a.name])}</span>
+                  {/* How often they agreed goes under the names, so the names keep the row's width on a phone. */}
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="[overflow-wrap:anywhere]">{words.listed([b.name, a.name])}</span>
+                    {pair ? <span className="text-xs tabular-nums text-muted-foreground">{sameText(t, pair)}</span> : null}
+                  </span>
                   {pair ? (
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
-                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
-                    </span>
+                    <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
                   ) : (
                     <span className="shrink-0 text-xs text-muted-foreground">{t("agreement.noneYet")}</span>
                   )}

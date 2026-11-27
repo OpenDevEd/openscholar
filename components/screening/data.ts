@@ -216,6 +216,11 @@ export const castOf = (screening: Pick<Screening, "reviewers">, paper: Pick<Pape
 export const bylineOf = (paper: Pick<Paper, "authors" | "year" | "venue">, short = false) => [short ? paper.authors?.[0] : paper.authors?.join(", "), paper.year, short ? undefined : paper.venue].filter(Boolean).join(", ");
 /** Who a paper still waits for: the reviewers on it who have yet to vote. A vote kept from the person looking is a vote cast, and a model that couldn't read the paper has no say in it. */
 export const awaitedOn = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) => castOf(screening, paper).filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer);
+/** How many people invited by email a paper waits for: the places the rule gives it beyond the people on it, as many as are invited (`readersOf`). */
+export const invitedOn = (screening: Pick<Screening, "reviewers" | "rule">, paper: Pick<Paper, "cast">, pending: Pending[] = []) => {
+  const { invited, each } = readersOf(screening, pending);
+  return invited ? Math.max(0, Math.min(invited, each - castOf(screening, paper).filter((one) => one.reviewer.kind === "person").length)) : 0;
+};
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
 /** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */

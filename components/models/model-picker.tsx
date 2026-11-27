@@ -31,6 +31,12 @@ export type CatalogModel = FunctionReturnType<typeof api.models.queries.listCata
 /** What's picked now: a catalog slug, with the effort it runs at. */
 type Current = Pick<MapModel, "id" | "effort" | "reasoningEfforts" | "defaultEffort">;
 
+/** Whether a row's id and keywords hold every word typed, as cmdk's `filter` asks: 1 to show it, 0 to hide it. */
+const holdsEveryWord = (value: string, search: string, keywords?: string[]) => {
+  const text = [value, ...(keywords ?? [])].join(" ").toLowerCase();
+  return search.toLowerCase().split(/\s+/).filter(Boolean).every((word) => text.includes(word)) ? 1 : 0;
+};
+
 /** Vendors offered as filters, in the order they show; the rest sit under Other. */
 const FEATURED = ["anthropic", "openai", "google", "deepseek", "qwen", "mistralai", "x-ai", "meta"] as const;
 const VENDOR_NAMES: Record<string, string> = {
@@ -373,7 +379,8 @@ export function ModelPicker({
             inert={step ? true : undefined}
           >
           {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
-          <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
+          {/* A search finds the models whose name, vendor or id hold every word typed. cmdk's own match is fuzzy: "Llama" found GPT and Gemini models by scattered letters. */}
+          <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id} filter={holdsEveryWord}>
             <div className="space-y-2 p-2">
               <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
                 <Search className="size-4 shrink-0 text-muted-foreground" />

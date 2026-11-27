@@ -8066,7 +8066,7 @@
         "copied": "Copied the methods paragraph",
         "failed": "Your browser didn't let the page copy",
         "select": "Select the paragraph and copy it.",
-        "selected": "The paragraph is selected. Copy it with your keyboard."
+        "selected": "The paragraph is selected, ready for you to copy."
       },
       "notLoaded": "The workspace hasn't loaded yet. Try again in a moment.",
       "notMade": "The file couldn't be made. Try again."
@@ -8357,7 +8357,7 @@
         "addModel": "Add a model"
       },
       "decided": {
-        "seeingNothing": "Nothing to hide with one person on each paper",
+        "seeingNothing": "Every vote shows with one person on each paper",
         "votesAgree": "Votes agree",
         "settled": "Settled",
         "votesSplit": "Votes split",
@@ -8889,7 +8889,7 @@
         "kept": "How far the reviewers agree shows once you have voted on every paper of yours. Before that, it would give away how the others voted.",
         "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
         "mean": "Mean pairwise Cohen's kappa",
-        "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}",
+        "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}.{left, plural, =0 {} one { The other pair voted one way on every paper, where kappa can't be worked out.} other { The other # pairs voted one way on every paper, where kappa can't be worked out.}}",
         "splitMost": "The papers they split on most",
         "noneYet": "None yet",
         "cell": "{a} and {b}, kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
@@ -9555,6 +9555,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# invited reviewer} other {# invited reviewers}}",
       "peopleHiddenUntilVote": "People's votes hidden until you vote",
       "votesWereHiddenSays": "Votes were hidden from a reviewer only on papers that waited for their own vote. Now the screening is finished, every vote shows.",
       "votesHiddenPeopleSays": "This screening hides other people's votes from a reviewer only on papers that still wait for that reviewer's own vote. The models' votes are advice, and show at any time.",
@@ -9662,6 +9663,8 @@
           "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
         },
         "says": {
+          "single": "Settled by one vote",
+          "person": "Settled by one person's vote",
           "all": "Settled when all agree",
           "most": "Settled when most agree",
           "one": "Settled by the first vote"

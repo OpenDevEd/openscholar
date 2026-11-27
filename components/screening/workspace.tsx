@@ -100,7 +100,8 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
-    when: words.t(`settle.says.${screening.rule.settle}`),
+    // Where one vote settles each paper, "when all agree" would promise an agreement there is nobody to reach: the chip says whose vote it is.
+    when: screening.rule.settle === "one" || splitsIn(screening, 0, pending) ? words.t(`settle.says.${screening.rule.settle}`) : modelsAdvise(screening.rule, each, models) ? words.t("settle.says.person") : words.t("settle.says.single"),
     // As advice, the models' votes settle nothing on a paper a person has: said beside the rule, where it changes what the rule means.
     advice: modelsAdvise(screening.rule, each, models) ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.

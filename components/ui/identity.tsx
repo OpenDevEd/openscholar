@@ -46,11 +46,14 @@ export function YouTag({ className }: { className?: string }) {
 }
 
 /** A name, cut where it runs out of room, with You after yours. */
+/** An address offers its line breaks after "@" and each ".", so it wraps between its parts, not mid-word ("exam / ple.com"). It breaks inside a part only where that part alone is wider than the line (`break-word`, which keeps a part whole when the row is laid out). */
+const breakable = (name: string) => (name.includes("@") ? name.split(/(?<=[@.])/).flatMap((part, at) => (at ? [<wbr key={at} />, part] : [part])) : name);
+
 export function PersonName({ name, you = false, wrap = false, className }: { name: string; you?: boolean; /** Where a second line costs nothing, a long name or an address runs onto it and is read whole. */ wrap?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* A name cut short for room, an address most of all, is read whole under the pointer. */}
-      <TooltipHint label={name} onlyWhenClipped><span className={cn("min-w-0", wrap ? "line-clamp-2 [overflow-wrap:anywhere]" : "truncate")}>{name}</span></TooltipHint>
+      <TooltipHint label={name} onlyWhenClipped><span className={cn("min-w-0", wrap ? cn("line-clamp-2", name.includes("@") ? "[overflow-wrap:break-word]" : "[overflow-wrap:anywhere]") : "truncate")}>{wrap ? breakable(name) : name}</span></TooltipHint>
       {you ? <YouTag /> : null}
     </span>
   );
