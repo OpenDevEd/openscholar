@@ -1056,7 +1056,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const neutral = "bg-foreground/25";
   // `loading`: rows the figures bring, held as placeholders until they come.
   const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[]; loading?: number }> = [
-    { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: settingsHref(id, "papers"), fill: neutral })) },
+    { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), ...(open.canChange ? { href: settingsHref(id, "papers") } : {}), fill: neutral })) },
     {
       title: t("flow.removed"),
       total: found - kept,

@@ -16,8 +16,9 @@ import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { nextResolver, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { bookkeepLater, saveQualified } from "./bookkeeping";
-import { readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { pdfBand } from "../../lib/pricing/estimate";
+import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
+import { keeperOf, readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./gathering";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -278,22 +279,21 @@ export const withdraw = internalMutation({
   returns: v.null(),
   handler: async (ctx, { jobId, sourceId, cursor }) => {
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_source", (q) => q.eq("jobId", jobId).eq("sourceId", sourceId)).paginate({ cursor, numItems: FOLLOW });
+    const sources = await sourcesOf(ctx, jobId);
     for (const paper of page.page) {
       if (paper.withdrawn) continue;
-      // Another source still in the screening holds it too, merged into it: it stays, with its votes, as that source's paper. That source counts it as one it brought, its PDF with it, and no longer as a duplicate merged.
-      const merged = await ctx.db.query("screeningMerged").withIndex("by_into", (q) => q.eq("into", paper._id)).take(MERGED_LOOKED);
-      let keeper: Doc<"screeningSources"> | null = null;
-      let record: Doc<"screeningMerged"> | undefined;
-      for (const one of merged) {
-        if (one.sourceId === sourceId) continue;
-        const other = await ctx.db.get("screeningSources", one.sourceId);
-        if (other && other.removedAt === undefined) { keeper = other; record = one; break; }
-      }
-      if (keeper && record) {
+      // Another source still in the screening holds it too, merged into it: it stays, with its votes, as that source's paper (./dealing.ts `keeperOf`). That source counts it as one it brought, its PDF and the PDF's length with it, and no longer as a duplicate merged; an included paper is counted under it.
+      const kept = await keeperOf(ctx, paper._id, new Set([sourceId]), sources);
+      if (kept) {
+        const { source: keeper, row } = kept;
         await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, record: undefined, doneAt: ctx.db.vars.commitTs });
         const filed = !paper.abstract && paper.file;
-        await ctx.db.patch("screeningSources", keeper._id, { taken: keeper.taken + 1, duplicates: Math.max(0, keeper.duplicates - 1), ...(filed ? { filed: (keeper.filed ?? 0) + 1, filePages: (keeper.filePages ?? 0) + (paper.pages ?? 0) } : {}) });
-        await ctx.db.delete("screeningMerged", record._id);
+        const band = pdfBand(paper.pages ?? 0);
+        const spread = { ...keeper.fileSpread };
+        if (filed && paper.pages) spread[band] = { papers: (spread[band]?.papers ?? 0) + 1, pages: (spread[band]?.pages ?? 0) + paper.pages, most: Math.max(spread[band]?.most ?? 0, paper.pages) };
+        await ctx.db.patch("screeningSources", keeper._id, { taken: keeper.taken + 1, duplicates: Math.max(0, keeper.duplicates - 1), ...(filed ? { filed: (keeper.filed ?? 0) + 1, filePages: (keeper.filePages ?? 0) + (paper.pages ?? 0), fileSpread: spread } : {}) });
+        if (paper.result === "include") await moveIncluded(ctx, jobId, sourceId, keeper._id);
+        await ctx.db.delete("screeningMerged", row._id);
         continue;
       }
       await ctx.db.patch("screeningResults", paper._id, { withdrawn: true, doneAt: ctx.db.vars.commitTs });
@@ -304,8 +304,15 @@ export const withdraw = internalMutation({
   },
 });
 
-/** The other sources' records merged into one paper, looked through for one still in the screening: a paper is rarely in more than a few. */
-const MERGED_LOOKED = 20;
+/** An included paper that moved from one source to another is counted under the one it moved to (the Overview's and the flow's included papers by source). */
+async function moveIncluded(ctx: MutationCtx, jobId: Id<"screeningJobs">, from: Id<"screeningSources">, to: Id<"screeningSources">) {
+  const progress = await progressRow(ctx, jobId);
+  if (!progress) return;
+  const included = { ...progress.included };
+  included[from] = Math.max(0, (included[from] ?? 1) - 1);
+  included[to] = (included[to] ?? 0) + 1;
+  await ctx.db.patch("screeningJobProgress", progress._id, { included });
+}
 
 /** Saves the papers a screening has included to the collection it was just sent to, a step at a time. */
 export const shelveIncluded = internalMutation({

@@ -153,3 +153,44 @@ export async function countDealt(ctx: MutationCtx, dealt: Map<Id<"screeningRevie
     if (reviewer) await ctx.db.patch("screeningReviewers", reviewerId, { dealt: Math.max(0, reviewer.dealt + more) });
   }
 }
+
+/** The last reading of a source that was whole: the one its figures count (`duplicates`, `left`), which a reading still going leaves standing until it is whole itself. */
+export const wholePass = (source: Pick<Doc<"screeningSources">, "pass" | "next">) => source.next?.from ?? source.pass ?? 0;
+/** Whether that reading met a record of the source. One a reading still going has met again says so in `before`, and one it met for the first time waits for it to be whole: the lists hold what the figures count. */
+export const inWhole = (source: Pick<Doc<"screeningSources">, "pass" | "next">, row: { pass?: number; before?: number }) => !source.next || (row.pass ?? 0) === source.next.from || row.before === source.next.from;
+
+/**
+ * The source still in the screening that holds a paper too, merged into it by its last whole reading: it keeps the
+ * paper, with its votes, when the paper's own source is taken out. Asked of each of the screening's sources, a few.
+ */
+export async function keeperOf(ctx: Pick<QueryCtx, "db">, paperId: Id<"screeningResults">, leaving: Set<Id<"screeningSources">>, sources: Doc<"screeningSources">[]) {
+  for (const source of sources) {
+    if (leaving.has(source._id) || source.removedAt !== undefined) continue;
+    const rows = await ctx.db.query("screeningMerged").withIndex("by_into_and_source", (q) => q.eq("into", paperId).eq("sourceId", source._id)).take(MERGED_LOOKED);
+    const row = rows.find((one) => one.pass >= wholePass(source) && inWhole(source, one));
+    if (row) return { source, row };
+  }
+  return null;
+}
+/** One source's records merged into one paper, looked through for its current one: a file lists a paper a few times at most. */
+const MERGED_LOOKED = 20;
+
+/**
+ * How many papers of the sources being taken out another source keeps (`keeperOf`), for what a change says before it
+ * is made: the papers that leave are the ones no other source holds. Read from the other sources' merged records.
+ */
+export async function keptByOthers(ctx: Pick<QueryCtx, "db">, sources: Doc<"screeningSources">[], leaving: Set<Id<"screeningSources">>) {
+  const kept = new Set<Id<"screeningResults">>();
+  for (const source of sources) {
+    if (leaving.has(source._id) || source.removedAt !== undefined) continue;
+    const rows = await ctx.db.query("screeningMerged").withIndex("by_source_and_pass", (q) => q.eq("sourceId", source._id).gte("pass", wholePass(source))).take(MERGED_COUNTED);
+    for (const row of rows) {
+      if (kept.has(row.into) || !inWhole(source, row)) continue;
+      const paper = await ctx.db.get("screeningResults", row.into);
+      if (paper && !paper.withdrawn && paper.sourceId && leaving.has(paper.sourceId)) kept.add(row.into);
+    }
+  }
+  return kept.size;
+}
+/** One source's merged records read for that count: a source merges few of its records into another's papers. */
+const MERGED_COUNTED = 2000;

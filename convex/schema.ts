@@ -1775,7 +1775,7 @@ export default defineSchema({
   })
     .index("by_source_and_pass", ["sourceId", "pass"])
     .index("by_source_and_paperKey", ["sourceId", "paperKey"])
-    .index("by_into", ["into"])
+    .index("by_into_and_source", ["into", "sourceId"])
     .index("by_job", ["jobId"]),
 
   // What a source held that the screening doesn't take, each with why.

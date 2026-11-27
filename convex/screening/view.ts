@@ -22,7 +22,7 @@ import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
+import { dealable, inWhole, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn, wholePass } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
 import { invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
@@ -521,11 +521,6 @@ export const figuresAction = defineUserQuery({
 });
 export const figures = userQuery(figuresAction);
 export const figuresForAssistant = assistantQuery(figuresAction);
-
-/** The last reading of a source that was whole: the one its figures count (`duplicates`, `left`), which a reading still going leaves standing until it is whole itself. */
-const wholePass = (source: Pick<Doc<"screeningSources">, "pass" | "next">) => source.next?.from ?? source.pass ?? 0;
-/** Whether that reading met a record of the source. One a reading still going has met again says so in `before`, and one it met for the first time waits for it to be whole: the lists hold what the figures count. */
-const inWhole = (source: Pick<Doc<"screeningSources">, "pass" | "next">, row: { pass?: number; before?: number }) => !source.next || (row.pass ?? 0) === source.next.from || row.before === source.next.from;
 
 /** What a source held that the screening doesn't take, a page at a time. */
 export const leftOutAction = defineUserQuery({

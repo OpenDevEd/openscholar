@@ -983,7 +983,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     const shownToast = toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);
     setDeciding(null);
     setReasonFor(null);
-    setNote(kind, "");
+    // What was written is now what is saved: the field goes back to showing the saved note, so the next change keeps it too.
+    setNotes(({ [kind]: _sent, ...rest }) => rest);
   };
   // Excluding asks why only where nothing says it yet: your own answers failing a must-have, or a note already written, is the reason. The same rule as on Screen.
   const exclude = (kind: "vote" | "result") => {
