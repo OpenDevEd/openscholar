@@ -22,7 +22,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, modelsAdvise, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
 import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
@@ -195,6 +195,9 @@ export const VOTES_SHUT = (t: T, blind: Blind, cast: Array<{ reviewer: { kind: s
   const models = cast.filter((one) => one.reviewer.kind === "model").length;
   return blind === "people" && models ? t("peopleVotesShut", { people: cast.filter((one) => one.reviewer.kind === "person" && one.reviewer.id !== me).length, models }) : t("votesShut");
 };
+/** The heading over a paper's votes, on Screen and in the Papers drawer alike: where the models only advise the people on it, it names their votes as advice. */
+export const votesTitle = (rule: Pick<Rule, "settle" | "models">, cast: Array<{ reviewer: { kind: string } }>) =>
+  modelsAdvise(rule, cast.filter((one) => one.reviewer.kind === "person").length, cast.filter((one) => one.reviewer.kind === "model").length) ? ("votes.titleAdvice" as const) : ("votes.title" as const);
 /** What a screening hides until a reviewer votes, said in full for whoever reads it, or nothing where it hides nothing. */
 export const blindSays = (words: Words, blind: Blind) => (blind === "all" ? words.t("votesHiddenSays") : blind === "people" ? words.t("votesHiddenPeopleSays") : blind === "done" ? words.t("votesWereHiddenSays") : null);
 /** The chip over a paper's votes while some are kept from you. */

@@ -9141,7 +9141,6 @@
         "settledWithoutYou": "あなたの投票なしで結果が確定しました",
         "waitingForYou": "あなたの投票待ち",
         "settleConflict": "この不一致を判定",
-        "everyonesVotes": "全員の投票",
         "reopen": "再開",
         "waitingToSettle": "{you, select, true {あなたの判定待ち} other {{name} の判定待ち}}",
         "everyConflict": "すべての不一致",

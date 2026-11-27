@@ -9142,7 +9142,6 @@
         "settledWithoutYou": "Imeamuliwa bila kura yako",
         "waitingForYou": "Inasubiri kura yako",
         "settleConflict": "Amua mgongano huu",
-        "everyonesVotes": "Kura za kila mtu",
         "reopen": "Fungua tena",
         "waitingToSettle": "{you, select, true {Inakusubiri uiamue} other {Inasubiri {name} aiamue}}",
         "everyConflict": "Kila mgongano",

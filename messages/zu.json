@@ -9141,7 +9141,6 @@
         "settledWithoutYou": "Kuxazululwe ngaphandle kwevoti lakho",
         "waitingForYou": "Kulinde ivoti lakho",
         "settleConflict": "Xazulula lokhu kungqubuzana",
-        "everyonesVotes": "Amavoti abo bonke",
         "reopen": "Vula futhi",
         "waitingToSettle": "{you, select, true {Kulinde wena ukuthi ukuxazulule} other {Kulinde u-{name} ukuthi akuxazulule}}",
         "everyConflict": "Konke ukungqubuzana",

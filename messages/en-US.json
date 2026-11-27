@@ -9141,7 +9141,6 @@
         "settledWithoutYou": "Settled without your vote",
         "waitingForYou": "Waiting for your vote",
         "settleConflict": "Settle this conflict",
-        "everyonesVotes": "Everyone's votes",
         "reopen": "Reopen",
         "waitingToSettle": "{you, select, true {Waiting for you to settle it} other {Waiting for {name} to settle it}}",
         "everyConflict": "Every conflict",

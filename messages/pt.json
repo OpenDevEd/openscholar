@@ -9142,7 +9142,6 @@
         "settledWithoutYou": "Decidido sem o seu voto",
         "waitingForYou": "À espera do seu voto",
         "settleConflict": "Resolver este conflito",
-        "everyonesVotes": "Os votos de todos",
         "reopen": "Reabrir",
         "waitingToSettle": "{you, select, true {À espera de que o resolva} other {À espera de que {name} o resolva}}",
         "everyConflict": "Todos os conflitos",
