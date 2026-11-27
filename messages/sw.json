@@ -8059,7 +8059,8 @@
       "copyToast": {
         "copied": "Aya ya mbinu imenakiliwa",
         "failed": "Kivinjari chako hakikuruhusu ukurasa kunakili",
-        "select": "Chagua aya na uinakili."
+        "select": "Chagua aya na uinakili.",
+        "selected": "Aya imechaguliwa. Inakili kwa kibodi yako."
       },
       "notLoaded": "Nafasi kazi bado haijapakia. Jaribu tena baada ya muda mfupi.",
       "notMade": "Faili haikuweza kutengenezwa. Jaribu tena."

@@ -38,6 +38,9 @@ const GROUP_FILE: Record<Group, string> = { include: "included", maybe: "maybe",
 /** The columns of the votes file, as the sample of it shows them. */
 const VOTE_COLUMNS = ["paper", "reviewer", "vote", "reason", "note", "result", "voted"] as const;
 
+/** The paragraph on the Methods tab, which a refused copy selects for copying by hand. */
+const METHODS_ID = "screening-methods-paragraph";
+
 /** The four things a review's report needs from its screening: the included papers, every vote, the flow of papers, and a paragraph for the methods section. */
 export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boolean; onClose: () => void; state: Open; tab: ExportTab; onTab: (tab: ExportTab) => void }) {
   const t = useTranslations("screening.files");
@@ -312,13 +315,13 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ul>
               </div>
             ) : (
-              <p dir="ltr" lang="en" className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
+              <p id={METHODS_ID} dir="ltr" lang="en" className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
             )}
           </Section>
         </div>
         </ScrollArea>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
-          <p className="me-auto min-w-0 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
+          <p className="min-w-48 flex-1 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
           {(tab === "papers"
             ? [
                 { key: `papers-csv:${group}`, format: "CSV", run: async () => save(fileName(out, GROUP_FILE[group], "csv", Date.now()), "text/csv", papersCsv(out, await every(papersOf(group)))), off: !included },
@@ -334,7 +337,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   ]
                 : tab === "record"
                   ? [{ key: "json", format: "JSON", run: async () => { if (!workspaceId) throw new Error(t("notLoaded")); save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2)); }, off: false }]
-                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select") }), off: false }]
+                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), off: false }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}

@@ -8059,7 +8059,8 @@
       "copyToast": {
         "copied": "Parágrafo de métodos copiado",
         "failed": "O seu navegador não deixou a página copiar",
-        "select": "Selecione o parágrafo e copie-o."
+        "select": "Selecione o parágrafo e copie-o.",
+        "selected": "O parágrafo está selecionado. Copie-o com o teclado."
       },
       "notLoaded": "O espaço de trabalho ainda não carregou. Tente novamente daqui a pouco.",
       "notMade": "Não foi possível criar o ficheiro. Tente novamente."

@@ -8059,7 +8059,8 @@
       "copyToast": {
         "copied": "Die metodeparagraaf is gekopieer",
         "failed": "Jou blaaier het nie die bladsy toegelaat om te kopieer nie",
-        "select": "Kies die paragraaf en kopieer dit."
+        "select": "Kies die paragraaf en kopieer dit.",
+        "selected": "Die paragraaf is gekies. Kopieer dit met jou sleutelbord."
       },
       "notLoaded": "Die werkruimte het nog nie gelaai nie. Probeer oor ’n oomblik weer.",
       "notMade": "Die lêer kon nie gemaak word nie. Probeer weer."

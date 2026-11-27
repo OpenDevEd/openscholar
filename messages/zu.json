@@ -8058,7 +8058,8 @@
       "copyToast": {
         "copied": "Isigaba sezindlela sikopishiwe",
         "failed": "Isiphequluli sakho asivumelanga ikhasi ukuthi likopishe",
-        "select": "Khetha isigaba bese usikopisha."
+        "select": "Khetha isigaba bese usikopisha.",
+        "selected": "Isigaba sikhethiwe. Sikopishe ngekhibhodi yakho."
       },
       "notLoaded": "Isikhala sokusebenzela asikalayishi. Zama futhi emzuzwini.",
       "notMade": "Ifayela alikwazanga ukwenziwa. Zama futhi."

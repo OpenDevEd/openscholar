@@ -94,8 +94,8 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean) {
-  const [{ each }, models] = [readersOf(screening), modelsOf(screening).length];
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Array<{ email: string }> = []) {
+  const [{ each }, models] = [readersOf(screening, pending), modelsOf(screening).length];
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
@@ -248,7 +248,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   }
 
   const { screening } = open;
-  const facts = ruleFacts({ words, t }, screening, open.isReviewer);
+  const facts = ruleFacts({ words, t }, screening, open.isReviewer, open.invited);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.total;
   const workspace = screening.workspace;

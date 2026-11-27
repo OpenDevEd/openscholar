@@ -224,7 +224,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening).each > 1 || (modelsOf(screening).length > 0 && screening.rule.models !== "advice")) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening, open.invited).each > 1 || (modelsOf(screening).length > 0 && screening.rule.models !== "advice")) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -299,7 +299,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const stillVoting = takers.filter((row) => row.left > 0);
   // Said where there is more than one person: for one alone, their own row says it.
   const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? t("reviewers.everyoneDone", daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))) : null;
-  const { people: readers, each } = readersOf(screening);
+  const { people: readers, each } = readersOf(screening, open.invited);
   const people = readers.length;
   // Where every person reads every paper, everyone already has the papers there are to move.
   const givers = open.canChange && !screening.finishedAt && each < people ? takers.filter((row) => row.left > 0) : [];

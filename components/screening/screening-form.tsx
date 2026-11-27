@@ -508,9 +508,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
   const people = peopleOf(draft);
   // Someone invited by email reads papers once they have joined.
-  const { people: joined, each } = readersOf(draft);
-  // Who the rule can put on a paper: the people on it and the ones invited by email.
-  const readers = draft.reviewers.filter((one) => !one.left && one.kind === "person").length;
+  // Who the rule can put on a paper: the people on it and the ones invited by email, those a running screening's invitations wait for among them.
+  const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
+  const readers = joined.length + invited;
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -533,7 +533,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     return loads.most - loads.least <= 2 ? t("share.about", { more, count: loads.most }) : t("share.range", { more, least: words.num(loads.least), most: words.num(loads.most) });
   })();
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
-  const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
+  // A model a save just put on it hasn't been given its papers yet (convex/screening/reviewers.ts `enlist`): until it has, what it will read is the papers still open.
+  const notDealt = (model: Reviewer) => Boolean(saved && open && !model.tally?.dealt && saved.reviewers.some((one) => one.id === model.id && !one.left));
+  const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? (notDealt(model) ? readableBy(model.model!, (open!.counts.waiting ?? 0) + (open!.counts.conflict ?? 0), pdfs) : (model.tally?.waiting ?? 0))) + promisedNew);
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
   // A model on it with nothing left to read that it can read: never while the change is counted, never one that is given no PDF it can't read, and never one only being added, which the lines under Changes speak for.
   // Never before the model has been given its papers: just after a save that adds it, it has none yet, and nothing read.

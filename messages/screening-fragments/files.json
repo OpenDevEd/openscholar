@@ -133,7 +133,8 @@
   "copyToast": {
     "copied": "Copied the methods paragraph",
     "failed": "Your browser didn't let the page copy",
-    "select": "Select the paragraph and copy it."
+    "select": "Select the paragraph and copy it.",
+    "selected": "The paragraph is selected. Copy it with your keyboard."
   },
   "notLoaded": "The workspace hasn't loaded yet. Try again in a moment.",
   "notMade": "The file couldn't be made. Try again."

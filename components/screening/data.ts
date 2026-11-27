@@ -278,11 +278,14 @@ export const activeReviewers = (screening: Pick<Screening, "reviewers">) => scre
  * no paper until they join, so they are not among `people`, but the rule waits for them (lib/screening/project.ts), so
  * they count toward `each`.
  */
-export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
+export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pending: Array<{ email: string }> = []) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
-  const invited = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).length;
-  return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length + invited) };
+  const invited = invitedOf(screening, pending);
+  return { people, invited, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length + invited) };
 };
+/** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */
+export const invitedOf = (screening: Pick<Screening, "reviewers">, pending: Array<{ email: string }> = []) =>
+  new Set([...screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).map((reviewer) => reviewer.email!.toLowerCase()), ...pending.map((one) => one.email.toLowerCase())]).size;
 /**
  * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever the server gives
  * them to, by the same rule (lib/screening/rules.ts `nextResolver`).

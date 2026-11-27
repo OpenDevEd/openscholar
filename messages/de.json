@@ -8059,7 +8059,8 @@
       "copyToast": {
         "copied": "Methodenabsatz kopiert",
         "failed": "Ihr Browser hat das Kopieren nicht erlaubt",
-        "select": "Markieren Sie den Absatz und kopieren Sie ihn."
+        "select": "Markieren Sie den Absatz und kopieren Sie ihn.",
+        "selected": "Der Absatz ist markiert. Kopieren Sie ihn mit der Tastatur."
       },
       "notLoaded": "Der Arbeitsbereich ist noch nicht geladen. Versuchen Sie es gleich noch einmal.",
       "notMade": "Die Datei konnte nicht erstellt werden. Versuchen Sie es erneut."
