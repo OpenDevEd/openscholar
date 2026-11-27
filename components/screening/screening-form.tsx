@@ -13,9 +13,9 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListEmpty, ListLoading, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { LibrarySelect, useLibrarySources, useRowLabel } from "./library-sources";
@@ -58,14 +58,14 @@ import { cn } from "@/lib/utils";
 import { EVERY_MS, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
+import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -319,6 +319,8 @@ function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: 
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
   const tc = useTranslations("common");
+  // "First vote decides" puts one person on each paper. The number set before it comes back when another rule is picked again, so clicking through the rules changes nothing by the way.
+  const [eachBefore, setEachBefore] = useState<Screening["rule"]["each"] | null>(null);
   const crumb = useScreeningsCrumb();
   const pieces = useTranslations("screening.pieces");
   const list = useTranslations("screening.list");
@@ -515,6 +517,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Who the rule can put on a paper: the people on it and the ones invited by email, those a running screening's invitations wait for among them.
   const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
+  // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
+  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -852,7 +856,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -1109,10 +1113,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="space-y-2">
                       {/* A search is found by its words and a screening by its name. The library's collections are few enough to page through. */}
                       {kind !== "collection" ? (
-                        <div className="relative">
-                          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                          <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t(`find.${kind as "search" | "screening"}`)} aria-label={t("papers.findSource")} className="h-8 rounded-full bg-card ps-8 text-sm" />
-                        </div>
+                        <ListSearch value={find} onChange={(event) => setFind(event.target.value)} placeholder={t(`find.${kind as "search" | "screening"}`)} aria-label={t("papers.findSource")} className={SEARCH_PILL} />
                       ) : null}
                       {/* While a list is read, and while it runs to more than a page, it keeps a page's height, so a short last page moves nothing under it. A list that turns out shorter slides to its own height. */}
                       <AutoHeight>
@@ -1340,7 +1341,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && draft.rule.settle !== "one" ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>
@@ -1403,7 +1404,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
               <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: words.t(`settle.means.${rule}`), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
-                <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : {}) } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
+                <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
                 {/* A rule that doesn't apply says why in its place: with no model there is nothing to count, and the first vote is a person's whatever the setting. */}
@@ -1412,8 +1413,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                   : <Segmented label={t("decided.modelVotes")} value={draft.rule.models} onChange={(next) => set({ rule: { ...draft.rule, models: next } })} options={[{ id: "vote" as const, label: t("decided.countAsVote") }, { id: "advice" as const, label: t("decided.adviceOnly") }]} />}
               </RuleRow>
               <RuleRow name={t("decided.settledBy")} help={<Help title={t("decided.conflictsTitle")}>{t("decided.conflictsHelp")}</Help>}>
-                {draft.rule.settle === "one" ? (
-                  <Chip icon={Check}>{t("decided.noConflicts")}</Chip>
+                {!conflicts ? (
+                  <Chip icon={Check}>{draft.rule.settle === "one" ? t("decided.noConflicts") : t("decided.oneVoteEach")}</Chip>
                 ) : joined.length ? (
                   <Select value={joined.some((person) => person.id === draft.rule.resolver) ? draft.rule.resolver : joined[0]!.id} onValueChange={(next) => set({ rule: { ...draft.rule, resolver: next } })}>
                     <SelectTrigger aria-label={t("decided.whoSettles")} className="h-8 w-56 rounded-full px-3.5 text-xs"><SelectValue /></SelectTrigger>
@@ -1585,7 +1586,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {models.length && draft.living ? (
                     <>
                     <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
-                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.credits(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
+                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
                     </>
                   ) : null}
                 </div>

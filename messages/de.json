@@ -7786,7 +7786,7 @@
       "model": {
         "startsLater": "{name} startet, sobald die Artikel da sind",
         "nothingToRead": "{name} hat keine Artikel mehr zu lesen",
-        "reads": "{name} liest {all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
+        "reads": "{name} liest {upTo, select, true {bis zu {count, plural, one {# Artikel} other {# Artikel}}} other {{all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
       },
       "person": {
         "invited": "{name} erhält eine Einladung per E-Mail und nach dem Beitritt Artikel",
@@ -8285,13 +8285,13 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel}}",
         "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
         "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
-        "lastSpent": "{spent} für {count, plural, one {den letzten Artikel} other {die letzten # Artikel}}"
+        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}} für die {count, plural, one {# Arbeit} other {# Arbeiten}} der letzten Prüfung mit diesen Modellen"
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
         "factPeople": "Personen stimmen direkt ab",
         "factModels": "Antworten bestimmen die Stimmen der Modelle",
-        "help": "Formulieren Sie jedes Kriterium als Ja-oder-Nein-Frage. Ein Modell beantwortet jedes mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium lässt das Modell für Ausschließen stimmen, ein Unklar für Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen, aber eine Person kann es trotzdem als Grund angeben. Hinweise unter einer Frage sagen, was zählt. Ein Reviewer öffnet sie unter Prüfen über „Hinweise“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, werden in jedem Abstract markiert, während eine Person abstimmt.",
+        "help": "Formulieren Sie jedes Kriterium als Ja-Nein-Frage. Ein Modell beantwortet jede mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium lässt das Modell für Ausschließen stimmen, ein Unklar für Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen. Eine Anleitung unter einer Frage sagt, was zählt. Reviewer öffnen sie auf Screen mit „Anleitung“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, werden in jedem Abstract markiert, während eine Person abstimmt.",
         "import": "{searches, plural, one {{count, plural, one {# Frage aus Ihrer Suche hinzufügen} other {# Fragen aus Ihrer Suche hinzufügen}}} other {{count, plural, one {# Frage aus Ihren Suchen hinzufügen} other {# Fragen aus Ihren Suchen hinzufügen}}}}",
         "copyFrom": "Aus einem Screening kopieren",
         "copyAdds": "Fügt die Kriterien jenes Screenings mit ihren Punkten zu diesen hinzu",
@@ -8387,7 +8387,8 @@
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu sehen, wie ein Artikel entschieden wird.",
-        "modelSettles": "Die Stimme eines Modells entscheidet nur die Artikel, die keine Person bekommt. Bei den anderen entscheidet die Stimme der ersten Person."
+        "modelSettles": "Die Stimme eines Modells entscheidet nur die Artikel, die keine Person bekommt. Bei den anderen entscheidet die Stimme der ersten Person.",
+        "oneVoteEach": "Eine Stimme entscheidet jeden Artikel, es gibt also keinen Konflikt zu klären"
       },
       "goesHelp": "Artikel mit dem Ergebnis Eingeschlossen werden der Sammlung hinzugefügt, die Sie wählen, in Ihrer Bibliothek oder in einer Evidence Community, mit den Sternen aus der Bewertung. Nirgends behält sie nur im Screening.",
       "summaryLabel": "Zusammenfassung",
@@ -8571,8 +8572,7 @@
         "title": "{name} löschen?",
         "goes": "Die Stimmen und Einstellungen werden mit gelöscht",
         "saved": "{count, plural, one {Der # in {collection} gespeicherte Artikel bleibt dort} other {Die # in {collection} gespeicherten Artikel bleiben dort}}",
-        "final": "Dies lässt sich nicht rückgängig machen",
-        "shut": "Nur {name} oder ein Admin dieses Arbeitsbereichs kann dieses Screening löschen."
+        "final": "Dies lässt sich nicht rückgängig machen"
       },
       "leave": {
         "title": "Dieses Screening verlassen?",
@@ -8885,7 +8885,9 @@
         "chance": "0 nicht besser als Zufall",
         "worse": "Unter 0 schlechter als Zufall",
         "means": "Wie weit zwei Reviewer über den Zufall hinaus übereinstimmen, bei den Artikeln, über die beide abgestimmt haben. Methodenteile geben es an. Der Gesamtwert ist der Mittelwert aller Paare.",
-        "swings": "Bei wenigen Artikeln schwankt es stark und kann unter 0 fallen. Es stabilisiert sich, je mehr Artikel beide Stimmen haben."
+        "swings": "Bei wenigen Artikeln schwankt es stark und kann unter 0 fallen. Es stabilisiert sich, je mehr Artikel beide Stimmen haben.",
+        "none": "k. A.",
+        "noneFact": "k. A. heißt, beide trafen bei jedem Artikel dieselbe Entscheidung, also hat Kappa keinen Wert"
       },
       "facts": {
         "startedIt": "hat es {ago} gestartet"
@@ -8913,7 +8915,7 @@
         "onceRead": "{credits}, sobald alle Artikel gelesen sind",
         "failed": "{count, plural, one {# Lesevorgang fehlgeschlagen} other {# Lesevorgänge fehlgeschlagen}}",
         "arriving": "Die Artikel kommen noch an",
-        "allRead": "Alle Artikel sind gelesen",
+        "allRead": "Für die Modelle bleibt nichts zu lesen",
         "leftIn": "{own, select, true {{credits} übrig} other {{credits} übrig in {workspace}}}",
         "takenOff": "{credits} durch entfernte Modelle",
         "nothingToPay": "Nichts zu bezahlen"
@@ -8935,6 +8937,7 @@
         "failed": "Konnte nicht abgeschlossen werden",
         "found": "{count, number} gefunden",
         "alreadyIn": "{count, number} bereits enthalten",
+        "leftOut": "{count, plural, one {# ausgelassen} other {# ausgelassen}}",
         "added": "{count, number} hinzugefügt",
         "newFrom": "{count, number} neu aus {source}",
         "result": "{result, select, include {{count, number} eingeschlossen} maybe {{count, number} vielleicht} exclude {{count, number} ausgeschlossen} conflict {{count, number} im Konflikt} other {{count, number} warten auf Stimmen}}",
@@ -9095,9 +9098,7 @@
       },
       "pointsOf": "{points, number} von {max, plural, one {# Punkt} other {# Punkten}}",
       "note": {
-        "neededForOther": "Schreiben Sie den anderen Grund",
         "label": "Notiz",
-        "writeReason": "Schreiben Sie den Grund in die Notiz",
         "forOthers": "Notiz für die anderen (optional)",
         "forRecord": "Notiz fürs Protokoll (optional)"
       },
@@ -9377,7 +9378,8 @@
         "noVotes": "Sie haben noch über keinen Artikel abgestimmt",
         "seeVotes": "{count, plural, =1 {Ihre Stimme ansehen} other {Ihre # Stimmen ansehen}}",
         "join": "Als Reviewer beitreten",
-        "allPapers": "Alle Artikel ansehen"
+        "allPapers": "Alle Artikel ansehen",
+        "noneCanSplit": "Jeder Artikel hier wird durch eine Stimme entschieden, also kann keiner in Konflikt geraten"
       },
       "matrix": {
         "nameYou": "{name}, Sie",
@@ -9397,7 +9399,8 @@
         "help": "Das Modell bewertet jede seiner Antworten von 0 bis 100 %. Lesen Sie unter 65 % das Abstract, bevor Sie sich auf diese Antwort verlassen.",
         "unsure": "Nur {sure, number, percent} sicher",
         "sure": "{sure, number, percent} sicher"
-      }
+      },
+      "helpAnswering": "Antworten ist freiwillig, eine Stimme allein genügt. Ein Nein bei einem Muss-Kriterium weist auf Ausschließen, und dieses Muss-Kriterium ist der Grund, wenn Sie ausschließen. Sonst fragt Ausschließen nur, ob es einen Grund gibt. Keinen, ein Duplikat oder einen anderen, den Sie aufschreiben."
     },
     "sources": {
       "add": "Hinzufügen",
@@ -9599,10 +9602,6 @@
         "unstated": "Kein Grund angegeben"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Welches Muss-Kriterium erfüllen diese Artikel nicht?} other {Welches Muss-Kriterium erfüllt er nicht?}}",
-        "criterion": "{many, select, true {Welches Kriterium erfüllen diese Artikel nicht?} other {Welches Kriterium erfüllt er nicht?}}",
-        "orCriterion": "Oder ein anderes Kriterium",
-        "orReason": "Oder ein anderer Grund",
         "why": "{many, select, true {Warum ausschließen?} other {Warum ausschließen?}}"
       },
       "notMet": "{name} nicht erfüllt",
@@ -9623,7 +9622,7 @@
         },
         "means": {
           "all": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und alle gleich gestimmt haben. Jede Abweichung ist ein Konflikt.",
-          "most": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und mehr als die Hälfte gleich gestimmt hat. Ohne eine solche Mehrheit ist es ein Konflikt.",
+          "most": "Ein Artikel ist entschieden, sobald jeder Reviewer, dem er zugeteilt ist, abgestimmt hat und mehr als die Hälfte gleich gestimmt hat. Wo die Stimmen der Modelle zählen, muss mindestens eine Person zu dieser Mehrheit gehören. Ohne eine solche Mehrheit ist es ein Konflikt.",
           "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt. Bekommt eine Person den Artikel, entscheidet ihn die Stimme der ersten Person. Die Stimme eines Modells entscheidet nur einen Artikel, den keine Person hat."
         },
         "says": {

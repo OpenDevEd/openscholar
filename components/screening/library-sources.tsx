@@ -6,6 +6,7 @@
 // collections are rows under it; and the address of any library OpenScholar runs, pasted beside the
 // picker, becomes a row of its own: a search, a collection, someone's collection or a record.
 
+import { SEARCH_PILL } from "./pieces";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
@@ -17,7 +18,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
-import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { faceOf } from "@/components/workspaces/run-by";
@@ -314,19 +315,17 @@ export function LibrarySources({
               }}
               options={(["all", "yours", "shared", "library"] as const).map((id) => ({ id, label: t(`filter.${id}`) }))}
             />
-            <div className="relative min-w-40 flex-1">
-              <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={words}
-                onChange={(e) => {
-                  setWords(e.target.value);
-                  setPage(1);
-                }}
-                placeholder={t("find")}
-                aria-label={t("find")}
-                className="h-8 rounded-full bg-card ps-8 text-sm"
-              />
-            </div>
+            <ListSearch
+              box="min-w-40 flex-1"
+              value={words}
+              onChange={(e) => {
+                setWords(e.target.value);
+                setPage(1);
+              }}
+              placeholder={t("find")}
+              aria-label={t("find")}
+              className={SEARCH_PILL}
+            />
           </div>
 
           {/* A full page's height while there are pages, so the pager stays put on a short last page; its rows take the place of the placeholder rows when the library answers after the tab opened. */}

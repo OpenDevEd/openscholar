@@ -6,12 +6,12 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, PenLine, Plus, RefreshCw, MessagesSquare } from "@/components/icons";
+import { AiIcon, CircleCheck, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, PenLine, Plus, RefreshCw, MessagesSquare, Search } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Chip } from "./parts";
@@ -289,9 +289,9 @@ export function ScreeningsIndex() {
                     );
                   })}
                   {!rows.length ? (
-                    <li className="flex flex-col items-center gap-2 px-4 py-14 text-center">
-                      <p className="text-sm text-muted-foreground">{none}</p>
-                      <Button variant="outline" size="sm" onClick={() => go({ q: null, show: null, page: null })}>{t("showEvery")}</Button>
+                    <li>
+                      {/* "Show every screening" takes off every narrowing, the person a list is run by too. */}
+                      <ListEmpty icon={searched ? Search : ListChecks} action={<Button variant="outline" size="sm" onClick={() => { runBy.clear(); go({ q: null, show: null, page: null }); }}>{t("showEvery")}</Button>}>{none}</ListEmpty>
                     </li>
                   ) : null}
                 </ul>

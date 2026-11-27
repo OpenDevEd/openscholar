@@ -32,8 +32,8 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
-import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
-import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
+import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
+import { canConflict, gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -136,7 +136,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
         help={
           <Help
             title={t("progress.helpTitle")}
-            facts={RESULTS.map((result) => {
+            facts={RESULTS.filter((result) => result !== "conflict" || splitsIn(screening, open.counts.conflict, open.invited)).map((result) => {
               const Icon = RESULT_STYLE[result].icon;
               const text = result === "maybe" ? t("progress.maybeMeans") : result === "conflict" ? t("progress.conflictUntil", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) }) : words.result(result);
               return <HelpFact key={result} icon={Icon}>{text}</HelpFact>;
@@ -166,19 +166,23 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
         <div className="space-y-3">
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={total - counts.conflict - counts.waiting} /></span>
-            <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
-            {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
-            {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
-            {!open.gathering && removed.left ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
-            {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
-            {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">{t("progress.capped", { workspace: screening.workspace.name, personal: String(screening.workspace.kind === "personal") })}</LinkChip> : null}
-            {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
-            {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText} className="self-center">{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
-            {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
+            {/* The line under the count: its words and the chips beside them centred on one another, and the whole line on the count's baseline. */}
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
+              {open.modelsNow === "reading" ? <Chip className="bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
+              {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
+              {!open.gathering && removed.left ? <SettingsChip open={open} part="papers">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
+              {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
+              {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert}>{t("progress.capped", { workspace: screening.workspace.name, personal: String(screening.workspace.kind === "personal") })}</LinkChip> : null}
+              {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
+              {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText}>{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
+              {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
+            </span>
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
-            {RESULTS.map((result) => {
+            {/* In conflict is a count only where a paper can be in conflict, or one is. */}
+            {RESULTS.filter((result) => result !== "conflict" || splitsIn(screening, counts.conflict, open.invited)).map((result) => {
               const Icon = RESULT_STYLE[result].icon;
               const inner = (
                 <>
@@ -224,7 +228,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening, open.invited).each > 1 || (modelsOf(screening).length > 0 && !modelsAdvise(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length))) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {open.counts.waiting && !screening.finishedAt && canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -276,6 +280,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       done: gotThrough(tally),
       split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
       agrees: compared ? same / compared : null,
+      known: figures !== undefined,
       compared,
       missed: tally?.missed ?? 0,
       // Out of every included paper, the number Progress shows: one it never voted on is one it didn't exclude.
@@ -335,7 +340,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
           <span className="flex items-center gap-1">
             <NextLink href={pairHref(screening.id, b!, a!)} className={cn("flex items-center gap-2 px-2 py-1 text-sm", ROW_LINK)}>
               <span className="text-muted-foreground">{t("reviewers.agreement")}</span>
-              <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa)}</span>
+              <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
               <span className="tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
             </NextLink>
             <KappaHelp />
@@ -483,7 +488,7 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   );
 }
 
-type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
+type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; /** The figures agreement is counted from have arrived: until then there is no "nothing to compare". */ known: boolean; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
 /** When someone gets through so many papers at their pace, in days from now, or nothing where they have no pace to go by. It is said as a day to come ("done in"), so it never reads as Screen's count of the minutes the papers themselves take. */
 const doneIn = (t: T, left: number, perDay: number) => (left <= 0 || perDay <= 0 ? null : t("move.doneIn", daysFrom(Math.ceil(left / perDay))));
 /** A number of days as a message says it: a day, so many days, or so many weeks from two weeks on. */
@@ -492,7 +497,7 @@ const daysFrom = (days: number) => ({ days, weeks: days < 14 ? 0 : Math.round(da
 /** One reviewer: the whole row opens the papers they voted on, and each count opens its own. */
 function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void; /** Opens the move of some of this person's papers to someone else, where they have papers that can go. */ onMove?: () => void }) {
   const { screening } = open;
-  const { reviewer, assigned, done, split, agrees, compared, missed, included, left, perDay, idle } = row;
+  const { reviewer, assigned, done, split, agrees, known, compared, missed, included, left, perDay, idle } = row;
   const t = useTranslations("screening.overview");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
@@ -582,7 +587,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block whitespace-nowrap text-xs tabular-nums ink-destructive")}>{t("row.missedOf", { missed, included })}</NextLink>
@@ -649,17 +654,18 @@ const BANDS = [
   { says: "between", from: 0.6, to: 0.8, kappa: 0.7 },
   { says: "above", from: 0.8, to: 1, kappa: 0.9 },
 ] as const;
-const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
+const shade = (kappa: number | null) => (kappa === null ? "var(--muted)" : kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
 /** The papers two reviewers both voted on, the ones they split on first. */
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
 /** How often two reviewers voted the same, with the papers that is of: a share with nothing to be a share of says little. */
 const sameText = (t: T, pair: { same: number; papers: number }) => t("agreement.sameOf", { share: pair.same, count: pair.papers });
 /** A kappa as it is read, to two places: "0.62". */
-const kappaText = (format: ReturnType<typeof useFormatter>, kappa: number) => format.number(kappa, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** A kappa as a figure, or what stands for one where every vote was the same and it has no value. */
+const kappaText = (format: ReturnType<typeof useFormatter>, kappa: number | null, none: string) => (kappa === null ? none : format.number(kappa, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 function KappaHelp() {
   const t = useTranslations("screening.overview.kappa");
   return (
-    <Help title={t("title")} facts={<><HelpFact>{t("full")}</HelpFact><HelpFact>{t("substantial")}</HelpFact><HelpFact>{t("chance")}</HelpFact><HelpFact>{t("worse")}</HelpFact></>}>
+    <Help title={t("title")} facts={<><HelpFact>{t("full")}</HelpFact><HelpFact>{t("substantial")}</HelpFact><HelpFact>{t("chance")}</HelpFact><HelpFact>{t("worse")}</HelpFact><HelpFact>{t("noneFact")}</HelpFact></>}>
       <p>{t("means")}</p>
       <p>{t("swings")}</p>
     </Help>
@@ -676,9 +682,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
   if (reviewers.length < 3) return null;
-  const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
+  const known = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.kappa] : []));
   // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
-  const shared = pairs.flatMap((one) => (one.pair ? [one.pair.papers] : []));
+  const shared = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.papers] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
   const kept = screening.reviewers.some((one) => one.tally?.kept);
@@ -699,7 +705,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
     >
       {/* The figures arrive after the page: until they do a block holds the note's room, and the frame slides to what comes. */}
       <AutoHeight>
-      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : overall === null ? (
+      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : !pairs.some((one) => one.pair) ? (
         // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
         kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{t("agreement.none")}</EmptyNote>
       ) : (
@@ -707,10 +713,10 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span className="flex items-center gap-3">
-              <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall)}</span>
+              <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall, t("kappa.none"))}</span>
               <span className="text-sm">
                 <span className="font-medium">{t("agreement.mean")}</span>
-                <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span>
+                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
@@ -734,8 +740,8 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
                     const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
                     if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">{t("agreement.noneYet")}</span>;
                     return (
-                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa), share: pair.same, papers: pair.papers })} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
-                        <span className="text-xs font-semibold tabular-nums">{kappaText(format, pair.kappa)}</span>
+                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
+                        <span className="text-xs font-semibold tabular-nums">{kappaText(format, pair.kappa, t("kappa.none"))}</span>
                         <span className="text-2xs tabular-nums text-foreground/70">{sameText(t, pair)}</span>
                       </NextLink>
                     );
@@ -755,7 +761,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
                   {pair ? (
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="text-xs tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
-                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa)}</span>
+                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
                     </span>
                   ) : (
                     <span className="shrink-0 text-xs text-muted-foreground">{t("agreement.noneYet")}</span>
@@ -934,7 +940,9 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                         <>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Chip>{t("checks.found", { count: check.found })}</Chip>
-                            {check.found - check.added ? <Chip>{t("checks.alreadyIn", { count: check.found - check.added })}</Chip> : null}
+                            {/* What it found is what it added, what was in the screening already, and what it left out: each counted apart. */}
+                            {check.found - check.added - (check.left ?? 0) > 0 ? <Chip>{t("checks.alreadyIn", { count: check.found - check.added - (check.left ?? 0) })}</Chip> : null}
+                            {check.left ? <Chip>{t("checks.leftOut", { count: check.left })}</Chip> : null}
                             {check.added ? <LinkChip href={papersHref(screening.id, { added: check.id })} tone="primary">{t("checks.added", { count: check.added })}</LinkChip> : null}
                           </div>
                           {/* Each source that gained papers, with how many were new to the screening: with more than one source to check, the total alone doesn't say which is still finding papers. */}
@@ -1002,6 +1010,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const kept = open.total;
   const found = kept + merged + left;
   const arriving = open.gathering ? Math.max(0, open.gathering.of - open.gathering.done) : 0;
+  // In conflict is a step only where a paper can be in conflict, or one is.
+  const splits = splitsIn(screening, open.counts.conflict, open.invited);
   // Its excluded papers by the reason, the most common first.
   const reasons = Object.entries(figures?.reasons ?? {}).sort((x, y) => y[1] - x[1]);
   const neutral = "bg-foreground/25";
@@ -1023,7 +1033,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
         { key: "exclude", label: words.result("exclude"), value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" },
         ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: words.failed(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria, "label"), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
         { key: "maybe", label: words.result("maybe"), value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar, tone: "maybe" },
-        { key: "conflict", label: words.result("conflict"), value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" },
+        ...(splits ? [{ key: "conflict", label: words.result("conflict"), value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" as const }] : []),
         { key: "waiting", label: words.result("waiting"), value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: `bg-foreground/10 ${HATCH}` },
         // Papers still on their way from its sources have nowhere to open yet.
         ...(open.gathering ? [{ key: "arriving", label: t("flow.arriving"), value: arriving, fill: `bg-foreground/10 ${HATCH}` }] : []),

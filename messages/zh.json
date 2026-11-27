@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} 会在论文到达后开始",
         "nothingToRead": "{name} 没有剩余要读的论文",
-        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}"
+        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {最多 {count, plural, other {# 篇论文}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}"
       },
       "person": {
         "invited": "{name} 会通过邮件收到邀请，加入后分到论文",
@@ -8284,13 +8284,13 @@
         "perNew": "{pdf, select, true {每篇新论文 {credits, plural, other {# 积分}}，按 PDF 读取的更多} other {每篇新论文 {credits, plural, other {# 积分}}}}",
         "noneGrow": "这些来源都不会增加论文。添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
         "addToCheck": "添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
-        "lastSpent": "最近 {count, plural, other {# 篇论文}}用了 {spent}"
+        "lastSpent": "按这些模型，上次检查的 {count, plural, other {# 篇论文}}约需 {spent, plural, other {# 积分}}"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
         "factPeople": "人员直接投票",
         "factModels": "答案决定模型的投票",
-        "help": "把每条标准写成是非题。模型对每条标准回答是、否或不确定。必要条件答“否”会让模型投排除，答“不确定”会让它投待定。加分项永远不会让模型投排除，但人员仍可将其作为理由。问题下方的说明写明哪些算数。审核人在筛选页的问题下方点“说明”即可打开，模型会连同问题一起阅读。你为标准标记的词会在人员投票时在每篇摘要中标出。",
+        "help": "把每条标准写成是非题。模型对每题回答是、否或不确定。必需标准答“否”会让模型投排除，答“不确定”会投可能。可选标准绝不会让模型投排除。问题下的指引说明什么算数。审阅者在筛选页的问题下点“指引”打开，模型会连同问题一起读取。你为标准标记的词会在投票时于每篇摘要中高亮。",
         "import": "{searches, plural, other {{count, plural, other {从你的搜索中添加 # 个问题}}}}",
         "copyFrom": "从筛选中复制",
         "copyAdds": "把那个筛选的标准及其分数加到这些标准中",
@@ -8386,7 +8386,8 @@
         "always": "随时",
         "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
         "addReviewer": "添加审核人即可查看论文如何定案。",
-        "modelSettles": "模型的投票只会让没有分配给任何人的论文定案。其他论文由第一位人员的投票决定。"
+        "modelSettles": "模型的投票只会让没有分配给任何人的论文定案。其他论文由第一位人员的投票决定。",
+        "oneVoteEach": "每篇论文由一票决定，因此没有需要裁定的分歧"
       },
       "goesHelp": "结果为入选的论文会添加到你在文库或 Evidence Community 中选择的合集，并带有评分得出的星级。选择“不保存”则只留在筛选中。",
       "summaryLabel": "摘要",
@@ -8570,8 +8571,7 @@
         "title": "删除 {name}？",
         "goes": "投票和设置会一并删除",
         "saved": "{count, plural, other {已保存到 {collection} 的 # 篇论文会留在那里}}",
-        "final": "此操作无法撤销",
-        "shut": "只有 {name} 或此工作区的管理员可以删除这次筛选。"
+        "final": "此操作无法撤销"
       },
       "leave": {
         "title": "退出此筛选？",
@@ -8884,7 +8884,9 @@
         "chance": "0 不比随机好",
         "worse": "低于 0 比随机还差",
         "means": "两位审核人在双方都投票的论文上，超出随机水平的一致程度。方法部分会报告这一数值。总体数值是所有两两组合的平均值。",
-        "swings": "只有少量论文时它波动很大，可能低于 0。双方都投票的论文越多，它越稳定。"
+        "swings": "只有少量论文时它波动很大，可能低于 0。双方都投票的论文越多，它越稳定。",
+        "none": "不适用",
+        "noneFact": "不适用表示两人对每篇论文都做出了相同决定，因此 kappa 没有值"
       },
       "facts": {
         "startedIt": "{ago}开始"
@@ -8912,7 +8914,7 @@
         "onceRead": "读完所有论文时共 {credits}",
         "failed": "{count, plural, other {# 次读取失败}}",
         "arriving": "论文仍在到达",
-        "allRead": "所有论文均已读取",
+        "allRead": "模型已没有要读的内容",
         "leftIn": "{own, select, true {剩余 {credits}} other {{workspace} 剩余 {credits}}}",
         "takenOff": "已移出的模型用了 {credits}",
         "nothingToPay": "无需付费"
@@ -8934,6 +8936,7 @@
         "failed": "未能完成",
         "found": "找到 {count, number} 篇",
         "alreadyIn": "{count, number} 篇已在其中",
+        "leftOut": "{count, plural, other {# 篇被排除在外}}",
         "added": "加入 {count, number} 篇",
         "newFrom": "来自 {source} 的 {count, number} 篇新论文",
         "result": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
@@ -9094,9 +9097,7 @@
       },
       "pointsOf": "{points, number} / {max, plural, other {# 分}}",
       "note": {
-        "neededForOther": "填写其他原因",
         "label": "备注",
-        "writeReason": "在备注中写明原因",
         "forOthers": "写给其他人的备注（可选）",
         "forRecord": "供记录的备注（可选）"
       },
@@ -9376,7 +9377,8 @@
         "noVotes": "你还没有对任何论文投票",
         "seeVotes": "{count, plural, =1 {查看你的投票} other {查看你的 # 次投票}}",
         "join": "以审核人身份加入",
-        "allPapers": "查看所有论文"
+        "allPapers": "查看所有论文",
+        "noneCanSplit": "这里每篇论文由一票决定，因此不会出现分歧"
       },
       "matrix": {
         "nameYou": "{name}（你）",
@@ -9396,7 +9398,8 @@
         "help": "模型为每个答案给出 0 到 100% 的把握度。低于 65% 时，请先阅读摘要再依赖该答案。",
         "unsure": "把握度只有 {sure, number, percent}",
         "sure": "把握度 {sure, number, percent}"
-      }
+      },
+      "helpAnswering": "回答是可选的，只投票就够了。必需标准答“否”会指向排除，排除时该标准就是理由。否则，排除只会询问是否有理由，即无理由、重复，或你写下的其他理由。"
     },
     "sources": {
       "add": "添加",
@@ -9598,10 +9601,6 @@
         "unstated": "未说明理由"
       },
       "excludeAsk": {
-        "must": "{many, select, true {这些论文不满足哪条必要条件？} other {它不满足哪条必要条件？}}",
-        "criterion": "{many, select, true {这些论文不满足哪条标准？} other {它不满足哪条标准？}}",
-        "orCriterion": "或其他标准",
-        "orReason": "或其他原因",
         "why": "{many, select, true {为什么排除它们？} other {为什么排除它？}}"
       },
       "notMet": "未满足{name}",
@@ -9622,7 +9621,7 @@
         },
         "means": {
           "all": "分配到这篇论文的每位审核人都投票且投法全部相同时，论文即定案。只要有分歧就是冲突。",
-          "most": "分配到这篇论文的每位审核人都投票且超过半数投法相同时，论文即定案。没有这样的多数就是冲突。",
+          "most": "当分配到该论文的每位审阅者都已投票，且超过半数投法相同时，论文即被决定。在模型票计入的情况下，该多数中至少要有一个人。没有这样的多数即为分歧。",
           "one": "论文由第一票定案，因此不会出现冲突。如果论文分配给了人员，由第一位人员的投票定案。模型的投票只会让没有分配给任何人的论文定案。"
         },
         "says": {

@@ -79,10 +79,6 @@
     "unstated": "No reason given"
   },
   "excludeAsk": {
-    "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
-    "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
-    "orCriterion": "Or another criterion",
-    "orReason": "Or another reason",
     "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
   },
   "notMet": "{name} not met",
@@ -103,7 +99,7 @@
     },
     "means": {
       "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
-      "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+      "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. Where the models' votes count, at least one person has to be in that majority. With no such majority it is a conflict.",
       "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
     },
     "says": {

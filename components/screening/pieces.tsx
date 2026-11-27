@@ -4,7 +4,7 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
-import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
+import { type CSSProperties, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import PlainLink from "next/link";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon } from "@/components/icons";
@@ -22,7 +22,8 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, NO_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, NO_REASON, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
 import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
@@ -702,7 +703,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
-  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === OTHER_REASON ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const question = asked ? questionOf(reason, criteria, "label") : undefined;
   return (
@@ -714,21 +715,40 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
 }
 
 /** The reasons to exclude as rows to press: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. The same three as the menu on Screen. */
-export function ReasonRows({ criteria, many = false, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; onPick: (reason: string) => void }) {
+/** Whether the pointer is a mouse: a phone gets no focus put on a row for keys it has none of, which would move its sheet. */
+const finePointer = () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches;
+export function ReasonRows({ criteria, many = false, titled = true, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** Whether the question is said over the rows; a sheet that has it as its own title leaves it out. */ titled?: boolean; onPick: (reason: string) => void }) {
   const words = useWords();
+  const groups = words.excludeGroups(many);
+  const all = groups.flatMap((group) => group.list);
+  // The keys Screen's menu answers to, answered here too: Enter for no reason, the first letter for the others. Enter on a row with the focus picks that row.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === "Enter" && (event.target as HTMLElement).closest("button")) return;
+    const reason = all.find((one) => one.hotkey.toLowerCase() === event.key.toLowerCase());
+    if (!reason) return;
+    event.preventDefault();
+    onPick(reason.key);
+  };
   return (
-    <>
-      {words.excludeGroups(many).map((group) => (
+    <div onKeyDown={onKeyDown} className="space-y-3">
+      {groups.map((group, at) => (
         <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
-          <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
-          {group.list.map((reason) => (
-            <button key={reason.key} type="button" onClick={() => onPick(reason.key)} className="flex min-h-11 w-full items-center rounded-xl border border-border-subtle bg-card px-3 py-2 text-start text-sm transition-colors hover:bg-muted"><ReasonLabel reason={reason.key} criteria={criteria} asked /></button>
+          {titled ? <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p> : null}
+          {group.list.map((reason, i) => (
+            <button key={reason.key} type="button" autoFocus={at === 0 && i === 0 && finePointer()} onClick={() => onPick(reason.key)} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-border-subtle bg-card px-3 py-2 text-start text-sm transition-colors hover:bg-muted">
+              <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} asked /></span>
+              {reason.hotkey ? <Kbd className="pointer-coarse:hidden">{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
+            </button>
           ))}
         </div>
       ))}
-    </>
+    </div>
   );
 }
+
+/** The app's search box (`ListSearch`) as the pills it stands among on these pages: the menus and the tabs beside it are pills too. */
+export const SEARCH_PILL = "w-full rounded-full border-border bg-card";
 
 /** "Nothing here yet", where a list or a part of a page is empty: one dashed box, the same wherever it stands. */
 export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
@@ -741,20 +761,24 @@ export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
  * share them, and are tinted while the table is narrowed to them.
  */
 export function PaperFacts({ paper, source, added }: {
-  paper: Pick<Paper, "title" | "cited" | "doi" | "pdf">;
+  paper: Pick<Paper, "key" | "title" | "cited" | "doi" | "pdf">;
   source?: { name: string; kind: string; href: string; on?: boolean; current?: "true"; label?: string };
   added?: { at: number; href: string; on?: boolean; current?: "true" };
 }) {
   const t = useTranslations("screening.pieces");
+  const tp = useTranslations("paperPage");
   const words = useWords();
+  // Its own page here, as Search results, the Library and Bookmarks link to it, where the paper has one.
+  const page = ourPaperPage({ id: paper.key, title: paper.title });
   return (
     <>
       {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
       {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">{t("paperFacts.from", { name: source.name })}</LinkChip> : null}
       {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>{t("paperFacts.added", { ago: words.ago(added.at) })}</LinkChip> : null}
       {paper.cited === undefined ? null : <Chip icon={Quote}>{t("paperFacts.cited", { count: paper.cited })}</Chip>}
-      {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. A paper screened as its PDF has its full text on the page already. */}
-      {paper.pdf ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>{t("paperFacts.fullText")}</LinkChip>}
+      {page ? <LinkChip href={page} target="_blank" rel="noreferrer" icon={ExternalLink}>{tp("paperPage")}</LinkChip> : null}
+      {/* Its DOI opens the paper where it is published; without one, its page here, or else a search for its title. In a new tab, so the place in the list is kept. A paper screened as its PDF has its full text on the page already. */}
+      {paper.pdf || (!paper.doi && page) ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>{t("paperFacts.fullText")}</LinkChip>}
     </>
   );
 }

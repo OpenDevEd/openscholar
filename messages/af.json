@@ -7786,7 +7786,7 @@
       "model": {
         "startsLater": "{name} begin sodra die artikels aankom",
         "nothingToRead": "{name} het geen artikels oor om te lees nie",
-        "reads": "{name} lees {all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
+        "reads": "{name} lees {upTo, select, true {tot {count, plural, one {# artikel} other {# artikels}}} other {{all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
       },
       "person": {
         "invited": "{name} kry ’n uitnodiging per e-pos, en artikels sodra hulle aansluit",
@@ -8285,13 +8285,13 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel, meer as dit as ’n PDF gelees word} other {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel}}",
         "noneGrow": "Geeneen van hierdie bronne kry artikels by nie. Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
         "addToCheck": "Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
-        "lastSpent": "{spent} vir {count, plural, one {die laaste artikel} other {die laaste # artikels}}"
+        "lastSpent": "Sowat {spent, plural, one {# krediet} other {# krediete}} vir die laaste kontrole se {count, plural, one {# artikel} other {# artikels}} met hierdie modelle"
       },
       "criteria": {
         "helpTitle": "Vereiste en wenslik",
         "factPeople": "Mense stem direk",
         "factModels": "Antwoorde bepaal modelle se stemme",
-        "help": "Skryf elke kriterium as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n vereiste kriterium laat die model Sluit uit stem, en ’n onduidelik laat dit Miskien stem. ’n Wenslike kriterium laat ’n model nooit Sluit uit stem nie, maar ’n persoon kan dit steeds as hul rede gee. Riglyne onder ’n vraag sê wat tel. ’n Beoordelaar maak dit oop met “Riglyne” onder die vraag op Sif, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n kriterium merk, word in elke opsomming gemerk terwyl ’n persoon stem.",
+        "help": "Skryf elke maatstaf as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n moet-maatstaf laat die model vir Sluit uit stem, en ’n onduidelik vir Miskien. ’n Mag-maatstaf laat ’n model nooit vir Sluit uit stem nie. Leiding onder ’n vraag sê wat tel. ’n Beoordelaar maak dit met \"Leiding\" onder die vraag op Screen oop, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n maatstaf merk, word in elke opsomming gemerk terwyl iemand stem.",
         "import": "{searches, plural, one {{count, plural, one {Voeg # vraag uit jou soektog by} other {Voeg # vrae uit jou soektog by}}} other {{count, plural, one {Voeg # vraag uit jou soektogte by} other {Voeg # vrae uit jou soektogte by}}}}",
         "copyFrom": "Kopieer uit ’n siftering",
         "copyAdds": "Voeg daardie siftering se kriteria en hul punte by hierdie",
@@ -8387,7 +8387,8 @@
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
         "addReviewer": "Voeg ’n beoordelaar by om te sien hoe ’n artikel beslis word.",
-        "modelSettles": "’n Model se stem beslis net die artikels wat geen persoon kry nie. Op die ander beslis die eerste persoon se stem."
+        "modelSettles": "’n Model se stem beslis net die artikels wat geen persoon kry nie. Op die ander beslis die eerste persoon se stem.",
+        "oneVoteEach": "Een stem besleg elke artikel, so daar is geen konflik om te besleg nie"
       },
       "goesHelp": "Artikels met die uitslag Ingesluit word by die versameling gevoeg wat jy kies, in jou biblioteek of in ’n Evidence Community, met die sterre uit Puntetelling. Nêrens hou hulle net in die siftering.",
       "summaryLabel": "Opsomming",
@@ -8571,8 +8572,7 @@
         "title": "Vee {name} uit?",
         "goes": "Die stemme en instellings word saam uitgevee",
         "saved": "{count, plural, one {Die # artikel wat in {collection} gestoor is, bly daar} other {Die # artikels wat in {collection} gestoor is, bly daar}}",
-        "final": "Dit kan nie ongedaan gemaak word nie",
-        "shut": "Net {name} of ’n admin van hierdie werkruimte kan hierdie siftering uitvee."
+        "final": "Dit kan nie ongedaan gemaak word nie"
       },
       "leave": {
         "title": "Verlaat hierdie siftering?",
@@ -8885,7 +8885,9 @@
         "chance": "0 nie beter as toeval nie",
         "worse": "Onder 0 slegter as toeval",
         "means": "Hoe ver twee beoordelaars bo toeval saamstem, op die artikels waarop albei gestem het. Metode-afdelings rapporteer dit. Die algehele syfer is die gemiddelde van elke paar.",
-        "swings": "Op ’n handvol artikels swaai dit wyd, en kan dit onder 0 val. Dit stabiliseer soos meer artikels albei stemme het."
+        "swings": "Op ’n handvol artikels swaai dit wyd, en kan dit onder 0 val. Dit stabiliseer soos meer artikels albei stemme het.",
+        "none": "n.v.t.",
+        "noneFact": "n.v.t. beteken albei het by elke artikel dieselfde besluit geneem, so kappa het geen waarde nie"
       },
       "facts": {
         "startedIt": "het dit {ago} begin"
@@ -8913,7 +8915,7 @@
         "onceRead": "{credits} sodra elke artikel gelees is",
         "failed": "{count, plural, one {# lesing het misluk} other {# lesings het misluk}}",
         "arriving": "Die artikels kom nog aan",
-        "allRead": "Elke artikel is gelees",
+        "allRead": "Niks bly oor vir die modelle om te lees nie",
         "leftIn": "{own, select, true {{credits} oor} other {{credits} oor in {workspace}}}",
         "takenOff": "{credits} deur modelle wat afgehaal is",
         "nothingToPay": "Niks om te betaal nie"
@@ -8935,6 +8937,7 @@
         "failed": "Kon nie voltooi word nie",
         "found": "{count, number} gevind",
         "alreadyIn": "{count, number} reeds daarin",
+        "leftOut": "{count, plural, one {# uitgelaat} other {# uitgelaat}}",
         "added": "{count, number} bygevoeg",
         "newFrom": "{count, number} nuut uit {source}",
         "result": "{result, select, include {{count, number} ingesluit} maybe {{count, number} miskien} exclude {{count, number} uitgesluit} conflict {{count, number} in konflik} other {{count, number} wag vir stemme}}",
@@ -9095,9 +9098,7 @@
       },
       "pointsOf": "{points, number} van {max, plural, one {# punt} other {# punte}}",
       "note": {
-        "neededForOther": "Skryf die ander rede",
         "label": "Nota",
-        "writeReason": "Skryf die rede in die nota",
         "forOthers": "Nota vir die ander (opsioneel)",
         "forRecord": "Nota vir die rekord (opsioneel)"
       },
@@ -9377,7 +9378,8 @@
         "noVotes": "Jy het nog op geen artikel gestem nie",
         "seeVotes": "{count, plural, =1 {Sien jou stem} other {Sien jou # stemme}}",
         "join": "Sluit as beoordelaar aan",
-        "allPapers": "Sien al die artikels"
+        "allPapers": "Sien al die artikels",
+        "noneCanSplit": "Elke artikel hier word deur een stem besleg, so geeneen kan in konflik wees nie"
       },
       "matrix": {
         "nameYou": "{name}, jy",
@@ -9397,7 +9399,8 @@
         "help": "Die model gee elkeen van sy antwoorde ’n telling van 0 tot 100%. Onder 65%, lees die opsomming voordat jy op daardie antwoord staatmaak.",
         "unsure": "Net {sure, number, percent} seker",
         "sure": "{sure, number, percent} seker"
-      }
+      },
+      "helpAnswering": "Antwoord is opsioneel, en ’n stem alleen is genoeg. ’n Nee op ’n moet-maatstaf wys na Sluit uit, en daardie maatstaf is die rede wanneer jy uitsluit. Andersins vra Sluit uit net of daar ’n rede is. Geen, ’n duplikaat of ’n ander een wat jy neerskryf."
     },
     "sources": {
       "add": "Voeg by",
@@ -9599,10 +9602,6 @@
         "unstated": "Geen rede gegee nie"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Aan watter vereiste voldoen hierdie artikels nie?} other {Aan watter vereiste voldoen dit nie?}}",
-        "criterion": "{many, select, true {Aan watter kriterium voldoen hierdie artikels nie?} other {Aan watter kriterium voldoen dit nie?}}",
-        "orCriterion": "Of ’n ander kriterium",
-        "orReason": "Of ’n ander rede",
         "why": "{many, select, true {Hoekom sluit jy hulle uit?} other {Hoekom sluit jy dit uit?}}"
       },
       "notMet": "{name} nie voldoen nie",
@@ -9623,7 +9622,7 @@
         },
         "means": {
           "all": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en almal dieselfde gestem het. Enige verdeling is ’n konflik.",
-          "most": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en meer as die helfte dieselfde gestem het. Sonder so ’n meerderheid is dit ’n konflik.",
+          "most": "’n Artikel is besleg sodra elke beoordelaar aan wie dit gegee is gestem het en meer as die helfte dieselfde gestem het. Waar die modelle se stemme tel, moet minstens een persoon in daardie meerderheid wees. Sonder so ’n meerderheid is dit ’n konflik.",
           "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie. Waar ’n persoon die artikel kry, beslis die eerste persoon se stem dit. ’n Model se stem beslis net ’n artikel wat geen persoon het nie."
         },
         "says": {

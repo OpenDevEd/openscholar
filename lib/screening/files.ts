@@ -5,7 +5,7 @@
 import Papa from "papaparse";
 
 /** A record of a file as a screening takes it: what its source said of the paper, before the index is asked. */
-export type FileRecord = { title: string; abstract?: string; authors?: string[]; publicationYear?: number; doi?: string; venue?: string };
+export type FileRecord = { title: string; abstract?: string; authors?: string[]; publicationYear?: number; doi?: string; venue?: string; /** The kind of work the file says it is (Zotero's item type: book, thesis, report…), which a reference manager files it as. */ workType?: string };
 
 const DOI = /10\.\d{4,9}\/\S+/;
 const BOM = /^\uFEFF/;
@@ -123,6 +123,7 @@ export function itemRecords(items: ImportedItem[]): FileRecord[] {
       publicationYear: yearOf(item.date),
       doi: item.DOI?.match(DOI)?.[0],
       venue: (item.publicationTitle ?? item.bookTitle ?? item.proceedingsTitle)?.trim(),
+      ...(item.itemType ? { workType: item.itemType } : {}),
     }));
 }
 

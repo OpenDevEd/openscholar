@@ -133,9 +133,7 @@
   },
   "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
   "note": {
-    "neededForOther": "Write the other reason",
     "label": "Note",
-    "writeReason": "Write the reason in the note",
     "forOthers": "Note for the others (optional)",
     "forRecord": "Note for the record (optional)"
   },

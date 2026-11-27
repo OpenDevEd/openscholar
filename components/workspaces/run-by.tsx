@@ -53,6 +53,8 @@ export function useRunBy(table: RunByTable, { label = "runBy", compact = false }
   return {
     by: by ?? undefined,
     filter: org ? (compact ? control : <RunByRow>{control}</RunByRow>) : null,
+    /** Takes the filter off, for a "show everything" that shows everything. */
+    clear: () => setPicked({ workspaceId, by: null }),
     /** How many one member made, once the counts are read. */
     countOf: (person: Id<"users">) => people?.find((member) => member.userId === person)?.count,
   };

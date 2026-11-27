@@ -97,11 +97,7 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
     },
     /** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
     unclear: (key: string, criteria: Named[]) => t("unclearOn", { name: labelOf(key, criteria) ?? key }),
-    /**
-     * What a paper can be excluded for, in groups, the same wherever Exclude asks why: a must-have it fails, any other
-     * criterion it fails, or another reason. Each has a key for the keyboard: a criterion its own number, as far as the
-     * digits go, and another reason its first letter.
-     */
+    /** What Exclude asks, the same wherever it asks: no reason (on Enter), a duplicate, or another reason written down. Each has a key for the keyboard. */
     excludeGroups: (many = false) => [
       // A title and abstract needs no reason to be excluded (PRISMA 2020 asks for reasons only of full texts): no reason comes first, on Enter. A duplicate is counted on its own; another reason is written down.
       { name: t("excludeAsk.why", { many: String(many) }), list: [{ key: NO_REASON as string, hotkey: "Enter" }, ...OTHER_REASONS.map((key) => ({ key: key as string, hotkey: key[0]!.toUpperCase() }))] },

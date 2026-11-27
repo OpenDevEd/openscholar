@@ -366,6 +366,8 @@ const checkValidator = v.object({
   first: v.boolean(),
   found: v.number(),
   added: v.number(),
+  // Of what it found, the records left out: the rest of what it found was in the screening already.
+  left: v.optional(v.number()),
   // Where the papers it added stand now, for a check that added few enough to count.
   counts: v.optional(countsValidator),
   // The papers a later check added, by the source that brought them.
@@ -595,7 +597,7 @@ export const checksAction = defineUserQuery({
       for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
       return counts;
     };
-    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
   },
 });
 export const checks = userQuery(checksAction);

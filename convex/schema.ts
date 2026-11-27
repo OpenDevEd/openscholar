@@ -1802,6 +1802,8 @@ export default defineSchema({
     from: v.number(),
     found: v.number(),
     added: v.number(),
+    // Of what it found, the records left out (no abstract, nothing to read): neither added nor already in the screening.
+    left: v.optional(v.number()),
     // The papers it added, by the source that brought them.
     bySource: capped(v.optional(v.record(v.id("screeningSources"), v.number())), MAX_SOURCE_ROWS),
     // When its reading last gave it a step: a check that goes quiet is set off again (convex/screening/gathering.ts `watch`).

@@ -191,7 +191,7 @@ export const pdfLook = workspaceQuery({
 });
 
 /** A record no index holds, as the paper a screening reads: what its source gave of it, under a key of its own. */
-const fromRecord = (record: FileRecord, paper: string): SearchPaper => ({ paper, title: record.title, ...(record.abstract ? { abstract: record.abstract } : {}), ...(record.authors ? { authors: record.authors } : {}), ...(record.publicationYear === undefined ? {} : { publicationYear: record.publicationYear }), ...(record.doi ? { doi: record.doi } : {}), ...(record.venue ? { venue: record.venue } : {}) });
+const fromRecord = (record: FileRecord, paper: string): SearchPaper => ({ paper, title: record.title, ...(record.abstract ? { abstract: record.abstract } : {}), ...(record.authors ? { authors: record.authors } : {}), ...(record.publicationYear === undefined ? {} : { publicationYear: record.publicationYear }), ...(record.doi ? { doi: record.doi } : {}), ...(record.venue ? { venue: record.venue } : {}), ...(record.workType ? { workType: record.workType } : {}) });
 
 type Held = { sourceId: Id<"screeningSources">; set: { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> } | { kind: "dois"; file: Id<"_storage"> } | { kind: "pdf"; batch: string }; state: "waiting" | "reading"; resume?: string; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 

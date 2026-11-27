@@ -225,9 +225,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     return void (await give(papers, to - from + 1, to >= last));
   }
   if (set.kind === "zotero") {
-    type Page = { papers: Array<{ key: string; paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean };
+    type Page = { papers: Array<{ key: string; paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; workType?: string; pdfUrl: string }>; ended: boolean };
     const page = (collectionKey: string | undefined, first: number): Promise<Page> => ctx.runAction(internal.zotero.actions.papersOf, { userId: source.userId, ...(collectionKey ? { collectionKey } : {}), ...(set.groupId ? { groupId: set.groupId } : {}), first, last: first + ZOTERO_LIST_PAGE - 1 });
-    const asPapers = (read: Page): Array<SearchPaper & { key: string }> => read.papers.map(({ key, paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ key, paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+    const asPapers = (read: Page): Array<SearchPaper & { key: string }> => read.papers.map(({ key, paper, title, abstract, authors, year, doi, venue, workType, pdfUrl }) => ({ key, paper, title, pdfUrl, ...(workType ? { workType } : {}), authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
     // An item Zotero holds no abstract for is screened as the PDF attached to it, where it has one: the file is fetched as its adder, for the items this screening doesn't have yet.
     const withFiles = async (read: Array<SearchPaper & { key: string }>): Promise<SearchPaper[]> => {
       const bare = read.filter((one) => !one.abstract?.trim());
@@ -449,7 +449,7 @@ export const fill = internalMutation({
     const next = source.next && { ...source.next, duplicates: source.next.duplicates + duplicates, left: source.next.left + left, bare: source.next.bare + bare };
     const counted = !next ? { duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}) } : ended || capped ? { duplicates: next.duplicates, left: next.left, bare: next.bare, next: undefined } : { next };
     await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, ...counted, ...(filed ? { filed: (source.filed ?? 0) + filed, filePages: (source.filePages ?? 0) + filePages, fileSpread } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
-    await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now, ...(taken ? { bySource: { ...check.bySource, [sourceId]: (check.bySource?.[sourceId] ?? 0) + taken } } : {}) });
+    await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, ...(left ? { left: (check.left ?? 0) + left } : {}), beat: now, ...(taken ? { bySource: { ...check.bySource, [sourceId]: (check.bySource?.[sourceId] ?? 0) + taken } } : {}) });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);
     return null;

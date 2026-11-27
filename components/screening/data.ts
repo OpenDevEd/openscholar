@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 // The English a file is written in: the same messages the pages read in English, so a file and a page never name a result two ways.
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
@@ -283,6 +283,12 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
   const invited = invitedOf(screening, pending);
   return { people, invited, each: readersFor(eachOf(screening.rule), people.length + invited) };
 };
+/**
+ * Whether this screening's papers can be in conflict, and so need someone to settle them: more than one vote settles a
+ * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with
+ * their votes kept. Every page that offers a settler, or says a paper settles on one vote, asks this.
+ */
+export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => conflicts > 0 || (screening.rule.settle !== "one" && screening.reviewers.some((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0)) || canConflict(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));
 /** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */

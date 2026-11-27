@@ -26,6 +26,13 @@ describe("project", () => {
     expect(after.closed.map((place) => place.reviewer)).toEqual(["m"]);
   });
 
+  it("closes an advising model's place once its people settle the paper", () => {
+    const team = { people: ["ann"], models: ["m"] };
+    const after = project(paper, [cast("ann", "person", "include", 1), waiting("m", "model")], team, { each: 1, settle: "all", models: "advice" }, criteria, { models: false });
+    expect(after.result).toBe("include");
+    expect(after.closed.map((place) => place.reviewer)).toEqual(["m"]);
+  });
+
   it("gives nobody new a split that everyone has to agree on", () => {
     const split = { ...paper, result: "conflict" as const };
     const team = { people: ["ann", "ben", "cat"], models: [] };

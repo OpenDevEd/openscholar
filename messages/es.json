@@ -7786,7 +7786,7 @@
       "model": {
         "startsLater": "{name} empieza cuando lleguen los artículos",
         "nothingToRead": "A {name} no le quedan artículos que leer",
-        "reads": "{name} lee {all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
+        "reads": "{name} lee {upTo, select, true {hasta {count, plural, one {# artículo} other {# artículos}}} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
       },
       "person": {
         "invited": "{name} recibe una invitación por correo, y artículos cuando se una",
@@ -8285,13 +8285,13 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo, más si se lee como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo}}",
         "noneGrow": "Ninguna de estas fuentes añade artículos. Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
         "addToCheck": "Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
-        "lastSpent": "{spent} {count, plural, one {por el último artículo} other {por los últimos # artículos}}"
+        "lastSpent": "Unos {spent, plural, one {# crédito} other {# créditos}} por {count, plural, one {el # artículo} other {los # artículos}} de la última comprobación con estos modelos"
       },
       "criteria": {
         "helpTitle": "Requisitos y deseables",
         "factPeople": "Las personas votan directamente",
         "factModels": "Las respuestas deciden el voto de los modelos",
-        "help": "Escriba cada criterio como una pregunta de sí o no. Un modelo responde cada una con sí, no o dudoso. Un no en un criterio que es requisito hace que el modelo vote Excluir, y un dudoso hace que vote Quizá. Un criterio deseable nunca hace que un modelo vote Excluir, pero una persona puede darlo igualmente como motivo. La orientación bajo una pregunta dice qué cuenta. Un revisor la abre con «Orientación» bajo la pregunta en Cribar, y un modelo la lee con la pregunta. Las palabras que marque para un criterio se marcan en cada resumen mientras una persona vota.",
+        "help": "Escriba cada criterio como una pregunta de sí o no. Un modelo responde cada una con sí, no o dudoso. Un no en un criterio imprescindible hace que el modelo vote Excluir, y un dudoso, Quizá. Un criterio deseable nunca hace que un modelo vote Excluir. La guía bajo una pregunta dice qué cuenta. Un revisor la abre con «Guía» bajo la pregunta en Screen, y un modelo la lee con la pregunta. Las palabras que marque para un criterio se resaltan en cada resumen mientras una persona vota.",
         "import": "{searches, plural, one {{count, plural, one {Añadir # pregunta de su búsqueda} other {Añadir # preguntas de su búsqueda}}} other {{count, plural, one {Añadir # pregunta de sus búsquedas} other {Añadir # preguntas de sus búsquedas}}}}",
         "copyFrom": "Copiar de un cribado",
         "copyAdds": "Añade los criterios de ese cribado y sus puntos a estos",
@@ -8387,7 +8387,8 @@
         "always": "En cualquier momento",
         "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",
         "addReviewer": "Añada un revisor para ver cómo se resuelve un artículo.",
-        "modelSettles": "El voto de un modelo solo resuelve los artículos que no recibe ninguna persona. En los demás, decide el voto de la primera persona."
+        "modelSettles": "El voto de un modelo solo resuelve los artículos que no recibe ninguna persona. En los demás, decide el voto de la primera persona.",
+        "oneVoteEach": "Un voto decide cada artículo, así que no hay conflicto que resolver"
       },
       "goesHelp": "Los artículos cuyo resultado es Incluido se añaden a la colección que elija, en su biblioteca o en una Evidence Community, con las estrellas de Puntuación. Ningún sitio los deja solo en el cribado.",
       "summaryLabel": "Resumen del cribado",
@@ -8571,8 +8572,7 @@
         "title": "¿Eliminar {name}?",
         "goes": "Los votos y los ajustes se eliminan con él",
         "saved": "{count, plural, one {El # artículo guardado en {collection} se queda ahí} other {Los # artículos guardados en {collection} se quedan ahí}}",
-        "final": "No se puede deshacer",
-        "shut": "Solo {name} o un administrador de este espacio de trabajo puede eliminar este cribado."
+        "final": "No se puede deshacer"
       },
       "leave": {
         "title": "¿Salir de este cribado?",
@@ -8885,7 +8885,9 @@
         "chance": "0 no es mejor que el azar",
         "worse": "Menos de 0, peor que el azar",
         "means": "Cuánto coinciden dos revisores más allá del azar, en los artículos que ambos han votado. Se indica en la sección de métodos. La cifra global es la media de todos los pares.",
-        "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos."
+        "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos.",
+        "none": "n/d",
+        "noneFact": "n/d significa que ambos tomaron la misma decisión en cada artículo, así que kappa no tiene valor"
       },
       "facts": {
         "startedIt": "lo empezó {ago}"
@@ -8913,7 +8915,7 @@
         "onceRead": "{credits} cuando se lean todos los artículos",
         "failed": "{count, plural, one {# lectura fallida} other {# lecturas fallidas}}",
         "arriving": "Los artículos aún están llegando",
-        "allRead": "Todos los artículos están leídos",
+        "allRead": "No queda nada por leer para los modelos",
         "leftIn": "{own, select, true {Quedan {credits}} other {Quedan {credits} en {workspace}}}",
         "takenOff": "{credits} de modelos retirados",
         "nothingToPay": "Nada que pagar"
@@ -8935,6 +8937,7 @@
         "failed": "No se pudo terminar",
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} ya estaban",
+        "leftOut": "{count, plural, one {# omitido} other {# omitidos}}",
         "added": "{count, number} añadidos",
         "newFrom": "{count, number} nuevos de {source}",
         "result": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
@@ -9095,9 +9098,7 @@
       },
       "pointsOf": "{points, number} de {max, plural, one {# punto} other {# puntos}}",
       "note": {
-        "neededForOther": "Escriba el otro motivo",
         "label": "Nota",
-        "writeReason": "Escriba el motivo en la nota",
         "forOthers": "Nota para los demás (opcional)",
         "forRecord": "Nota para que conste (opcional)"
       },
@@ -9377,7 +9378,8 @@
         "noVotes": "Todavía no ha votado ningún artículo",
         "seeVotes": "{count, plural, =1 {Ver su voto} other {Ver sus # votos}}",
         "join": "Unirse como revisor",
-        "allPapers": "Ver todos los artículos"
+        "allPapers": "Ver todos los artículos",
+        "noneCanSplit": "Cada artículo aquí se decide con un voto, así que ninguno puede quedar en conflicto"
       },
       "matrix": {
         "nameYou": "{name}, usted",
@@ -9397,7 +9399,8 @@
         "help": "El modelo puntúa cada una de sus respuestas de 0 a 100 %. Por debajo del 65 %, lea el resumen antes de fiarse de esa respuesta.",
         "unsure": "Solo {sure, number, percent} de seguridad",
         "sure": "{sure, number, percent} de seguridad"
-      }
+      },
+      "helpAnswering": "Responder es opcional y basta con un voto. Un No en un criterio imprescindible apunta a Excluir, y ese criterio es el motivo cuando excluye. Si no, Excluir solo pregunta si hay un motivo. Ninguno, un duplicado u otro que usted escribe."
     },
     "sources": {
       "add": "Añadir",
@@ -9599,10 +9602,6 @@
         "unstated": "Sin motivo indicado"
       },
       "excludeAsk": {
-        "must": "{many, select, true {¿Qué requisito no cumplen estos artículos?} other {¿Qué requisito no cumple?}}",
-        "criterion": "{many, select, true {¿Qué criterio no cumplen estos artículos?} other {¿Qué criterio no cumple?}}",
-        "orCriterion": "U otro criterio",
-        "orReason": "U otro motivo",
         "why": "{many, select, true {¿Por qué excluirlos?} other {¿Por qué excluirlo?}}"
       },
       "notMet": "{name} no se cumple",
@@ -9623,7 +9622,7 @@
         },
         "means": {
           "all": "Un artículo queda resuelto cuando han votado todos los revisores asignados y todos votaron lo mismo. Cualquier división es un conflicto.",
-          "most": "Un artículo queda resuelto cuando han votado todos los revisores asignados y más de la mitad votó lo mismo. Sin esa mayoría, es un conflicto.",
+          "most": "Un artículo queda decidido cuando todos los revisores a los que se asignó han votado y más de la mitad votó igual. Donde cuentan los votos de los modelos, al menos una persona debe estar en esa mayoría. Sin esa mayoría hay un conflicto.",
           "one": "Un artículo queda resuelto con su primer voto, así que nunca hay conflicto. Si una persona recibe el artículo, lo resuelve el voto de la primera persona. El voto de un modelo solo resuelve un artículo que no tiene ninguna persona."
         },
         "says": {

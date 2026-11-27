@@ -27,7 +27,7 @@ import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialo
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { newHref, settingsHref } from "./links";
-import { Panel, ReviewerMark, OpenPapersChips, ShutNote } from "./pieces";
+import { Panel, ReviewerMark, OpenPapersChips } from "./pieces";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { readingOf, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
@@ -48,6 +48,8 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
   const member = open.canChange;
   const live = !screening.finishedAt;
   const t = useTranslations("screening.frame");
+  // Only whoever started it, or an admin of its workspace, deletes it: the others aren't offered what they can't do.
+  const mayDelete = useCurrentWorkspace()?.role === "admin" || screening.createdBy === open.me;
   return (
     <>
       {member && !bar ? <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />{t("settings")}</NextLink></DropdownMenuItem> : null}
@@ -68,12 +70,12 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />{t("menu.move")}</DropdownMenuItem> : null}
       {/* In the widest windows the bar over a screening has this as a button. */}
       {member && live && !open.isReviewer ? <DropdownMenuItem className={bar ? "2xl:hidden" : undefined} onSelect={() => void open.join()}><UserPlus />{t("join")}</DropdownMenuItem> : null}
-      {member ? (
+      {member && mayDelete ? (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => show("delete")}><Trash2 />{t("menu.delete")}</DropdownMenuItem>
         </>
-      ) : open.guest ? (
+      ) : !member && open.guest ? (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => show("leave")}><LogOut />{t("leaveScreening")}</DropdownMenuItem>
@@ -102,7 +104,6 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
   const sharing = useSharing((state?.screening.id ?? "") as Id<"screeningJobs">);
-  const admin = useCurrentWorkspace()?.role === "admin";
   const controls = {
     show: (next: Over) => setOver(next),
     exportTo: (tab: ExportTab) => { setExportTab(tab); setOver("export"); },
@@ -117,7 +118,6 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const unsettled = state.counts.conflict + state.counts.waiting;
   const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = words.collectionName(screening);
-  const mayDelete = admin || screening.createdBy === state.me;
   const confirmAdd = (reviewer: Reviewer) =>
     reviewer.model ? add({ jobId: id, model: { model: reviewer.model.id, ...(reviewer.model.effort ? { effort: reviewer.model.effort } : {}) } }) : reviewer.email ? sharing.invite(reviewer.email) : reviewer.guest ? sharing.give(reviewer.id as Id<"users">) : add({ jobId: id, personId: reviewer.id as Id<"users"> });
 
@@ -174,9 +174,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         {/* The papers that would be left unsettled, one press away. */}
         {unsettled ? <OpenPapersChips id={id} conflict={state.counts.conflict} waiting={state.counts.waiting} onClick={close} /> : null}
       </ConfirmChange>
-      {/* Whoever made it deletes it, or an admin of its workspace (convex/workspaces/actor.ts `requireMakerOrAdmin`): anyone else is told so here, before there is anything to confirm. */}
-      <ConfirmChange open={over === "delete"} variant="destructive" disabled={!mayDelete} title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={close} onConfirm={() => void state.remove().then(() => onDeleted?.(), failed(t))}>
-        {mayDelete ? <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : []), t("delete.final")]} /> : <ShutNote by="member">{t("delete.shut", { name: words.nameOn(screening, screening.createdBy) })}</ShutNote>}
+      {/* Whoever made it deletes it, or an admin of its workspace (convex/workspaces/actor.ts `requireMakerOrAdmin`): the menu offers it to nobody else. */}
+      <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={close} onConfirm={() => void state.remove().then(() => onDeleted?.(), failed(t))}>
+        <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : []), t("delete.final")]} />
       </ConfirmChange>
       {/* A guest gives up their own place: what they voted stays, and what they hadn't goes to the others, as when a member takes them off. */}
       <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={close} onConfirm={() => void leave({ id }).then(() => onDeleted?.(), failed(t))}>

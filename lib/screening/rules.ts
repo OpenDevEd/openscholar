@@ -50,6 +50,8 @@ export const shortOf = (text: string) => {
 
 /** Why a paper is excluded when no criterion is the reason. */
 export const OTHER_REASONS = ["duplicate", "other"] as const;
+/** The reason written in a note rather than picked: "another reason". */
+export const OTHER_REASON = "other" satisfies (typeof OTHER_REASONS)[number];
 /** An exclusion nobody gave a reason for: a title and abstract can be excluded with none. It is counted under its own name, never as "another reason". */
 export const NO_REASON = "unstated";
 /** Every reason that is not a criterion, as a page or a file names it. */
@@ -124,7 +126,8 @@ export function kappa(matrix: number[]) {
   if (!papers) return null;
   const same = (matrix[0]! + matrix[4]! + matrix[8]!) / papers;
   const chance = DECISIONS.reduce((sum, _, d) => sum + ((matrix[d * 3]! + matrix[d * 3 + 1]! + matrix[d * 3 + 2]!) / papers) * ((matrix[d]! + matrix[d + 3]! + matrix[d + 6]!) / papers), 0);
-  return { papers, same, kappa: chance === 1 ? 1 : (same - chance) / (1 - chance) };
+  // Where both cast one decision every time, chance agreement is total and kappa has no value: the share agreed says it alone.
+  return { papers, same, kappa: chance === 1 ? null : (same - chance) / (1 - chance) };
 }
 
 /** A number from a text, the same on every run: who gets a paper depends on the paper and the person alone. */
@@ -134,6 +137,8 @@ export const hash = (text: string) => [...text].reduce((sum, char) => (Math.imul
 export const readersFor = (each: Rule["each"], people: number) => (each === "all" ? people : Math.min(each, people));
 /** Whether the models' votes are only advice where `people` people and `models` models vote on a paper (`settle` leaves them out). Under "first vote decides" a person decides anyway, and a paper no person has is settled by its models. */
 export const modelsAdvise = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.models === "advice" && rule.settle !== "one" && people > 0 && models > 0;
+/** Whether a paper can be in conflict: only where more than one vote settles it. One person, or one person with the models as advice, or "first vote decides", never splits, and nobody need settle anything. */
+export const canConflict = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.settle !== "one" && (modelsAdvise(rule, people, models) ? 0 : models) + people > 1;
 
 /**
  * Who takes the places nobody has voted from on an open paper, when the people or the rule have changed. Whoever

@@ -12,8 +12,8 @@ describe("the records of a file", () => {
       { itemType: "note", title: "A note" },
     ]);
     expect(records).toEqual([
-      { title: "School meals and learning", abstract: "A trial.", authors: ["Ada Obi"], publicationYear: 2019, doi: "10.1002/cpp.2398" },
-      { title: "", authors: ["World Bank"], publicationYear: 2021 },
+      { title: "School meals and learning", abstract: "A trial.", authors: ["Ada Obi"], publicationYear: 2019, doi: "10.1002/cpp.2398", workType: "journalArticle" },
+      { title: "", authors: ["World Bank"], publicationYear: 2021, workType: "journalArticle" },
     ]);
   });
 

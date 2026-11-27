@@ -5,7 +5,7 @@
 // the papers behind them.
 
 import { EASE } from "@/components/settings/model-map";
-import { modelsAdvise } from "@/lib/screening/rules";
+import { canConflict, modelsAdvise } from "@/lib/screening/rules";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
@@ -125,7 +125,8 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
       const starts = after.gathered !== undefined ? "gathered" : after.finishedAt ? "finished" : after.paused ? "paused" : paperCredits(reviewer.model!) > wallet ? "credits" : waiting ? "waiting" : "save";
       if (!reads) lines.push({ text: after.gathered !== undefined ? t("model.startsLater", { name: reviewer.name }) : t("model.nothingToRead", { name: reviewer.name }), section: "reviewers" });
       else {
-        const read = { name: reviewer.name, all: String(reads === total), count: reads };
+        // As advice, or under "first vote decides", a model skips a paper its people settle first: the count is the most it reads.
+        const read = { name: reviewer.name, all: String(reads === total), count: reads, upTo: String(after.rule.settle === "one" || modelsAdvise(after.rule, readersOf(after).each, modelsOf(after).length)) };
         lines.push({ text: t("model.reads", { ...read, when: starts }), done: t("model.reads", { ...read, when: "done" }), kind: "cost", credits: readingOf(after, reviewer.model!, reads), section: "reviewers" });
       }
     }
@@ -139,7 +140,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   if (joining.length && wasIds.size) {
     lines.push({ text: t("votesStay"), section: "reviewers" });
     const models = joining.filter((reviewer) => reviewer.kind === "model").length;
-    if (models && after.rule.settle !== "one" && !modelsAdvise(after.rule, readersOf(after).each, models)) lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
+    if (models && !modelsAdvise(after.rule, readersOf(after).each, modelsOf(after).length) && canConflict(after.rule, readersOf(after).each, modelsOf(after).length)) lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;

@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} starts once the papers arrive",
         "nothingToRead": "{name} has no papers left to read",
-        "reads": "{name} reads {all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
+        "reads": "{name} reads {upTo, select, true {up to {count, plural, one {# paper} other {# papers}}} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
       },
       "person": {
         "invited": "{name} gets an invitation by email, and papers once they join",
@@ -8284,13 +8284,13 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# credit} other {# credits}} a new paper, more if read as a PDF} other {{credits, plural, one {# credit} other {# credits}} a new paper}}",
         "noneGrow": "None of these sources gains papers. Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
         "addToCheck": "Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
-        "lastSpent": "{spent} for the last {count, plural, one {# paper} other {# papers}}"
+        "lastSpent": "About {spent, plural, one {# credit} other {# credits}} for the last check's {count, plural, one {# paper} other {# papers}} with these models"
       },
       "criteria": {
         "helpTitle": "Must-have and nice-to-have",
         "factPeople": "People vote directly",
         "factModels": "Answers decide models' votes",
-        "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude, but a person can still give it as their reason. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
+        "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
         "import": "{searches, plural, one {{count, plural, one {Add # question from your search} other {Add # questions from your search}}} other {{count, plural, one {Add # question from your searches} other {Add # questions from your searches}}}}",
         "copyFrom": "Copy from a screening",
         "copyAdds": "Adds that screening's criteria and their points to these",
@@ -8386,7 +8386,8 @@
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
         "addReviewer": "Add a reviewer to see how a paper is settled.",
-        "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides."
+        "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides.",
+        "oneVoteEach": "One vote settles each paper, so there is no conflict to settle"
       },
       "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in an Evidence Community, with the stars from Scoring. Nowhere keeps them in the screening only.",
       "summaryLabel": "Summary",
@@ -8570,8 +8571,7 @@
         "title": "Delete {name}?",
         "goes": "The votes and settings are deleted with it",
         "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
-        "final": "This can't be undone",
-        "shut": "Only {name} or an admin of this workspace can delete this screening."
+        "final": "This can't be undone"
       },
       "leave": {
         "title": "Leave this screening?",
@@ -8884,7 +8884,9 @@
         "chance": "0 no better than chance",
         "worse": "Below 0 worse than chance",
         "means": "How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.",
-        "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes."
+        "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes.",
+        "none": "n/a",
+        "noneFact": "n/a means both gave the same decision on every paper, so kappa has no value"
       },
       "facts": {
         "startedIt": "started it {ago}"
@@ -8912,7 +8914,7 @@
         "onceRead": "{credits} once every paper is read",
         "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
         "arriving": "Papers are still arriving",
-        "allRead": "Every paper is read",
+        "allRead": "Nothing left for the models to read",
         "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
         "takenOff": "{credits} by models taken off",
         "nothingToPay": "Nothing to pay"
@@ -8934,6 +8936,7 @@
         "failed": "Couldn't be finished",
         "found": "{count, number} found",
         "alreadyIn": "{count, number} already in it",
+        "leftOut": "{count, plural, one {# left out} other {# left out}}",
         "added": "{count, number} added",
         "newFrom": "{count, number} new from {source}",
         "result": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
@@ -9094,9 +9097,7 @@
       },
       "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
       "note": {
-        "neededForOther": "Write the other reason",
         "label": "Note",
-        "writeReason": "Write the reason in the note",
         "forOthers": "Note for the others (optional)",
         "forRecord": "Note for the record (optional)"
       },
@@ -9376,7 +9377,8 @@
         "noVotes": "You haven't voted on a paper yet",
         "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
         "join": "Join as a reviewer",
-        "allPapers": "See all the papers"
+        "allPapers": "See all the papers",
+        "noneCanSplit": "Each paper here is settled by one vote, so none can be in conflict"
       },
       "matrix": {
         "nameYou": "{name}, you",
@@ -9396,7 +9398,8 @@
         "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
         "unsure": "Only {sure, number, percent} sure",
         "sure": "{sure, number, percent} sure"
-      }
+      },
+      "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and that must-have is the reason when you exclude. Otherwise Exclude asks only whether there is a reason: none, a duplicate, or another you write down."
     },
     "sources": {
       "add": "Add",
@@ -9598,10 +9601,6 @@
         "unstated": "No reason given"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
-        "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
-        "orCriterion": "Or another criterion",
-        "orReason": "Or another reason",
         "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
       },
       "notMet": "{name} not met",
@@ -9622,7 +9621,7 @@
         },
         "means": {
           "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
-          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. Where the models' votes count, at least one person has to be in that majority. With no such majority it is a conflict.",
           "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
         },
         "says": {
