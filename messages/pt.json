@@ -7789,7 +7789,7 @@
       },
       "votesStay": "Os votos já dados ficam como estão",
       "modelVotes": {
-        "advice": "Nos artigos ainda em aberto, os votos das pessoas decidem cada um que uma pessoa tem, com os votos dos modelos como conselho",
+        "advice": "Os artigos ainda em aberto que uma pessoa tem ficam decididos só pelos votos das pessoas, com os votos dos modelos como conselho",
         "vote": "O voto de um modelo conta como o de um revisor nos artigos ainda em aberto"
       },
       "conflict": {
@@ -8105,7 +8105,7 @@
         "removedReviewers": "{count, plural, =1 {Removeu {names}} =2 {Removeu {names}} other {Removeu # revisores}}",
         "rule": "Alterou a forma como um artigo é decidido",
         "destination": "Alterou para onde vão os artigos incluídos",
-        "collectionRenamed": "Mudou o nome da coleção para {name}",
+        "collectionRenamed": "Mudou o nome da coleção da triagem para {name}",
         "goesTo": "Os artigos incluídos vão para {name}",
         "goesNowhere": "Os artigos incluídos não vão para nenhuma coleção"
       },
@@ -8229,7 +8229,7 @@
         "rangeHeld": "Os artigos {first} a {last} já estão nesta triagem e ficam nela, por isso o intervalo só pode alargar-se. Para os retirar, remova a fonte.",
         "checkedEvery": "{every, select, day {Verificada todos os dias} week {Verificada todas as semanas} other {Verificada todos os meses}}",
         "couldntBeRead": "Não foi possível ler",
-        "stoppedAfter": "{read, plural, other {Parou após # de {total}}}",
+        "stoppedAfter": "{read, plural, other {A leitura parou em # de {total}}}",
         "notSaved": "O Openscholar encontrou um erro ao ler esta fonte.",
         "readAgain": "Tentar novamente",
         "loadingList": "A carregar a lista",
@@ -8268,8 +8268,8 @@
         "help": "O Openscholar procura artigos novos nas pesquisas, coleções, comunidades, bibliotecas do Zotero e outras triagens de onde a triagem tira artigos, com a frequência que escolher. Só os artigos novos são adicionados e vão para os revisores.",
         "check": "Procurar artigos novos",
         "off": "Desligado",
-        "checksAll": "{count, plural, one {Verifica a sua fonte} other {Verifica as suas # fontes}}",
-        "checksSome": "{count, plural, other {Verifica {growing} das suas # fontes}}",
+        "checksAll": "{count, plural, one {Verifica a fonte} other {Verifica todas as # fontes}}",
+        "checksSome": "{count, plural, other {Verifica {growing} das # fontes}}",
         "nextCheck": "Próxima verificação {day}",
         "firstCheck": "Primeira verificação {day}",
         "firstOnSave": "Primeira verificação assim que isto for guardado",
@@ -8356,9 +8356,9 @@
         "modelVotes": "Votos dos modelos",
         "countAsVote": "Contar como o de uma pessoa",
         "adviceOnly": "Apenas conselho",
-        "modelVotesVote": "Contados como os de uma pessoa, o voto de cada modelo vale o de um revisor, e um artigo fica decidido pelos votos das pessoas e dos modelos em conjunto. Quando só os modelos venceriam em votos todas as pessoas desse artigo, o artigo fica em conflito.",
-        "modelVotesAdvice": "Como conselho, um artigo que uma pessoa tem fica decidido só pelos votos das pessoas, e os votos dos modelos aparecem ao lado dos delas.",
-        "modelVotesNever": "De qualquer forma, um artigo que não é dado a nenhuma pessoa fica decidido pelos votos dos modelos.",
+        "modelVotesVote": "Quando os votos dos modelos contam como os de uma pessoa, cada um vale o de um revisor, e um artigo fica decidido pelos votos das pessoas e dos modelos em conjunto. Quando só os modelos venceriam em votos todas as pessoas desse artigo, o artigo fica em conflito.",
+        "modelVotesAdvice": "Quando são apenas conselho, um artigo que uma pessoa tem fica decidido só pelos votos das pessoas, e os votos dos modelos aparecem ao lado dos delas.",
+        "modelVotesNever": "De qualquer forma, um artigo que não é dado a nenhuma pessoa fica decidido pelos votos dos modelos. Com «O primeiro voto decide», os votos dos modelos são conselho em qualquer artigo que uma pessoa tenha.",
         "addModel": "Adicione um modelo para escolher",
         "modelsUnderOne": "Conselho nos artigos que uma pessoa tem",
         "addPerson": "Adicione uma pessoa para escolher",
@@ -8502,10 +8502,10 @@
         "livingChip": "{every, select, day {Viva<more>, artigos novos todos os dias</more>} week {Viva<more>, artigos novos todas as semanas</more>} other {Viva<more>, artigos novos todos os meses</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {Vê todos os artigos e todos os votos. Não é um dos revisores, por isso não recebe artigos para votar.} other {Vê todos os artigos e todos os votos. Não é um dos revisores, por isso não recebe artigos para votar. Junte-se como revisor para receber alguns.}}",
+        "member": "{finished, select, true {Vê todos os artigos e todos os votos, e não recebe artigos para votar.} other {Vê todos os artigos e todos os votos, e não recebe artigos para votar. Junte-se como revisor para receber alguns.}}",
         "viewer": "{workspace} partilhou-a consigo. Vê todos os artigos e todos os votos, e não recebe artigos para votar.",
         "guest": "Convidado",
-        "guestSays": "{personal, select, true {{workspace} partilhou-a consigo. Vota nos artigos que recebe. Só {workspace} altera as definições.} other {{workspace} partilhou-a consigo. Vota nos artigos que recebe. Só os membros de {workspace} alteram as definições.}}"
+        "guestSays": "{personal, select, true {{workspace} partilhou-a consigo. Vota nos artigos que recebe. Só {workspace} pode alterar as definições.} other {{workspace} partilhou-a consigo. Vota nos artigos que recebe. Só os membros de {workspace} podem alterar as definições.}}"
       },
       "banner": {
         "checked": "{done, number} de {of, plural, one {# fonte verificada} other {# fontes verificadas}}",
@@ -8546,7 +8546,7 @@
         "reviewersStay": "{own, select, true {Os outros revisores continuam nela como convidados} other {Os outros revisores continuam nela, como convidados se não estiverem em {to}}}",
         "papersStay": "{own, select, true {Os artigos já guardados ficam onde estão, e os artigos incluídos a partir de agora são guardados na sua própria biblioteca} other {Os artigos já guardados ficam onde estão, e os artigos incluídos a partir de agora são guardados na biblioteca de {to}}}",
         "sourcesStay": "{own, select, true {As fontes ficam no seu espaço de trabalho pessoal, e a triagem continua a verificá-las lá} other {As fontes ficam em {from}, e a triagem continua a verificá-las lá}}",
-        "membersLose": "Os membros de {from} que não são revisores deixam de a ver",
+        "membersLose": "Os membros de {from} que não são revisores desta triagem deixam de a ver",
         "nothingElse": "Nada mais muda"
       },
       "finish": {
@@ -8592,7 +8592,7 @@
       },
       "credits": {
         "inWorkspace": "{credits} créditos no espaço de trabalho agora",
-        "payFor": "{some, select, true {{credits} créditos pagam cerca de {paid, number} dos seus {papers, plural, one {# artigo} other {# artigos}}. Para aí até serem adicionados créditos.} other {{credits} créditos não pagam nenhum dos seus {papers, plural, one {# artigo} other {# artigos}}. Para aí até serem adicionados créditos.}}"
+        "payFor": "{some, select, true {{credits} créditos pagam cerca de {paid, number} dos {papers, plural, one {# artigo} other {# artigos}} que o modelo lê. Para aí até serem adicionados créditos.} other {{credits} créditos não pagam nenhum dos {papers, plural, one {# artigo} other {# artigos}} que o modelo lê. Para aí até serem adicionados créditos.}}"
       },
       "activitySheet": {
         "says": "Todas as alterações a esta triagem, as mais recentes primeiro",
@@ -8721,7 +8721,7 @@
         "askedYou": "{name} perguntou-lhe",
         "waitingFor": "À espera da resposta de {name}",
         "asked": "perguntou a {who}",
-        "readOnly": "{empty, select, true {Ainda ninguém escreveu sobre este artigo. } other {}}Só os revisores e a pessoa que resolve os conflitos escrevem aqui.{join, select, true { Junte-se como revisor para escrever.} other {}}",
+        "readOnly": "{empty, select, true {Ainda ninguém escreveu sobre este artigo. } other {}}Só os revisores do artigo e a pessoa que resolve os conflitos escrevem aqui.{join, select, true { Junte-se como revisor para escrever.} other {}}",
         "whoFor": "Para quem é",
         "to": "Para",
         "everyone": "Todos",
@@ -9148,15 +9148,15 @@
       "modelsReading": "Modelos a ler",
       "about": "Sobre {title}",
       "shut": {
-        "reviewer": "Para os revisores",
+        "reviewer": "Para os revisores da triagem",
         "settler": "Para quem resolve os conflitos",
         "member": "Para os membros do espaço de trabalho",
         "sources": "Nenhuma fonte ganha artigos"
       },
       "notReviewer": {
         "shared": "Esta triagem foi partilhada consigo para leitura. Só os revisores votam.",
-        "finished": "Não é um dos revisores, e a triagem está terminada.",
-        "join": "Não é um dos revisores. Junte-se como revisor para votar nos artigos."
+        "finished": "Não é revisor desta triagem, e ela está terminada.",
+        "join": "Não é revisor desta triagem. Junte-se como revisor para votar."
       },
       "votesShut": "Os outros votos ficam ocultos para não influenciarem o seu.",
       "creditsShort": "Faltam {short} créditos",
@@ -9356,7 +9356,7 @@
         "onTheirWay": "Os artigos estão a caminho",
         "arrived": "{done, number} de {count, number} chegaram",
         "noneYet": "Ainda não lhe chegou nenhum artigo",
-        "noneYours": "Nenhum dos artigos é para si votar",
+        "noneYours": "Nenhum dos artigos aqui é para si votar",
         "allVoted": "Votou em todos os seus artigos",
         "finished": "Esta triagem está terminada",
         "unvoted": "{count, plural, one {# dos seus artigos não tem o seu voto} other {# dos seus artigos não têm o seu voto}}",

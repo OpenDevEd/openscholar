@@ -7788,7 +7788,7 @@
       },
       "votesStay": "Votes already cast stay as they are",
       "modelVotes": {
-        "advice": "On the papers still open, the people's votes settle each one a person has, with the models' votes as advice",
+        "advice": "The papers still open that a person has are settled on the people's votes alone, with the models' votes as advice",
         "vote": "A model's vote counts as one reviewer's on the papers still open"
       },
       "conflict": {
@@ -8104,7 +8104,7 @@
         "removedReviewers": "{count, plural, =1 {Removed {names}} =2 {Removed {names}} other {Removed # reviewers}}",
         "rule": "Changed how a paper is decided",
         "destination": "Changed where included papers go",
-        "collectionRenamed": "Renamed its collection to {name}",
+        "collectionRenamed": "Renamed the screening's collection to {name}",
         "goesTo": "Included papers go to {name}",
         "goesNowhere": "Included papers go to no collection"
       },
@@ -8228,7 +8228,7 @@
         "rangeHeld": "Papers {first} to {last} are in this screening already and stay in it, so the range can only take more. To take them out, remove the source.",
         "checkedEvery": "{every, select, day {Checked every day} week {Checked every week} other {Checked every month}}",
         "couldntBeRead": "Couldn't be read",
-        "stoppedAfter": "{read, plural, other {Stopped after # of {total}}}",
+        "stoppedAfter": "{read, plural, other {Reading stopped at # of {total}}}",
         "notSaved": "Openscholar hit an error reading this source.",
         "readAgain": "Try again",
         "loadingList": "Loading the list",
@@ -8267,8 +8267,8 @@
         "help": "Openscholar checks the screening's searches, collections, communities, Zotero libraries and other screenings for new papers on the schedule you pick. Only papers that are new are added and go to reviewers.",
         "check": "Check for new papers",
         "off": "Off",
-        "checksAll": "{count, plural, one {Checks its source} other {Checks its # sources}}",
-        "checksSome": "{count, plural, other {Checks {growing} of its # sources}}",
+        "checksAll": "{count, plural, one {Checks the source} other {Checks all # sources}}",
+        "checksSome": "{count, plural, other {Checks {growing} of the # sources}}",
         "nextCheck": "Next check {day}",
         "firstCheck": "First check {day}",
         "firstOnSave": "First check as soon as this is saved",
@@ -8355,9 +8355,9 @@
         "modelVotes": "Models' votes",
         "countAsVote": "Count like a person's",
         "adviceOnly": "Advice only",
-        "modelVotesVote": "Counted like a person's, each model's vote is one reviewer's, and a paper is settled on the people's and the models' votes together. Where the models alone would outvote every person on it, the paper is in conflict instead.",
-        "modelVotesAdvice": "As advice, a paper a person has is settled on the people's votes alone, and the models' votes show beside theirs.",
-        "modelVotesNever": "Either way, a paper no person is given is settled on the models' votes.",
+        "modelVotesVote": "When the models' votes count like a person's, each is one reviewer's vote, and a paper is settled on the people's and the models' votes together. Where the models alone would outvote every person on it, the paper is in conflict instead.",
+        "modelVotesAdvice": "When they are advice only, a paper a person has is settled on the people's votes alone, and the models' votes show beside theirs.",
+        "modelVotesNever": "Either way, a paper no person is given is settled on the models' votes. Under First vote decides, the models' votes are advice on any paper a person has.",
         "addModel": "Add a model to choose",
         "modelsUnderOne": "Advice on papers a person has",
         "addPerson": "Add a person to choose",
@@ -8501,10 +8501,10 @@
         "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
+        "member": "{finished, select, true {You see every paper and every vote, and get no papers to vote on.} other {You see every paper and every vote, and get no papers to vote on. Join as a reviewer to get some.}}",
         "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
         "guest": "Guest",
-        "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} changes its settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings.}}"
+        "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} can change the settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members can change the settings.}}"
       },
       "banner": {
         "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
@@ -8545,7 +8545,7 @@
         "reviewersStay": "{own, select, true {The other reviewers stay on it as guests} other {The other reviewers stay on it, as guests where they aren't in {to}}}",
         "papersStay": "{own, select, true {Papers already saved stay where they are, and papers included from now on are saved in your own library} other {Papers already saved stay where they are, and papers included from now on are saved in {to}'s library}}",
         "sourcesStay": "{own, select, true {The sources stay in your own workspace, and the screening goes on checking them there} other {The sources stay in {from}, and the screening goes on checking them there}}",
-        "membersLose": "Members of {from} who aren't its reviewers no longer see it",
+        "membersLose": "Members of {from} who aren't reviewers on it no longer see it",
         "nothingElse": "Nothing else changes"
       },
       "finish": {
@@ -8591,7 +8591,7 @@
       },
       "credits": {
         "inWorkspace": "{credits} credits in the workspace now",
-        "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.}}"
+        "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.} other {{credits} credits pay for none of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.}}"
       },
       "activitySheet": {
         "says": "Every change to this screening, newest first",
@@ -8720,7 +8720,7 @@
         "askedYou": "{name} asked you",
         "waitingFor": "Waiting for {name}'s answer",
         "asked": "asked {who}",
-        "readOnly": "{empty, select, true {Nobody has written about this paper yet. } other {}}Only its reviewers and the person who settles conflicts write here.{join, select, true { Join as a reviewer to write.} other {}}",
+        "readOnly": "{empty, select, true {Nobody has written about this paper yet. } other {}}Only the paper's reviewers and the person who settles conflicts write here.{join, select, true { Join as a reviewer to write.} other {}}",
         "whoFor": "Who it is for",
         "to": "To",
         "everyone": "Everyone",
@@ -9128,7 +9128,7 @@
           "row": "Waiting for the check"
         },
         "gathering": {
-          "says": "Getting its papers",
+          "says": "Getting the papers",
           "row": "Waiting for the papers to arrive"
         },
         "paused": {
@@ -9147,15 +9147,15 @@
       "modelsReading": "Models reading",
       "about": "About {title}",
       "shut": {
-        "reviewer": "For its reviewers",
+        "reviewer": "For the screening's reviewers",
         "settler": "For whoever settles conflicts",
         "member": "For the workspace's members",
         "sources": "No source gains papers"
       },
       "notReviewer": {
         "shared": "This screening is shared with you to read. Only its reviewers vote.",
-        "finished": "You aren't one of its reviewers, and the screening is finished.",
-        "join": "You aren't one of its reviewers. Join as a reviewer to vote on its papers."
+        "finished": "You aren't a reviewer on this screening, and it is finished.",
+        "join": "You aren't a reviewer on this screening. Join as a reviewer to vote."
       },
       "votesShut": "The other votes stay out of sight so they can't sway yours.",
       "creditsShort": "{short} credits short",
@@ -9355,7 +9355,7 @@
         "onTheirWay": "Papers are on their way",
         "arrived": "{done, number} of {count, number} are in",
         "noneYet": "No paper has come to you yet",
-        "noneYours": "None of its papers is yours to vote on",
+        "noneYours": "None of the papers here is yours to vote on",
         "allVoted": "You have voted on all your papers",
         "finished": "This screening is finished",
         "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",

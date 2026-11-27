@@ -14,7 +14,7 @@
   },
   "votesStay": "Votes already cast stay as they are",
   "modelVotes": {
-    "advice": "On the papers still open, the people's votes settle each one a person has, with the models' votes as advice",
+    "advice": "The papers still open that a person has are settled on the people's votes alone, with the models' votes as advice",
     "vote": "A model's vote counts as one reviewer's on the papers still open"
   },
   "conflict": {

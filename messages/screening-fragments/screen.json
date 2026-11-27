@@ -140,7 +140,7 @@
     "onTheirWay": "Papers are on their way",
     "arrived": "{done, number} of {count, number} are in",
     "noneYet": "No paper has come to you yet",
-    "noneYours": "None of its papers is yours to vote on",
+    "noneYours": "None of the papers here is yours to vote on",
     "allVoted": "You have voted on all your papers",
     "finished": "This screening is finished",
     "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",

@@ -7789,7 +7789,7 @@
       },
       "votesStay": "Stemme wat reeds uitgebring is, bly soos hulle is",
       "modelVotes": {
-        "advice": "Op die artikels wat nog oop is, beslis die mense se stemme elkeen wat ’n persoon het, met die modelle se stemme as advies",
+        "advice": "Die artikels wat nog oop is en wat ’n persoon het, word net op die mense se stemme beslis, met die modelle se stemme as advies",
         "vote": "’n Model se stem tel soos een beoordelaar s’n op die artikels wat nog oop is"
       },
       "conflict": {
@@ -8105,7 +8105,7 @@
         "removedReviewers": "{count, plural, =1 {Het {names} verwyder} =2 {Het {names} verwyder} other {Het # beoordelaars verwyder}}",
         "rule": "Het verander hoe oor ’n artikel besluit word",
         "destination": "Het verander waarheen ingesluite artikels gaan",
-        "collectionRenamed": "Het sy versameling na {name} hernoem",
+        "collectionRenamed": "Het die siftering se versameling na {name} hernoem",
         "goesTo": "Ingesluite artikels gaan na {name}",
         "goesNowhere": "Ingesluite artikels gaan na geen versameling nie"
       },
@@ -8229,7 +8229,7 @@
         "rangeHeld": "Artikels {first} tot {last} is reeds in hierdie siftering en bly daarin, dus kan die reeks net groter word. Om hulle uit te haal, verwyder die bron.",
         "checkedEvery": "{every, select, day {Elke dag gekontroleer} week {Elke week gekontroleer} other {Elke maand gekontroleer}}",
         "couldntBeRead": "Kon nie gelees word nie",
-        "stoppedAfter": "{read, plural, other {Gestop ná # van {total}}}",
+        "stoppedAfter": "{read, plural, other {Lees het by # van {total} gestop}}",
         "notSaved": "Openscholar het ’n fout gekry met die lees van hierdie bron.",
         "readAgain": "Probeer weer",
         "loadingList": "Laai die lys",
@@ -8268,8 +8268,8 @@
         "help": "Openscholar kontroleer die siftering se soektogte, versamelings, gemeenskappe, Zotero-biblioteke en ander sifterings vir nuwe artikels volgens die skedule wat jy kies. Net artikels wat nuut is, word bygevoeg en gaan na beoordelaars.",
         "check": "Kontroleer vir nuwe artikels",
         "off": "Af",
-        "checksAll": "{count, plural, one {Kontroleer sy bron} other {Kontroleer sy # bronne}}",
-        "checksSome": "{count, plural, other {Kontroleer {growing} van sy # bronne}}",
+        "checksAll": "{count, plural, one {Kontroleer die bron} other {Kontroleer al # bronne}}",
+        "checksSome": "{count, plural, other {Kontroleer {growing} van die # bronne}}",
         "nextCheck": "Volgende kontrole {day}",
         "firstCheck": "Eerste kontrole {day}",
         "firstOnSave": "Eerste kontrole sodra dit gestoor is",
@@ -8356,9 +8356,9 @@
         "modelVotes": "Modelle se stemme",
         "countAsVote": "Tel soos ’n persoon s’n",
         "adviceOnly": "Net advies",
-        "modelVotesVote": "Wanneer dit soos ’n persoon s’n tel, is elke model se stem een beoordelaar s’n, en ’n artikel word op die mense en die modelle se stemme saam beslis. Waar die modelle alleen elke persoon op die artikel sou uitstem, is die artikel eerder in konflik.",
-        "modelVotesAdvice": "As advies word ’n artikel wat ’n persoon het, net op die mense se stemme beslis, en die modelle se stemme wys langs hulle s’n.",
-        "modelVotesNever": "Hoe ook al, ’n artikel wat geen persoon kry nie, word op die modelle se stemme beslis.",
+        "modelVotesVote": "Wanneer die modelle se stemme soos ’n persoon s’n tel, is elkeen een beoordelaar se stem, en ’n artikel word op die mense en die modelle se stemme saam beslis. Waar die modelle alleen elke persoon op die artikel sou uitstem, is die artikel eerder in konflik.",
+        "modelVotesAdvice": "Wanneer dit net advies is, word ’n artikel wat ’n persoon het, net op die mense se stemme beslis, en die modelle se stemme wys langs hulle s’n.",
+        "modelVotesNever": "Hoe ook al, ’n artikel wat geen persoon kry nie, word op die modelle se stemme beslis. Onder “Eerste stem beslis” is die modelle se stemme advies op enige artikel wat ’n persoon het.",
         "addModel": "Voeg ’n model by om te kies",
         "modelsUnderOne": "Advies op artikels wat ’n persoon het",
         "addPerson": "Voeg ’n persoon by om te kies",
@@ -8502,10 +8502,10 @@
         "livingChip": "{every, select, day {Lewend<more>, nuwe artikels elke dag</more>} week {Lewend<more>, nuwe artikels elke week</more>} other {Lewend<more>, nuwe artikels elke maand</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {Jy sien elke artikel en elke stem. Jy is nie een van sy beoordelaars nie, so jy kry geen artikels om op te stem nie.} other {Jy sien elke artikel en elke stem. Jy is nie een van sy beoordelaars nie, so jy kry geen artikels om op te stem nie. Sluit as beoordelaar aan om ’n paar te kry.}}",
+        "member": "{finished, select, true {Jy sien elke artikel en elke stem, en kry geen artikels om op te stem nie.} other {Jy sien elke artikel en elke stem, en kry geen artikels om op te stem nie. Sluit as beoordelaar aan om ’n paar te kry.}}",
         "viewer": "{workspace} het dit met jou gedeel. Jy sien elke artikel en elke stem, en jy kry geen artikels om op te stem nie.",
         "guest": "Gas",
-        "guestSays": "{personal, select, true {{workspace} het dit met jou gedeel. Jy stem op die artikels wat jy kry. Net {workspace} verander sy instellings.} other {{workspace} het dit met jou gedeel. Jy stem op die artikels wat jy kry. Net {workspace} se lede verander sy instellings.}}"
+        "guestSays": "{personal, select, true {{workspace} het dit met jou gedeel. Jy stem op die artikels wat jy kry. Net {workspace} kan die instellings verander.} other {{workspace} het dit met jou gedeel. Jy stem op die artikels wat jy kry. Net {workspace} se lede kan die instellings verander.}}"
       },
       "banner": {
         "checked": "{done, number} van {of, plural, one {# bron} other {# bronne}} gekontroleer",
@@ -8546,7 +8546,7 @@
         "reviewersStay": "{own, select, true {Die ander beoordelaars bly daarop as gaste} other {Die ander beoordelaars bly daarop, as gaste waar hulle nie in {to} is nie}}",
         "papersStay": "{own, select, true {Artikels wat reeds gestoor is, bly waar hulle is, en artikels wat voortaan ingesluit word, word in jou eie biblioteek gestoor} other {Artikels wat reeds gestoor is, bly waar hulle is, en artikels wat voortaan ingesluit word, word in {to} se biblioteek gestoor}}",
         "sourcesStay": "{own, select, true {Die bronne bly in jou eie werkruimte, en die siftering gaan voort om hulle daar te kontroleer} other {Die bronne bly in {from}, en die siftering gaan voort om hulle daar te kontroleer}}",
-        "membersLose": "Lede van {from} wat nie sy beoordelaars is nie, sien dit nie meer nie",
+        "membersLose": "Lede van {from} wat nie beoordelaars op hierdie siftering is nie, sien dit nie meer nie",
         "nothingElse": "Niks anders verander nie"
       },
       "finish": {
@@ -8592,7 +8592,7 @@
       },
       "credits": {
         "inWorkspace": "{credits} krediete nou in die werkruimte",
-        "payFor": "{some, select, true {{credits} krediete betaal vir omtrent {paid, number} van sy {papers, plural, one {# artikel} other {# artikels}}. Dit stop daar totdat krediete bygevoeg word.} other {{credits} krediete betaal vir geeneen van sy {papers, plural, one {# artikel} other {# artikels}} nie. Dit stop daar totdat krediete bygevoeg word.}}"
+        "payFor": "{some, select, true {{credits} krediete betaal vir omtrent {paid, number} van die {papers, plural, one {# artikel} other {# artikels}} wat die model lees. Dit stop daar totdat krediete bygevoeg word.} other {{credits} krediete betaal vir geeneen van die {papers, plural, one {# artikel} other {# artikels}} wat die model lees nie. Dit stop daar totdat krediete bygevoeg word.}}"
       },
       "activitySheet": {
         "says": "Elke verandering aan hierdie siftering, nuutste eerste",
@@ -8721,7 +8721,7 @@
         "askedYou": "{name} het jou gevra",
         "waitingFor": "Wag vir {name} se antwoord",
         "asked": "het {who} gevra",
-        "readOnly": "{empty, select, true {Niemand het nog oor hierdie artikel geskryf nie. } other {}}Net sy beoordelaars en die persoon wat konflikte beslis, skryf hier.{join, select, true { Sluit as beoordelaar aan om te skryf.} other {}}",
+        "readOnly": "{empty, select, true {Niemand het nog oor hierdie artikel geskryf nie. } other {}}Net die artikel se beoordelaars en die persoon wat konflikte beslis, skryf hier.{join, select, true { Sluit as beoordelaar aan om te skryf.} other {}}",
         "whoFor": "Vir wie dit is",
         "to": "Aan",
         "everyone": "Almal",
@@ -9129,7 +9129,7 @@
           "row": "Wag vir die kontrole"
         },
         "gathering": {
-          "says": "Haal sy artikels",
+          "says": "Haal die artikels",
           "row": "Wag dat die artikels aankom"
         },
         "paused": {
@@ -9148,15 +9148,15 @@
       "modelsReading": "Modelle lees",
       "about": "Oor {title}",
       "shut": {
-        "reviewer": "Vir sy beoordelaars",
+        "reviewer": "Vir die siftering se beoordelaars",
         "settler": "Vir wie ook al konflikte beslis",
         "member": "Vir die werkruimte se lede",
         "sources": "Geen bron kry artikels by nie"
       },
       "notReviewer": {
         "shared": "Hierdie siftering is met jou gedeel om te lees. Net sy beoordelaars stem.",
-        "finished": "Jy is nie een van sy beoordelaars nie, en die siftering is klaar.",
-        "join": "Jy is nie een van sy beoordelaars nie. Sluit as beoordelaar aan om op sy artikels te stem."
+        "finished": "Jy is nie ’n beoordelaar op hierdie siftering nie, en dit is klaar.",
+        "join": "Jy is nie ’n beoordelaar op hierdie siftering nie. Sluit as beoordelaar aan om te stem."
       },
       "votesShut": "Die ander stemme bly uit sig sodat hulle joune nie kan beïnvloed nie.",
       "creditsShort": "{short} krediete kort",
@@ -9356,7 +9356,7 @@
         "onTheirWay": "Die artikels is op pad",
         "arrived": "{done, number} van {count, number} is hier",
         "noneYet": "Geen artikel het nog by jou uitgekom nie",
-        "noneYours": "Geen van sy artikels is joune om op te stem nie",
+        "noneYours": "Geen van die artikels hier is joune om op te stem nie",
         "allVoted": "Jy het op al jou artikels gestem",
         "finished": "Hierdie siftering is klaar",
         "unvoted": "{count, plural, one {# van jou artikels het nie jou stem nie} other {# van jou artikels het nie jou stem nie}}",
