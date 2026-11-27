@@ -5081,7 +5081,8 @@
       "otherTitle": "Esta invitación se envió a otra dirección",
       "otherDetail": "Ábrala si esta cuenta también tiene esa dirección, o inicie sesión con la dirección a la que se envió",
       "pointScreening": "{models, select, true {Votar es gratis. {name} paga los modelos de IA del cribado.} other {Votar es gratis.}}",
-      "pointLooking": "Verlo es gratis"
+      "pointLooking": "Verlo es gratis",
+      "finishedVote": "Marcado como terminado. Podrá votar cuando se reabra"
     },
     "notEmails": "{count, plural, one {Esto no es una dirección de correo: {values}. Corrígela o quítala para crear la organización.} other {Estas no son direcciones de correo: {values}. Corrígelas o quítalas para crear la organización.}}",
     "asRole": "como {role}",
@@ -8314,6 +8315,7 @@
         "checksAll": "{count, plural, one {Comprueba la fuente} other {Comprueba todas las # fuentes}}",
         "checksSome": "{count, plural, other {Comprueba {growing} de las # fuentes}}",
         "nextCheck": "Próxima comprobación {day}",
+        "finished": "Sin comprobaciones mientras esté marcado como terminado",
         "firstCheck": "Primera comprobación {day}",
         "firstOnSave": "Primera comprobación en cuanto se guarde esto",
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo, más si se lee como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo}}",

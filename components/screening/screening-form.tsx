@@ -1277,7 +1277,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   growing(draft).length ? (
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? t("living.checksAll", { count: draft.sources.length }) : t("living.checksSome", { count: draft.sources.length, growing: growing(draft).length })}</Chip>
-                      <Chip icon={Clock}>{saved?.living ? t("living.nextCheck", { day: words.day(draft.living.next) }) : fresh ? t("living.firstCheck", { day: words.day(draft.living.next) }) : t("living.firstOnSave")}</Chip>
+                      <Chip icon={Clock}>{saved?.finishedAt ? t("living.finished") : saved?.living ? t("living.nextCheck", { day: words.day(draft.living.next) }) : fresh ? t("living.firstCheck", { day: words.day(draft.living.next) }) : t("living.firstOnSave")}</Chip>
                       {models.length ? <Chip icon={Coins}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip> : null}
                     </div>
                   ) : (

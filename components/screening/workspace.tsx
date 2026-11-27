@@ -351,7 +351,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           <p>{settleMeans(words, screening, open.invited)}</p>{!splits ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
           {blindSays(words, blindOf(screening, open.invited)) ? <p>{blindSays(words, blindOf(screening, open.invited))}</p> : null}
-          {screening.living ? <p>{t("rule.living")}</p> : null}
+          {screening.living && !screening.finishedAt ? <p>{t("rule.living")}</p> : null}
         </Help>
       </span>
       {/* On a phone the chips are four lines: the Overview shows them, and the other pages keep the one line with the "?" that says the same. */}

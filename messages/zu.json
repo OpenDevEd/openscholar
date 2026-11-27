@@ -5080,7 +5080,8 @@
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo",
       "pointScreening": "{models, select, true {Ukuvota kumahhala. U-{name} ukhokhela amamodeli e-AI okuhlunga.} other {Ukuvota kumahhala.}}",
-      "pointLooking": "Ukulibuka kumahhala"
+      "pointLooking": "Ukulibuka kumahhala",
+      "finishedVote": "Kumakwe ukuthi kuqediwe. Ungavota uma sekuvulwe kabusha"
     },
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",
@@ -8313,6 +8314,7 @@
         "checksAll": "{count, plural, one {Kuhlola umthombo} other {Kuhlola yonke imithombo engu-#}}",
         "checksSome": "{count, plural, other {Kuhlola {growing} kwemithombo engu-#}}",
         "nextCheck": "Ukuhlola okulandelayo {day}",
+        "finished": "Akukho ukuhlola uma kumakwe ukuthi kuqediwe",
         "firstCheck": "Ukuhlola kokuqala {day}",
         "firstOnSave": "Ukuhlola kokuqala ngokushesha nje uma lokhu kugcinwa",
         "perNew": "{pdf, select, true {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha, ngaphezulu uma lifundwa njenge-PDF} other {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha}}",

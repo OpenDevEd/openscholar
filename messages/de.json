@@ -5081,7 +5081,8 @@
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
       "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde",
       "pointScreening": "{models, select, true {Abstimmen ist kostenlos. {name} bezahlt die KI-Modelle des Screenings.} other {Abstimmen ist kostenlos.}}",
-      "pointLooking": "Ansehen ist kostenlos"
+      "pointLooking": "Ansehen ist kostenlos",
+      "finishedVote": "Als abgeschlossen markiert. Sie können abstimmen, sobald es wieder geöffnet ist"
     },
     "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
     "asRole": "als {role}",
@@ -8314,6 +8315,7 @@
         "checksAll": "{count, plural, one {Fragt die Quelle ab} other {Fragt alle # Quellen ab}}",
         "checksSome": "{count, plural, other {Fragt {growing} der # Quellen ab}}",
         "nextCheck": "Nächste Abfrage {day}",
+        "finished": "Keine Prüfungen, solange es als abgeschlossen markiert ist",
         "firstCheck": "Erste Abfrage {day}",
         "firstOnSave": "Erste Abfrage, sobald dies gespeichert ist",
         "perNew": "{pdf, select, true {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel}}",

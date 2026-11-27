@@ -5081,7 +5081,8 @@
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
       "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa",
       "pointScreening": "{models, select, true {Kupiga kura ni bure. {name} hulipia miundo ya AI ya uchujaji.} other {Kupiga kura ni bure.}}",
-      "pointLooking": "Kuiangalia ni bure"
+      "pointLooking": "Kuiangalia ni bure",
+      "finishedVote": "Imewekwa kuwa imekamilika. Utaweza kupiga kura ikifunguliwa tena"
     },
     "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
     "asRole": "kama {role}",
@@ -8314,6 +8315,7 @@
         "checksAll": "{count, plural, one {Inakagua chanzo} other {Inakagua vyanzo vyote #}}",
         "checksSome": "{count, plural, other {Inakagua {growing} kati ya vyanzo #}}",
         "nextCheck": "Ukaguzi unaofuata {day}",
+        "finished": "Hakuna ukaguzi ukiwa umewekwa kuwa umekamilika",
         "firstCheck": "Ukaguzi wa kwanza {day}",
         "firstOnSave": "Ukaguzi wa kwanza mara tu hii itakapohifadhiwa",
         "perNew": "{pdf, select, true {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya}}",

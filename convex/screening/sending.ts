@@ -3,6 +3,9 @@
  * their download is, so what is hidden from the sender is hidden in them, and come here as they are: no stored file is
  * named, so nothing but what the sender built can be sent. The sending itself needs Node (./filesMail.ts).
  */
+import { MAX_ACCOUNTS_PER_EMAIL } from "../lib/queryBounds";
+import { grantOf } from "../sharing/items";
+import { actorIn } from "../workspaces/actor";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
@@ -37,7 +40,7 @@ export const sendFiles = workspaceAction({
     if (!files.every(exported)) throw createError("VALIDATION_ERROR", "Only Export's own files can be sent.");
     if ((note?.length ?? 0) > NOTE_MAX) throw createError("VALIDATION_ERROR", "That note is too long.");
     if (new TextEncoder().encode(JSON.stringify(files)).length > BYTES_MAX) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
-    const about: { name: string; path: string; by: string; replyTo?: string } = await ctx.runQuery(internal.screening.sending.about, { jobId, userId: actor.userId, workspaceId: actor.workspaceId });
+    const about: { name: string; path: string; by: string; replyTo?: string; opens: boolean } = await ctx.runQuery(internal.screening.sending.about, { jobId, userId: actor.userId, workspaceId: actor.workspaceId, to: address });
     await ctx.runMutation(internal.screening.sending.spend, { userId: actor.userId });
     await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: shortName(one.name), type: one.type, body: one.body, ...(one.base64 ? { base64: true } : {}) })), ...(note?.trim() ? { note: note.trim() } : {}) });
     return null;
@@ -46,14 +49,18 @@ export const sendFiles = workspaceAction({
 
 /** The screening as the email names it, for someone who may read it. */
 export const about = internalQuery({
-  args: { jobId: v.id("screeningJobs"), userId: v.id("users"), workspaceId: v.id("workspaces") },
-  returns: v.object({ name: v.string(), path: v.string(), by: v.string(), replyTo: v.optional(v.string()) }),
-  handler: async (ctx, { jobId, ...actor }) => {
+  args: { jobId: v.id("screeningJobs"), userId: v.id("users"), workspaceId: v.id("workspaces"), to: v.string() },
+  returns: v.object({ name: v.string(), path: v.string(), by: v.string(), replyTo: v.optional(v.string()), opens: v.boolean() }),
+  handler: async (ctx, { jobId, to, ...actor }) => {
     const standing = await standingOn(ctx, actor, jobId);
     if (!standing) throw createError("SCREENING_JOB_NOT_FOUND", "Screening not found");
     const user = await ctx.db.get("users", actor.userId);
     // The plain address: it takes a member to the screening's workspace, and anyone else to sign in or to what they may open. An organization's address shows nothing to someone signed out.
-    return { name: standing.job.name ?? "Screening", path: screeningPath(jobId), by: nameOf(user), ...(user?.email ? { replyTo: user.email } : {}) };
+    // Whether the person it goes to can open the screening: a member of its workspace, or someone it is shared with. Anyone else is sent the files without a link to a page they can't open.
+    const recipients = await ctx.db.query("users").withIndex("by_email", (q) => q.eq("email", to)).take(MAX_ACCOUNTS_PER_EMAIL);
+    let opens = false;
+    for (const one of recipients) if ((await actorIn(ctx, one, standing.job.workspaceId)) || (await grantOf(ctx, jobId, one._id))) opens = true;
+    return { opens, name: standing.job.name ?? "Screening", path: screeningPath(jobId), by: nameOf(user), ...(user?.email ? { replyTo: user.email } : {}) };
   },
 });
 

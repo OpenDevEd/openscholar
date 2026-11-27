@@ -428,3 +428,6 @@ export function collectionName(screening: Pick<Screening, "destination" | "name"
   // A collection there already is, in the workspace or in a community, has the name it has there.
   return to.name || null;
 }
+
+/** Whether the page reads right to left: the arrow keys then go the way its mirrored chevrons point. */
+export const rtl = () => typeof document !== "undefined" && document.documentElement.dir === "rtl";

@@ -5081,7 +5081,8 @@
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is",
       "pointScreening": "{models, select, true {Stem is gratis. {name} betaal vir die sifting se KI-modelle.} other {Stem is gratis.}}",
-      "pointLooking": "Om daarna te kyk is gratis"
+      "pointLooking": "Om daarna te kyk is gratis",
+      "finishedVote": "As klaar gemerk. Jy kan stem sodra dit heropen word"
     },
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",
@@ -8314,6 +8315,7 @@
         "checksAll": "{count, plural, one {Kontroleer die bron} other {Kontroleer al # bronne}}",
         "checksSome": "{count, plural, other {Kontroleer {growing} van die # bronne}}",
         "nextCheck": "Volgende kontrole {day}",
+        "finished": "Geen kontroles terwyl dit as klaar gemerk is",
         "firstCheck": "Eerste kontrole {day}",
         "firstOnSave": "Eerste kontrole sodra dit gestoor is",
         "perNew": "{pdf, select, true {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel, meer as dit as ’n PDF gelees word} other {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel}}",

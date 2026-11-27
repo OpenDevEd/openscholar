@@ -556,6 +556,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const { screening } = open;
   const { reviewer, assigned, done, split, agrees, agreesHref, known, compared, missed, included, left, perDay, idle } = row;
   const t = useTranslations("screening.overview");
+  const tFrame = useTranslations("screening.frame");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
   // The people there are to compare a vote with: none, where it is the only person or a model with no people beside it.
@@ -592,7 +593,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.creditsOf(open.spent(reviewer)) })}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.t("person.invited") : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? (open.invited.find((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase())?.undelivered ? tFrame("peopleDialog.notSent") : words.t(open.screening.finishedAt ? "person.invitedFinished" : "person.invited")) : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
           )}
         </div>
       </div>

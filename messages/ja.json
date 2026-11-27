@@ -5080,7 +5080,8 @@
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください",
       "pointScreening": "{models, select, true {投票は無料です。スクリーニングのAIモデルの費用は{name}が支払います。} other {投票は無料です。}}",
-      "pointLooking": "閲覧は無料です"
+      "pointLooking": "閲覧は無料です",
+      "finishedVote": "完了になっています。再開されると投票できます"
     },
     "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
     "asRole": "{role}として",
@@ -8313,6 +8314,7 @@
         "checksAll": "{count, plural, =1 {取得元を確認} other {取得元 # 件をすべて確認}}",
         "checksSome": "{count, plural, other {取得元 # 件中 {growing} 件を確認}}",
         "nextCheck": "次回の確認: {day}",
+        "finished": "完了にしている間は確認しません",
         "firstCheck": "初回の確認: {day}",
         "firstOnSave": "保存するとすぐに初回の確認",
         "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",

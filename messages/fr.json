@@ -5080,7 +5080,8 @@
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
       "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue",
       "pointScreening": "{models, select, true {Voter est gratuit. {name} paie les modèles d'IA du criblage.} other {Voter est gratuit.}}",
-      "pointLooking": "Le consulter est gratuit"
+      "pointLooking": "Le consulter est gratuit",
+      "finishedVote": "Marqué comme terminé. Vous pourrez voter dès sa réouverture"
     },
     "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
     "asRole": "en tant que {role}",
@@ -8313,6 +8314,7 @@
         "checksAll": "{count, plural, one {Vérifie la source} other {Vérifie toutes les # sources}}",
         "checksSome": "{count, plural, other {Vérifie {growing} des # sources}}",
         "nextCheck": "Prochaine vérification {day}",
+        "finished": "Aucune vérification tant qu'il est marqué comme terminé",
         "firstCheck": "Première vérification {day}",
         "firstOnSave": "Première vérification dès l'enregistrement",
         "perNew": "{pdf, select, true {{credits, plural, one {# crédit} other {# crédits}} par nouvel article, plus s'il est lu depuis un PDF} other {{credits, plural, one {# crédit} other {# crédits}} par nouvel article}}",

@@ -5080,7 +5080,8 @@
       "otherTitle": "This invitation was sent to another address",
       "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to",
       "pointScreening": "{models, select, true {Voting is free. {name} pays for the screening's AI models.} other {Voting is free.}}",
-      "pointLooking": "Looking at it is free"
+      "pointLooking": "Looking at it is free",
+      "finishedVote": "Marked finished. You can vote once it is reopened"
     },
     "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
     "asRole": "as {role}",
@@ -8313,6 +8314,7 @@
         "checksAll": "{count, plural, one {Checks the source} other {Checks all # sources}}",
         "checksSome": "{count, plural, other {Checks {growing} of the # sources}}",
         "nextCheck": "Next check {day}",
+        "finished": "No checks while it is marked finished",
         "firstCheck": "First check {day}",
         "firstOnSave": "First check as soon as this is saved",
         "perNew": "{pdf, select, true {{credits, plural, one {# credit} other {# credits}} a new paper, more if read as a PDF} other {{credits, plural, one {# credit} other {# credits}} a new paper}}",

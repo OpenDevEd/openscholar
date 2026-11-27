@@ -39,7 +39,7 @@ export function screeningNoticeMessage({ origin, path, name, about, count, more 
         ? [`You review "${name}"`, `${by ?? "A colleague"} ${finished ? "gave you a place to vote on" : "added you as a reviewer of"} "${name}". ${finished ? "The screening is marked finished. You can vote once it is reopened." : count ? `${papers(count)} ${count === 1 ? "waits" : "wait"} for your vote.` : living ? "No paper waits for your vote yet. New ones come to you as they arrive." : "No paper waits for your vote."}`, count === 1 ? "Screen it" : count ? "Screen them" : "Open it"]
       : about === "reminder"
         ? [`${papers(count)} ${count === 1 ? "waits" : "wait"} for your vote in "${name}"`, `${by ?? "A colleague"} reminds you that ${papers(count)} of "${name}" ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"]
-        : [`${papers(count, more)} to screen in "${name}"`, `${count === 1 ? "A new paper" : `${num(count)} new ${more ? "or more papers" : "papers"}`} arrived in "${name}" and ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"];
+        : [`${papers(count, more)} to screen in "${name}"`, `${count === 1 ? "A new paper" : more ? `${num(count)} or more new papers` : `${num(count)} new papers`} arrived in "${name}" and ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"];
   return {
     subject,
     text: `${line}\n\n${open}\n\nStop receiving emails from this screening\n${off}`,

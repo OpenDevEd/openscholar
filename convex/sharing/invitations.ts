@@ -206,7 +206,7 @@ export const getAction = defineUserQuery({
   returns: v.union(
     v.null(),
     v.object({ state: v.literal("other") }),
-    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()), state: v.union(v.literal("pending"), v.literal("accepted")), models: v.boolean() }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()), state: v.union(v.literal("pending"), v.literal("accepted")), models: v.boolean(), finished: v.boolean() }),
   ),
   run: async (ctx, { userId }, { invitationId }) => {
     const id = ctx.db.normalizeId("itemInvitations", invitationId);
@@ -225,7 +225,7 @@ export const getAction = defineUserQuery({
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
       // Someone whose account is gone is named by the workspace they shared it from, as the list of invitations names them.
       by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
-      from, ...(shared.size === undefined ? {} : { size: shared.size }), state, models: (await screeningFacts(ctx, shared)).models,
+      from, ...(shared.size === undefined ? {} : { size: shared.size }), state, ...(await screeningFacts(ctx, shared)),
     };
   },
 });
@@ -237,7 +237,7 @@ export const waitingAction = defineUserQuery({
   description: "The invitations to items that wait for the person's answer, sent to any address of theirs, the newest first: each one's ID, the item's kind, ID and name, what it lets them do, who sent it and the workspace the item is in. Given a `kind`, only those to that kind of item. Answer one with `sharing/invitations:respond`.",
   args: { kind: v.optional(sharedKindValidator) },
   // All of them, as one page: an address holds a few at most.
-  returns: paginationResultValidator(v.object({ invitationId: v.id("itemInvitations"), kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator })),
+  returns: paginationResultValidator(v.object({ invitationId: v.id("itemInvitations"), kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, finished: v.boolean() })),
   run: async (ctx, { userId }, { kind }) => {
     const reader = await ctx.db.get("users", userId);
     if (!reader) return { page: [], isDone: true, continueCursor: "" };
@@ -250,7 +250,7 @@ export const waitingAction = defineUserQuery({
       if (!shared) return [];
       // Someone whose account is gone is named by the workspace they shared it from.
       const from = await workspaceFrom(ctx, shared.workspaceId);
-      return [{ invitationId: invitation._id, kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role, by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) }, from }];
+      return [{ invitationId: invitation._id, kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role, by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) }, from, finished: (await screeningFacts(ctx, shared)).finished }];
     }))).flat();
     return { page, isDone: true, continueCursor: "" };
   },

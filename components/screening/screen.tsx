@@ -46,7 +46,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead, rtl } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
@@ -459,8 +459,9 @@ function Screen({ open }: { open: Open }) {
         else setListing((now) => !now);
       }
       else if (key === "?") setKeysOpen(true);
-      else if (key === "arrowright" || key === "j" || key === "s") go(at + 1);
-      else if (key === "arrowleft" || key === "k") go(at - 1);
+      // The arrows go the way the Next and Previous buttons point: in a right-to-left language, Next is on the left.
+      else if (key === (rtl() ? "arrowleft" : "arrowright") || key === "j" || key === "s") go(at + 1);
+      else if (key === (rtl() ? "arrowright" : "arrowleft") || key === "k") go(at - 1);
       else return;
       event.preventDefault();
     },
@@ -1095,7 +1096,7 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input dir="auto" maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
                         <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
@@ -1224,7 +1225,7 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
         ? [Hourglass, t("empty.onTheirWay"), null]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
         // Papers given out to someone else under a rule of so many people on each: said, so an empty To do isn't a fault.
-        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), next: open.screening.finishedAt ? "none" : open.screening.living ? "living" : open.canChange ? "move" : "none" }) : null]
+        : !yours ? [ListChecks, open.screening.living && !open.screening.finishedAt ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), next: open.screening.finishedAt ? "none" : open.screening.living ? "living" : open.canChange ? "move" : "none" }) : null]
         // A finished screening takes no vote: the papers it left without theirs are said, not passed off as voted on.
         : open.screening.finishedAt && yours > voted + closed ? [CircleCheck, t("empty.finished"), t("empty.unvoted", { count: yours - voted - closed })]
         : !closed ? [CircleCheck, t("empty.allVoted"), null]
