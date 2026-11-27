@@ -1838,6 +1838,7 @@ export default defineSchema({
     open: v.optional(v.literal(true)),
   })
     .index("by_result", ["resultId"])
+    .index("by_result_and_to_and_open", ["resultId", "to", "open"])
     .index("by_job_and_to_and_open", ["jobId", "to", "open"]),
 
   // A person's settings on one screening: its emails turned off.

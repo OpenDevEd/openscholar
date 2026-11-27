@@ -117,7 +117,7 @@
       "LATEST_COUNTED": "the papers a screening's last check brought, counted for the ones still open; its Papers page lists every one",
       "SAME_TITLE": "papers of one title and year in a screening, looked at for the one a new record is; versions of a paper share them and seldom more than a few do",
       "MOVE_LOOKED": "the far end of one person's queue, looked through for papers another person isn't on; a second move goes on from there",
-      "ANSWERED": "a paper's latest discussion lines, looked through for the questions to the person who just wrote on it",
+      "ANSWERED": "the open questions to one person on one paper, all closed by their reply",
       "PAIRS_MAX": "the pairs of reviewers a screening's overview draws agreement for; a screening with more reviewers than that many pairs shows the first",
       "CHECKS_COUNTED": "a screening's checks for new papers counted for its methods paragraph: the first of them",
       "CHANGES_COUNTED": "a screening's latest activity, looked through for how often its settings were changed",

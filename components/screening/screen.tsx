@@ -267,7 +267,8 @@ function Screen({ open }: { open: Open }) {
 
   const [advance, setAdvance] = useState(true);
   // The paper a vote last opened, and when. A press on it within a double-click's half second is the same press again (Safari counts each tap of a double tap as one click), not a vote on a paper nobody has read. The vote buttons also ignore a click counted twice, a double-click at whatever speed the system allows.
-  const advanced = useRef<{ paper: string; at: number } | null>(null);
+  // A vote that turns the page opens a paper not known yet: then any paper but the one voted on counts as that paper.
+  const advanced = useRef<{ paper: string; at: number; pageTurned?: boolean } | null>(null);
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
   // On a phone the queue opens over the paper.
@@ -374,7 +375,10 @@ function Screen({ open }: { open: Open }) {
       openIt(next, { inPlace: fromSheet });
     }
     // The next paper is on the queue's next page: the page turns to it, as stepping past the last paper does.
-    else if (nextPage) go(items.length);
+    else if (nextPage) {
+      advanced.current = { paper: paper.id, at: Date.now(), pageTurned: true };
+      go(items.length);
+    }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
     else if (!picked && !fromSheet) void setPlace({ paper: paper.id }, { history: "replace" });
   };
@@ -389,7 +393,7 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).catch(failed);
   };
   const press = (decision: Decision) => {
-    if (!paper || !mayDecide || (advanced.current?.paper === paper.id && Date.now() - advanced.current.at < 500)) return;
+    if (!paper || !mayDecide || (advanced.current && Date.now() - advanced.current.at < 500 && (advanced.current.pageTurned ? advanced.current.paper !== paper.id : advanced.current.paper === paper.id))) return;
     // Excluding asks why, unless your own answers or a note already say (lib/screening/rules.ts `givenReason`).
     const reason = decision === "exclude" ? givenReason(criteria, { ...mine?.answers, ...answers[paper.id] }, notes[noteKey(paper.id)] ?? savedNote(paper), resolving) : undefined;
     // On a phone the reasons are a sheet, a step of its own: the paper under it is named first, so Back from the sheet, or from the paper after it, comes back to this one.
