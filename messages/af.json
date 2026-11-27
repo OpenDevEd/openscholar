@@ -7893,7 +7893,7 @@
         "scheduledNone": "Die geskeduleerde kontrole het geen nuwe artikels gevind nie",
         "known": "{count, plural, one {# was} other {# was}} reeds in die siftering",
         "leftOut": "{count, plural, one {# is uitgelaat} other {# is uitgelaat}}",
-        "unread": "{count, plural, one {# bron kon nie gelees word nie} other {# bronne kon nie gelees word nie}}",
+        "unread": "{count, plural, one {Kon # bron nie lees nie} other {Kon # bronne nie lees nie}}",
         "joined": "{count, plural, one {# artikel het} other {# artikels het}} by die siftering aangesluit",
         "reopenedByCheck": "Die siftering is weer oop",
         "changed": "Het {parts} verander",
@@ -8149,7 +8149,7 @@
         "undo": "Ongedaan maak",
         "failed": "Dit het nie gewerk nie. Probeer weer.",
         "notAdded": "Sommige mense kon nie bygevoeg word nie. Voeg hulle weer by onder Mense.",
-        "notInvited": "Sommige mense kon nie uitgenooi word nie, dus is nog niks gestoor nie. Stoor weer om hulle weer te probeer uitnooi.",
+        "notInvited": "{names} kon nie uitgenooi word nie, dus is nog niks gestoor nie, en elke verandering hier wag nog. Stoor weer om weer te probeer.",
         "notStarted": "Die siftering kon nie begin word nie. Probeer weer.",
         "saved": "Veranderinge gestoor",
         "discarded": "Veranderinge weggegooi"
@@ -8945,7 +8945,7 @@
         "found": "{count, number} gevind",
         "alreadyIn": "{count, number} reeds daarin",
         "leftOut": "{count, plural, one {# uitgelaat} other {# uitgelaat}}",
-        "unread": "{count, plural, one {Kon # bron nie lees nie} other {Kon # bronne nie lees nie}}",
+        "unread": "{count, plural, one {Kon {names} nie lees nie} other {Kon # bronne nie lees nie, {names}}}",
         "added": "{count, number} bygevoeg",
         "newFrom": "{count, number} nuut uit {source}",
         "result": "{result, select, include {{count, number} ingesluit} maybe {{count, number} miskien} exclude {{count, number} uitgesluit} conflict {{count, number} in konflik} other {{count, number} wag vir stemme}}",
@@ -8985,7 +8985,11 @@
         "newest": "Gepubliseer, nuutste eerste",
         "split": "Mees verdeelde stemme",
         "points": "Meeste punte",
-        "shut": "Hierdie siftering versteek ander beoordelaars se stemme op die artikels waarop jy nog moet stem, en hierdie volgorde sou hulle verklap"
+        "shut": "Hierdie siftering versteek ander beoordelaars se stemme op die artikels waarop jy nog moet stem, en hierdie volgorde sou hulle verklap",
+        "byVote": "Vernou tot een beoordelaar, kom die artikels in die volgorde waarin daardie beoordelaar daarop gestem het",
+        "byVoteLabel": "Soos daarop gestem",
+        "bySearch": "Terwyl jy soek, kom die artikels in die volgorde waarin hulle die beste pas",
+        "bySearchLabel": "Beste passing eerste"
       },
       "settledBy": "{you, select, true {Deur jou beslis} other {Deur {name} beslis}}",
       "settledToast": "{count, number} beslis as {result}",
@@ -9327,6 +9331,7 @@
         "add": "Voeg kriteria by"
       },
       "bar": {
+        "notInList": "Nie meer in hierdie lys nie",
         "atOf": "{at, number} van {count, number}",
         "left": "{count, plural, other {# oor}}",
         "underMinute": "minder as ’n minuut",
@@ -9452,7 +9457,7 @@
           "pdfTooBig": "Groter as {mb, number} MB",
           "unsent": "Dit kon nie gestuur word nie",
           "allUnsent": "Hulle kon nie gestuur word nie",
-          "priceComing": "Word bygevoeg sodra die koste van ’n PDF wys. Voeg dit oor ’n oomblik weer by"
+          "priceComing": "Voeg dit weer by sodra die koste van ’n PDF wys"
         },
         "drop": "Los verwysingslêers of PDF’e hier",
         "helpTitle": "Lêers",

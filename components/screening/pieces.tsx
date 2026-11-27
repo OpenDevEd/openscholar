@@ -851,11 +851,11 @@ export function DiscussionLink({ count, writes = true, onClick }: { count: numbe
  * The room a paper's PDF takes, held around the viewer while its code loads: its chip row and its pages at A4 for the
  * column's width (./paper-pdf.tsx holds the same once it is in), so the votes and discussion under it never move.
  */
-export function PdfRoom({ pages, more = false, children }: { pages: number; /** A "Show all pages" button follows the first page. */ more?: boolean; children: ReactNode }) {
+export function PdfRoom({ pages, children }: { pages: number; children: ReactNode }) {
   return (
     <div className="@container">
       {/* Released once the viewer is in (`data-pdf`): from then it holds its own room, at the shape the file says. */}
-      <div style={{ minHeight: `calc(2.25rem + ${more ? "2.75rem + " : ""}${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
+      <div style={{ minHeight: `calc(2.25rem + ${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
     </div>
   );
 }

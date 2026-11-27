@@ -7893,7 +7893,7 @@
         "scheduledNone": "A verificação agendada não encontrou artigos novos",
         "known": "{count, plural, one {# já estava} other {# já estavam}} na triagem",
         "leftOut": "{count, plural, one {# ficou de fora} other {# ficaram de fora}}",
-        "unread": "{count, plural, one {Não foi possível ler # fonte} other {Não foi possível ler # fontes}}",
+        "unread": "{count, plural, one {Não conseguiu ler # fonte} other {Não conseguiu ler # fontes}}",
         "joined": "{count, plural, one {# artigo entrou} other {# artigos entraram}} na triagem",
         "reopenedByCheck": "A triagem voltou a abrir",
         "changed": "Alterou {parts}",
@@ -8149,7 +8149,7 @@
         "undo": "Anular",
         "failed": "Não funcionou. Tente novamente.",
         "notAdded": "Não foi possível adicionar algumas pessoas. Adicione-as de novo em Pessoas.",
-        "notInvited": "Não foi possível convidar algumas pessoas, por isso ainda nada foi guardado. Guarde de novo para tentar convidá-las outra vez.",
+        "notInvited": "Não foi possível convidar {names}, por isso ainda nada foi guardado, e todas as alterações aqui continuam à espera. Guarde de novo para tentar outra vez.",
         "notStarted": "Não foi possível iniciar a triagem. Tente novamente.",
         "saved": "Alterações guardadas",
         "discarded": "Alterações descartadas"
@@ -8945,7 +8945,7 @@
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} já na triagem",
         "leftOut": "{count, plural, one {# deixado de fora} other {# deixados de fora}}",
-        "unread": "{count, plural, one {Não conseguiu ler # fonte} other {Não conseguiu ler # fontes}}",
+        "unread": "{count, plural, one {Não conseguiu ler {names}} other {Não conseguiu ler # fontes, {names}}}",
         "added": "{count, number} adicionados",
         "newFrom": "{count, number} novos de {source}",
         "result": "{result, select, include {{count, number} incluídos} maybe {{count, number} talvez} exclude {{count, number} excluídos} conflict {{count, number} em conflito} other {{count, number} à espera de votos}}",
@@ -8985,7 +8985,11 @@
         "newest": "Publicação, mais recentes primeiro",
         "split": "Votos mais divididos",
         "points": "Mais pontos",
-        "shut": "Esta triagem oculta os votos dos outros revisores nos artigos em que ainda não votou, e esta ordem revelá-los-ia"
+        "shut": "Esta triagem oculta os votos dos outros revisores nos artigos em que ainda não votou, e esta ordem revelá-los-ia",
+        "byVote": "Com a lista limitada a um revisor, os artigos aparecem pela ordem em que esse revisor votou neles",
+        "byVoteLabel": "Pela ordem dos votos",
+        "bySearch": "Durante uma pesquisa, os artigos aparecem pela ordem de correspondência, da melhor para a pior",
+        "bySearchLabel": "Melhor correspondência primeiro"
       },
       "settledBy": "{you, select, true {Decidido por si} other {Decidido por {name}}}",
       "settledToast": "{count, number} decididos como {result}",
@@ -9327,6 +9331,7 @@
         "add": "Adicionar critérios"
       },
       "bar": {
+        "notInList": "Já não está nesta lista",
         "atOf": "{at, number} de {count, number}",
         "left": "{count, plural, other {# restantes}}",
         "underMinute": "menos de um minuto",
@@ -9452,7 +9457,7 @@
           "pdfTooBig": "Mais de {mb, number} MB",
           "unsent": "Não foi possível enviá-lo",
           "allUnsent": "Não foi possível enviá-los",
-          "priceComing": "Só é adicionado depois de aparecer o preço de um PDF. Adicione-o de novo daqui a pouco"
+          "priceComing": "Adicione-o de novo quando aparecer o preço de um PDF"
         },
         "drop": "Largue aqui ficheiros de referências ou PDF",
         "helpTitle": "Ficheiros",

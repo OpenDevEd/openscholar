@@ -8148,7 +8148,7 @@
         "undo": "取り消す",
         "failed": "うまくいきませんでした。もう一度お試しください。",
         "notAdded": "一部の人を追加できませんでした。「参加者」からもう一度追加してください。",
-        "notInvited": "一部の人を招待できなかったため、まだ何も保存されていません。もう一度保存すると、招待をやり直します。",
+        "notInvited": "{names} を招待できなかったため、まだ何も保存されていません。ここでの変更はすべて保存待ちのままです。もう一度保存すると、やり直します。",
         "notStarted": "スクリーニングを開始できませんでした。もう一度お試しください。",
         "saved": "変更を保存しました",
         "discarded": "変更を破棄しました"
@@ -8944,7 +8944,7 @@
         "found": "{count, number} 件見つかりました",
         "alreadyIn": "{count, number} 件は登録済み",
         "leftOut": "{count, plural, other {# 件を除外}}",
-        "unread": "{count, plural, other {取得元 # 件を読み取れませんでした}}",
+        "unread": "{count, plural, =1 {{names} を読み取れませんでした} other {{names}、計 # 件の取得元を読み取れませんでした}}",
         "added": "{count, number} 件を追加",
         "newFrom": "{source} から新しい論文 {count, number} 件",
         "result": "{result, select, include {採用 {count, number} 件} maybe {保留 {count, number} 件} exclude {除外 {count, number} 件} conflict {不一致 {count, number} 件} other {投票待ち {count, number} 件}}",
@@ -8984,7 +8984,11 @@
         "newest": "出版日の新しい順",
         "split": "投票が分かれた順",
         "points": "点数の高い順",
-        "shut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかのレビュアーの投票を非表示にしています。この並び順ではそれが分かってしまいます"
+        "shut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかのレビュアーの投票を非表示にしています。この並び順ではそれが分かってしまいます",
+        "byVote": "レビュアー 1 人に絞り込んでいるときは、そのレビュアーが投票した順に論文が並びます",
+        "byVoteLabel": "投票順",
+        "bySearch": "検索中は、一致度の高い順に論文が並びます",
+        "bySearchLabel": "一致度の高い順"
       },
       "settledBy": "{you, select, true {あなたが判定} other {{name} が判定}}",
       "settledToast": "{count, number} 件を{result}と判定しました",
@@ -9326,6 +9330,7 @@
         "add": "基準を追加"
       },
       "bar": {
+        "notInList": "今はこの一覧にありません",
         "atOf": "{count, number} 件中 {at, number} 件目",
         "left": "{count, plural, other {残り # 件}}",
         "underMinute": "1 分未満",
@@ -9451,7 +9456,7 @@
           "pdfTooBig": "{mb, number} MB を超えています",
           "unsent": "送信できませんでした",
           "allUnsent": "送信できませんでした",
-          "priceComing": "PDF の費用が表示されてから追加されます。少し待ってからもう一度追加してください"
+          "priceComing": "PDF の費用が表示されたら、もう一度追加してください"
         },
         "drop": "文献ファイルや PDF をここにドロップ",
         "helpTitle": "ファイル",

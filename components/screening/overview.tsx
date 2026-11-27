@@ -639,9 +639,10 @@ function Unread({ open, model }: { open: Open; model: Reviewer }) {
     <>
       <ScrollArea shades className="-mx-1 min-h-10 flex-1">
         <ul className={cn("space-y-0.5 transition-opacity", papers.isStale && "opacity-60")}>
-          {Array.from({ length: coming }, (_, at) => <li key={`coming-${at}`} aria-hidden className="px-1 py-1"><SkeletonBar className="h-4 w-4/5" /></li>)}
+          {/* Each row holds two lines, the most a title takes here, loaded or not: a long title never moves what is under the list. */}
+          {Array.from({ length: coming }, (_, at) => <li key={`coming-${at}`} aria-hidden className="min-h-10 space-y-1 px-1 py-1"><SkeletonBar className="h-3.5 w-11/12" /><SkeletonBar className="h-3.5 w-3/5" /></li>)}
           {papers.items.map((paper) => (
-            <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span dir="auto" className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
+            <li key={paper.id} className="min-h-10"><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span dir="auto" className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
           ))}
         </ul>
       </ScrollArea>
@@ -805,7 +806,7 @@ function Facts({ open }: { open: Open }) {
   // The workspace's credits are its members' to see: anyone else is told nothing of them.
   const left = open.wallet ?? Infinity;
   const to = screening.destination;
-  const collection = to.kind === "none" ? null : (words.collectionName(screening) ?? t("included.aCollection"));
+  const collection = to.kind === "none" ? null : (words.collectionName(screening) || t("included.aCollection"));
   return (
     <div className="space-y-6">
       <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
@@ -981,7 +982,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                         <Chip>{t("checks.nothingNew")}</Chip>
                       )}
                       {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
-                      {check.unread ? <StateChip tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread })}</StateChip> : null}
+                      {check.unread ? <LinkChip href={settingsHref(screening.id, "papers")} tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length, names: words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? [])) })}</LinkChip> : null}
                     </div>
                   </div>
                 </motion.div>

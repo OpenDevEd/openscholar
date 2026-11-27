@@ -56,11 +56,16 @@ export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: 
     <div data-pdf className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <Chip icon={FileText}>{t("pdf.readAs", { pages: paper.pdf?.pages ?? 0 })}</Chip>
+        {/* The rest of the pages are asked for here, at the top, where the button moves nothing under the paper. */}
+        {pages < all ? <Button variant="outline" size="xs" onClick={() => setWhole(paper.id)}>{t("pdf.showAll", { count: all })}</Button> : null}
         {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>{t("pdf.openTab")}<ExternalLink aria-hidden className="size-3" /></a> : null}
       </div>
       {/* The column holds its pages' height from the first frame, before it is measured (by its width, as a container): each page arrives inside its own place. */}
       <div className="@container">
       <div ref={column} style={{ minHeight: width ? pages * (Math.round(width * shape) + GAP) - GAP : `calc(${pages * shape} * 100cqw + ${(pages - 1) * GAP}px)` }}>
+        {/* Its address still coming, or none to be had: said in the page's own place, never a blank one. */}
+        {url === null ? <p className="rounded-xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">{t("pdf.cantShow")}</p> : null}
+        {url === undefined ? <div role="status" aria-label={t("pdf.onItsWay")} className="flex aspect-[1/1.414] items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div> : null}
         {url && width ? (
           <Document
             key={paper.id}
@@ -77,7 +82,6 @@ export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: 
         ) : null}
       </div>
       </div>
-      {pages < all ? <Button variant="outline" size="sm" className="w-full" onClick={() => setWhole(paper.id)}><FileText />{t("pdf.showAll", { count: all })}</Button> : null}
     </div>
   );
 }

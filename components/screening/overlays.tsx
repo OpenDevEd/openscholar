@@ -135,7 +135,14 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   // A screening deleted or left: its own pages lead away to the list in place of this entry; over the list, the dialog takes itself out of the address.
   const gone = () => { if (onDeleted) onDeleted(); else setOver(null, { inPlace: true }); };
   // Asked from People, the confirmation is a step on top of it: answering it steps back to People, as Back would.
-  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) window.history.back(); else close(); };
+  // Whether the entry under this one is People, read from the browser's history where it can say (after a reload or Forward too), else from where it was asked.
+  const peopleUnder = () => {
+    const list = (window as Window & { navigation?: { currentEntry?: { index: number } | null; entries: () => Array<{ url: string | null }> } }).navigation;
+    const at = list?.currentEntry?.index;
+    const under = list && at !== undefined && at > 0 ? list.entries()[at - 1]?.url : undefined;
+    return under ? new URL(under).searchParams.get("over") === "people" : fromPeople;
+  };
+  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (peopleUnder()) window.history.back(); else close(); };
   // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
   // Someone on the screening is found again by the id the address names. Someone being added comes from People's list, and without it People opens, where they were picked.
   const named = (change: (typeof CHANGES)[number]) => (about.change === change && about.who ? (screening.reviewers.find((one) => one.id === about.who && !one.left) ?? null) : null);

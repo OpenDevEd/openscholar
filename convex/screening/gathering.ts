@@ -102,12 +102,14 @@ export const begin = internalMutation({
   },
 });
 
-/** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. */
+/** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. The check counts it as one of its own it couldn't read. */
 export const fail = internalMutation({
-  args: { sourceId: v.id("screeningSources"), reason: v.optional(v.string()) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), reason: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { sourceId, reason }) => {
+  handler: async (ctx, { checkId, sourceId, reason }) => {
     await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason?.slice(0, FAILURE_SHOWN) });
+    const check = await ctx.db.get("screeningChecks", checkId);
+    if (check && !check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
     return null;
   },
 });
@@ -135,7 +137,7 @@ export const gather = internalAction({
         }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
-        await ctx.runMutation(internal.screening.gathering.fail, { sourceId: source.sourceId, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
+        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
       }
     }
   },
@@ -464,13 +466,12 @@ export const end = internalMutation({
     const check = await ctx.db.get("screeningChecks", checkId);
     if (check?.state !== "running") return null;
     const job = await ctx.db.get("screeningJobs", check.jobId);
-    // The sources it couldn't read are counted on it, so nothing reads it as a check that found nothing new.
-    const unread = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", check.jobId)).take(MAX_SOURCE_ROWS)).filter((source) => source.state === "failed" && source.removedAt === undefined).length;
-    await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now(), ...(unread ? { unread } : {}) });
+    // The sources it couldn't read were counted on it as each failed (`fail`), so nothing reads it as a check that found nothing new.
+    await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
     if (!job) return null;
     await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, ...touched() });
     await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
-    await checked(ctx, job, { ...check, ...(unread ? { unread } : {}) });
+    await checked(ctx, job, check);
     return null;
   },
 });

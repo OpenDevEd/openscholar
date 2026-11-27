@@ -7893,7 +7893,7 @@
         "scheduledNone": "La comprobación programada no encontró artículos nuevos",
         "known": "{count, plural, one {# ya estaba} other {# ya estaban}} en el cribado",
         "leftOut": "{count, plural, one {# se descartó} other {# se descartaron}}",
-        "unread": "{count, plural, one {# fuente no se pudo leer} other {# fuentes no se pudieron leer}}",
+        "unread": "{count, plural, one {No pudo leer # fuente} other {No pudo leer # fuentes}}",
         "joined": "{count, plural, one {# artículo entró} other {# artículos entraron}} en el cribado",
         "reopenedByCheck": "El cribado vuelve a estar abierto",
         "changed": "Cambió {parts}",
@@ -8149,7 +8149,7 @@
         "undo": "Deshacer",
         "failed": "No funcionó. Inténtelo de nuevo.",
         "notAdded": "No se pudo añadir a algunas personas. Vuelva a añadirlas desde Personas.",
-        "notInvited": "No se pudo invitar a algunas personas, así que aún no se guardó nada. Vuelva a guardar para intentar invitarlas de nuevo.",
+        "notInvited": "No se pudo invitar a {names}, así que aún no se guardó nada, y cada cambio aquí sigue pendiente. Vuelva a guardar para intentarlo de nuevo.",
         "notStarted": "No se pudo iniciar el cribado. Inténtelo de nuevo.",
         "saved": "Cambios guardados",
         "discarded": "Cambios descartados"
@@ -8945,7 +8945,7 @@
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} ya estaban",
         "leftOut": "{count, plural, one {# omitido} other {# omitidos}}",
-        "unread": "{count, plural, one {No pudo leer # fuente} other {No pudo leer # fuentes}}",
+        "unread": "{count, plural, one {No pudo leer {names}} other {No pudo leer # fuentes, {names}}}",
         "added": "{count, number} añadidos",
         "newFrom": "{count, number} nuevos de {source}",
         "result": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
@@ -8985,7 +8985,11 @@
         "newest": "Publicación, más recientes primero",
         "split": "Votos más divididos",
         "points": "Más puntos",
-        "shut": "Este cribado oculta los votos de los demás revisores en los artículos que usted aún no ha votado, y este orden los delataría"
+        "shut": "Este cribado oculta los votos de los demás revisores en los artículos que usted aún no ha votado, y este orden los delataría",
+        "byVote": "Con la lista limitada a un revisor, los artículos aparecen en el orden en que los votó",
+        "byVoteLabel": "Según se votaron",
+        "bySearch": "Durante una búsqueda, los artículos que mejor coinciden aparecen primero",
+        "bySearchLabel": "Mejor coincidencia primero"
       },
       "settledBy": "{you, select, true {Resuelto por usted} other {Resuelto por {name}}}",
       "settledToast": "{count, number} resueltos como {result}",
@@ -9327,6 +9331,7 @@
         "add": "Añadir criterios"
       },
       "bar": {
+        "notInList": "Ya no está en esta lista",
         "atOf": "{at, number} de {count, number}",
         "left": "{count, plural, one {# restante} other {# restantes}}",
         "underMinute": "menos de un minuto",
@@ -9452,7 +9457,7 @@
           "pdfTooBig": "Supera {mb, number} MB",
           "unsent": "No se pudo enviar",
           "allUnsent": "No se pudieron enviar",
-          "priceComing": "Un PDF se añade cuando se muestra su precio. Vuelva a añadirlo en un momento"
+          "priceComing": "Vuelva a añadirlo cuando se muestre el precio de un PDF"
         },
         "drop": "Suelte aquí archivos de referencias o PDF",
         "helpTitle": "Archivos",

@@ -7892,7 +7892,7 @@
         "scheduledNone": "定期检查没有发现新论文",
         "known": "{count, plural, other {# 篇}}已在筛选中",
         "leftOut": "{count, plural, other {# 篇被排除在外}}",
-        "unread": "{count, plural, other {# 个来源无法读取}}",
+        "unread": "{count, plural, other {无法读取 # 个来源}}",
         "joined": "{count, plural, other {# 篇论文}}加入了筛选",
         "reopenedByCheck": "筛选已重新打开",
         "changed": "更改了{parts}",
@@ -8148,7 +8148,7 @@
         "undo": "撤销",
         "failed": "操作失败，请重试。",
         "notAdded": "部分人员未能添加。请在人员中重新添加。",
-        "notInvited": "部分人员未能邀请，因此尚未保存任何内容。请再次保存，重新尝试邀请他们。",
+        "notInvited": "未能邀请 {names}，因此尚未保存任何内容，这里的所有更改仍在等待保存。请再次保存以重试。",
         "notStarted": "筛选未能开始，请重试。",
         "saved": "更改已保存",
         "discarded": "已放弃更改"
@@ -8944,7 +8944,7 @@
         "found": "找到 {count, number} 篇",
         "alreadyIn": "{count, number} 篇已在其中",
         "leftOut": "{count, plural, other {# 篇被排除在外}}",
-        "unread": "{count, plural, other {无法读取 # 个来源}}",
+        "unread": "{count, plural, =1 {无法读取 {names}} other {无法读取 {names} 这 # 个来源}}",
         "added": "加入 {count, number} 篇",
         "newFrom": "来自 {source} 的 {count, number} 篇新论文",
         "result": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
@@ -8984,7 +8984,11 @@
         "newest": "发表时间，最新优先",
         "split": "投票分歧最大",
         "points": "分数最高",
-        "shut": "这次筛选会隐藏其他审核人在你尚未投票的论文上的投票，而这种排序会泄露这些投票"
+        "shut": "这次筛选会隐藏其他审核人在你尚未投票的论文上的投票，而这种排序会泄露这些投票",
+        "byVote": "只看一位审核人时，论文按该审核人投票的先后顺序排列",
+        "byVoteLabel": "按投票顺序",
+        "bySearch": "搜索时，论文按匹配程度从高到低排列",
+        "bySearchLabel": "最佳匹配优先"
       },
       "settledBy": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
       "settledToast": "已将 {count, number} 篇定为{result}",
@@ -9326,6 +9330,7 @@
         "add": "添加标准"
       },
       "bar": {
+        "notInList": "现已不在此列表中",
         "atOf": "{at, number} / {count, number}",
         "left": "{count, plural, other {还剩 # 篇}}",
         "underMinute": "不到一分钟",
@@ -9451,7 +9456,7 @@
           "pdfTooBig": "超过 {mb, number} MB",
           "unsent": "未能发送",
           "allUnsent": "未能发送",
-          "priceComing": "PDF 的费用显示后才会添加。请稍后再添加一次"
+          "priceComing": "PDF 的费用显示后，请再添加一次"
         },
         "drop": "将文献文件或 PDF 拖放到这里",
         "helpTitle": "文件",

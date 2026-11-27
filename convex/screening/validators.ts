@@ -309,6 +309,8 @@ export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.n
 /** The most reviewers a screening has, people who left it included, and the most sources it has ever had. */
 export const MAX_REVIEWERS = 200;
 export const MAX_SOURCE_ROWS = 100;
+/** The sources one check couldn't read. */
+export const unreadSourcesValidator = capped(v.optional(v.array(v.id("screeningSources"))), MAX_SOURCE_ROWS);
 
 export const starsValidator = capped(v.optional(v.array(v.number())), MAX_STARS);
 export const voteConfidencesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
