@@ -8216,6 +8216,7 @@
         "questionPlaceholder": "例如“学校供餐能否改善小学生的学习？”"
       },
       "papers": {
+        "wholeSource": "读取整个来源",
         "fromAll": "读取来源中全部 {total, number} 篇",
         "fromRange": "读取来源中 {total, number} 篇里的第 {first} 至 {last} 篇",
         "gives": "{count, plural, other {# 篇论文}}",
@@ -8355,7 +8356,7 @@
       },
       "decided": {
         "seeingAdvice": "模型的建议在投票前显示",
-        "seeingNothing": "模型的建议在投票前显示。每篇论文只有一人，所有投票都可见",
+        "seeingNothing": "每篇论文只有一人阅读，因此不会隐藏任何内容。模型的建议在投票前显示。",
         "votesAgree": "投票一致",
         "settled": "定案",
         "votesSplit": "投票分歧",
@@ -8793,9 +8794,9 @@
         "merged": "{count, plural, other {已合并 # 个重复项}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, other {其中 # 篇仍在等待其他投票}}",
         "votes": "你的 {count, plural, other {# 票}}",
-        "voted": "{decision, select, include {你投了入选：{count, number}} maybe {你投了待定：{count, number}} other {你投了排除：{count, number}}}",
-        "stillWait": "查看其中哪些仍在等待其他人投票"
+        "voted": "{decision, select, include {你投了入选：{count, number}} maybe {你投了待定：{count, number}} other {你投了排除：{count, number}}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, other {已通过邮件邀请 # 位审核人，对方加入且筛选重新打开后即可投票}}} other {{count, plural, other {已通过邮件邀请 # 位审核人，加入后即可投票}}}}",
@@ -8862,7 +8863,7 @@
         "noOtherPerson": "没有其他人可比较",
         "noPeople": "没有人可比较",
         "nothingYet": "暂无可比较的内容",
-        "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted><all>（比较了 {count, plural, other {# 票}}）</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted>",
         "missedOf": "对 {included, number} 篇入选论文中的 {missed, number} 篇投了排除",
         "ofPairs": "共 {count, plural, other {# 对投票}}",
         "more": "更多",

@@ -8217,6 +8217,7 @@
         "questionPlaceholder": "Etwa „Verbessert Schulessen das Lernen in Grundschulen?“"
       },
       "papers": {
+        "wholeSource": "liest die ganze Quelle",
         "fromAll": "liest alle {total, number} in der Quelle",
         "fromRange": "liest Artikel {first} bis {last} der {total, number} in der Quelle",
         "gives": "{count, plural, one {# Artikel} other {# Artikel}}",
@@ -8356,7 +8357,7 @@
       },
       "decided": {
         "seeingAdvice": "Der Rat der Modelle ist vor der Stimme sichtbar",
-        "seeingNothing": "Der Rat der Modelle ist vor der Stimme sichtbar. Mit einer Person pro Artikel ist jede Stimme sichtbar",
+        "seeingNothing": "Nichts ist verborgen, da eine Person jeden Artikel liest. Der Rat der Modelle ist vor der Stimme sichtbar.",
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",
@@ -8794,9 +8795,9 @@
         "merged": "{count, plural, one {# Duplikat zusammengeführt} other {# Duplikate zusammengeführt}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# davon wartet noch auf andere Stimmen} other {# davon warten noch auf andere Stimmen}}",
         "votes": "{count, plural, one {Ihre # Stimme} other {Ihre # Stimmen}}",
-        "voted": "{decision, select, include {{count, number}-mal Einschließen} maybe {{count, number}-mal Vielleicht} other {{count, number}-mal Ausschließen}}",
-        "stillWait": "Sehen, welche davon noch auf andere Stimmen warten"
+        "voted": "{decision, select, include {{count, number}-mal Einschließen} maybe {{count, number}-mal Vielleicht} other {{count, number}-mal Ausschließen}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {# Reviewer per E-Mail eingeladen, der abstimmt, sobald er beigetreten ist und das Screening wieder geöffnet ist} other {# Reviewer per E-Mail eingeladen, die abstimmen, sobald sie beigetreten sind und das Screening wieder geöffnet ist}}} other {{count, plural, one {# Reviewer per E-Mail eingeladen, der abstimmt, sobald er beitritt} other {# Reviewer per E-Mail eingeladen, die abstimmen, sobald sie beitreten}}}}",
@@ -8863,7 +8864,7 @@
         "noOtherPerson": "Keine andere Person zum Vergleich",
         "noPeople": "Keine Personen zum Vergleich",
         "nothingYet": "Noch nichts zu vergleichen",
-        "agrees": "{share, number, percent}<muted>{person, select, true { gleiche Stimme wie die anderen} other { gleiche Stimme wie die Personen}}</muted><all>, {count, plural, one {# Stimme verglichen} other {# Stimmen verglichen}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { gleiche Stimme wie die anderen} other { gleiche Stimme wie die Personen}}</muted>",
         "missedOf": "Bei {missed, number} von {included, number} eingeschlossenen für Ausschließen gestimmt",
         "ofPairs": "von {count, plural, one {# Stimmpaar} other {# Stimmpaaren}}",
         "more": "Mehr",

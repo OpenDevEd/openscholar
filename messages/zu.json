@@ -8216,6 +8216,7 @@
         "questionPlaceholder": "Njengokuthi “Ingabe ukudla kwasesikoleni kuthuthukisa ukufunda ezikoleni zamabanga aphansi?”"
       },
       "papers": {
+        "wholeSource": "ifunda wonke umthombo",
         "fromAll": "ifunda wonke angu-{total, number} emthonjeni",
         "fromRange": "ifunda amaphepha {first} kuya ku-{last} kwangu-{total, number} emthonjeni",
         "gives": "{count, plural, one {# iphepha} other {amaphepha angu-#}}",
@@ -8355,7 +8356,7 @@
       },
       "decided": {
         "seeingAdvice": "Iseluleko samamodeli siyabonakala ngaphambi kokuvota",
-        "seeingNothing": "Iseluleko samamodeli siyabonakala ngaphambi kokuvota. Wonke amavoti ayabonakala uma kunomuntu oyedwa ephepheni ngalinye",
+        "seeingNothing": "Akukho okufihliwe, ngoba umuntu oyedwa ufunda iphepha ngalinye. Iseluleko samamodeli siyabonakala ngaphambi kokuvota.",
         "votesAgree": "Amavoti ayavumelana",
         "settled": "Kuxazululiwe",
         "votesSplit": "Amavoti ayehlukana",
@@ -8793,9 +8794,9 @@
         "merged": "{count, plural, one {# ikhophi ihlanganisiwe} other {# amakhophi ahlanganisiwe}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# kuwo usalinde amanye amavoti} other {angu-# kuwo asalinde amanye amavoti}}",
         "votes": "{count, plural, one {Ivoti lakho elingu-#} other {Amavoti akho angu-#}}",
-        "voted": "{decision, select, include {{count, number} uvote ngokuthi Faka} maybe {{count, number} uvote ngokuthi Mhlawumbe} other {{count, number} uvote ngokuthi Khipha}}",
-        "stillWait": "Bona ukuthi yimaphi kuwo asalinde amanye amavoti"
+        "voted": "{decision, select, include {{count, number} uvote ngokuthi Faka} maybe {{count, number} uvote ngokuthi Mhlawumbe} other {{count, number} uvote ngokuthi Khipha}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {Umbuyekezi ongu-# umenywe nge-imeyili, uvota uma esejoyinile futhi ukuskrini sekuvulwe futhi} other {Ababuyekezi abangu-# bamenywe nge-imeyili, bavota uma sebejoyinile futhi ukuskrini sekuvulwe futhi}}} other {{count, plural, one {Umbuyekezi ongu-# umenywe nge-imeyili, uvota uma esejoyinile} other {Ababuyekezi abangu-# bamenywe nge-imeyili, bavota uma sebejoyinile}}}}",
@@ -8862,7 +8863,7 @@
         "noOtherPerson": "Akekho omunye umuntu wokuqhathanisa naye",
         "noPeople": "Abekho abantu bokuqhathanisa nabo",
         "nothingYet": "Akukho okuqhathaniswayo okwamanje",
-        "agrees": "{share, number, percent}<muted>{person, select, true { ivoti elifanayo nelabanye} other { ivoti elifanayo nelabantu}}</muted><all>, {count, plural, one {ivoti elingu-# eliqhathanisiwe} other {amavoti angu-# aqhathanisiwe}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { ivoti elifanayo nelabanye} other { ivoti elifanayo nelabantu}}</muted>",
         "missedOf": "Kuvotwe u-Khipha ku-{missed, number} kwa-{included, number} afakiwe",
         "ofPairs": "kwa-{count, plural, one {# ipheya lamavoti} other {# amapheya amavoti}}",
         "more": "Okwengeziwe",

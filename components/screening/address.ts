@@ -73,3 +73,22 @@ export const innerStep = () => ({ history: navigation() ? ("push" as const) : ("
  * of the person, and the letters typed in between replace each other. Every list's search box asks this.
  */
 export const searchHistory = (was: string, next: string) => ({ history: Boolean(next.trim()) !== Boolean(was.trim()) ? ("push" as const) : ("replace" as const) });
+
+/**
+ * Leaves pages that are gone for good (a form already sent, a screening deleted) out of the way back: steps back past
+ * every entry at or under `path`, then goes on with `next` (a push), so Back from where it leads returns to the page
+ * before them. Where the browser can't say how far back that is, `next` takes this entry's place instead.
+ */
+export function leaveBehind(path: string, next: (how: "push" | "replace") => void) {
+  const list = navigation();
+  const current = list?.currentEntry;
+  const under = (url: string | null) => url !== null && (new URL(url).pathname === path || new URL(url).pathname.startsWith(`${path}/`));
+  if (!list || !current) return next("replace");
+  const entries = list.entries();
+  let at = current.index;
+  while (at > 0 && under(entries[at - 1]?.url ?? null)) at--;
+  if (at === 0) return next("replace");
+  const steps = current.index - at + 1;
+  window.addEventListener("popstate", () => next("push"), { once: true });
+  window.history.go(-steps);
+}

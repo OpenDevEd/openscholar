@@ -278,12 +278,34 @@ export const withdraw = internalMutation({
   returns: v.null(),
   handler: async (ctx, { jobId, sourceId, cursor }) => {
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_source", (q) => q.eq("jobId", jobId).eq("sourceId", sourceId)).paginate({ cursor, numItems: FOLLOW });
-    for (const paper of page.page) if (!paper.withdrawn) await ctx.db.patch("screeningResults", paper._id, { withdrawn: true, doneAt: ctx.db.vars.commitTs });
+    for (const paper of page.page) {
+      if (paper.withdrawn) continue;
+      // Another source still in the screening holds it too, merged into it: it stays, with its votes, as that source's paper. That source counts it as one it brought, its PDF with it, and no longer as a duplicate merged.
+      const merged = await ctx.db.query("screeningMerged").withIndex("by_into", (q) => q.eq("into", paper._id)).take(MERGED_LOOKED);
+      let keeper: Doc<"screeningSources"> | null = null;
+      let record: Doc<"screeningMerged"> | undefined;
+      for (const one of merged) {
+        if (one.sourceId === sourceId) continue;
+        const other = await ctx.db.get("screeningSources", one.sourceId);
+        if (other && other.removedAt === undefined) { keeper = other; record = one; break; }
+      }
+      if (keeper && record) {
+        await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, record: undefined, doneAt: ctx.db.vars.commitTs });
+        const filed = !paper.abstract && paper.file;
+        await ctx.db.patch("screeningSources", keeper._id, { taken: keeper.taken + 1, duplicates: Math.max(0, keeper.duplicates - 1), ...(filed ? { filed: (keeper.filed ?? 0) + 1, filePages: (keeper.filePages ?? 0) + (paper.pages ?? 0) } : {}) });
+        await ctx.db.delete("screeningMerged", record._id);
+        continue;
+      }
+      await ctx.db.patch("screeningResults", paper._id, { withdrawn: true, doneAt: ctx.db.vars.commitTs });
+    }
     if (page.page.length) await bookkeepLater(ctx);
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: page.continueCursor });
     return null;
   },
 });
+
+/** The other sources' records merged into one paper, looked through for one still in the screening: a paper is rarely in more than a few. */
+const MERGED_LOOKED = 20;
 
 /** Saves the papers a screening has included to the collection it was just sent to, a step at a time. */
 export const shelveIncluded = internalMutation({

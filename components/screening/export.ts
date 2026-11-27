@@ -130,10 +130,10 @@ export const PAPER_GUIDE = {
   year: "The year it was published.",
   journal: "Where it was published.",
   abstract: "Its abstract, as the reviewers read it.",
-  read_as: "What its reviewers read: Abstract, or PDF for a paper with no abstract that was screened as its own PDF.",
+  read_as: "What its reviewers read. Abstract, or PDF for a paper with no abstract that was screened as its own PDF.",
   source: "The source that brought it into the screening.",
-  added: "When it was added: at the start, or the time of the check that found it.",
-  result: "Where it stands: Included, Maybe, Excluded, In conflict or Waiting for votes.",
+  added: "When it was added. At the start, or the time of the check that found it.",
+  result: "Where it stands. Included, Maybe, Excluded, In conflict or Waiting for votes.",
   excluded_for: "For an excluded paper, the criterion it failed or the other reason given.",
   settled_by: "Who settled it, where a person did and the votes alone did not.",
   settled_note: "The note that person left.",
@@ -265,7 +265,7 @@ export const VOTE_GUIDE = {
   status: `One of: "Voted"; "${NO_VOTE.yet}"; "${NO_VOTE.none}" (the paper was settled without this vote, or the screening was marked finished before it was cast); "${NO_VOTE.failed}" (an AI model); "${VOTE_KEPT}" (the vote was cast, and is hidden from the person who took the file out, who had not voted on the paper yet).`,
   decision: "Include, Maybe or Exclude.",
   reason: "For an Exclude, the criterion the paper failed or the other reason given.",
-  criteria: "One column for each criterion, named by its number and short name: the reviewer's answer, yes, no or unclear. Empty where they gave none.",
+  criteria: "One column for each criterion, named by its number and short name, holding the reviewer's answer, yes, no or unclear. Empty where they gave none.",
   note: "What the reviewer wrote with the vote.",
   paper_result: PAPER_GUIDE.result,
   settled_by: PAPER_GUIDE.settled_by,
@@ -350,7 +350,7 @@ export function flowSvg(out: Taken, at: number) {
     return drawn;
   });
   const open = openIn(out);
-  const caption = `${out.screening.name}. Screening on title and abstract${filedOf(out.screening.sources) ? ", and on the full text of the records with no abstract" : ""}, as it stood on ${fullDay(at)}${!open ? "" : out.screening.finishedAt ? `: marked finished with ${plural(open, "record", "records")} still open` : `: not finished, ${plural(open, "record", "records")} still open`}.`;
+  const caption = `${out.screening.name}. Screening on title and abstract${filedOf(out.screening.sources) ? ", and on the full text of the records with no abstract" : ""}, as it stood on ${fullDay(at)}${!open ? "" : out.screening.finishedAt ? `. It was marked finished with ${plural(open, "record", "records")} still open` : `. It was not finished, with ${plural(open, "record", "records")} still open`}.`;
   // The caption runs onto further lines where it is long: a line cut at the drawing's edge would lose its end.
   const captionLines = wrap(caption, 118);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="${y - gap + 30 + captionLines.length * 14}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${parts.join("")}${captionLines.map((text, k) => `<text x="${mainX}" y="${y - gap + 26 + k * 14}" font-size="11" fill="#666">${esc(text)}</text>`).join("")}</svg>`;
@@ -450,7 +450,7 @@ export function methodsOf(out: Taken) {
   });
   return [
     !open ? "" : running ? `Screening was still in progress when this was written, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.` : `The screening was marked finished with ${plural(open, "record", "records")} still open, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.`,
-    `Records from ${plural(screening.sources.length, "source", "sources")} (${listed(screening.sources.map((source) => source.name))}; n = ${num(found + left)}) were brought into Openscholar.${unreadNow.length ? ` ${listed(unreadNow.map((source) => source.name))} could not be read when last tried, so ${unreadNow.length === 1 ? "its records are" : "their records are"} not among those counted here.` : ""}${partlyRead.length ? ` ${listed(partlyRead.map((source) => source.name))} could not be read in full when last tried; the records ${partlyRead.length === 1 ? "it gave" : "they gave"} before that are counted, and the rest ${partlyRead.length === 1 ? "is" : "are"} not.` : ""}${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
+    `Records from ${plural(screening.sources.length, "source", "sources")} (${listed(screening.sources.map((source) => source.name))}; n = ${num(found + left)}) were brought into Openscholar.${unreadNow.length ? ` ${listed(unreadNow.map((source) => source.name))} could not be read when last tried, so ${unreadNow.length === 1 ? "its records are" : "their records are"} not among those counted here.` : ""}${partlyRead.length ? ` ${listed(partlyRead.map((source) => source.name))} could not be read in full when last tried; the records ${partlyRead.length === 1 ? "it gave" : "they gave"} before that are counted, and the rest ${partlyRead.length === 1 ? "is" : "are"} not.` : ""}${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : kept === 1 ? "was screened" : "were screened"}.`,
     looks.later && looks.lastAt ? `${[0, screening.sources.length].includes(growing(screening).length) ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.${looks.unread ? ` ${looks.unread === looks.later ? (looks.later === 1 ? "That search" : "Each of those searches") : `${looks.unread} of those searches`} could not read every source, so ${looks.unread === 1 ? "it is" : "they are"} incomplete.` : ""}${screening.living && running ? ` A further search is scheduled ${EVERY_LABEL[screening.living.every].toLowerCase()}.` : ""}` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
     `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}${((musts) => (musts && models.length ? `, ${musts === screening.criteria.length ? (musts === 1 ? "a must-have" : "all must-haves") : `${musts} of them must-haves`}, which an AI model ${running ? "votes" : "voted"} to include a record only where it ${running ? "finds" : "found"} ${musts === 1 ? "it" : "them"} met` : ""))(screening.criteria.filter((c) => c.must).length)}` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text instead.` : ""}`,

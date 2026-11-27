@@ -170,7 +170,9 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
       <PeopleDialog open={over === "people" || (over === "confirm" && !confirming)} onClose={close} state={state} onAdd={(reviewer) => ask(setAdding, reviewer, true, "add")} onRemove={(reviewer) => ask(setLeaving, reviewer, true, "off")} onDemote={(reviewer) => ask(setDemoting, reviewer, true, "viewer")} />
       <MoveDialog
         open={over === "move"}
-        onOpenChange={(next) => !next && close()}
+        // Moved, it leads to the workspace it went to: the dialog's own close, a step back, would cancel that.
+        onMoved={() => { going.current = true; }}
+        onOpenChange={(next) => !next && !going.current && close()}
         kind="screening"
         id={id}
         name={screening.name}
@@ -290,7 +292,7 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
           )}
           {change && counted.error ? <CountAgain onClick={() => void counted.mutate()} /> : null}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
-          {reviewer.model && open.wallet !== undefined && counted.data ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
+          {reviewer.model && open.wallet !== undefined && counted.data ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} /> : null}
         </>
       ) : null}
     </ConfirmChange>
@@ -333,7 +335,7 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
 }
 
 /** What the workspace has to pay a model with: where that runs out before the model has read every paper, how far it gets. */
-function Credits({ cost, papers, wallet, onAddCredits }: { /** What reading those papers costs the model at most. */ cost: number; papers: number; wallet: number; onAddCredits: () => void }) {
+function Credits({ cost, papers, wallet }: { /** What reading those papers costs the model at most. */ cost: number; papers: number; wallet: number }) {
   const t = useTranslations("screening.frame");
   const words = useWords();
   if (cost <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{t("credits.inWorkspace", { credits: words.creditsOf(wallet) })}</p>;
@@ -342,7 +344,7 @@ function Credits({ cost, papers, wallet, onAddCredits }: { /** What reading thos
     <Panel tone="warning" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl p-3">
       <Coins className="mt-0.5 size-4 shrink-0 self-start ink-warning" />
       <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{t("credits.payFor", { some: String(paid > 0), credits: words.creditsOf(wallet), paid, papers })}</p>
-      <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />{t("addCredits")}</NextLink></Button>
+      <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing"><Coins />{t("addCredits")}</NextLink></Button>
     </Panel>
   );
 }

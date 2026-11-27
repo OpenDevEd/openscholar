@@ -479,10 +479,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           name={t("filter.result")}
           value={filter}
           onChange={(next) => go({ result: next === "all" ? null : next })}
-          className="h-8 w-full rounded-full px-3.5 text-xs sm:hidden"
+          className="h-8 w-full rounded-full px-3.5 text-xs sm:w-auto @4xl/papers:hidden"
           choices={[{ value: "all" as typeof filter, label: t("filter.all"), icon: <Layers />, count: countOf("all") }, ...shownResults.map((result) => { const Icon = RESULT_ICON[result]; return { value: result as typeof filter, label: words.result(result), icon: <Icon />, tone: RESULT_STYLE[result].tone, count: countOf(result) }; })]}
         />
-        <div className="max-sm:hidden">
+        {/* The six results side by side need the card's room: until there is, they are the one menu a phone has, so they never run past its edge. */}
+        <div className="@max-4xl/papers:hidden">
           <Segmented
             label={t("filter.result")}
             value={filter}
@@ -851,8 +852,8 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const missing = awaitedOn(open.screening, paper).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
     // Someone invited who hasn't joined holds a place the rule waits for, with no face to show yet.
     const invited = invitedSaid(words, open.screening, paper, open.invited);
-    const invitedSays = invited ? <TooltipHint label={invited} onlyWhenClipped><span className="min-w-0 truncate">{invited}</span></TooltipHint> : null;
-    if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited ? <>{open.screening.finishedAt ? t("why.noVoteFrom") : t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
+    const invitedSays = invited.length ? <TooltipHint label={words.listed(invited)} onlyWhenClipped><span className="min-w-0 truncate">{words.listed(invited)}</span></TooltipHint> : null;
+    if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited.length ? <>{open.screening.finishedAt ? t("why.noVoteFrom") : t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
     const mine = missing[0]!.id === open.me;
     return (
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -880,7 +881,12 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
-        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} unclear={state.result === "maybe"} /></NextLink>
+        {/* An excluded paper's reason narrows the table to it. A Maybe's unclear criterion names why and opens nothing: the list narrows by exclusion reasons only, and a link to it would open empty. */}
+        {state.result === "exclude" ? (
+          <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>
+        ) : (
+          <span className="block truncate text-xs text-muted-foreground"><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} unclear /></span>
+        )}
       </QuestionHint>
     );
   }
@@ -938,12 +944,14 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const [deciding, setDeciding] = useState<"vote" | "result" | null>(null);
   const [reasonFor, setReasonFor] = useState<"vote" | "result" | null>(null);
   // A note for your vote and one for the paper's result, apart: someone who both reviews it and settles it writes each in its own place, as on Screen.
-  const [notes, setNotes] = useState<Record<"vote" | "result", string>>({ vote: "", result: "" });
+  // Each starts as what is saved, your vote's note or the result's, until it is written in: a vote changed here keeps its note, as on Screen.
+  const [notes, setNotes] = useState<Partial<Record<"vote" | "result", string>>>({});
   const setNote = (kind: "vote" | "result", text: string) => setNotes((all) => ({ ...all, [kind]: text }));
   const state = settledOf(paper);
   const visible = paper.sees;
   const cast = youFirst(castOf(screening, paper), open.me);
   const mine = voteOn(paper, open.me);
+  const noteOf = (kind: "vote" | "result") => notes[kind] ?? (kind === "vote" ? (mine?.note ?? "") : (state.resolvedBy ? (state.note ?? "") : ""));
   const isMine = cast.some((one) => one.reviewer.id === open.me);
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer && one.vote) : undefined;
   const quotedCriterion = shown && quoting ? screening.criteria.find((c) => c.key === shown.criterion) : undefined;
@@ -961,9 +969,9 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   // The reviewers the paper still waits for: who an override settles it without.
   const awaited = awaitedOn(screening, paper);
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
-    const said = withNote ?? (notes[kind].trim() || undefined);
+    const said = withNote ?? (noteOf(kind).trim() || undefined);
     // Saved at once, with a way back, as a vote on Screen and a settling over a selection have: what stood before is put back. Refused, the toast that said it was done goes, and the note written comes back to be sent again.
-    const typed = notes[kind];
+    const typed = noteOf(kind);
     // Refused, the editor the vote came from opens again with what was written, so nothing is written twice.
     const wasOpen = deciding === kind;
     const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); if (wasOpen) setDeciding(kind); notSaved(t, error); };
@@ -981,16 +989,16 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const exclude = (kind: "vote" | "result") => {
     const failedMust = kind === "vote" ? decide({ ...Object.fromEntries(screening.criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers }, screening.criteria).reason : undefined;
     if (failedMust) settle(kind, "exclude", failedMust);
-    else if (notes[kind].trim()) settle(kind, "exclude", OTHER_REASON);
+    else if (noteOf(kind).trim()) settle(kind, "exclude", OTHER_REASON);
     else setReasonFor(kind);
   };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
-      <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={notes[kind]} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
+      <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={noteOf(kind)} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
     ) : (
       <div className="space-y-2">
         {/* The note wraps and grows to a few lines, as on Screen: a long one stays in view as it is written. */}
-        <Textarea maxLength={NOTE_LENGTH} rows={1} value={notes[kind]} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
+        <Textarea maxLength={NOTE_LENGTH} rows={1} value={noteOf(kind)} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
         <div className="grid grid-cols-3 gap-2">
           {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>

@@ -8217,6 +8217,7 @@
         "questionPlaceholder": "Soos “Verbeter skoolmaaltye leer in laerskole?”"
       },
       "papers": {
+        "wholeSource": "lees die hele bron",
         "fromAll": "lees al {total, number} in die bron",
         "fromRange": "lees artikels {first} tot {last} van die {total, number} in die bron",
         "gives": "{count, plural, one {# artikel} other {# artikels}}",
@@ -8356,7 +8357,7 @@
       },
       "decided": {
         "seeingAdvice": "Die modelle se advies wys voor 'n stem",
-        "seeingNothing": "Die modelle se advies wys voor 'n stem. Elke stem is sigbaar met een persoon op elke artikel",
+        "seeingNothing": "Niks is versteek nie, want een persoon lees elke artikel. Die modelle se advies wys voor 'n stem.",
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",
         "votesSplit": "Stemme verdeel",
@@ -8794,9 +8795,9 @@
         "merged": "{count, plural, one {# duplikaat saamgevoeg} other {# duplikate saamgevoeg}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# daarvan wag nog vir ander stemme} other {# daarvan wag nog vir ander stemme}}",
         "votes": "Jou {count, plural, one {# stem} other {# stemme}}",
-        "voted": "{decision, select, include {{count, number} waarop jy Sluit in gestem het} maybe {{count, number} waarop jy Miskien gestem het} other {{count, number} waarop jy Sluit uit gestem het}}",
-        "stillWait": "Sien watter van hulle nog vir ander stemme wag"
+        "voted": "{decision, select, include {{count, number} waarop jy Sluit in gestem het} maybe {{count, number} waarop jy Miskien gestem het} other {{count, number} waarop jy Sluit uit gestem het}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {# beoordelaar per e-pos uitgenooi, wat stem sodra hulle aangesluit het en dit heropen is} other {# beoordelaars per e-pos uitgenooi, wat stem sodra hulle aangesluit het en dit heropen is}}} other {{count, plural, one {# beoordelaar per e-pos uitgenooi, wat stem sodra hulle aansluit} other {# beoordelaars per e-pos uitgenooi, wat stem sodra hulle aansluit}}}}",
@@ -8863,7 +8864,7 @@
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
         "noPeople": "Geen mense om mee te vergelyk nie",
         "nothingYet": "Nog niks om te vergelyk nie",
-        "agrees": "{share, number, percent}<muted>{person, select, true { dieselfde stem as die ander} other { dieselfde stem as die mense}}</muted><all>, {count, plural, one {# stem vergelyk} other {# stemme vergelyk}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { dieselfde stem as die ander} other { dieselfde stem as die mense}}</muted>",
         "missedOf": "Het Sluit uit gestem op {missed, number} van {included, number} ingesluites",
         "ofPairs": "van {count, plural, one {# paar stemme} other {# pare stemme}}",
         "more": "Meer",

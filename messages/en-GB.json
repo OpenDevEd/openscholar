@@ -8216,6 +8216,7 @@
         "questionPlaceholder": "Such as “Do school meals improve learning in primary schools?”"
       },
       "papers": {
+        "wholeSource": "reads the whole source",
         "fromAll": "reads all {total, number} in the source",
         "fromRange": "reads papers {first} to {last} of the {total, number} in the source",
         "gives": "{count, plural, one {# paper} other {# papers}}",
@@ -8355,7 +8356,7 @@
       },
       "decided": {
         "seeingAdvice": "The models' advice shows before a vote",
-        "seeingNothing": "The models' advice shows before a vote. Every vote shows with one person on each paper",
+        "seeingNothing": "Nothing is hidden, since one person reads each paper. The models' advice shows before a vote.",
         "votesAgree": "Votes agree",
         "settled": "Settled",
         "votesSplit": "Votes split",
@@ -8793,9 +8794,9 @@
         "merged": "{count, plural, one {# duplicate merged} other {# duplicates merged}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# of them still waits for other votes} other {# of them still wait for other votes}}",
         "votes": "Your {count, plural, one {# vote} other {# votes}}",
-        "voted": "{decision, select, include {{count, number} you voted Include} maybe {{count, number} you voted Maybe} other {{count, number} you voted Exclude}}",
-        "stillWait": "See which of them still wait for other votes"
+        "voted": "{decision, select, include {{count, number} you voted Include} maybe {{count, number} you voted Maybe} other {{count, number} you voted Exclude}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {# reviewer invited by email, who votes once they have joined and this is reopened} other {# reviewers invited by email, who vote once they have joined and this is reopened}}} other {{count, plural, one {# reviewer invited by email, who votes once they join} other {# reviewers invited by email, who vote once they join}}}}",
@@ -8862,7 +8863,7 @@
         "noOtherPerson": "No other person to compare with",
         "noPeople": "No people to compare with",
         "nothingYet": "Nothing to compare yet",
-        "agrees": "{share, number, percent}<muted>{person, select, true { same vote as the others} other { same vote as the people}}</muted><all>, {count, plural, one {# vote compared} other {# votes compared}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { same vote as the others} other { same vote as the people}}</muted>",
         "missedOf": "Voted Exclude on {missed, number} of {included, number} included",
         "ofPairs": "of {count, plural, one {# pair of votes} other {# pairs of votes}}",
         "more": "More",

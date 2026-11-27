@@ -112,7 +112,8 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved, effects }: 
     if (kind === "chat") {
       panelPlace.set((place) => withThread(withThread(place, workspaceKey(window.location.pathname), null), slug ?? "", id));
       router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
-    } else router.push(workspaceHref(slug, PAGE[kind](id)));
+      // The item's page in the workspace it went to takes the place of the page it left, where it is no longer: Back never returns there.
+    } else router.replace(workspaceHref(slug, PAGE[kind](id)));
     close();
   };
 

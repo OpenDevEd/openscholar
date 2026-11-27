@@ -8217,6 +8217,7 @@
         "questionPlaceholder": "Kama vile “Je, chakula shuleni kinaboresha ujifunzaji katika shule za msingi?”"
       },
       "papers": {
+        "wholeSource": "husoma chanzo chote",
         "fromAll": "husoma zote {total, number} kwenye chanzo",
         "fromRange": "husoma makala {first} hadi {last} kati ya {total, number} kwenye chanzo",
         "gives": "{count, plural, one {makala #} other {makala #}}",
@@ -8356,7 +8357,7 @@
       },
       "decided": {
         "seeingAdvice": "Ushauri wa modeli unaonekana kabla ya kupiga kura",
-        "seeingNothing": "Ushauri wa modeli unaonekana kabla ya kupiga kura. Kila kura inaonekana kukiwa na mtu mmoja kwenye kila makala",
+        "seeingNothing": "Hakuna kinachofichwa, kwa kuwa mtu mmoja husoma kila makala. Ushauri wa modeli unaonekana kabla ya kupiga kura.",
         "votesAgree": "Kura zinakubaliana",
         "settled": "Imeamuliwa",
         "votesSplit": "Kura zinatofautiana",
@@ -8794,9 +8795,9 @@
         "merged": "{count, plural, one {rudio # limeunganishwa} other {marudio # yameunganishwa}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# kati yake bado inasubiri kura nyingine} other {# kati yake bado zinasubiri kura nyingine}}",
         "votes": "{count, plural, one {Kura yako #} other {Kura zako #}}",
-        "voted": "{decision, select, include {{count, number} ulipigia Jumuisha} maybe {{count, number} ulipigia Labda} other {{count, number} ulipigia Tenga}}",
-        "stillWait": "Ona zipi kati yake bado zinasubiri kura nyingine"
+        "voted": "{decision, select, include {{count, number} ulipigia Jumuisha} maybe {{count, number} ulipigia Labda} other {{count, number} ulipigia Tenga}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {Mkaguzi # amealikwa kwa barua pepe, atapiga kura akishajiunga na uchujaji ukifunguliwa tena} other {Wakaguzi # wamealikwa kwa barua pepe, watapiga kura wakishajiunga na uchujaji ukifunguliwa tena}}} other {{count, plural, one {Mkaguzi # amealikwa kwa barua pepe, atapiga kura akishajiunga} other {Wakaguzi # wamealikwa kwa barua pepe, watapiga kura wakishajiunga}}}}",
@@ -8863,7 +8864,7 @@
         "noOtherPerson": "Hakuna mtu mwingine wa kulinganisha naye",
         "noPeople": "Hakuna watu wa kulinganisha nao",
         "nothingYet": "Bado hakuna cha kulinganisha",
-        "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted><all>, {count, plural, one {kura # imelinganishwa} other {kura # zimelinganishwa}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted>",
         "missedOf": "Ilipiga kura Tenga kwa {missed, number} kati ya {included, number} zilizojumuishwa",
         "ofPairs": "kati ya {count, plural, one {jozi # ya kura} other {jozi # za kura}}",
         "more": "Zaidi",

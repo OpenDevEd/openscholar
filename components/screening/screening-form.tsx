@@ -70,7 +70,7 @@ import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help,
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
-import { searchHistory } from "./address";
+import { searchHistory, leaveBehind } from "./address";
 import { useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -743,10 +743,12 @@ export function ScreeningForm({ id }: { id?: string }) {
       if (voters && !votersMissing) await resume({ jobId, quiet: true }).catch(() => showStyledToast("error", t("toast.modelsHeld")));
       flushSync(() => setSent(draft));
       keep(key, () => undefined);
-      // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
+      // The form, every step taken in it, is left out of the way back: Back from the new screening returns to the page before the form, never to a form already sent (./address.ts `leaveBehind`).
       // It opens at its top. Left to the router, the page scrolled to where its tabs begin, under the sticky header, with its progress cut off.
-      router.replace(overviewHref(jobId), { scroll: false });
-      window.scrollTo({ top: 0 });
+      leaveBehind(window.location.pathname, (how) => {
+        router[how](overviewHref(jobId), { scroll: false });
+        window.scrollTo({ top: 0 });
+      });
     } catch (error) {
       setRefused(getErrorMessage(error, t("toast.notStarted")));
       setBusy(false);
@@ -990,10 +992,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // The part of it that is read, which is also where that is changed: offered while it is being read too.
                         const range = baseTotal(source) > 1 ? (
                                         <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : t("papers.fromAll", { total: baseTotal(source) })}
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}
                                           <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
                                         </button>
-                                      ) : <span className="text-muted-foreground">{t("papers.fromAll", { total: baseTotal(source) })}</span>;
+                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
@@ -1019,7 +1021,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     </TooltipHint>
                                   ) : null}
                                 </div>
-                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div> : (
+                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? (
+                                  <>
+                                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div>
+                                    {/* The bar's line, held while the source is read, so the row keeps its height when its figures arrive and nothing under it moves. */}
+                                    <div aria-hidden className="h-4" />
+                                  </>
+                                ) : (
                                   <>
                                     {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. */}
                                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
@@ -1036,7 +1044,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         <div aria-hidden className="flex h-1.5 w-full gap-px overflow-hidden rounded-full sm:w-64">
                                           <span className="bg-primary/70" style={{ flexGrow: keptOf(source) }} />
                                           {doubled ? <span className="bg-foreground/15" style={{ flexGrow: doubled }} /> : null}
-                                          {leftOut ? <span className="bg-foreground/40" style={{ flexGrow: leftOut }} /> : null}
+                                          {leftOut ? <span className="bg-warning/60" style={{ flexGrow: leftOut }} /> : null}
                                         </div>
                                       ) : null}
                                         {doubled > 0 && taken(source) ? (
@@ -1071,10 +1079,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {stopped && !gone ? <p className="text-xs text-destructive">{source.read!.failure ?? t("papers.notSaved")}</p> : null}
                               </div>
                               {gone ? (
-                                <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
+                                <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
                               ) : (
                                 <>
-                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
+                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
                                   <TooltipHint label={t("papers.remove", { name: source.name })}>
                                     <Button variant="ghost" size="icon" className="size-8 shrink-0 self-start text-muted-foreground" aria-label={t("papers.remove", { name: source.name })} onClick={() => removeSource(source)}><Trash2 /></Button>
                                   </TooltipHint>

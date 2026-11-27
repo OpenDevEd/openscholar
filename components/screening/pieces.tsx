@@ -291,7 +291,8 @@ export function LinkChip({ href, tone = "neutral", icon, children, className, el
   return (
     <Link {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
       <Chip icon={icon} className={cn(TONE[tone].chip, TONE[tone].hover, "min-w-0 shrink pe-1 font-medium transition-colors")}>
-        <span className="truncate">{children}</span>
+        {/* Cut short on a narrow screen, its words are read whole under the pointer. */}
+        <TooltipHint label={children} onlyWhenClipped><span className="truncate">{children}</span></TooltipHint>
         <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
       </Chip>
     </Link>
@@ -417,7 +418,7 @@ export function ReviewerName({ reviewer, you = false, wrap = false, className }:
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* A name cut short by its column is read in full on hover. */}
-      <TooltipHint label={reviewer.name} onlyWhenClipped={!effort}><span className={wrap ? "line-clamp-2 [overflow-wrap:anywhere]" : "truncate"}>{effort ? reviewer.model!.name : reviewer.name}</span></TooltipHint>
+      <TooltipHint label={reviewer.name} onlyWhenClipped><span className={wrap ? "line-clamp-2 [overflow-wrap:anywhere]" : "truncate"}>{effort ? reviewer.model!.name : reviewer.name}</span></TooltipHint>
       {/* An effort is said of a model only: it takes the place of the tag that says a reviewer is one. */}
       {you ? <YouTag /> : effort ? <span className={NAME_TAG}>{effort}</span> : reviewer.kind === "model" ? <span className={NAME_TAG}>{t("tag.ai")}</span> : null}
       {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}

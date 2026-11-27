@@ -319,7 +319,8 @@ export const listAction = defineUserQuery({
         : voted && voted !== "settled" && !told
           ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
-      ).filterWith(open).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
+        // The paper's own filters (a result, a source, a reason) are asked of each vote before the page is cut, so a page is never empty while papers that match lie further on.
+      ).filterWith(async (vote) => { if (!(await open(vote))) return false; const paper = await ctx.db.get("screeningResults", vote.resultId); return paper !== null && keeps(paper); }).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.
       const theirs = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
       return { ...read, page: (await withVotes(theirs)).filter((paper) => !told || paper.sees) };

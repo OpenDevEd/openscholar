@@ -110,6 +110,7 @@
       "ALIKE": "the live reports whose titles are closest to a report being checked, which Already published compares it with first; the search gives the best matches, and the rest of the series is searched through OpenAlex and our index",
       "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced",
       "ASKED_SHOWN": "questions put to one person on one screening, counted for its list's row and its frame; past it the count says that many, and each is still found from its paper",
+      "MERGED_LOOKED": "the other sources' records merged into one paper, looked through when a source is taken out for one still in the screening; a paper is in few sources, and past it the paper is withdrawn as before",
       "MINE_MAX": "the screenings one person reviews or is given, newest first, looked through for the ones that wait for them; the workspace's own list pages through every one",
       "CHECKS_LOOKED": "a screening's latest checks of its sources, looked through for the last one that brought papers; its checks are listed a page at a time",
       "FLAGGED_COUNTED": "a reviewer's votes cast before a criterion became a must-have, counted for their tab; their queue pages through every one",

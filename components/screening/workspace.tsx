@@ -3,6 +3,7 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
+import { leaveBehind } from "./address";
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
@@ -127,8 +128,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const open = read ?? null;
   // Changes to its settings that were started and not saved.
   const unsaved = useKept((kept) => Boolean(kept.drafts[id]));
-  // A deleted screening's page is left for good: Back does not return to it.
-  const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
+  // A deleted screening's pages are left for good: every one of them is out of the way back (./address.ts `leaveBehind`).
+  const overlays = useScreeningOverlays(open, { onDeleted: () => leaveBehind(window.location.pathname.replace(/\/(screen|papers|settings)$/, ""), (how) => router[how](SCREENINGS)) });
   // A page opened by a link starts at its top; Back and Forward, and a link to a section, keep their place. The window's scroll is the outside system.
   // Before the page's own effects, so a page that then brings the item its link named into view has the last word.
   useLayoutEffect(() => {
@@ -563,7 +564,8 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   if (kind === "waiting" && open.waitingFor) {
     return (
-      <Chip icon={Clock} className="shrink-0 whitespace-nowrap">
+      // A sentence with a name in it: beside the tabs only where there is room for both, so the tabs are never pushed aside. The Overview says the same.
+      <Chip icon={Clock} className="shrink-0 whitespace-nowrap @max-[34rem]/strip:hidden">
         <span>{pieces.rich("modelsSay.waiting.says", { name: open.waitingFor.name, link: (chunks) => <NextLink href={overviewHref(open.waitingFor!.id)} className={cn(INLINE_LINK, "inline-block max-w-40 truncate align-bottom")}>{chunks}</NextLink> })}</span>
         <Help title={t("banner.turnsTitle")} facts={<HelpFact icon={ListChecks}>{t("banner.atATime", { count: open.atOnce })}</HelpFact>}>
           {t("banner.turnsHelp", { workspace, personal: String(open.screening.workspace.kind === "personal"), count: open.atOnce })}
@@ -581,7 +583,8 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
       </Chip>
     );
   }
-  if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</StateChip>;
+  // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
+  if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[34rem]/strip:hidden">{t("banner.nothing")}</Chip>;
+  if (kind === "arrived" && open.latest) return <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[34rem]/strip:hidden">{open.latest.mine}</span></StateChip>;
   return null;
 }

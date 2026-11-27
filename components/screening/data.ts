@@ -221,11 +221,11 @@ export const invitedOn = (screening: Pick<Screening, "reviewers" | "rule">, pape
   const { invited, each } = readersOf(screening, pending);
   return invited ? Math.max(0, Math.min(invited, each - castOf(screening, paper).filter((one) => one.reviewer.kind === "person").length)) : 0;
 };
-/** Who a paper waits for among those invited, as a page says it: their addresses where it waits for every one of them and the person looking may see them, else how many. */
-export const invitedSaid = (words: { t: (key: "invitedWaiting", values: { count: number }) => string; listed: (items: string[]) => string }, screening: Pick<Screening, "reviewers" | "rule">, paper: Pick<Paper, "cast">, pending: Pending[] = []) => {
+/** Who a paper waits for among those invited, each as a page names them, for the caller to list with the rest: their addresses where it waits for every one of them and the person looking may see them, else how many. */
+export const invitedSaid = (words: { t: (key: "invitedWaiting", values: { count: number }) => string }, screening: Pick<Screening, "reviewers" | "rule">, paper: Pick<Paper, "cast">, pending: Pending[] = []) => {
   const count = invitedOn(screening, paper, pending);
   const addresses = pending.flatMap((one) => one.email ?? []);
-  return !count ? null : addresses.length === count && addresses.length === pending.length ? words.listed(addresses) : words.t("invitedWaiting", { count });
+  return !count ? [] : addresses.length === count && addresses.length === pending.length ? addresses : [words.t("invitedWaiting", { count })];
 };
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;

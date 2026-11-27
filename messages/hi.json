@@ -8216,6 +8216,7 @@
         "questionPlaceholder": "जैसे “क्या स्कूल का भोजन प्राथमिक स्कूलों में सीखने को बेहतर बनाता है?”"
       },
       "papers": {
+        "wholeSource": "पूरा स्रोत पढ़ता है",
         "fromAll": "स्रोत के सभी {total, number} पढ़ता है",
         "fromRange": "स्रोत के {total, number} में से लेख {first} से {last} तक पढ़ता है",
         "gives": "{count, plural, one {# लेख} other {# लेख}}",
@@ -8355,7 +8356,7 @@
       },
       "decided": {
         "seeingAdvice": "मॉडलों की सलाह वोट से पहले दिखती है",
-        "seeingNothing": "मॉडलों की सलाह वोट से पहले दिखती है। हर लेख पर एक ही व्यक्ति हो, तो हर वोट दिखता है",
+        "seeingNothing": "कुछ भी छिपा नहीं है, क्योंकि हर लेख एक ही व्यक्ति पढ़ता है। मॉडलों की सलाह वोट से पहले दिखती है।",
         "votesAgree": "वोट सहमत",
         "settled": "तय",
         "votesSplit": "वोट बँटे",
@@ -8793,9 +8794,9 @@
         "merged": "{count, plural, one {# डुप्लिकेट मिलाया गया} other {# डुप्लिकेट मिलाए गए}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {इनमें से # अब भी दूसरे वोटों की प्रतीक्षा में है} other {इनमें से # अब भी दूसरे वोटों की प्रतीक्षा में हैं}}",
         "votes": "आपके {count, plural, one {# वोट} other {# वोट}}",
-        "voted": "{decision, select, include {{count, number} पर आपने शामिल करें का वोट दिया} maybe {{count, number} पर आपने शायद का वोट दिया} other {{count, number} पर आपने बाहर करें का वोट दिया}}",
-        "stillWait": "देखें कि इनमें से कौन से अब भी दूसरे वोटों की प्रतीक्षा में हैं"
+        "voted": "{decision, select, include {{count, number} पर आपने शामिल करें का वोट दिया} maybe {{count, number} पर आपने शायद का वोट दिया} other {{count, number} पर आपने बाहर करें का वोट दिया}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {ईमेल से आमंत्रित # समीक्षक, जो जुड़ने और स्क्रीनिंग फिर खुलने के बाद वोट देगा} other {ईमेल से आमंत्रित # समीक्षक, जो जुड़ने और स्क्रीनिंग फिर खुलने के बाद वोट देंगे}}} other {{count, plural, one {ईमेल से आमंत्रित # समीक्षक, जो जुड़ने के बाद वोट देगा} other {ईमेल से आमंत्रित # समीक्षक, जो जुड़ने के बाद वोट देंगे}}}}",
@@ -8862,7 +8863,7 @@
         "noOtherPerson": "तुलना के लिए कोई दूसरा व्यक्ति नहीं",
         "noPeople": "तुलना के लिए कोई लोग नहीं",
         "nothingYet": "अभी तुलना के लिए कुछ नहीं",
-        "agrees": "{share, number, percent}<muted>{person, select, true { बाकी लोगों जैसा वोट} other { लोगों जैसा वोट}}</muted><all>, {count, plural, one {# वोट की तुलना} other {# वोटों की तुलना}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { बाकी लोगों जैसा वोट} other { लोगों जैसा वोट}}</muted>",
         "missedOf": "{included, number} शामिल में से {missed, number} पर बाहर करें का वोट दिया",
         "ofPairs": "{count, plural, one {# वोट जोड़े में से} other {# वोट जोड़ों में से}}",
         "more": "और",

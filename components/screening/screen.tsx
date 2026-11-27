@@ -350,6 +350,8 @@ function Screen({ open }: { open: Open }) {
     if (resolving) open.resolve(paper.id, decision, note, reason).catch(refused);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
     else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(refused);
+    // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
+    const fromSheet = tablet && reasonSheet !== null;
     setReasonFor(null);
     setWriting(null);
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
@@ -357,7 +359,7 @@ function Screen({ open }: { open: Open }) {
     const next = advance && queue !== "done" ? (items.find((one, index) => index > at && waits(one)) ?? items.find(waits)) : undefined;
     if (next) {
       advanced.current = { paper: next.id, at: Date.now() };
-      openIt(next);
+      openIt(next, { inPlace: fromSheet });
     }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
     else if (!picked) void setPlace({ paper: paper.id }, { history: "replace" });
@@ -477,7 +479,7 @@ function Screen({ open }: { open: Open }) {
   const through = queue !== "done" && items.length > 0 && !listed.canNext && items.every(dealtWith);
   const state = paper ? settledOf(paper) : undefined;
   // Whoever the paper waits for: the reviewers on it, and anyone invited who holds a place in the rule without having joined.
-  const waitsOn = paper && state?.result === "waiting" ? [...awaitedOn(screening, paper).map((one) => (one.id === open.me ? words.t("youInline") : shortName(one))), ...(invitedSaid(words, screening, paper, open.invited) ? [invitedSaid(words, screening, paper, open.invited)!] : [])] : [];
+  const waitsOn = paper && state?.result === "waiting" ? [...awaitedOn(screening, paper).map((one) => (one.id === open.me ? words.t("youInline") : shortName(one))), ...invitedSaid(words, screening, paper, open.invited)] : [];
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts : queue === "again" ? open.flagged : toDo;
   const narrowed = Boolean(find.trim()) || (queue === "done" && voted !== "any");
@@ -967,7 +969,7 @@ function Screen({ open }: { open: Open }) {
               {/* Its place is held before the first vote too, so the bar keeps its rows when the way back appears. */}
               {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : <span aria-hidden className="invisible flex items-center gap-1 min-[87.5rem]:hidden"><span className="size-8" /><span className="size-6" /></span>}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
-                <TooltipHint label={t("shortcuts.title")}>
+                <TooltipHint label={t("shortcuts.title")} onlyWhenClipped>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
                   <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground max-lg:hidden" aria-label={t("shortcuts.title")}><span className="max-2xl:hidden">{t("shortcuts.title")}</span><Kbd>?</Kbd></Button></PopoverTrigger>
                 </TooltipHint>
@@ -1297,7 +1299,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
             {/* On a phone "Answers differ" goes under the criterion, so the name keeps the column's width. */}
             <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs max-sm:flex-wrap">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
-              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
+              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:grow max-sm:basis-0 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {earlier ? <TooltipHint label={t("matrix.earlierWording")}><History role="img" aria-label={t("matrix.earlierWording")} className="size-3.5 shrink-0 text-muted-foreground" /></TooltipHint> : null}
               {split ? <span aria-hidden className="sm:hidden max-sm:basis-full" /> : null}
               {split ? (

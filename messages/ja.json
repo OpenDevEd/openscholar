@@ -8216,6 +8216,7 @@
         "questionPlaceholder": "例: 「給食は小学校での学習を改善するか？」"
       },
       "papers": {
+        "wholeSource": "ソース全体を読み込みます",
         "fromAll": "ソースの {total, number} 件をすべて読み込みます",
         "fromRange": "ソースの {total, number} 件のうち {first}〜{last} 件目を読み込みます",
         "gives": "{count, plural, other {論文 # 件}}",
@@ -8355,7 +8356,7 @@
       },
       "decided": {
         "seeingAdvice": "モデルの助言は投票前に表示されます",
-        "seeingNothing": "モデルの助言は投票前に表示されます。各論文の担当が 1 人なので、投票はすべて見えます",
+        "seeingNothing": "各論文を読むのは1人なので、何も隠れません。モデルの助言は投票前に表示されます。",
         "votesAgree": "投票が一致",
         "settled": "結果が確定",
         "votesSplit": "投票が分かれる",
@@ -8793,9 +8794,9 @@
         "merged": "{count, plural, other {重複 # 件をまとめました}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, other {# 件がまだほかの投票を待っています}}",
         "votes": "あなたの{count, plural, other {# 票}}",
-        "voted": "{decision, select, include {あなたが採用に投票 {count, number} 件} maybe {あなたが保留に投票 {count, number} 件} other {あなたが除外に投票 {count, number} 件}}",
-        "stillWait": "まだほかの投票を待っている論文を見る"
+        "voted": "{decision, select, include {あなたが採用に投票 {count, number} 件} maybe {あなたが保留に投票 {count, number} 件} other {あなたが除外に投票 {count, number} 件}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, other {メールで招待したレビュアー # 人。参加し、スクリーニングが再開されると投票できます}}} other {{count, plural, other {メールで招待したレビュアー # 人。参加すると投票できます}}}}",
@@ -8862,7 +8863,7 @@
         "noOtherPerson": "比べるほかの人がいません",
         "noPeople": "比べる人がいません",
         "nothingYet": "比べるものはまだありません",
-        "agrees": "{share, number, percent}<muted>{person, select, true { ほかの人と同じ投票} other { 人と同じ投票}}</muted><all>（比較した投票 {count, plural, other {# 件}}）</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { ほかの人と同じ投票} other { 人と同じ投票}}</muted>",
         "missedOf": "採用 {included, number} 件中 {missed, number} 件に除外を投票",
         "ofPairs": "{count, plural, other {投票の組 # 件中}}",
         "more": "その他",
