@@ -5050,6 +5050,7 @@
       "runUses": "你在这些内容上运行的任务使用",
       "yourCredits": "你的积分",
       "empty": "还没有与你共享的内容",
+      "emptyInvited": "接受上方的邀请，共享的内容就会显示在这里。",
       "emptyKind": "还没有与你共享的这类内容",
       "emptySearch": "没有匹配的共享内容",
       "leave": "退出",
@@ -5078,7 +5079,7 @@
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
       "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录",
-      "pointScreening": "投票免费。其模型由所在的工作区付费"
+      "pointScreening": "投票免费。{name} 支付筛选所用 AI 模型的费用。"
     },
     "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
     "asRole": "身份：{role}",
@@ -5086,7 +5087,9 @@
     "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。",
     "badge": {
       "screen": "{count, plural, other {# 个筛选需要你}}",
-      "screenWhy": "待筛选的论文、待裁定的分歧或向你提出的问题",
+      "screenWhy": "待筛选的论文、待解决的冲突、问你的问题或待回复的邀请",
+      "shared": "{count, plural, other {有 # 个邀请等待你回复}}",
+      "sharedWhy": "与你共享的筛选、对话、搜索和提取",
       "publish": "{count, plural, other {# 份报告可以上线}}",
       "publishWhy": "{count, plural, other {激活后即上线}}"
     }
@@ -8809,8 +8812,8 @@
       "empty": {
         "arriving": "论文正在路上",
         "arrivingSays": "{reviewer, select, true {论文从来源到达后会显示在这里。第一批到达后你就可以开始筛选。} other {论文从来源到达后会显示在这里。}}",
-        "noPaper": "{sources, select, true {来源中没有可筛选的论文。} other {{canChange, select, true {添加来源，审核人就会收到论文。} other {添加来源后，论文就会到来。}}}}",
-        "toSources": "{sources, select, true {查看来源} other {添加来源}}"
+        "noPaper": "{sources, select, failed {无法读取来源。设置中会说明原因，并可重新读取。} true {来源中没有可筛选的论文。} other {{canChange, select, true {添加来源，审核人就会收到论文。} other {添加来源后，论文就会到来。}}}}",
+        "toSources": "{sources, select, failed {查看来源} true {查看来源} other {添加来源}}"
       },
       "progress": {
         "title": "进度",
@@ -8980,7 +8983,6 @@
         "shut": "{change, select, true {检查会在此筛选的搜索、合集、Evidence Communities、Zotero 文库和其他筛选中查找它还没有的论文。上传的文件和粘贴的 DOI 永远不变。添加其中一种来源即可获得新论文。} other {检查会在此筛选的搜索、合集、Evidence Communities、Zotero 文库和其他筛选中查找它还没有的论文。上传的文件和粘贴的 DOI 永远不变。在添加其中一种来源之前不会进行检查。}}",
         "helpTitle": "检查新论文",
         "next": "下次检查：{day}",
-        "onlyAsked": "仅在手动时",
         "skips": "{count, plural, other {跳过 # 个永不变化的来源}}",
         "means": "检查会重新读取每个来源，并加入此筛选还没有的论文。上传的文件和粘贴的 DOI 永远不变，因此检查会跳过它们。",
         "checkNow": "立即检查",
@@ -9438,6 +9440,7 @@
         "arrived": "已到达 {done, number} / {count, number}",
         "noneYet": "还没有分给你的论文",
         "noneYours": "这里没有需要你投票的论文",
+        "givenOut": "{count, plural, other {每篇论文分给 # 人}}，这里的论文在你加入前已分给其他人。{living, select, true {新论文到达时会分给你。} other {可以在概览中把论文转给你。}}",
         "allVoted": "你已对你的所有论文投票",
         "finished": "此筛选已完成",
         "unvoted": "{count, plural, other {你的论文中有 # 篇还没有你的投票}}",

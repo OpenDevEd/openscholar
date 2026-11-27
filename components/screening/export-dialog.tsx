@@ -3,6 +3,7 @@
 // What can be taken out of a screening: its papers, every vote, the flow of papers, a paragraph for the
 // methods section, and the whole record.
 
+import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { copyText, dismissCopied } from "@/components/copy-text";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
@@ -74,7 +75,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const { figures } = useFigures(id);
 
   // Every file is built by export.ts, from the screening as it stands and from the papers as the server gives them to whoever takes the file out: what is hidden from them on a page is hidden from them in the file.
-  const out: Taken = { screening: state.filed, counts, me: state.me, figures, invited: state.invited, kept: state.keepsVotes };
+  // Who takes it out, by their own name: someone who only looks is on none of the screening's lists.
+  const self = useOptionalAuthQuery(api.users.queries.me, {}).data;
+  const out: Taken = { screening: state.filed, counts, me: state.me, ...(self ? { meName: [self.firstName, self.lastName].filter(Boolean).join(" ") || self.email } : {}), figures, invited: state.invited, kept: state.keepsVotes };
   // Votes kept from the person taking the file out are left out of it (./data.ts `blindOf`).
   const blindIs = blindOf(screening, state.invited);
   const blind = blindIs === "all" || blindIs === "people";

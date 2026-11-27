@@ -27,9 +27,11 @@ import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
+import { useQueryStates } from "nuqs";
+import { searchHistory } from "@/components/screening/address";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { openChat } from "@/lib/assistant/place";
-import { SHARED_PAGE } from "@/lib/sharing";
+import { SHARED_PAGE, SHARED_PLACE } from "@/lib/sharing";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
@@ -55,13 +57,15 @@ type Sort = "recent" | "name";
 type Counts = FunctionReturnType<typeof api.sharing.shared.counts>;
 
 /** `initial` is what the page's route read on the server: the counts, and the first page newest first. */
-export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: SharedItem[] } }) {
+export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: SharedItem[]; invitations: WaitingInvitation[] } }) {
   const t = useTranslations("workspaces.shared");
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
-  const [kind, setKind] = useState<SharedKind | null>(null);
-  const [text, setText] = useState("");
-  const [sort, setSort] = useState<Sort>("recent");
+  // The kind, the order and the search are in the address: Back undoes a change, and coming back keeps them.
+  const [{ kind, q: text, sort }, setPlace] = useQueryStates(SHARED_PLACE, { history: "push", scroll: false });
+  const setKind = (next: SharedKind | null) => void setPlace({ kind: next });
+  const setSort = (next: Sort) => void setPlace({ sort: next === "recent" ? null : next });
+  const setText = (next: string) => void setPlace({ q: next || null }, searchHistory(text, next));
   const needle = useDeferredValue(text.trim());
   const counts = useProtectedQuery(api.sharing.shared.counts, inWorkspace(workspaceId, {})).data ?? initial?.counts;
   const { results, status, loadMore } = usePaginatedQuery(api.sharing.shared.list, inWorkspace(workspaceId, { sort, ...(kind ? { kind } : {}), ...(needle ? { text: needle } : {}) }), { initialNumItems: SHARED_PAGE });
@@ -70,6 +74,9 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
   const [kept, keep] = useState(initial?.rows);
   if (!loading && kept !== results) keep(results);
   const rows = loading ? kept : results;
+  // The invitations come with the page, from the first frame: the rows never move down for them.
+  const invitations = useWaitingInvitations(initial?.invitations);
+  const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle.toLowerCase())));
   const kinds = (Object.keys(SHARED_KINDS) as SharedKind[]).filter((one) => counts?.[one]);
 
   return (
@@ -120,7 +127,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
         </div>
       }
     >
-      <WaitingInvitations {...(kind ? { kind } : {})} />
+      <WaitingInvitations rows={invitations} {...(kind ? { kind } : {})} text={needle} />
       {rows?.length ? (
         // Rows of the view before stay, dimmed and still, until the one asked for arrives.
         <div className={cn("divide-y divide-border-subtle", loading && "pointer-events-none opacity-60")}>
@@ -131,7 +138,8 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
       ) : !rows ? (
         <ListLoading label={t("loading")} />
       ) : (
-        <ListEmpty icon={needle ? SearchX : Share2}>{needle ? t("emptySearch") : kind ? t("emptyKind") : t("empty")}</ListEmpty>
+        // Under an invitation, the empty list says how what it shares comes here.
+        <ListEmpty icon={needle ? SearchX : Share2}>{needle ? t("emptySearch") : invited ? t("emptyInvited") : kind ? t("emptyKind") : t("empty")}</ListEmpty>
       )}
       {status === "CanLoadMore" || status === "LoadingMore" ? (
         <div className="flex justify-center border-t border-border-subtle p-3">
@@ -295,7 +303,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
           ) : null}
           <Chip tone="primary">
             <RoleLabel role={invitation.role === "viewer" ? "view" : "edit"} className="text-primary">
-              {invitation.role === "viewer" ? ts("canView") : invitation.kind === "screening" ? ts("canVote") : ts("canEdit")}
+              {ts(roleWord(invitation.role, invitation.kind))}
             </RoleLabel>
           </Chip>
           {invitation.size === undefined ? null : (
@@ -309,7 +317,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       <ul className={LIST}>
         <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{invitation.kind === "screening" ? t("pointOwnScreening") : t("pointOwn")}</Point>
         {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
-        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? t("pointScreening") : t("pointCredits")}</Point>
+        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" && invitation.role === "editor" ? t("pointScreening", { name: invitation.from.name }) : t("pointCredits")}</Point>
       </ul>
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}
@@ -318,29 +326,39 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
   );
 }
 
+/** The invitations waiting for the person, of every kind and sent to any address of theirs: one read, shared by every list that shows them and by the rail. Undefined until read. */
+export function useWaitingInvitations(initial?: WaitingInvitation[]) {
+  return useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(useWorkspace(), {})).data?.page ?? initial;
+}
+export type WaitingInvitation = FunctionReturnType<typeof api.sharing.invitations.waiting>["page"][number];
+
+/** The word for what a guest may do with an item: a screening's editor votes on its papers, and changes nothing else. */
+export const roleWord = (role: GuestRole, kind: SharedKind) => (role === "viewer" ? "canView" : kind === "screening" ? "canVote" : "canEdit");
+
 /**
  * The invitations to items that wait for the person's answer, as the Evidence Communities list shows its own: above
- * the list, each with who sent it, Decline and Accept. Accepting opens the item. Given a `kind`, only those to it,
- * as a list of that kind shows them; on Shared with me, all of them.
+ * the list, each with who sent it, where from, what it lets them do, Decline and Accept. Accepting opens the item in
+ * the person's own workspace, wherever they are. Given a `kind`, only those to it, as a list of that kind shows them,
+ * and `text` narrows them by name as the list's search does.
  */
-export function WaitingInvitations({ kind }: { kind?: SharedKind }) {
+export function WaitingInvitations({ rows, kind, text = "" }: { rows: WaitingInvitation[] | undefined; kind?: SharedKind; text?: string }) {
   const t = useTranslations("workspaces.shared");
-  const ts = useTranslations("workspaces.share");
   const router = useRouter();
-  const workspaceId = useWorkspace();
-  const personal = useCurrentWorkspace();
-  // An invitation is the person's own, answered in their own workspace, where what it shares then sits.
-  const rows = useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(workspaceId, personal?.kind === "personal" ? (kind ? { kind } : {}) : "skip")).data?.page ?? [];
   const respond = useWorkspaceAction(api.sharing.invitations.respond);
   const [answering, setAnswering] = useState<string | null>(null);
-  if (!rows.length) return null;
-  const answer = (row: (typeof rows)[number], accept: boolean) => {
+  const needle = text.trim().toLowerCase();
+  const shown = (rows ?? []).filter((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle)));
+  if (!shown.length) return null;
+  const answer = (row: WaitingInvitation, accept: boolean) => {
     setAnswering(row.invitationId);
     void respond({ invitationId: row.invitationId, accept }).then(
       (item) => {
-        if (!accept || !item) return void (setAnswering(null), toast(t("declined", { name: row.name })));
-        SHARED_KINDS[item.kind].open?.(item.id);
-        router.push(SHARED_KINDS[item.kind].href(item.id));
+        setAnswering(null);
+        if (!accept || !item) return void toast(t("declined", { name: row.name }));
+        // A chat opens in the assistant's panel over the page; anything else is a page of its own.
+        const opens = SHARED_KINDS[item.kind].open;
+        if (opens) opens(item.id);
+        else router.push(SHARED_KINDS[item.kind].href(item.id));
       },
       (error) => {
         setAnswering(null);
@@ -349,20 +367,20 @@ export function WaitingInvitations({ kind }: { kind?: SharedKind }) {
     );
   };
   return (
-    <ul aria-label={t("invitations")} className="fade-enter divide-y divide-border-subtle border-b border-border-subtle">
+    <ul aria-label={t("invitations")} className="divide-y divide-border-subtle border-b border-border-subtle">
       <li className="flex items-baseline gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
         <span>{t("invitations")}</span>
-        <span className="tabular-nums text-muted-foreground">{rows.length}</span>
+        <span className="tabular-nums text-muted-foreground">{shown.length}</span>
       </li>
-      {rows.map((row) => (
+      {shown.map((row) => (
         <li key={row.invitationId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
           <Tile icon={SHARED_KINDS[row.kind].icon} tint={SHARED_KINDS[row.kind].tint} className="size-8 self-start" />
           {/* The name is read whole: on a phone the buttons go under it. */}
-          <div className="flex min-w-0 flex-1 basis-52 flex-col gap-0.5">
+          <div className="flex min-w-0 flex-1 basis-52 flex-col gap-1">
             <span dir="auto" className="text-sm font-semibold [overflow-wrap:anywhere]">{row.name}</span>
-            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span className="flex min-w-0 items-center gap-1.5"><IdentityAvatar name={row.by.name} imageUrl={row.by.imageUrl} className="size-4" /><span>{t(`sharedOne.${row.kind}`, { name: row.by.name })}</span></span>
-              <RoleLabel role={row.role === "viewer" ? "view" : "edit"}>{row.role === "viewer" ? ts("canView") : row.kind === "screening" ? ts("canVote") : ts("canEdit")}</RoleLabel>
+              <GuestChips from={row.from} role={row.role} votes={row.kind === "screening"} />
             </span>
           </div>
           <div className="ms-auto flex shrink-0 items-center gap-1">

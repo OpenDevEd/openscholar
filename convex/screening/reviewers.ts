@@ -5,6 +5,7 @@
  * change to who is on it applies from now on: votes that were cast stay, the places nobody voted from are shared out
  * again a step at a time, and every paper touched is settled again by the bookkeeping worker (./settling.ts).
  */
+import { addressesOf } from "../lib/people";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
@@ -290,7 +291,11 @@ async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: I
   const [grant, person] = await Promise.all([grantOf(ctx, job._id, userId), ctx.db.get("users", userId)]);
   if (person && (await actorIn(ctx, person, job.workspaceId))) return;
   const reviewer = (await reviewersOf(ctx, job._id)).find((one) => one.kind === "person" && one.userId === userId);
-  if (grant?.role === "editor" && job.finishedAt === undefined) await addPerson(ctx, job, userId, grant.grantedBy);
+  if (grant?.role === "editor" && job.finishedAt === undefined) {
+    // One who accepted an emailed invitation was told by that email. One given it by name was told nothing: an email says they are on it.
+    const emailed = person ? (await Promise.all(addressesOf(person).map((email) => ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", job._id).eq("email", email)).first()))).some((one) => one?.state === "accepted") : false;
+    await addPerson(ctx, job, userId, grant.grantedBy, { tell: !emailed });
+  }
   else if (grant?.role !== "editor" && reviewer) await takeOff(ctx, job, reviewer, false);
 }
 

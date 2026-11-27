@@ -142,6 +142,8 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person"> 
   const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt, changedAt }) => ({ key, text, short, must, terms, addedAt, ...(changedAt ? { changedAt } : {}), ...(note ? { note } : {}) }));
   const people: Record<string, Person> = { [view.createdBy.id]: { ...view.createdBy, name: words.person(view.createdBy.name) }, [view.resolver.id]: { ...view.resolver, name: words.person(view.resolver.name) } };
   const grows = view.sources.filter((source) => source.removedAt === undefined && GROWS.includes(source.set.kind));
+  // What a check under way reads: the sources that grow, and any other it is reading, added or read again since it began.
+  const looked = view.gathering && !view.gathering.first ? view.sources.filter((source) => source.removedAt === undefined && (GROWS.includes(source.set.kind) || source.state === "reading" || source.state === "waiting" || (source.checkedAt ?? 0) >= view.gathering!.at)) : [];
   return {
     id: view.id,
     name: view.name,
@@ -161,7 +163,7 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person"> 
     ...(view.gathering?.first ? { gathered: view.gathering.done } : {}),
     ...(view.living ? { living: view.living } : {}),
     // A check under way: how many of the sources it looks in again have answered.
-    ...(view.gathering && !view.gathering.first ? { checking: { done: grows.filter((source) => source.state === "done" || source.state === "failed").length, of: grows.length, by: view.gathering.by ?? "schedule" } } : {}),
+    ...(view.gathering && !view.gathering.first ? { checking: { done: looked.filter((source) => source.state === "done" || source.state === "failed").length, of: looked.length, by: view.gathering.by ?? "schedule" } } : {}),
     people,
   };
 }
@@ -260,10 +262,12 @@ export function useOpenScreening(id: string) {
       const cost = model.model ? readingOf(screening, model.model, papers) : 0;
       return { papers, cost, short: Math.max(0, cost - (view.credits ?? Infinity)) };
     },
-    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false, onlyIf }: { onlyWaiting?: boolean; onlyIf?: Decision } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), ...(onlyIf ? { onlyIf } : {}), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
-    // A vote on a selection, on the papers that still wait for it; `null` with `onlyIf` takes back what one cast. Returns the papers it changed.
-    voteMany: (paperIds: Id<"screeningResults">[], ballot: Omit<Ballot, "answers"> | null, onlyIf?: Decision) => voteMany({ jobId, paperIds, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(onlyIf ? { onlyIf } : {}) }),
-    resolve: (paperId: Id<"screeningResults">, decision: Decision | null, note?: string, reason?: string) => resolve({ jobId, paperId, decision, ...(note ? { note } : {}), ...(reason ? { reason } : {}) }),
+    // `onlyAt` takes back a vote only while it is still the one cast at that moment (convex/screening/voting.ts).
+    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false, onlyAt }: { onlyWaiting?: boolean; onlyAt?: number } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), ...(onlyAt === undefined ? {} : { onlyAt }), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
+    // A vote on a selection, on the papers that still wait for it; `null` with `onlyAt` takes back what one call cast. Returns the papers it changed, and the moment it cast them.
+    voteMany: (paperIds: Id<"screeningResults">[], ballot: Omit<Ballot, "answers"> | null, onlyAt?: number) => voteMany({ jobId, paperIds, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(onlyAt === undefined ? {} : { onlyAt }) }),
+    // Returns when the settlement was made, for an Undo to name; `onlyAt` takes one back only while it is still that one.
+    resolve: (paperId: Id<"screeningResults">, decision: Decision | null, note?: string, reason?: string, onlyAt?: number) => resolve({ jobId, paperId, decision, ...(note ? { note } : {}), ...(reason ? { reason } : {}), ...(onlyAt === undefined ? {} : { onlyAt }) }),
     pause: () => told(pause({ jobId })),
     resume: () => told(resume({ jobId })),
     finish: () => finish({ jobId }),

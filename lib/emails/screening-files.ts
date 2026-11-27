@@ -8,7 +8,7 @@ import { emailButton, emailStyles, renderLibraryEmail } from "./library-template
  */
 export function screeningFilesMessage({ origin, path, name, by, replies, files, note }: {
   origin: string;
-  /** The screening's own page, with its workspace's prefix where it has one. */
+  /** The screening's own page. */
   path: string;
   name: string;
   /** Who sent them. */
@@ -26,7 +26,7 @@ export function screeningFilesMessage({ origin, path, name, by, replies, files, 
   const line = `${by} sent you ${files.length === 1 ? "a file" : "files"} from the screening "${name}" on Openscholar. ${files.join(", ")} ${files.length === 1 ? "is" : "are"} attached to this email.`;
   return {
     subject,
-    text: `${line}${note ? `\n\n${note}` : ""}\n\nThe screening, for anyone who can open it\n${open}`,
+    text: `${line}${note ? `\n\n${note}` : ""}\n\nOpen the screening\n${open}`,
     html: renderLibraryEmail({
       identity,
       title: subject,

@@ -5051,6 +5051,7 @@
       "runUses": "Tudo o que executar com estes usa",
       "yourCredits": "os seus créditos",
       "empty": "Ainda não há nada partilhado consigo",
+      "emptyInvited": "Aceite um convite acima e o que ele partilha aparece aqui.",
       "emptyKind": "Ainda não há nada partilhado consigo deste tipo",
       "emptySearch": "Nada partilhado consigo corresponde",
       "leave": "Sair",
@@ -5079,7 +5080,7 @@
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
       "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado",
-      "pointScreening": "Votar é gratuito. Os modelos são pagos pelo espaço de trabalho onde está"
+      "pointScreening": "Votar é grátis. {name} paga os modelos de IA da triagem."
     },
     "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
     "asRole": "como {role}",
@@ -5087,7 +5088,9 @@
     "adminCan": "Os administradores podem fazer o mesmo e também convidar e remover pessoas e gerir definições e gastos.",
     "badge": {
       "screen": "{count, plural, one {# triagem precisa de si} other {# triagens precisam de si}}",
-      "screenWhy": "Artigos para triar, conflitos para resolver ou perguntas para si",
+      "screenWhy": "Artigos para triar, conflitos para resolver, perguntas para si ou convites para responder",
+      "shared": "{count, plural, one {# convite espera a sua resposta} other {# convites esperam a sua resposta}}",
+      "sharedWhy": "Triagens, conversas, pesquisas e extrações partilhadas consigo",
       "publish": "{count, plural, one {# relatório está pronto para publicar} other {# relatórios estão prontos para publicar}}",
       "publishWhy": "{count, plural, one {É publicado quando o ativar} other {São publicados quando os ativar}}"
     }
@@ -8810,8 +8813,8 @@
       "empty": {
         "arriving": "Os artigos estão a caminho",
         "arrivingSays": "{reviewer, select, true {Aparecem aqui à medida que chegam das fontes. Pode começar a triagem assim que chegarem os primeiros.} other {Aparecem aqui à medida que chegam das fontes.}}",
-        "noPaper": "{sources, select, true {As fontes não tinham nenhum artigo que possa ser triado.} other {{canChange, select, true {Adicione uma fonte para dar artigos aos revisores.} other {Os artigos chegam quando uma fonte é adicionada.}}}}",
-        "toSources": "{sources, select, true {Ver as fontes} other {Adicionar uma fonte}}"
+        "noPaper": "{sources, select, failed {Não foi possível ler as fontes. As definições dizem porquê e podem lê-las de novo.} true {As fontes não tinham nenhum artigo que possa ser triado.} other {{canChange, select, true {Adicione uma fonte para dar artigos aos revisores.} other {Os artigos chegam quando uma fonte é adicionada.}}}}",
+        "toSources": "{sources, select, failed {Ver as fontes} true {Ver as fontes} other {Adicionar uma fonte}}"
       },
       "progress": {
         "title": "Progresso",
@@ -8981,7 +8984,6 @@
         "shut": "{change, select, true {Uma verificação procura artigos que esta triagem ainda não tem nas suas pesquisas, coleções, Evidence Communities, bibliotecas do Zotero e outras triagens. Ficheiros carregados e DOI colados nunca mudam. Adicione uma dessas fontes para receber artigos novos.} other {Uma verificação procura artigos que esta triagem ainda não tem nas suas pesquisas, coleções, Evidence Communities, bibliotecas do Zotero e outras triagens. Ficheiros carregados e DOI colados nunca mudam. Nada é verificado até ser adicionada uma dessas fontes.}}",
         "helpTitle": "Procurar artigos novos",
         "next": "Próxima verificação {day}",
-        "onlyAsked": "Só quando pedido",
         "skips": "{count, plural, one {Salta # fonte que nunca muda} other {Salta # fontes que nunca mudam}}",
         "means": "Uma verificação volta a ler cada fonte e adiciona os artigos que esta triagem ainda não tem. Ficheiros carregados e DOI colados nunca mudam, por isso as verificações saltam-nos.",
         "checkNow": "Verificar agora",
@@ -9439,6 +9441,7 @@
         "arrived": "{done, number} de {count, number} chegaram",
         "noneYet": "Ainda não lhe chegou nenhum artigo",
         "noneYours": "Nenhum dos artigos aqui é para si votar",
+        "givenOut": "{count, plural, one {Cada artigo vai para # pessoa} other {Cada artigo vai para # pessoas}}, e os artigos daqui foram para outros antes de se juntar. {living, select, true {Os artigos novos são partilhados consigo à medida que chegam.} other {Podem passar-lhe artigos a partir da Visão geral.}}",
         "allVoted": "Votou em todos os seus artigos",
         "finished": "Esta triagem está terminada",
         "unvoted": "{count, plural, one {# dos seus artigos não tem o seu voto} other {# dos seus artigos não têm o seu voto}}",

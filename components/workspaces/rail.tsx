@@ -5,6 +5,7 @@
 // running screening or extraction fills a ring around its icon and its label becomes the
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
+import { useWaitingInvitations } from "./shared";
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { SCREENINGS_PATH } from "@/lib/screening/links";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -129,6 +130,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const searchParams = useSearchParams();
   const here = useWorkspace();
   const loaded = useCurrentWorkspace();
+  // Invitations waiting for the person's answer: counted on Screening for screenings, and on Shared for every kind, so one is found without its email.
+  const invitations = useWaitingInvitations() ?? [];
+  const invitedToScreen = invitations.filter((one) => one.kind === "screening").length;
   // Read here, where the rail always is, so the card opens with the list in it.
   const workspaces = useWorkspaces();
   // A workspace picked in the card is the rail's from the click on, as the mock switched: its tile
@@ -274,8 +278,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 // The ring is a screening's models reading. People voting is no run to wait on, so an open screening with nothing left to read shows none.
                 running: screening?.reading ? { done: screening.reading.done, total: screening.reading.total, what: tc("screening"), percent: Math.floor((screening.reading.done / screening.reading.total) * 100) } : undefined,
                 // How many screenings wait for the person, in whichever workspace: the list says where.
-                badge: screening?.waiting || undefined,
-                badgeSays: { title: t("badge.screen", { count: screening?.waiting ?? 0 }), detail: t("badge.screenWhy") },
+                badge: (screening?.waiting ?? 0) + invitedToScreen || undefined,
+                badgeSays: { title: t("badge.screen", { count: (screening?.waiting ?? 0) + invitedToScreen }), detail: t("badge.screenWhy") },
               })}
               {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
               <AnimatePresence initial={false}>
@@ -292,7 +296,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 ) : null}
                 <Opening key="communities">{item({ href: "/evidence-communities", icon: EvidenceLibrariesIcon, label: t("communities"), active: is("/evidence-communities") })}</Opening>
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
-                {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
+                {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared"), badge: invitations.length || undefined, badgeSays: { title: t("badge.shared", { count: invitations.length }), detail: t("badge.sharedWhy") } })}</Opening> : null}
               </AnimatePresence>
 
               <div className="my-1.5 h-px w-8 bg-foreground/10" />

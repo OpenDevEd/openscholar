@@ -2,7 +2,7 @@
 
 // The list of a workspace's screenings, as a table: the ones waiting on you first.
 
-import { WaitingInvitations } from "@/components/workspaces/shared";
+import { useWaitingInvitations, WaitingInvitations } from "@/components/workspaces/shared";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
@@ -35,12 +35,12 @@ import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
-import { inOrder, RESULTS } from "./data";
+import { inOrder } from "./data";
 import { searchHistory } from "./address";
 import { askedHref, newHref, overviewHref, papersHref, reviewerHref, screenHref } from "./links";
 import { draftOf, useKept } from "./drafts";
 import { OVERS, ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
-import { Faces, FilterMenu, Help, LinkChip, StateChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
+import { Faces, FilterMenu, Help, LinkChip, StateChip, votesBy, RESULT_ICON, ResultBar, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
 import { toReviewers, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWords } from "./words";
@@ -94,6 +94,8 @@ export function ScreeningsIndex() {
   const mine = useProtectedQuery(api.screening.view.mine, inWorkspace(here, {})).data;
   const tally = useProtectedQuery(api.screening.view.tally, inWorkspace(here, {})).data;
   const elsewhere = useProtectedQuery(api.screening.view.elsewhere, inWorkspace(here, {})).data;
+  const invitations = useWaitingInvitations();
+  const invited = (invitations ?? []).filter((row) => row.kind === "screening");
   // "Needs you first" is the newest first with what waits for the person above them.
   const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE);
 
@@ -111,7 +113,7 @@ export function ScreeningsIndex() {
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
-  const loading = mine === undefined || tally === undefined || elsewhere === undefined || (show !== "you" && listed.isLoading);
+  const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
   const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
   const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
@@ -145,16 +147,16 @@ export function ScreeningsIndex() {
                   <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
                 </div>
               ) : null}
-              <WaitingInvitations kind="screening" />
+              <WaitingInvitations rows={invitations} kind="screening" />
               <Elsewhere rows={elsewhere ?? []} />
             </AutoHeight>
             <AutoHeight>
             {empty ? (
               // Where screenings elsewhere wait for the person, this workspace having none is said in a few lines, not as a first visit.
-              <div className={cn("flex flex-col items-center gap-3 px-6 text-center", elsewhere?.length ? "py-8" : "py-20")}>
-                {elsewhere?.length ? null : <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>}
-                <h2 className={elsewhere?.length ? "text-sm font-medium" : "text-lg font-semibold tracking-tight"}>{elsewhere?.length ? t("firstUse.noneHere") : t("firstUse.title")}</h2>
-                {elsewhere?.length ? null : <p className="max-w-md text-sm text-muted-foreground">{t("firstUse.text")}</p>}
+              <div className={cn("flex flex-col items-center gap-3 px-6 text-center", elsewhere?.length || invited.length ? "py-8" : "py-20")}>
+                {elsewhere?.length || invited.length ? null : <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>}
+                <h2 className={elsewhere?.length || invited.length ? "text-sm font-medium" : "text-lg font-semibold tracking-tight"}>{elsewhere?.length || invited.length ? t("firstUse.noneHere") : t("firstUse.title")}</h2>
+                {elsewhere?.length || invited.length ? null : <p className="max-w-md text-sm text-muted-foreground">{t("firstUse.text")}</p>}
                 <Button asChild className="mt-2"><NextLink href={newHref()}><Plus />{t("newScreening")}</NextLink></Button>
               </div>
             ) : (
@@ -208,7 +210,8 @@ export function ScreeningsIndex() {
                   <span>{t("column.reviewers")}</span>
                   <span className="flex items-center gap-1">
                     {t("column.papers")}
-                    <Help title={t("papersHelp.title")} facts={RESULTS.map((result) => <ResultChip key={result} result={result} />)}>
+                    {/* The results' names and signs are the legend beside the tabs: the help says what the bar counts. */}
+                    <Help title={t("papersHelp.title")}>
                       <p>{t("papersHelp.text")}</p>
                     </Help>
                   </span>

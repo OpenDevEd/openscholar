@@ -5051,6 +5051,7 @@
       "runUses": "Chochote unachoendesha kwenye hivi kinatumia",
       "yourCredits": "krediti zako",
       "empty": "Bado hakuna kilichoshirikiwa nawe",
+      "emptyInvited": "Kubali mwaliko ulio juu, na kinachoshirikiwa kitaonekana hapa.",
       "emptyKind": "Bado hakuna kilichoshirikiwa nawe cha aina hii",
       "emptySearch": "Hakuna kilichoshirikiwa nawe kinachofanana",
       "leave": "Ondoka",
@@ -5079,7 +5080,7 @@
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
       "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa",
-      "pointScreening": "Kupiga kura ni bure. Miundo yake hulipiwa na eneo la kazi ilipo"
+      "pointScreening": "Kupiga kura ni bure. {name} hulipia miundo ya AI ya uchujaji."
     },
     "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
     "asRole": "kama {role}",
@@ -5087,7 +5088,9 @@
     "adminCan": "Wasimamizi wanaweza kufanya hivyo hivyo, na pia kualika na kuondoa watu na kusimamia mipangilio na matumizi.",
     "badge": {
       "screen": "{count, plural, one {Uchujaji # unakuhitaji} other {Uchujaji # unakuhitaji}}",
-      "screenWhy": "Makala ya kuchuja, migongano ya kutatua au maswali uliyoulizwa",
+      "screenWhy": "Makala za kuchuja, migongano ya kutatua, maswali uliyoulizwa au mialiko ya kujibu",
+      "shared": "{count, plural, one {Mwaliko # unasubiri jibu lako} other {Mialiko # inasubiri jibu lako}}",
+      "sharedWhy": "Uchujaji, mazungumzo, utafutaji na uchimbaji vilivyoshirikiwa nawe",
       "publish": "{count, plural, one {Ripoti # iko tayari kuchapishwa} other {Ripoti # ziko tayari kuchapishwa}}",
       "publishWhy": "{count, plural, one {Inachapishwa ukiiwasha} other {Zinachapishwa ukiziwasha}}"
     }
@@ -8810,8 +8813,8 @@
       "empty": {
         "arriving": "Makala ziko njiani",
         "arrivingSays": "{reviewer, select, true {Zinaonekana hapa zinapofika kutoka kwenye vyanzo. Unaweza kuanza kuchuja mara zile za kwanza zikifika.} other {Zinaonekana hapa zinapofika kutoka kwenye vyanzo.}}",
-        "noPaper": "{sources, select, true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {{canChange, select, true {Ongeza chanzo ili kuwapa wakaguzi makala.} other {Makala huja chanzo kikishaongezwa.}}}}",
-        "toSources": "{sources, select, true {Ona vyanzo} other {Ongeza chanzo}}"
+        "noPaper": "{sources, select, failed {Vyanzo havikuweza kusomwa. Mipangilio inaeleza kwa nini, na inaweza kuvisoma tena.} true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {{canChange, select, true {Ongeza chanzo ili kuwapa wakaguzi makala.} other {Makala huja chanzo kikishaongezwa.}}}}",
+        "toSources": "{sources, select, failed {Tazama vyanzo} true {Ona vyanzo} other {Ongeza chanzo}}"
       },
       "progress": {
         "title": "Maendeleo",
@@ -8981,7 +8984,6 @@
         "shut": "{change, select, true {Ukaguzi unatafuta makala ambazo uchujaji huu bado hauna katika utafutaji, mikusanyiko, Evidence Communities, maktaba za Zotero na uchujaji mwingine wake. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe. Ongeza mojawapo ya vyanzo hivyo ili upate makala mpya.} other {Ukaguzi unatafuta makala ambazo uchujaji huu bado hauna katika utafutaji, mikusanyiko, Evidence Communities, maktaba za Zotero na uchujaji mwingine wake. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe. Hakuna kinachokaguliwa hadi mojawapo ya vyanzo hivyo kiongezwe.}}",
         "helpTitle": "Kutafuta makala mpya",
         "next": "Ukaguzi unaofuata {day}",
-        "onlyAsked": "Ukiomba tu",
         "skips": "{count, plural, one {Inaruka chanzo # kisichobadilika kamwe} other {Inaruka vyanzo # visivyobadilika kamwe}}",
         "means": "Ukaguzi unasoma tena kila chanzo na kuongeza makala ambazo uchujaji huu bado hauna. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe, kwa hivyo ukaguzi unaziruka.",
         "checkNow": "Kagua sasa",
@@ -9439,6 +9441,7 @@
         "arrived": "{done, number} kati ya {count, number} zimefika",
         "noneYet": "Bado hakuna makala iliyokufikia",
         "noneYours": "Hakuna makala hapa iliyo yako kuipigia kura",
+        "givenOut": "{count, plural, one {Kila makala huenda kwa mtu #} other {Kila makala huenda kwa watu #}}, na makala hapa zilienda kwa wengine kabla hujajiunga. {living, select, true {Makala mpya hushirikiwa nawe zinapofika.} other {Makala zinaweza kuhamishiwa kwako kutoka Muhtasari.}}",
         "allVoted": "Umepigia kura makala zako zote",
         "finished": "Uchujaji huu umekamilika",
         "unvoted": "{count, plural, one {Makala # kati ya zako haina kura yako} other {Makala # kati ya zako hazina kura yako}}",

@@ -23,6 +23,9 @@ const fileValidator = v.object({ name: v.string(), type: v.string(), body: v.str
 const KINDS: Record<string, string> = { csv: "text/csv", bib: "application/x-bibtex", ris: "application/x-research-info-systems", json: "application/json", svg: "image/svg+xml", png: "image/png", txt: "text/plain" };
 const exported = (one: { name: string; type: string; base64?: boolean }) => { const ending = one.name.split(".").pop()?.toLowerCase() ?? ""; return KINDS[ending] === one.type && Boolean(one.base64) === (ending === "png"); };
 
+/** A file's name cut to 200 characters keeps its ending (`.csv`, `.png`): the start of the name gives way. */
+const shortName = (name: string) => { const ending = name.slice(name.lastIndexOf(".")); return name.length <= 200 ? name : `${name.slice(0, 200 - ending.length)}${ending}`; };
+
 export const sendFiles = workspaceAction({
   args: { jobId: v.id("screeningJobs"), to: v.string(), note: v.optional(v.string()), files: v.array(fileValidator) },
   returns: v.null(),
@@ -36,7 +39,7 @@ export const sendFiles = workspaceAction({
     if (new TextEncoder().encode(JSON.stringify(files)).length > BYTES_MAX) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
     const about: { name: string; path: string; by: string; replyTo?: string } = await ctx.runQuery(internal.screening.sending.about, { jobId, userId: actor.userId, workspaceId: actor.workspaceId });
     await ctx.runMutation(internal.screening.sending.spend, { userId: actor.userId });
-    await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: one.name.slice(0, 200), type: one.type, body: one.body, ...(one.base64 ? { base64: true } : {}) })), ...(note?.trim() ? { note: note.trim() } : {}) });
+    await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: shortName(one.name), type: one.type, body: one.body, ...(one.base64 ? { base64: true } : {}) })), ...(note?.trim() ? { note: note.trim() } : {}) });
     return null;
   },
 });
@@ -48,9 +51,9 @@ export const about = internalQuery({
   handler: async (ctx, { jobId, ...actor }) => {
     const standing = await standingOn(ctx, actor, jobId);
     if (!standing) throw createError("SCREENING_JOB_NOT_FOUND", "Screening not found");
-    const [user, workspace] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("workspaces", standing.job.workspaceId)]);
-    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-    return { name: standing.job.name ?? "Screening", path: `${organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, by: nameOf(user), ...(user?.email ? { replyTo: user.email } : {}) };
+    const user = await ctx.db.get("users", actor.userId);
+    // The plain address: it takes a member to the screening's workspace, and anyone else to sign in or to what they may open. An organization's address shows nothing to someone signed out.
+    return { name: standing.job.name ?? "Screening", path: screeningPath(jobId), by: nameOf(user), ...(user?.email ? { replyTo: user.email } : {}) };
   },
 });
 

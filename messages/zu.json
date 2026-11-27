@@ -5050,6 +5050,7 @@
       "runUses": "Noma yini oyiqhubayo kulezi isebenzisa",
       "yourCredits": "amakhredithi akho",
       "empty": "Akukho okwabelwane nawe okwamanje",
+      "emptyInvited": "Yamukela isimemo esingenhla, futhi lokho esikwabelanayo kuzovela lapha.",
       "emptyKind": "Akukho okwabelwane nawe kwalolu hlobo okwamanje",
       "emptySearch": "Akukho okwabelwane nawe okuhambisanayo",
       "leave": "Shiya",
@@ -5078,7 +5079,7 @@
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo",
-      "pointScreening": "Ukuvota kumahhala. Amamodeli alo akhokhelwa indawo yokusebenza elikuyo"
+      "pointScreening": "Ukuvota kumahhala. U-{name} ukhokhela amamodeli e-AI okuhlunga."
     },
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",
@@ -5086,7 +5087,9 @@
     "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali.",
     "badge": {
       "screen": "{count, plural, one {Ukuhlunga okungu-# kuyakudinga} other {Ukuhlunga okungu-# kuyakudinga}}",
-      "screenWhy": "Amaphepha okuhlunga, ukungqubuzana okuxazululwayo noma imibuzo obuzwe yona",
+      "screenWhy": "Amaphepha okuhlunga, izingxabano zokuxazulula, imibuzo obuzwe yona noma izimemo zokuphendula",
+      "shared": "{count, plural, one {Isimemo esingu-# silinde impendulo yakho} other {Izimemo ezingu-# zilinde impendulo yakho}}",
+      "sharedWhy": "Ukuhlunga, izingxoxo, ukusesha nokukhipha okwabelwana nawe",
       "publish": "{count, plural, one {Umbiko ongu-# usulungele ukushicilelwa} other {Imibiko engu-# isilungele ukushicilelwa}}",
       "publishWhy": "{count, plural, one {Ushicilelwa uma uwuvula} other {Ishicilelwa uma uyivula}}"
     }
@@ -8809,8 +8812,8 @@
       "empty": {
         "arriving": "Amaphepha asendleleni",
         "arrivingSays": "{reviewer, select, true {Avela lapha njengoba efika evela emithonjeni. Ungaqala ukuskrina ngokushesha nje uma awokuqala esefikile.} other {Avela lapha njengoba efika evela emithonjeni.}}",
-        "noPaper": "{sources, select, true {Imithombo ibingenalo iphepha elingaskrinwa.} other {{canChange, select, true {Engeza umthombo ukuze unikeze ababuyekezi amaphepha.} other {Amaphepha afika uma kungezwe umthombo.}}}}",
-        "toSources": "{sources, select, true {Bona imithombo} other {Engeza umthombo}}"
+        "noPaper": "{sources, select, failed {Imithombo ayikwazanga ukufundwa. Izilungiselelo zisho ukuthi kungani, futhi zingayifunda futhi.} true {Imithombo ibingenalo iphepha elingaskrinwa.} other {{canChange, select, true {Engeza umthombo ukuze unikeze ababuyekezi amaphepha.} other {Amaphepha afika uma kungezwe umthombo.}}}}",
+        "toSources": "{sources, select, failed {Bona imithombo} true {Bona imithombo} other {Engeza umthombo}}"
       },
       "progress": {
         "title": "Inqubekelaphambili",
@@ -8980,7 +8983,6 @@
         "shut": "{change, select, true {Ukuhlola kubheka amaphepha lokhu kuskrini okungakabi nawo emithonjeni yako, okungukuthi ukusesha, amaqoqo, ama-Evidence Community, imitapo yolwazi ye-Zotero nokunye ukuskrini. Amafayela alayishiwe nama-DOI anamathiselwe akushintshi neze. Engeza owodwa waleyo mithombo ukuze uthole amaphepha amasha.} other {Ukuhlola kubheka amaphepha lokhu kuskrini okungakabi nawo emithonjeni yako, okungukuthi ukusesha, amaqoqo, ama-Evidence Community, imitapo yolwazi ye-Zotero nokunye ukuskrini. Amafayela alayishiwe nama-DOI anamathiselwe akushintshi neze. Akukho okuhlolwayo kuze kungezwe owodwa waleyo mithombo.}}",
         "helpTitle": "Ukuhlolela amaphepha amasha",
         "next": "Ukuhlola okulandelayo {day}",
-        "onlyAsked": "Kuphela uma kucelwa",
         "skips": "{count, plural, one {Yeqa # umthombo ongashintshi neze} other {Yeqa # imithombo engashintshi neze}}",
         "means": "Ukuhlola kufunda futhi umthombo ngamunye bese kwengeza amaphepha lokhu kuskrini okungakabi nawo. Amafayela alayishiwe nama-DOI anamathiselwe akushintshi neze, ngakho ukuhlola kuyakweqa.",
         "checkNow": "Hlola manje",
@@ -9438,6 +9440,7 @@
         "arrived": "{done, number} kwa-{count, number} afikile",
         "noneYet": "Alikho iphepha elize kuwe okwamanje",
         "noneYours": "Alikho iphepha lapha okungelakho ukulivotela",
+        "givenOut": "{count, plural, one {Iphepha ngalinye liya kumuntu ongu-#} other {Iphepha ngalinye liya kubantu abangu-#}}, futhi amaphepha alapha aya kwabanye ngaphambi kokuthi ujoyine. {living, select, true {Amaphepha amasha yabelwana nawe njengoba efika.} other {Amaphepha angadluliselwa kuwe kusukela ku-Ukubuka konke.}}",
         "allVoted": "Uvote kuwo wonke amaphepha akho",
         "finished": "Lokhu kuskrini kuqediwe",
         "unvoted": "{count, plural, one {# wamaphepha akho alinalo ivoti lakho} other {# wamaphepha akho awanalo ivoti lakho}}",

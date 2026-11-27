@@ -4,6 +4,7 @@
  * old. Whoever accepts must have the invited address verified on their account, which Clerk
  * confirms (./mail.ts).
  */
+import { ROLES } from "./guests";
 import { makeFunctionReference, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -75,14 +76,14 @@ export const expire = internalMutation({
 /** What an invitation's email says, or null once it no longer waits or its item is gone. */
 export const readDelivery = internalQuery({
   args: { invitationId: v.id("itemInvitations") },
-  returns: v.union(v.null(), v.object({ email: v.string(), kind: sharedKindValidator, word: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string() })),
+  returns: v.union(v.null(), v.object({ email: v.string(), kind: sharedKindValidator, word: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string(), finished: v.boolean() })),
   handler: async (ctx, { invitationId }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
     if (!invitation || !shares(invitation) || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const shared = await invitedTo(ctx, invitation);
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     if (!shared || !inviter) return null;
-    return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId) };
+    return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId), finished: shared.kind === "screening" && (await ctx.db.get("screeningJobs", shared.id as Id<"screeningJobs">))?.finishedAt !== undefined };
   },
 });
 
@@ -147,8 +148,8 @@ export const responder = internalQuery({
 export const inviteAction = defineChangingAction({
   path: "sharing/invitations:invite",
   description:
-    "Invites someone by email to one of the workspace's items, to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out). Any member of the item's workspace can. " +
-    "They get an email with a link, good for seven days, and accept it signed in with that address; the item then shows under their Shared with me, and what they run on it uses their own credits. " +
+    `Invites someone by email to one of the workspace's items, ${ROLES}. Any member of the item's workspace can. ` +
+    "They get an email with a link, good for seven days, and accept it signed in with that address, or answer it from their Shared with me or the list of that kind of item; the item then shows under their Shared with me. What they run on it uses their own credits, except a screening's votes, which cost them nothing. " +
     "The invitation takes one of the guest places the workspace's plan allows on each item until it's answered. Inviting the same address again sends the email again.",
   args: invitationArgs,
   returns: v.null(),
@@ -238,7 +239,9 @@ export const waitingAction = defineUserQuery({
       if (!shares(invitation)) return [];
       const [shared, inviter] = await Promise.all([invitedTo(ctx, invitation), ctx.db.get("users", invitation.invitedBy)]);
       if (!shared) return [];
-      return [{ invitationId: invitation._id, kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role, by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) }, from: await workspaceFrom(ctx, shared.workspaceId) }];
+      // Someone whose account is gone is named by the workspace they shared it from.
+      const from = await workspaceFrom(ctx, shared.workspaceId);
+      return [{ invitationId: invitation._id, kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role, by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) }, from }];
     }))).flat();
     return { page, isDone: true, continueCursor: "" };
   },

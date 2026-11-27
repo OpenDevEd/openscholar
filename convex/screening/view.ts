@@ -90,7 +90,7 @@ const summaryFields = {
   // How many criteria it has: another screening can take them.
   criteria: v.number(),
   // Its papers are still being fetched from its sources: how many have arrived.
-  gathering: v.optional(v.object({ done: v.number(), by: v.optional(v.id("users")), first: v.boolean() })),
+  gathering: v.optional(v.object({ done: v.number(), by: v.optional(v.id("users")), first: v.boolean(), at: v.number() })),
   activeAt: v.number(),
 };
 const summaryValidator = v.object(summaryFields);
@@ -209,7 +209,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     models: state,
     ...(ahead ? { ahead } : {}),
     criteria: job.criteria?.length ?? 0,
-    ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check._id === first?._id } } : {}),
+    ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check._id === first?._id, at: check.at } } : {}),
     activeAt: job.activeAt ?? job.updatedAt,
   };
 }
@@ -282,7 +282,8 @@ export const mine = workspaceQuery({
       const { job, member, reviewer } = standing;
       if (member) {
         const waits = await waitsOn(ctx, job, userId, reviewer, await progressRow(ctx as QueryCtx, job._id));
-        if (job.finishedAt !== undefined || !(waits.forYou + waits.conflicts + waits.asked.length)) return [];
+        // A finished screening asks for no vote, and still for the answer to a question put to the person.
+        if (!(waits.forYou + waits.conflicts + waits.asked.length)) return [];
       }
       return [await summaryOf(ctx, actor, standing)];
     }))).flat();
@@ -297,7 +298,8 @@ const READING_LOOKED = 5;
 async function waitsFor(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
   const found = await Promise.all((await theirs(ctx, userId)).map(async (jobId) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.shape !== 2 || job.finishedAt !== undefined) return [];
+    // A finished one waits on the person only for an answer to a question (./dealing.ts `waitsOn`).
+    if (!job || job.shape !== 2) return [];
     const [reviewer, progress] = await Promise.all([ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first(), progressRow(ctx as QueryCtx, jobId)]);
     const waits = await waitsOn(ctx, job, userId, reviewer, progress);
     return waits.forYou + waits.conflicts + waits.asked.length ? [{ job, forYou: waits.forYou, conflicts: waits.conflicts, asked: waits.asked.length, ...(waits.asked[0] ? { askedFirst: waits.asked[0], ...(waits.askedWhere ? { askedWhere: waits.askedWhere } : {}) } : {}) }] : [];
@@ -607,12 +609,14 @@ export const activityForAssistant = assistantQuery(activityAction);
 
 export const checksAction = defineUserQuery({
   path: "screening/view:checks",
-  description: "Lists each look in a screening's sources, a page at a time, the latest first: the one it started with, then each check for new papers, by hand or on its schedule (no `by`), with how many papers it found and how many of those were new to the screening.",
+  description: "Lists the checks for new papers a screening's sources have had, a page at a time, the latest first, by hand or on its schedule (no `by`), with how many papers each found and how many of those were new to the screening. The look it started with, and a check under way, aren't listed.",
   args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(checkValidator),
   run: async (ctx, actor, { jobId, paginationOpts }) => {
     if (!(await standingOn(ctx, actor, jobId))) return { page: [], isDone: true, continueCursor: "" };
-    const [read, first] = await Promise.all([ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) }), firstCheck(ctx, jobId)]);
+    // The list is of later checks that have ended: the look it started with and one under way are said elsewhere, and a page never holds rows the list leaves out.
+    const first = await firstCheck(ctx, jobId);
+    const read = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").filter((q) => q.and(q.neq(q.field("state"), "running"), q.neq(q.field("_id"), first?._id ?? null))).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) });
     const isFirst = (check: Doc<"screeningChecks">) => check._id === first?._id;
     const people = new Map<Id<"users">, Person>();
     for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, personOf(user, check.by)); }

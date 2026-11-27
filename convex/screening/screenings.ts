@@ -19,7 +19,7 @@ import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf, papersOf } from "./dealing";
 import { startWaitingVotes } from "./slots";
 import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
@@ -376,7 +376,9 @@ export const finish = workspaceMutation({
     // What it leaves open is said with it: the papers nobody settled, and a living screening's checks.
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
     const settled = (progress?.counts?.include ?? 0) + (progress?.counts?.maybe ?? 0) + (progress?.counts?.exclude ?? 0);
-    await logChange(ctx, actor, job, "finished", { more: [...(job.totalPapers > settled ? [{ code: "unsettled", count: job.totalPapers - settled }] : []), ...(job.living ? [{ code: "checksStopped" }] : [])] });
+    // Counted as its pages count it: papers that left with their source are in it no more.
+    const total = papersOf(job, progress);
+    await logChange(ctx, actor, job, "finished", { more: [...(total > settled ? [{ code: "unsettled", count: total - settled }] : []), ...(job.living ? [{ code: "checksStopped" }] : [])] });
     return null;
   },
 });

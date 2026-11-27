@@ -5050,6 +5050,7 @@
       "runUses": "ここで実行する処理に使われるのは",
       "yourCredits": "あなたのクレジット",
       "empty": "共有されたアイテムはまだありません",
+      "emptyInvited": "上の招待を承諾すると、共有されたものがここに表示されます。",
       "emptyKind": "この種類の共有アイテムはまだありません",
       "emptySearch": "一致する共有アイテムはありません",
       "leave": "退出",
@@ -5078,7 +5079,7 @@
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください",
-      "pointScreening": "投票は無料です。モデルの費用は、それがあるワークスペースが支払います"
+      "pointScreening": "投票は無料です。スクリーニングのAIモデルの費用は{name}が支払います。"
     },
     "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
     "asRole": "{role}として",
@@ -5086,7 +5087,9 @@
     "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。",
     "badge": {
       "screen": "{count, plural, other {#件のスクリーニングがあなたを待っています}}",
-      "screenWhy": "スクリーニングする論文、判断する対立、またはあなたへの質問",
+      "screenWhy": "スクリーニングする論文、解決する対立、あなたへの質問、返事を待つ招待",
+      "shared": "{count, plural, other {#件の招待が返事を待っています}}",
+      "sharedWhy": "あなたと共有されたスクリーニング、チャット、検索、抽出",
       "publish": "{count, plural, other {#件のレポートを公開できます}}",
       "publishWhy": "{count, plural, other {有効にすると公開されます}}"
     }
@@ -8809,8 +8812,8 @@
       "empty": {
         "arriving": "論文を取得中です",
         "arrivingSays": "{reviewer, select, true {取得元から届いた論文がここに表示されます。最初の論文が届いたらすぐにスクリーニングを始められます。} other {取得元から届いた論文がここに表示されます。}}",
-        "noPaper": "{sources, select, true {取得元にスクリーニングできる論文はありませんでした。} other {{canChange, select, true {ソースを追加すると、レビュアーに論文が届きます。} other {ソースが追加されると論文が届きます。}}}}",
-        "toSources": "{sources, select, true {取得元を見る} other {取得元を追加}}"
+        "noPaper": "{sources, select, failed {ソースを読み込めませんでした。設定に理由が表示され、読み込み直せます。} true {取得元にスクリーニングできる論文はありませんでした。} other {{canChange, select, true {ソースを追加すると、レビュアーに論文が届きます。} other {ソースが追加されると論文が届きます。}}}}",
+        "toSources": "{sources, select, failed {ソースを見る} true {取得元を見る} other {取得元を追加}}"
       },
       "progress": {
         "title": "進捗",
@@ -8980,7 +8983,6 @@
         "shut": "{change, select, true {確認では、このスクリーニングの検索、コレクション、Evidence Communities、Zotero ライブラリ、ほかのスクリーニングから、まだない論文を探します。アップロードしたファイルや貼り付けた DOI は変わりません。新しい論文を得るには、これらの取得元のいずれかを追加してください。} other {確認では、このスクリーニングの検索、コレクション、Evidence Communities、Zotero ライブラリ、ほかのスクリーニングから、まだない論文を探します。アップロードしたファイルや貼り付けた DOI は変わりません。これらの取得元のいずれかが追加されるまで、確認は行われません。}}",
         "helpTitle": "新しい論文の確認",
         "next": "次回の確認: {day}",
-        "onlyAsked": "依頼したときだけ",
         "skips": "{count, plural, other {変わらない取得元 # 件は対象外}}",
         "means": "確認では、各取得元をもう一度読み、このスクリーニングにまだない論文を追加します。アップロードしたファイルや貼り付けた DOI は変わらないため、確認の対象外です。",
         "checkNow": "今すぐ確認",
@@ -9438,6 +9440,7 @@
         "arrived": "{count, number} 件中 {done, number} 件が届きました",
         "noneYet": "まだ論文は割り当てられていません",
         "noneYours": "ここにはあなたが投票する論文はありません",
+        "givenOut": "{count, plural, other {各論文は#人に割り当てられ}}、ここの論文はあなたの参加前にほかの人に割り当てられました。{living, select, true {新しい論文は届き次第あなたにも割り当てられます。} other {概要から論文をあなたに移せます。}}",
         "allVoted": "割り当てられた論文すべてに投票しました",
         "finished": "このスクリーニングは完了しています",
         "unvoted": "{count, plural, other {あなたの論文のうち # 件にまだ投票していません}}",

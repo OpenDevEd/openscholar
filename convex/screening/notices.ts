@@ -38,7 +38,7 @@ export async function conflictsWait(ctx: MutationCtx, jobId: Id<"screeningJobs">
 /** What one email says, read when it is sent: null where the person turned the screening's emails off, has it no more, or nothing waits for them. */
 export const context = internalQuery({
   args: { jobId: v.id("screeningJobs"), userId: v.id("users"), about: aboutValidator, by: v.optional(v.id("users")) },
-  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), by: v.optional(v.string()) })),
+  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), more: v.optional(v.boolean()), by: v.optional(v.string()) })),
   handler: async (ctx, { jobId, userId, about, by }) => {
     const [job, user, row] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("users", userId), noticeOf(ctx, jobId, userId)]);
     if (!job || job.finishedAt !== undefined || user?.state !== "active" || row?.off) return null;
@@ -57,7 +57,7 @@ export const context = internalQuery({
     // Someone put on a screening is told so whether or not a paper waits for them yet.
     if (!count && !(about === "joined" && on)) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
-    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
+    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(about === "papers" && count >= NEW_COUNTED ? { more: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
   },
 });
 

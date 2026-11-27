@@ -5051,6 +5051,7 @@
       "runUses": "Alles wat jy hierop uitvoer, gebruik",
       "yourCredits": "jou krediete",
       "empty": "Niks met jou gedeel nog nie",
+      "emptyInvited": "Aanvaar ’n uitnodiging hierbo, en wat dit deel, wys hier.",
       "emptyKind": "Niks van hierdie soort met jou gedeel nog nie",
       "emptySearch": "Niks wat met jou gedeel is, pas nie",
       "leave": "Verlaat",
@@ -5079,7 +5080,7 @@
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is",
-      "pointScreening": "Stem is gratis. Sy modelle word betaal deur die werkruimte waarin dit is"
+      "pointScreening": "Stem is gratis. {name} betaal vir die sifting se KI-modelle."
     },
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",
@@ -5087,7 +5088,9 @@
     "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur.",
     "badge": {
       "screen": "{count, plural, one {# sifting het jou nodig} other {# siftings het jou nodig}}",
-      "screenWhy": "Artikels om te sif, konflikte om te besleg of vrae aan jou",
+      "screenWhy": "Artikels om te sif, konflikte om te besleg, vrae aan jou of uitnodigings om te beantwoord",
+      "shared": "{count, plural, one {# uitnodiging wag vir jou antwoord} other {# uitnodigings wag vir jou antwoord}}",
+      "sharedWhy": "Siftings, geselsies, soektogte en onttrekkings wat met jou gedeel is",
       "publish": "{count, plural, one {# verslag is gereed om te publiseer} other {# verslae is gereed om te publiseer}}",
       "publishWhy": "{count, plural, one {Dit word gepubliseer sodra jy dit aktiveer} other {Hulle word gepubliseer sodra jy hulle aktiveer}}"
     }
@@ -8810,8 +8813,8 @@
       "empty": {
         "arriving": "Die artikels is op pad",
         "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit die bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit die bronne aankom.}}",
-        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {{canChange, select, true {Voeg ’n bron by om die beoordelaars artikels te gee.} other {Artikels kom sodra ’n bron bygevoeg is.}}}}",
-        "toSources": "{sources, select, true {Sien die bronne} other {Voeg ’n bron by}}"
+        "noPaper": "{sources, select, failed {Die bronne kon nie gelees word nie. Instellings sê hoekom, en kan hulle weer lees.} true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {{canChange, select, true {Voeg ’n bron by om die beoordelaars artikels te gee.} other {Artikels kom sodra ’n bron bygevoeg is.}}}}",
+        "toSources": "{sources, select, failed {Sien die bronne} true {Sien die bronne} other {Voeg ’n bron by}}"
       },
       "progress": {
         "title": "Vordering",
@@ -8981,7 +8984,6 @@
         "shut": "{change, select, true {’n Kontrole soek in hierdie siftering se soektogte, versamelings, Evidence Communities, Zotero-biblioteke en ander sifterings na artikels wat dit nog nie het nie. Opgelaaide lêers en geplakte DOI’s verander nooit nie. Voeg een van daardie bronne by om nuwe artikels te kry.} other {’n Kontrole soek in hierdie siftering se soektogte, versamelings, Evidence Communities, Zotero-biblioteke en ander sifterings na artikels wat dit nog nie het nie. Opgelaaide lêers en geplakte DOI’s verander nooit nie. Niks word nagegaan totdat een van daardie bronne bygevoeg is nie.}}",
         "helpTitle": "Kontroles vir nuwe artikels",
         "next": "Volgende kontrole {day}",
-        "onlyAsked": "Net wanneer gevra",
         "skips": "{count, plural, one {Slaan # bron oor wat nooit verander nie} other {Slaan # bronne oor wat nooit verander nie}}",
         "means": "’n Kontrole lees elke bron weer en voeg die artikels by wat hierdie siftering nog nie het nie. Opgelaaide lêers en geplakte DOI’s verander nooit nie, so kontroles slaan hulle oor.",
         "checkNow": "Kontroleer nou",
@@ -9439,6 +9441,7 @@
         "arrived": "{done, number} van {count, number} is hier",
         "noneYet": "Geen artikel het nog by jou uitgekom nie",
         "noneYours": "Geen van die artikels hier is joune om op te stem nie",
+        "givenOut": "{count, plural, one {Elke artikel gaan na # persoon} other {Elke artikel gaan na # mense}}, en die artikels hier is aan ander gegee voordat jy aangesluit het. {living, select, true {Nuwe artikels word met jou gedeel soos hulle aankom.} other {Artikels kan vanaf die Oorsig na jou geskuif word.}}",
         "allVoted": "Jy het op al jou artikels gestem",
         "finished": "Hierdie siftering is klaar",
         "unvoted": "{count, plural, one {# van jou artikels het nie jou stem nie} other {# van jou artikels het nie jou stem nie}}",
