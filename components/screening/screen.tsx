@@ -197,8 +197,9 @@ function Screen({ open }: { open: Open }) {
   const openRow = useCallback((row: HTMLElement | null) => {
     if (row?.getClientRects().length) row.scrollIntoView({ block: "nearest" });
   }, []);
+  // Every paper the page moves to is a step in the browser's history, by a vote or a key or a click alike: Back goes to the paper that was on the screen before it. Typing a search, or naming the paper already open, steps nowhere.
   const openIt = (next: Paper) => {
-    void setPlace({ paper: next.id }, { history: "replace" });
+    void setPlace({ paper: next.id });
     setReasonFor(null);
     setWriting(null);
     setShown(null);
@@ -218,7 +219,7 @@ function Screen({ open }: { open: Open }) {
   };
   // Past the page's last paper is the next page's first, and before its first the page before.
   const turn = (to: () => void) => {
-    void setPlace({ paper: null }, { history: "replace" });
+    void setPlace({ paper: null });
     to();
   };
   const go = (index: number) => {
@@ -720,7 +721,7 @@ function Screen({ open }: { open: Open }) {
         ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
             <p className="text-sm font-medium">{t("queue.noMatch")}</p>
-            <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null }, { history: "replace" })}>{t("queue.showWhole")}</Button>
+            <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null })}>{t("queue.showWhole")}</Button>
           </div>
         ) : (
           <>

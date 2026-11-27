@@ -159,7 +159,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next);
   const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
   // Opening a paper and closing it are steps Back returns from. Going from one open paper to another changes the address in place.
-  const show = (paperId: string) => void setPlace({ paper: paperId }, opened ? { history: "replace" } : undefined);
+  // Each paper opened, by a click or a step, is a step in the browser's history: Back goes to the one that was open before.
+  const show = (paperId: string) => void setPlace({ paper: paperId });
   const close = () => void setPlace({ paper: null });
   // The other reviewers as one word: the list itself is a new one on every draw.
   const alsoKey = also.join(",");
@@ -240,9 +241,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // The step to the paper before or after the open one. Past the page's last paper is the next page's first, and before its first the last of the page before.
   const step = (by: 1 | -1) => {
     const next = at >= 0 ? shown[at + by] : undefined;
-    if (next) return void setPlace({ paper: next.id }, { history: "replace" });
+    if (next) return void setPlace({ paper: next.id });
     if (at < 0 || !(by === 1 ? listed.canNext : listed.canPrevious)) return;
-    void setPlace({ paper: by === 1 ? "first" : "last" }, { history: "replace" });
+    void setPlace({ paper: by === 1 ? "first" : "last" });
     (by === 1 ? listed.next : listed.previous)();
   };
   const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious), next: at >= 0 && (at < shown.length - 1 || listed.canNext) };
