@@ -192,11 +192,11 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     />
   );
   // The strip under the bar, the same while it is read: the pages on the first line, with what the models are doing, and how a paper is decided on the second.
-  // On Screen from a laptop's width the window's height goes to the paper: the rule shares the pages' line, where its chips scroll sideways.
+  // On Screen, where the strip is wide enough for both, the window's height goes to the paper: the rule shares the pages' line, the pages keep their width, and the chips take what is left. Narrower, the rule has its own line, as on the other pages.
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{passing}{view === "screen" ? <div className="min-w-0 max-lg:hidden">{rule}</div> : null}</div>
-      {view === "settings" ? null : <div className={cn("flex items-center px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden lg:hidden")}><div className="min-w-0">{rule}</div></div>}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className={cn("min-w-0 flex-1", view === "screen" && "@[82rem]/strip:flex-none")}>{pages}</FadeRow>{passing}{view === "screen" ? <div className="min-w-0 flex-1 @max-[82rem]/strip:hidden">{rule}</div> : null}</div>
+      {view === "settings" ? null : <div className={cn("flex items-center px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden @[82rem]/strip:hidden")}><div className="min-w-0">{rule}</div></div>}
     </>
   );
 
@@ -339,7 +339,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         </Help>
       </span>
       {/* On a phone the chips are four lines: the Overview shows them, and the other pages keep the one line with the "?" that says the same. */}
-      <div className={cn("min-w-0 max-sm:order-last max-sm:basis-full", view !== "overview" && "max-sm:hidden")}>
+      <div className={cn("min-w-0 max-sm:order-last max-sm:basis-full", view !== "overview" && "max-sm:hidden", view === "screen" && "@[82rem]/strip:flex-1")}>
       {/* They wrap onto a second line rather than scroll out of sight: what each chip says is the rule. */}
       <div className="flex flex-wrap items-center gap-2">
         <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
