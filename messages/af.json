@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} wag vir stemme",
       "inConflictFor": "{count} in konflik, vir {who} om te beslis",
       "upToDate": "Op datum",
-      "allSettled": "Elke artikel is beslis, gereed om af te sluit",
+      "allSettled": "{finish, select, true {Elke artikel is beslis, gereed om af te sluit} other {Elke artikel is beslis}}",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Geen stem van"
       },
       "pointsOf": "{points, number} van {max, plural, one {# punt} other {# punte}}",
-      "note": {
-        "label": "Nota",
-        "forOthers": "Nota vir die ander (opsioneel)",
-        "forRecord": "Nota vir die rekord (opsioneel)"
-      },
       "back": "Terug",
       "panel": {
         "placeOf": "{at, number} van {of, number}",

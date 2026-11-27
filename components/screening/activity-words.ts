@@ -67,7 +67,7 @@ const effectSays = ({ t }: EffectsSay): Record<string, (one: Line) => string> =>
 });
 
 /** Where a change opens: the papers a check brought, the setting it changed, the reviewers, or the paper it is about. */
-export function changeOpens(id: string, row: Logged): string | undefined {
+export function changeOpens(id: string, row: Logged, canChange: boolean): string | undefined {
   switch (row.code) {
     case "started": return papersHref(id);
     case "checked":
@@ -82,8 +82,9 @@ export function changeOpens(id: string, row: Logged): string | undefined {
     case "paused":
     case "resumed": return overviewHref(id, "reviewers");
     case "asked": { const paper = line(row, "paperId")?.detail; return paper ? screenHref(id, { queue: "conflicts", paper }) : undefined; }
-    case "settings": { const part = (row.more ?? []).find((one) => one.code === "part")?.detail; return settingsHref(id, part && isSetting(part) && part !== "name" && part !== "question" ? (part as "papers") : undefined); }
-    case "renamed": return settingsHref(id);
+    // Settings are opened only by whoever may change them: anyone else would land on a page that says they can't.
+    case "settings": { if (!canChange) return undefined; const part = (row.more ?? []).find((one) => one.code === "part")?.detail; return settingsHref(id, part && isSetting(part) && part !== "name" && part !== "question" ? (part as "papers") : undefined); }
+    case "renamed": return canChange ? settingsHref(id) : undefined;
   }
   return undefined;
 }

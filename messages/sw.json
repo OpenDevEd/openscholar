@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} zinasubiri kura",
       "inConflictFor": "{count} zenye mgongano, {who} aamue",
       "upToDate": "Uko sasa",
-      "allSettled": "Kila makala imeamuliwa, tayari kukamilishwa",
+      "allSettled": "{finish, select, true {Kila makala imeamuliwa, tayari kukamilishwa} other {Kila makala imeamuliwa}}",
       "none": "{show, select, you {Hakuna kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika.} open {Hakuna uchujaji unaoendelea.} other {Hakuna uchujaji.}}",
       "noneCalled": "{show, select, you {Hakuna kinachoitwa {name} kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika unaoitwa {name}.} open {Hakuna uchujaji unaoendelea unaoitwa {name}.} other {Hakuna uchujaji unaoitwa {name}.}}",
       "showEvery": "Onyesha kila uchujaji",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Hakuna kura kutoka kwa"
       },
       "pointsOf": "{points, number} kati ya {max, plural, one {pointi #} other {pointi #}}",
-      "note": {
-        "label": "Dokezo",
-        "forOthers": "Dokezo kwa wengine (si lazima)",
-        "forRecord": "Dokezo la kumbukumbu (si lazima)"
-      },
       "back": "Rudi",
       "panel": {
         "placeOf": "{at, number} kati ya {of, number}",

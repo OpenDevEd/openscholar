@@ -27,7 +27,7 @@ import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
-import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, modelsOf, questionOf, readersOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { useWords, type Words } from "./words";
@@ -205,6 +205,15 @@ export const settleMeans = (words: Words, screening: Pick<Screening, "reviewers"
   const { settle } = screening.rule;
   const advice = settle !== "one" && modelsAdvise(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
   return words.t(advice ? `settle.means.${settle}Advice` : `settle.means.${settle}`);
+};
+/**
+ * What settles a paper here, as a chip says it and the Settings summary does: the rule's own words where more than one
+ * vote can settle a paper, else whose one vote settles it. `conflicts`: the papers in conflict now, which split it too.
+ */
+export const settleSays = (words: Words, screening: Pick<Screening, "reviewers" | "rule">, pending: Pending[] = [], conflicts = 0) => {
+  const { settle } = screening.rule;
+  if (settle === "one" || splitsIn(screening, conflicts, pending)) return words.t(`settle.says.${settle}`);
+  return modelsAdvise(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length) ? words.t("settle.says.person") : words.t("settle.says.single");
 };
 /** The chip over a paper's votes while some are kept from you. */
 export const HiddenChip = ({ blind }: { blind: Blind }) => {

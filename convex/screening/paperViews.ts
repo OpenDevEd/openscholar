@@ -12,7 +12,7 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../l
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
-import { isFinal, leansOpen, nameHas, showsEarly, type Answer } from "../../lib/screening/rules";
+import { isFinal, leansOpen, nameHas, NO_REASON, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
 import { askedOf, invitationsTo, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
@@ -182,7 +182,7 @@ export const counts = workspaceQuery({
     if (!looking) return null;
     const check = asked === "start" ? looking.first : asked;
     if (asked === "start" && !check) return null;
-    const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? "other") === reason));
+    const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? NO_REASON) === reason));
     const tally = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
     const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
     if (cards.length > COUNTED) return null;
@@ -298,7 +298,7 @@ export const listAction = defineUserQuery({
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
     const others = (also ?? []).flatMap((id) => rowOf(id)?._id ?? []);
-    const keeps = (paper: Paper) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? "other") === reason));
+    const keeps = (paper: Paper) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? NO_REASON) === reason));
     // The papers every one of those reviewers voted on.
     const shared = async (paperId: Id<"screeningResults">) => !others.length || others.every((id) => castOn.get(paperId)?.has(id));
     const castOn = new Map<Id<"screeningResults">, Set<Id<"screeningReviewers">>>();

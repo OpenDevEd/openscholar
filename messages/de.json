@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} warten auf Stimmen",
       "inConflictFor": "{count} im Konflikt, {who} entscheidet",
       "upToDate": "Aktuell",
-      "allSettled": "Alle Artikel sind entschieden, bereit zum Abschließen",
+      "allSettled": "{finish, select, true {Alle Artikel sind entschieden, bereit zum Abschließen} other {Alle Artikel sind entschieden}}",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
       "showEvery": "Alle Screenings anzeigen",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Keine Stimme von"
       },
       "pointsOf": "{points, number} von {max, plural, one {# Punkt} other {# Punkten}}",
-      "note": {
-        "label": "Notiz",
-        "forOthers": "Notiz für die anderen (optional)",
-        "forRecord": "Notiz fürs Protokoll (optional)"
-      },
       "back": "Zurück",
       "panel": {
         "placeOf": "{at, number} von {of, number}",

@@ -63,10 +63,10 @@ import { bringsPdfs, hidingReaders, keptOf, leftOf, leftTotal, personIn, foundTo
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
-import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
+import { useScreeningsCrumb, overviewHref, papersHref, reviewerHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { settleMeans, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
+import { settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -541,7 +541,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const hiding = hidingReaders(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
-  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
+  const pending = saved ? (open?.invited ?? []) : [];
+  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, pending);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -906,7 +907,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ) : null,
     },
     // The same words as the rule's chip on the screening's pages (./workspace.tsx), with who settles its conflicts.
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.says.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.says.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" || !conflicts ? settleSays(words, draft, pending) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: settleSays(words, draft, pending, open?.counts.conflict ?? 0), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -964,7 +965,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reading ? <Chip><Spinner className="size-3" />{t("papers.stillReading")}</Chip> : null}
                 <Chip>{t.rich("papers.found", { soFar, n: () => <AnimatedNumber value={found + leftTotal(sources)} /> })}</Chip>
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
-                <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip>
+                {found - papers > 0 ? <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip> : null}
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved && papers ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
@@ -1423,7 +1424,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       key={reviewer.id}
                       reviewer={reviewer}
                       you={reviewer.id === me}
-                      href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
+                      href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
                       detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={

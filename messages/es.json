@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} esperando votos",
       "inConflictFor": "{count} en conflicto, que resuelve {who}",
       "upToDate": "Al día",
-      "allSettled": "Todos los artículos están resueltos, listo para terminar",
+      "allSettled": "{finish, select, true {Todos los artículos están resueltos, listo para terminar} other {Todos los artículos están resueltos}}",
       "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
       "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
       "showEvery": "Mostrar todos los cribados",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Sin voto de"
       },
       "pointsOf": "{points, number} de {max, plural, one {# punto} other {# puntos}}",
-      "note": {
-        "label": "Nota",
-        "forOthers": "Nota para los demás (opcional)",
-        "forRecord": "Nota para que conste (opcional)"
-      },
       "back": "Atrás",
       "panel": {
         "placeOf": "{at, number} de {of, number}",

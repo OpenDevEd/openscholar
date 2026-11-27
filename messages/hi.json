@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} वोट की प्रतीक्षा में",
       "inConflictFor": "{count} मतभेद में, {who} के सुलझाने को",
       "upToDate": "अद्यतन",
-      "allSettled": "हर लेख तय है, समाप्त करने के लिए तैयार",
+      "allSettled": "{finish, select, true {हर लेख तय है, समाप्त करने के लिए तैयार} other {हर लेख तय है}}",
       "none": "{show, select, you {आपकी ज़रूरत किसी में नहीं।} finished {कोई पूरी हुई स्क्रीनिंग नहीं।} open {कोई चल रही स्क्रीनिंग नहीं।} other {कोई स्क्रीनिंग नहीं।}}",
       "noneCalled": "{show, select, you {{name} नाम की किसी चीज़ में आपकी ज़रूरत नहीं।} finished {{name} नाम की कोई पूरी हुई स्क्रीनिंग नहीं।} open {{name} नाम की कोई चल रही स्क्रीनिंग नहीं।} other {{name} नाम की कोई स्क्रीनिंग नहीं।}}",
       "showEvery": "हर स्क्रीनिंग दिखाएँ",
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "इनका वोट नहीं"
       },
       "pointsOf": "{max, plural, one {# अंक} other {# अंकों}} में से {points, number}",
-      "note": {
-        "label": "नोट",
-        "forOthers": "बाकी लोगों के लिए नोट (वैकल्पिक)",
-        "forRecord": "रिकॉर्ड के लिए नोट (वैकल्पिक)"
-      },
       "back": "वापस",
       "panel": {
         "placeOf": "{of, number} में से {at, number}",

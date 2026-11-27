@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} à espera de votos",
       "inConflictFor": "{count} em conflito, para {who} resolver",
       "upToDate": "Atualizada",
-      "allSettled": "Todos os artigos estão decididos, pronto a terminar",
+      "allSettled": "{finish, select, true {Todos os artigos estão decididos, pronto a terminar} other {Todos os artigos estão decididos}}",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Sem voto de"
       },
       "pointsOf": "{points, number} de {max, plural, one {# ponto} other {# pontos}}",
-      "note": {
-        "label": "Nota",
-        "forOthers": "Nota para os outros (opcional)",
-        "forRecord": "Nota para o registo (opcional)"
-      },
       "back": "Voltar",
       "panel": {
         "placeOf": "{at, number} de {of, number}",

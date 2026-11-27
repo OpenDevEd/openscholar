@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} en attente de votes",
       "inConflictFor": "{count} en désaccord, à trancher par {who}",
       "upToDate": "À jour",
-      "allSettled": "Tous les articles sont tranchés, prêt à terminer",
+      "allSettled": "{finish, select, true {Tous les articles sont tranchés, prêt à terminer} other {Tous les articles sont tranchés}}",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "Pas de vote de"
       },
       "pointsOf": "{points, number} sur {max, plural, one {# point} other {# points}}",
-      "note": {
-        "label": "Remarque",
-        "forOthers": "Remarque pour les autres (facultative)",
-        "forRecord": "Remarque pour mémoire (facultative)"
-      },
       "back": "Retour",
       "panel": {
         "placeOf": "{at, number} sur {of, number}",

@@ -5123,7 +5123,7 @@
     "error": {
       "notAddress": "That isn't an address.",
       "notHosted": "Openscholar doesn't run that community.",
-      "private": "That collection is private. Its owner can share it with you.",
+      "private": "That collection is private. Whoever owns it can share it with you.",
       "notFound": "There's nothing at that address.",
       "empty": "That search or collection holds no records.",
       "profile": "Open one of their collections and copy that address.",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} waiting for votes",
       "inConflictFor": "{count} in conflict, for {who} to settle",
       "upToDate": "Up to date",
-      "allSettled": "Every paper is settled, ready to finish",
+      "allSettled": "{finish, select, true {Every paper is settled, ready to finish} other {Every paper is settled}}",
       "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
       "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
       "showEvery": "Show every screening",
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "No vote from"
       },
       "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
-      "note": {
-        "label": "Note",
-        "forOthers": "Note for the others (optional)",
-        "forRecord": "Note for the record (optional)"
-      },
       "back": "Back",
       "panel": {
         "placeOf": "{at, number} of {of, number}",

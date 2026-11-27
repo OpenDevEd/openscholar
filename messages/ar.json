@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} بانتظار الأصوات",
       "inConflictFor": "{count} في تعارض، يحسمها {who}",
       "upToDate": "محدّث",
-      "allSettled": "حُسمت كل الأوراق، وهو جاهز للإنهاء",
+      "allSettled": "{finish, select, true {حُسمت كل الأوراق، وهو جاهز للإنهاء} other {حُسمت كل الأوراق}}",
       "none": "{show, select, you {لا شيء يحتاجك.} finished {لا عمليات فرز منتهية.} open {لا عمليات فرز قيد التنفيذ.} other {لا عمليات فرز.}}",
       "noneCalled": "{show, select, you {لا شيء باسم {name} يحتاجك.} finished {لا عمليات فرز منتهية باسم {name}.} open {لا عمليات فرز قيد التنفيذ باسم {name}.} other {لا عمليات فرز باسم {name}.}}",
       "showEvery": "اعرض كل عمليات الفرز",
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "لا صوت من"
       },
       "pointsOf": "{points, number} من أصل {max, plural, zero {# نقطة} one {نقطة واحدة} two {نقطتين} few {# نقاط} many {# نقطة} other {# نقطة}}",
-      "note": {
-        "label": "ملاحظة",
-        "forOthers": "ملاحظة للآخرين (اختياري)",
-        "forRecord": "ملاحظة للسجل (اختياري)"
-      },
       "back": "رجوع",
       "panel": {
         "placeOf": "{at, number} من أصل {of, number}",

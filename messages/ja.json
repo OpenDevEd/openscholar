@@ -8715,7 +8715,7 @@
       "waitingForVotes": "投票待ち {count} 件",
       "inConflictFor": "不一致 {count} 件、{who} が判定",
       "upToDate": "最新です",
-      "allSettled": "すべての論文の結果が確定しました。完了にできます",
+      "allSettled": "{finish, select, true {すべての論文の結果が確定しました。完了にできます} other {すべての論文の結果が確定しました}}",
       "none": "{show, select, you {対応が必要なものはありません。} finished {完了したスクリーニングはありません。} open {進行中のスクリーニングはありません。} other {スクリーニングはありません。}}",
       "noneCalled": "{show, select, you {「{name}」という名前で対応が必要なものはありません。} finished {「{name}」という名前の完了したスクリーニングはありません。} open {「{name}」という名前の進行中のスクリーニングはありません。} other {「{name}」という名前のスクリーニングはありません。}}",
       "showEvery": "すべてのスクリーニングを表示",
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "投票なし:"
       },
       "pointsOf": "{max, plural, other {# 点}}中 {points, number} 点",
-      "note": {
-        "label": "メモ",
-        "forOthers": "ほかの人へのメモ（任意）",
-        "forRecord": "記録用のメモ（任意）"
-      },
       "back": "戻る",
       "panel": {
         "placeOf": "{of, number} 件中 {at, number} 件目",

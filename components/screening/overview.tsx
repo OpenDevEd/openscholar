@@ -986,7 +986,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <p>{t("checks.means")}</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button> : null}
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button> : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">

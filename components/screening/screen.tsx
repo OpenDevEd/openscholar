@@ -919,8 +919,8 @@ function Screen({ open }: { open: Open }) {
                                   const on = answered === answer;
                                   return (
                                     <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-8 min-w-0 items-center justify-center gap-1 rounded-md border px-1.5 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                                      {/* On the criterion the keys answer, from a laptop's width, each answer's key stands where its sign does, in its sign's colour: the row says which key gives which answer, and nothing gets wider. */}
-                                      <Icon className={cn("size-3.5 shrink-0", !on && TONE[tone].ink, toAnswer === criterion && "lg:hidden")} />
+                                      {/* On the criterion the keys answer, where there is a keyboard to press them (a pointer that isn't a finger), each answer's key stands where its sign does, in its sign's colour: the row says which key gives which answer, and nothing gets wider. */}
+                                      <Icon className={cn("size-3.5 shrink-0", !on && TONE[tone].ink, toAnswer === criterion && "pointer-fine:hidden")} />
                                       {toAnswer === criterion ? <Kbd className={cn("pointer-coarse:hidden", on ? "border-current/30 bg-transparent text-current" : TONE[tone].ink)}>{ANSWER_KEY[answer]}</Kbd> : null}
                                       <span className="truncate">{label}</span>
                                     </button>
@@ -1100,7 +1100,7 @@ function Screen({ open }: { open: Open }) {
                                 {group.list.map((reason) => (
                                   <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
                                     <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} asked /></span>
-                                    {reason.hotkey ? <Kbd>{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
+                                    {reason.hotkey ? <Kbd className="pointer-coarse:hidden">{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
                                   </DropdownMenuItem>
                                 ))}
                               </div>
@@ -1121,7 +1121,7 @@ function Screen({ open }: { open: Open }) {
                   <div className="flex min-w-0 items-center gap-2">
                     {/* Named as the last one: it is about the paper before, not the one open. */}
                     <span className="flex shrink-0 items-center gap-1.5"><Named name={last.resolved ? t("bar.lastSettledAs") : t("bar.lastVote")}><span className="font-medium text-foreground">{last.resolved ? words.result(last.decision) : words.decision(last.decision)}</span></Named>{last.noted ? <Chip icon={PenLine} className="h-5 px-1.5">{t("note.label")}</Chip> : null}</span>
-                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />{t("bar.undo")}<Kbd>Z</Kbd></Button>
+                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />{t("bar.undo")}<Kbd className="pointer-coarse:hidden">Z</Kbd></Button>
                   </div>
                   {lastReason || last.paper.id !== paper.id || madeConflict || differ ? (
                     <div className="flex min-w-0 items-center gap-2">

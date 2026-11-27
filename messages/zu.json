@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} alinde amavoti",
       "inConflictFor": "{count} ayangqubuzana, alinde u-{who} ukuthi akuxazulule",
       "upToDate": "Kusesikhathini",
-      "allSettled": "Onke amaphepha axazululiwe, sekulungele ukuqedwa",
+      "allSettled": "{finish, select, true {Onke amaphepha axazululiwe, sekulungele ukuqedwa} other {Onke amaphepha axazululiwe}}",
       "none": "{show, select, you {Akukho okudinga wena.} finished {Azikho izinkuskrini eziqediwe.} open {Azikho izinkuskrini eziqhubekayo.} other {Azikho izinkuskrini.}}",
       "noneCalled": "{show, select, you {Akukho okubizwa ngokuthi {name} okudinga wena.} finished {Azikho izinkuskrini eziqediwe ezibizwa ngokuthi {name}.} open {Azikho izinkuskrini eziqhubekayo ezibizwa ngokuthi {name}.} other {Azikho izinkuskrini ezibizwa ngokuthi {name}.}}",
       "showEvery": "Bonisa zonke izinkuskrini",
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "Alikho ivoti elivela ku-"
       },
       "pointsOf": "{points, number} kwa-{max, plural, one {# iphoyinti} other {# amaphoyinti}}",
-      "note": {
-        "label": "Inothi",
-        "forOthers": "Inothi labanye (uma uthanda)",
-        "forRecord": "Inothi lerekhodi (uma uthanda)"
-      },
       "back": "Emuva",
       "panel": {
         "placeOf": "{at, number} kwa-{of, number}",

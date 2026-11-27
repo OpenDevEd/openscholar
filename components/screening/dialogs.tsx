@@ -31,7 +31,7 @@ import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } f
 import { changeOpens, changeSays } from "./activity-words";
 import { blindOf, modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
-import { papersHref } from "./links";
+import { papersHref, reviewerHref } from "./links";
 import { blindSays, Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { pdfsOf, perPaper, type Open } from "./store";
 import { AddModel } from "./team";
@@ -67,7 +67,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
             {changes.results.map((change) => {
               const scheduled = change.code === "scheduledCheck";
               const reviewer = screening.reviewers.find((one) => one.id === change.by.id);
-              const href = changeOpens(screening.id, change);
+              const href = changeOpens(screening.id, change, state.canChange);
               const { what, effect } = changeSays({ words, t: effects }, change);
               const body = (
                 <span className="min-w-0 flex-1 space-y-0.5">
@@ -82,10 +82,12 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
                     <p className="flex min-h-7 items-center gap-3 text-sm font-medium">
                       {scheduled ? (
                         t("activitySheet.scheduled")
-                      ) : reviewer ? (
-                        <NextLink href={papersHref(screening.id, { reviewer: reviewer.id })} className="min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
+                      ) : reviewer && reviewerHref(screening.id, reviewer) ? (
+                        <NextLink href={reviewerHref(screening.id, reviewer)!} className="min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
                           <ReviewerName reviewer={reviewer} you={reviewer.id === state.me} />
                         </NextLink>
+                      ) : reviewer ? (
+                        <span className="min-w-0"><ReviewerName reviewer={reviewer} you={reviewer.id === state.me} /></span>
                       ) : (
                         <span className="truncate">{change.by.name}</span>
                       )}
@@ -160,7 +162,11 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   const room = useProtectedQuery(api.sharing.guests.room, shared).data;
   const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: PAGE });
   const invited = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: PAGE });
-  const members = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && addAs === "reviewer" ? { text, paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
+  const membersRead = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && addAs === "reviewer" ? { text, paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
+  // While the next letter's members are read, the last ones found stay: the list never empties under the typing.
+  const [lastMembers, setLastMembers] = useState(membersRead);
+  if (membersRead !== undefined && membersRead !== lastMembers) setLastMembers(membersRead);
+  const members = membersRead ?? (may && open && addAs === "reviewer" ? lastMembers : undefined);
   const outside = usePaginatedQuery(api.sharing.guests.candidates, inWorkspace(workspaceId, may && open ? { kind: "screening" as const, id: id as string, ...(text ? { text } : {}) } : "skip"), { initialNumItems: SUGGESTED });
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
