@@ -132,7 +132,7 @@ export function ScreeningsIndex() {
             {/* What waits elsewhere, the first-use block or the list: each slides to its height as the counts and the rows come. */}
             <AutoHeight>
               {draft && counts !== undefined ? (
-                <div className="fade-enter mb-4 flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
+                <div className="fade-enter flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6">
                   <PenLine aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                   <p className="min-w-0 flex-1 truncate text-sm">{t("draft.says", { named: String(Boolean(draft.name)), name: draft.name })}</p>
                   <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
