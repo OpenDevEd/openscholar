@@ -6902,6 +6902,7 @@
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
           "nothingOff": "{code} ayehlisi inani lokushicilela umbiko.",
           "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
+          "codeUsed": "Usuyisebenzisile i-{code}.",
           "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze.",
           "typeFirst": "Thayipha ikhodi kuqala."
         },
