@@ -34,8 +34,9 @@ const folded = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").r
 
 /** People on ORCID for the words typed, best first: those at one of the author's institutions, then everyone else. */
 export async function findOrcidPeople(words: string, institutions: string[] = []) {
+  const at = atInstitutions(institutions);
   const [near, all] = await Promise.all([
-    institutions.length ? searchOrcid(`given-and-family-names:(${words.replace(/[():"\\]/g, " ")}) AND (${institutions.map((i) => `affiliation-org-name:${phrase(i)}`).join(" OR ")})`, 5) : [],
+    at ? searchOrcid(`given-and-family-names:(${words.replace(/[():"\\]/g, " ")}) AND ${at}`, 5) : [],
     searchOrcid(words, 8),
   ]);
   const seen = new Set(near.map((person) => person.orcid));
@@ -48,18 +49,44 @@ export async function findOrcidPeople(words: string, institutions: string[] = []
  * author with no iD, and a name spelt differently from its ORCID record (Bjoern for Björn) finds nobody.
  */
 export async function matchOrcid(name: string, institutions: string[]): Promise<{ orcid: string; institution: string } | null> {
-  if (!name.trim() || !institutions.length) return null;
-  const q = `given-and-family-names:${phrase(name)} AND (${institutions.map((i) => `affiliation-org-name:${phrase(i)}`).join(" OR ")})`;
+  const named = institutions.filter((i) => queryWords(i).length);
+  const at = atInstitutions(named);
+  if (!name.trim() || !at) return null;
+  const q = `given-and-family-names:${phrase(name)} AND ${at}`;
   const { people, found } = await searchOrcidPage(q, MATCH_ROWS);
   // Every person the search found is read, or none is taken: one more past the page could share the name.
   if (found > people.length) return null;
-  const same = people.filter((person) => folded(person.name) === folded(name));
-  if (same.length !== 1) return null;
-  const person = same[0]!;
-  // Only someone whose own record names one of the author's institutions: the search's match on an affiliation alone
-  // can be a name the record lists differently, or none of its own.
-  const institution = institutions.find((i) => person.institutions.some((at) => folded(at) === folded(i)));
-  return institution ? { orcid: person.orcid, institution } : null;
+  // Only someone whose own record names one of the author's institutions: the search matches words spread over
+  // several of a record's affiliations too.
+  const matches = people.flatMap((person) => {
+    const institution = folded(person.name) === folded(name) ? named.find((i) => person.institutions.some((at) => sameInstitution(i, at))) : undefined;
+    return institution ? [{ orcid: person.orcid, institution }] : [];
+  });
+  return matches.length === 1 ? matches[0]! : null;
+}
+
+/** Words that tell one organisation's name from another's; "The Research and Evaluation Centre" is research, evaluation, centre. */
+const LINKING_WORDS = new Set(["and", "of", "the", "for", "in", "at"]);
+const telling = (words: string) => words.split(" ").filter((word) => word && !LINKING_WORDS.has(word));
+const institutionWords = (name: string) => telling(organisationName(name));
+/** The same words with their accents: ORCID's affiliation search reads "montreal" and "montréal" as different words. */
+const queryWords = (name: string) => telling(name.normalize("NFC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim());
+/** ORCID's search for anyone with an affiliation holding every word of one of these institutions; none for no words. */
+const atInstitutions = (institutions: string[]) => {
+  const each = institutions.map(queryWords).filter((words) => words.length);
+  return each.length ? `(${each.map((words) => `affiliation-org-name:(${words.map((w) => `+${w}`).join(" ")})`).join(" OR ")})` : "";
+};
+
+/**
+ * Whether an institution on an ORCID record is the one a PDF printed: the record's name holds every word of the
+ * printed one, so "Campbell South Asia" is "Campbell Collaboration South Asia" and "The Research and Evaluation
+ * Centre" is "Research & Evaluation Centre UK". ponytail: a short printed name can sit inside another organisation's
+ * ("University of Oxford" in "Oxford Brookes University"); the person's exact name and being the only match guard it.
+ */
+export function sameInstitution(printed: string, recorded: string) {
+  const words = institutionWords(printed);
+  const held = new Set(institutionWords(recorded));
+  return words.length > 0 && words.every((word) => held.has(word));
 }
 
 const ROR_API = "https://api.ror.org/v2/organizations";
