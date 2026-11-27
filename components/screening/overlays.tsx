@@ -6,7 +6,7 @@
 // and do the same.
 
 import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
-import { useOpenInAddress } from "./address";
+import { innerStep, useOpenInAddress } from "./address";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -104,7 +104,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   // The Export dialog's tab, in the address with it: each tab is a step, Back returns to the one before, and closing Export goes back over all of them.
   const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "push", scroll: false }));
   const exportTab = tabInAddress ?? "papers";
-  const setExportTab = (tab: ExportTab) => void setTabInAddress(tab === "papers" ? null : tab);
+  const setExportTab = (tab: ExportTab) => void setTabInAddress(tab === "papers" ? null : tab, innerStep());
   // A reviewer about to be added, one about to be taken off and one about to be made a viewer: each says what it does before it happens.
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);

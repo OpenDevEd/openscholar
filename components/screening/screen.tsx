@@ -314,8 +314,9 @@ function Screen({ open }: { open: Open }) {
 
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
-    // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note.
-    const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : (mine?.note ?? "")).trim() || undefined;
+    // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note. A saved note that was the reason for excluding ("Another reason") isn't carried to another decision, where it would say the opposite.
+    const carried = mine?.reason === OTHER_REASON && decision !== "exclude" ? "" : (mine?.note ?? "");
+    const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : carried).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
       setReasonFor(null);
@@ -572,7 +573,8 @@ function Screen({ open }: { open: Open }) {
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
   // One the counts say is empty says so at once.
   // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked. Just after a vote here the counts lag it, so the list itself is waited for.
-  const known = !searched && !picked && queueTotal === 0 && since.length === 0;
+  // Only a pending vote that moves a count (a first vote, a conflict settled) makes the counts lag; changing a vote moves none.
+  const known = !searched && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict"));
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -938,7 +940,8 @@ function Screen({ open }: { open: Open }) {
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
-              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
+              {/* Its place is held before the first vote too, so the bar keeps its rows when the way back appears. */}
+              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : <span aria-hidden className="invisible flex items-center gap-1 min-[87.5rem]:hidden"><span className="size-8" /><span className="size-6" /></span>}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
                 <TooltipHint label={t("shortcuts.title")}>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
@@ -994,7 +997,8 @@ function Screen({ open }: { open: Open }) {
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <Input maxLength={NOTE_LENGTH} autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                  {/* Two lines on a phone, so a longer reason stays in view as it is written; Enter excludes, as the button shows. */}
+                  <Textarea maxLength={NOTE_LENGTH} autoFocus rows={1} value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="max-h-24 min-h-8 resize-none py-1.5 text-sm max-lg:min-h-14" />
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
                     <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>

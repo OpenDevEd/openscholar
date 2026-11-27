@@ -63,6 +63,12 @@ export function useOpenInAddress<T extends string>(key: string, values: readonly
 }
 
 /**
+ * How a choice inside something open (a dialog's tab) writes to the history: a step of its own where the browser can
+ * say how many steps back the page is, and in place where it can't, so closing is always one step back.
+ */
+export const innerStep = () => ({ history: navigation() ? ("push" as const) : ("replace" as const) });
+
+/**
  * How a search box writes to the history: starting a search and clearing one are steps, since the list changes in front
  * of the person, and the letters typed in between replace each other. Every list's search box asks this.
  */

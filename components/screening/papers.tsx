@@ -207,7 +207,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     ...(who && voted !== "any" ? { voted } : {}),
   };
   // The server gives one reviewer's papers in the order they voted on them, and a search's in the order they best match: no other order is offered then, and the menu says which it is.
-  const fixedOrder = searched ? ("bySearch" as const) : who ? ("byVote" as const) : null;
+  const fixedOrder = searched ? ("bySearch" as const) : who ? (voted === "none" || voted === "failed" ? ("byPlace" as const) : ("byVote" as const)) : null;
   const matching = { jobId: id, ...(filter !== "all" ? { result: filter } : {}), ...narrowed, ...(others.length ? { also: others } : {}), ...(searched ? { text: searched } : {}) };
   const listed = useCursorPageAt("page", api.screening.paperViews.list, inWorkspace(workspaceId, { ...matching, ...(sort !== "added" ? { sort } : {}) }), PAGE, { scroll: false });
   const shown = listed.items;
