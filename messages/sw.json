@@ -8120,7 +8120,8 @@
       "share": {
         "readsAll": "{you, select, true {Unasoma kila makala} other {{name} anasoma kila makala}}",
         "about": "{more, select, true {{count, plural, one {Takriban makala # kwa kila mtu, na sehemu ya zile mpya} other {Takriban makala # kwa kila mtu, na sehemu ya zile mpya}}} other {{count, plural, one {Takriban makala # kwa kila mtu} other {Takriban makala # kwa kila mtu}}}}",
-        "range": "{more, select, true {Makala {least} hadi {most} kwa kila mtu, na sehemu ya zile mpya} other {Makala {least} hadi {most} kwa kila mtu}}"
+        "range": "{more, select, true {Makala {least} hadi {most} kwa kila mtu, na sehemu ya zile mpya} other {Makala {least} hadi {most} kwa kila mtu}}",
+        "onceJoined": "{count, plural, one {Takriban makala # kwa kila mtu waalikwa wote wakishajiunga} other {Takriban makala # kwa kila mtu waalikwa wote wakishajiunga}}"
       },
       "unsaved": "{count, plural, one {badiliko # halijahifadhiwa} other {mabadiliko # hayajahifadhiwa}}",
       "unsavedCount": "{count, plural, other {# hayajahifadhiwa}}",
@@ -9576,8 +9577,7 @@
         "known": "Iko kwenye faharasa",
         "file": "Inasomwa kutoka PDF yake",
         "broken": "Haifunguki",
-        "waiting": "Inaisoma",
-        "costsMore": "zaidi kwa makala inayosomwa kutoka PDF yake"
+        "waiting": "Inaisoma"
       },
       "removed": {
         "merged": "Marudio yameunganishwa",

@@ -403,6 +403,8 @@ export const fill = internalMutation({
         // A paper kept before its source named records is told by its paper alone.
         const own = twin.sourceId === sourceId && (paper.record === undefined || twin.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
         if (!own && (await merge(title, twin._id, named))) duplicates++;
+        // A paper kept before its source named records takes the record it is met by now: a second record of its work met later is then a duplicate merged, as it is for a paper kept since.
+        if (own && paper.record && twin.record === undefined) await ctx.db.patch("screeningResults", twin._id, { record: paper.record });
         continue;
       }
       // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.

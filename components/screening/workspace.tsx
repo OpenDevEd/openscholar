@@ -4,6 +4,7 @@
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
+import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
@@ -101,7 +102,7 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
     whoIcon: each ? Users : AiIcon,
     when: words.t(`settle.says.${screening.rule.settle}`),
     // As advice, the models' votes settle nothing on a paper a person has: said beside the rule, where it changes what the rule means.
-    advice: screening.rule.models === "advice" && screening.rule.settle !== "one" && each > 0 && models > 0 ? t("rule.advice") : null,
+    advice: modelsAdvise(screening.rule, each, models) ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
     // Once it is finished nobody has a vote left to cast, and every vote shows (lib/screening/rules.ts `seesVotes`).
     see: screening.rule.blind === "after" && !screening.finishedAt ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : screening.finishedAt && screening.rule.blind === "after" ? t("rule.visibleFinished") : t("rule.visible"),

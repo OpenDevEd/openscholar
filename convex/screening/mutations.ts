@@ -25,7 +25,6 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
-import { addCollectionMembership } from "../library/collectionMembership";
 import { deriveCompletionTransition } from "./completion";
 import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -485,27 +484,6 @@ export const markScreeningJobCreditsExhausted = internalMutation({
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
-    return null;
-  },
-});
-
-/**
- * Add a library item to a collection (no auth, internal only).
- *
- * Idempotent: if already in collection, no-op.
- * Increments denormalized itemCount on the collection.
- */
-export const addToCollectionInternal = internalMutation({
-  args: {
-    userId: v.id("users"),
-    collectionId: v.id("collections"),
-    libraryItemId: v.id("libraryItems"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const collection = await ctx.db.get("collections", args.collectionId);
-    const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (collection && item) await addCollectionMembership(ctx, { collection, item });
     return null;
   },
 });

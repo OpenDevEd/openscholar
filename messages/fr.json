@@ -8119,7 +8119,8 @@
       "share": {
         "readsAll": "{you, select, true {Vous lisez chaque article} other {{name} lit chaque article}}",
         "about": "{more, select, true {{count, plural, one {Environ # article par personne, et une part des nouveaux} other {Environ # articles par personne, et une part des nouveaux}}} other {{count, plural, one {Environ # article par personne} other {Environ # articles par personne}}}}",
-        "range": "{more, select, true {De {least} à {most} articles par personne, et une part des nouveaux} other {De {least} à {most} articles par personne}}"
+        "range": "{more, select, true {De {least} à {most} articles par personne, et une part des nouveaux} other {De {least} à {most} articles par personne}}",
+        "onceJoined": "{count, plural, one {Environ # article par personne une fois que toutes les personnes invitées auront rejoint} other {Environ # articles par personne une fois que toutes les personnes invitées auront rejoint}}"
       },
       "unsaved": "{count, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
       "unsavedCount": "{count, plural, one {# non enregistrée} other {# non enregistrées}}",
@@ -9575,8 +9576,7 @@
         "known": "Dans l'index",
         "file": "Lu depuis son PDF",
         "broken": "Ne s'ouvre pas",
-        "waiting": "Lecture en cours",
-        "costsMore": "de plus pour un article lu depuis son PDF"
+        "waiting": "Lecture en cours"
       },
       "removed": {
         "merged": "Doublons fusionnés",

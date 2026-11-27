@@ -188,7 +188,6 @@ export function LibrarySelect({ libraries, value, onChange, totalOf }: { librari
 
 export function LibrarySources({
   state,
-  notice,
   many = false,
   isOn,
   onToggle,
@@ -196,8 +195,6 @@ export function LibrarySources({
   scope,
 }: {
   state: LibrarySourceState;
-  /** Why the source the form was opened on can't be read, said where a pasted address's problem is. */
-  notice?: string;
   /** Extraction takes any number of sources; screening one. */
   many?: boolean;
   isOn: (row: LibraryRow) => boolean;
@@ -216,7 +213,7 @@ export function LibrarySources({
   const [address, setAddress] = useState("");
   const [resolving, setResolving] = useState(false);
   const [pasteProblem, setProblem] = useState<string | null>(null);
-  const problem = pasteProblem ?? notice ?? null;
+  const problem = pasteProblem;
 
   const read = library ? contents.find((one) => one.libraryId === library.libraryId) : undefined;
   const listed = read?.rows ?? [];

@@ -5,9 +5,12 @@
 // the papers behind them.
 
 import { EASE } from "@/components/settings/model-map";
+import { modelsAdvise } from "@/lib/screening/rules";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "@/convex/_generated/api";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -32,34 +35,13 @@ export type EffectSection = "name" | "papers" | "new-papers" | "criteria" | "rev
  */
 export type EffectLine = { /** What it does, said before the change is made, with when it takes hold. */ text: string; /** The same once the change is made, where it differs: the log of what was done leaves out when it takes hold. */ done?: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen" | "held"; credits?: number; each?: boolean; section?: EffectSection };
 
-/** The results a change moves: so many papers from one result to another, the first of them by name, and how many of them the person looking has yet to vote on. */
-export type Move = { from: Result; to: Result; count: number; papers: Array<{ id: string; title: string; year?: number }>; hidden: number };
-
 /**
  * What the server counts for a change to a running screening before it is made (convex/screening/effects.ts): the
  * numbers every line here states. Nothing in a line is worked out in the browser.
  */
-export type Preview = {
-  /** Its papers once the change is made, and how many of them the change opens again or brings. */
-  total: number;
-  reopened: number;
-  /** Each reviewer the change puts on it: the papers a model reads, the open papers a person gets. */
-  joining: Record<string, { reads?: number; dealt?: number }>;
-  /** Each reviewer it takes off: their votes, the papers of theirs that go to someone else (voted on or not, and to whom), and the ones nobody takes that settle or go on waiting. */
-  leaving: Record<string, { cast: number; unvoted: number; voted: number; to: string[]; settled: number; waiting: number }>;
-  /** Open papers whose number of places changes. */
-  eachChanged: number;
-  /** Each model: the papers it has still to read once the change is made, and the ones the change has it read at once. */
-  models: Record<string, { ahead: number; atOnce: number }>;
-  /** Papers that leave with a source taken out. */
-  removed: number;
-  included: number;
-  moves: Move[];
-  /** Settled papers that would move if they were checked again. */
-  again: number;
-  /** The fewest and the most papers a person would have. */
-  loads?: { least: number; most: number };
-};
+export type Preview = FunctionReturnType<typeof api.screening.effects.preview>;
+/** The results a change moves: so many papers from one result to another, the first of them by name, and how many of them the person looking has yet to vote on. */
+export type Move = Preview["moves"][number];
 export const NO_PREVIEW: Preview = { total: 0, reopened: 0, joining: {}, leaving: {}, eachChanged: 0, models: {}, removed: 0, included: 0, moves: [], again: 0 };
 
 const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
@@ -156,7 +138,8 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   }
   if (joining.length && wasIds.size) {
     lines.push({ text: t("votesStay"), section: "reviewers" });
-    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one" && after.rule.models !== "advice") lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
+    const models = joining.filter((reviewer) => reviewer.kind === "model").length;
+    if (models && after.rule.settle !== "one" && !modelsAdvise(after.rule, readersOf(after).each, models)) lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;
