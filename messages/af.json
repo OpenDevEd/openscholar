@@ -7783,7 +7783,8 @@
   "screening": {
     "effects": {
       "counting": "Bereken wat dit doen",
-      "countFailed": "Kon nie bereken wat dit doen nie. Maak dit toe en probeer weer",
+      "countFailed": "Kon nie bereken wat dit doen nie",
+      "countAgain": "Probeer weer",
       "criterionUnwritten": "die kriterium wat nog geen vraag het nie",
       "reopens": "{count, plural, one {# artikel is weer oop. Die siftering bly klaar, so niemand stem daarop totdat dit heropen word nie} other {# artikels is weer oop. Die siftering bly klaar, so niemand stem daarop totdat dit heropen word nie}}",
       "model": {
@@ -8410,7 +8411,6 @@
         "willDo": "Wat stoor doen",
         "counting": "Bereken wat stoor doen",
         "countFailed": "Kon nie bereken wat stoor doen nie, so dit kan nog nie gestoor word nie",
-        "countAgain": "Probeer weer",
         "did": "Wat die stoor gedoen het",
         "recheck": "Gaan die beslisde artikels weer na",
         "recheckOn": "Elke beslisde artikel word onder die nuwe instellings nagegaan. Dié wat hierbo gelys is, kry ’n ander uitslag.",

@@ -7,6 +7,7 @@ import { copyText } from "@/components/copy-text";
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -32,7 +33,8 @@ import { useWords } from "./words";
 
 import type { ExportTab } from "./dialogs";
 /** Which papers the first tab takes out: the ones with one result, every paper, or the person's own includes. */
-type Group = Result | "all" | "mine";
+const GROUPS = [...RESULTS, "all", "mine"] as const;
+type Group = (typeof GROUPS)[number];
 const GROUP_FILE: Record<Group, string> = { include: "included", maybe: "maybe", exclude: "excluded", conflict: "in-conflict", waiting: "waiting", all: "all-papers", mine: "my-includes" };
 
 /** The columns of the votes file, as the sample of it shows them. */
@@ -52,9 +54,13 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const [busy, setBusy] = useState<string | null>(null);
   const setTab = onTab;
   // Whose votes the votes file holds: everyone's, or one reviewer's.
-  const [whose, setWhose] = useState("all");
+  // Whose votes and which papers are in the address with the dialog's tab: each choice is a step, and Forward or a reload shows the same file.
+  const [chosen, setChosen] = useQueryStates({ whose: parseAsString.withDefault("all"), group: parseAsStringLiteral(GROUPS) }, { history: "push", scroll: false });
+  const whose = chosen.whose;
+  const setWhose = (next: string) => void setChosen({ whose: next === "all" ? null : next });
   // Which papers: unset, the included ones, or the person's own includes where nothing is included yet.
-  const [picked, setPicked] = useState<Group | null>(null);
+  const picked = chosen.group;
+  const setPicked = (next: Group) => void setChosen({ group: next });
   const { screening, counts, total } = state;
   const { id } = screening;
   // The figures the diagram and the paragraph count from (the reasons, the checks, the agreement): until they are in, neither is taken, or it would leave them out.
@@ -186,7 +192,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               <Info className="mt-1 size-4 shrink-0 ink-warning" />
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                 <span className="font-medium">{screening.finishedAt ? t("openFinished") : t("openRunning")}</span>
-                <OpenPapersChips id={id} conflict={counts.conflict} waiting={counts.waiting} onClick={onClose} />
+                <OpenPapersChips id={id} conflict={counts.conflict} waiting={counts.waiting} />
               </span>
             </Panel>
           ) : null}
@@ -227,7 +233,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                     {first.isLoading ? <li><ListRowsSkeleton rows={Math.min(included, 8)} height={56} icon={false} label={t("papers.loading")} /></li> : null}
                     {first.items.map((paper) => (
                       <li key={paper.id}>
-                        <NextLink href={papersHref(id, { paper: paper.id })} onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
+                        <NextLink href={papersHref(id, { paper: paper.id })} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">{paper.title}</span>
                             <span className="block truncate text-xs text-muted-foreground">{bylineOf(paper)}</span>
@@ -238,7 +244,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                     ))}
                   </ul>
                   <Button asChild variant="outline" size="sm">
-                    <NextLink href={allIncluded} onClick={onClose}>{t("papers.seeAll", { count: words.num(included) })}<ArrowRight /></NextLink>
+                    <NextLink href={allIncluded}>{t("papers.seeAll", { count: words.num(included) })}<ArrowRight /></NextLink>
                   </Button>
                 </div>
               ) : (
@@ -262,8 +268,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                       )) : null}
                       {sample.map((row) => (
                         <tr key={`${row.paper.id}:${row.reviewer.id}`}>
-                          <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
-                          <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} onClick={onClose} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
+                          <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
+                          <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
                           <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{words.decision(row.vote.decision)}</span></td>
                           <td className="px-3 text-xs text-muted-foreground">
                             {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, screening.criteria, "label")} label={words.failed(row.vote.reason, screening.criteria)} className="flex max-w-40 min-w-0"><Reason reason={row.vote.reason} criteria={screening.criteria} /></QuestionName> : t("votes.none")}
@@ -284,7 +290,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [screening.finishedAt ? t("votes.emptyWhy.finished") : t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
                 </p>
                 <Button asChild variant="outline" size="sm">
-                  <NextLink href={papersHref(id)} onClick={onClose}>{t("votes.seeEvery")}<ArrowRight /></NextLink>
+                  <NextLink href={papersHref(id)}>{t("votes.seeEvery")}<ArrowRight /></NextLink>
                 </Button>
               </div>
             ) : (tab === "flow" || tab === "methods") && !figures ? (

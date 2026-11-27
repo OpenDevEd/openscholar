@@ -55,8 +55,9 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
         <Chip icon={FileText}>{t("pdf.readAs", { pages: paper.pdf?.pages ?? 0 })}</Chip>
         {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>{t("pdf.openTab")}<ExternalLink aria-hidden className="size-3" /></a> : null}
       </div>
-      {/* The column holds its pages' height from the first frame: each page arrives inside its own place. */}
-      <div ref={column} style={{ minHeight: width ? pages * (Math.round(width * shape) + GAP) - GAP : undefined }}>
+      {/* The column holds its pages' height from the first frame, before it is measured (by its width, as a container): each page arrives inside its own place. */}
+      <div className="@container">
+      <div ref={column} style={{ minHeight: width ? pages * (Math.round(width * shape) + GAP) - GAP : `calc(${pages * shape} * 100cqw + ${(pages - 1) * GAP}px)` }}>
         {url && width ? (
           <Document
             key={paper.id}
@@ -71,6 +72,7 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
             {Array.from({ length: pages }, (_, i) => <PdfPage key={i} number={i + 1} width={width} shape={shape} mark={mark} />)}
           </Document>
         ) : null}
+      </div>
       </div>
     </div>
   );

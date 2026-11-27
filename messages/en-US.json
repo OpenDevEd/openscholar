@@ -7782,7 +7782,8 @@
   "screening": {
     "effects": {
       "counting": "Working out what this does",
-      "countFailed": "Couldn't work out what this does. Close this and try again",
+      "countFailed": "Couldn't work out what this does",
+      "countAgain": "Try again",
       "criterionUnwritten": "the criterion with no question yet",
       "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
       "model": {
@@ -8409,7 +8410,6 @@
         "willDo": "What saving does",
         "counting": "Working out what saving does",
         "countFailed": "Couldn't work out what saving does, so it can't be saved yet",
-        "countAgain": "Try again",
         "did": "What the save did",
         "recheck": "Check the settled papers again",
         "recheckOn": "Every settled paper is checked under the new settings. The ones listed above get another result.",

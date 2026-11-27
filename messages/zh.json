@@ -7782,7 +7782,8 @@
   "screening": {
     "effects": {
       "counting": "正在计算此操作的影响",
-      "countFailed": "无法计算此操作的影响。请关闭后重试",
+      "countFailed": "无法计算此操作的影响",
+      "countAgain": "重试",
       "criterionUnwritten": "尚未写问题的标准",
       "reopens": "{count, plural, other {# 篇论文重新变为未定。筛选仍保持已完成，因此在重新打开之前，没有人会对其投票}}",
       "model": {
@@ -8409,7 +8410,6 @@
         "willDo": "保存后的影响",
         "counting": "正在计算保存后的影响",
         "countFailed": "无法计算保存后的影响，因此暂时不能保存",
-        "countAgain": "重试",
         "did": "此次保存的结果",
         "recheck": "重新检查已定案的论文",
         "recheckOn": "每篇已定案的论文都会按新设置重新检查。上面列出的论文会得到另一个结果。",

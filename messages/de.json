@@ -7783,7 +7783,8 @@
   "screening": {
     "effects": {
       "counting": "Es wird ermittelt, was dies bewirkt",
-      "countFailed": "Was dies bewirkt, ließ sich nicht ermitteln. Schließen Sie dies und versuchen Sie es erneut",
+      "countFailed": "Was dies bewirkt, ließ sich nicht ermitteln",
+      "countAgain": "Erneut versuchen",
       "criterionUnwritten": "das Kriterium, das noch keine Frage hat",
       "reopens": "{count, plural, one {# Artikel ist wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist} other {# Artikel sind wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist}}",
       "model": {
@@ -8410,7 +8411,6 @@
         "willDo": "Was das Speichern bewirkt",
         "counting": "Es wird ermittelt, was das Speichern bewirkt",
         "countFailed": "Was das Speichern bewirkt, ließ sich nicht ermitteln, daher kann noch nicht gespeichert werden",
-        "countAgain": "Erneut versuchen",
         "did": "Was das Speichern bewirkt hat",
         "recheck": "Entschiedene Artikel erneut prüfen",
         "recheckOn": "Jeder entschiedene Artikel wird mit den neuen Einstellungen erneut geprüft. Die oben aufgeführten erhalten ein anderes Ergebnis.",

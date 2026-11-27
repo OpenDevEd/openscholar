@@ -51,7 +51,7 @@ export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, use
   if (old && old.left === undefined) return old._id;
   if (!old && reviewers.length >= MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "person", userId, addedAt: Date.now(), addedBy: by, dealt: 0 }));
-  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined, addedAt: Date.now() });
+  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId: job._id, reviewerId, before, cursor: null, result: "waiting" });
   if (tell && by !== userId) await ctx.scheduler.runAfter(JOINED_AFTER_MS, internal.screening.noticeMail.send, { jobId: job._id, userId, about: "joined", by });
   return reviewerId;
@@ -156,7 +156,7 @@ export async function addModel(ctx: MutationCtx, job: Doc<"screeningJobs">, mode
   if (reviewers.filter(readingModel).length >= most) throw createError("VALIDATION_ERROR", `This workspace's plan runs up to ${most} models on a screening. Take one off to add another.`);
   if (!old && reviewers.length >= MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "model", modelId: picked._id, ...(model.effort ? { effort: model.effort } : {}), addedAt: Date.now(), addedBy: by, dealt: 0 }));
-  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined, addedAt: Date.now() });
+  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId: job._id, reviewerId, cursor: null, result: "waiting" });
   return picked;
 }

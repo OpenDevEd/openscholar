@@ -255,12 +255,12 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
 
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 /** The papers a screening still has open, as two counts that open them on Papers: in conflict, and waiting for votes. */
-export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string; conflict: number; waiting: number; onClick?: () => void }) {
+export function OpenPapersChips({ id, conflict, waiting }: { id: string; conflict: number; waiting: number }) {
   const t = useTranslations("screening.pieces");
   return (
     <span className="flex flex-wrap gap-1.5">
-      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={onClick}>{t("openPapers.conflict", { count: conflict })}</LinkChip> : null}
-      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={onClick}>{t("openPapers.waiting", { count: waiting })}</LinkChip> : null}
+      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare}>{t("openPapers.conflict", { count: conflict })}</LinkChip> : null}
+      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass}>{t("openPapers.waiting", { count: waiting })}</LinkChip> : null}
     </span>
   );
 }
@@ -844,5 +844,17 @@ export function DiscussionLink({ count, writes = true, onClick }: { count: numbe
       <MessagesSquare aria-hidden className="size-3.5" />
       {count ? t("messages", { count }) : t("discuss")}
     </button>
+  );
+}
+
+/**
+ * The room a paper's PDF takes, held around the viewer while its code loads: its chip row and its pages at A4 for the
+ * column's width (./paper-pdf.tsx holds the same once it is in), so the votes and discussion under it never move.
+ */
+export function PdfRoom({ pages, children }: { pages: number; children: ReactNode }) {
+  return (
+    <div className="@container">
+      <div style={{ minHeight: `calc(2.25rem + ${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }}>{children}</div>
+    </div>
   );
 }

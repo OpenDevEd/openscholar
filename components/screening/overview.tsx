@@ -40,6 +40,7 @@ import { votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, Retry
 import { pdfsMissed, pdfsOf, unreadPdfs, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
+import { useOpenInAddress } from "./address";
 import { useWords } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -261,7 +262,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   // Taking someone off asks first, in the one confirmation the frame opens for it.
   const { takeOff } = useWorkspace();
   // The person some papers are being moved from, while that is being set up.
-  const [moving, setMoving] = useState<string | null>(null);
+  // Moving someone's papers opens over the page as the screening's other dialogs do: a step in the history, with whose papers they are.
+  const [moving, setMoving] = useOpenInAddress("moveFrom", null);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const isPerson = new Set(screening.reviewers.filter((one) => one.kind === "person").map((one) => one.id));
   const rows: ReviewerRowData[] = reviewers.map((reviewer) => {
@@ -629,11 +631,15 @@ const UNREAD_PAGE = 8;
 function Unread({ open, model }: { open: Open; model: Reviewer }) {
   const id = open.screening.id;
   const t = useTranslations("screening.overview");
-  const papers = useCursorPageAt("unreadPage", api.screening.paperViews.list, inWorkspace(usePageWorkspace(), { jobId: id, reviewer: model.id, voted: "failed" as const }), UNREAD_PAGE);
+  // A popover's pages are its own, as a menu's choices are: not steps in the history.
+  const papers = useCursorPage(api.screening.paperViews.list, inWorkspace(usePageWorkspace(), { jobId: id, reviewer: model.id, voted: "failed" as const }), UNREAD_PAGE);
+  // Until the first page comes, a row holds the place of each paper it will show: the count is known already.
+  const coming = papers.isLoading ? Math.min(model.tally?.failed ?? 1, UNREAD_PAGE) : 0;
   return (
     <>
       <ScrollArea shades className="-mx-1 min-h-10 flex-1">
         <ul className={cn("space-y-0.5 transition-opacity", papers.isStale && "opacity-60")}>
+          {Array.from({ length: coming }, (_, at) => <li key={`coming-${at}`} aria-hidden className="px-1 py-1"><SkeletonBar className="h-4 w-4/5" /></li>)}
           {papers.items.map((paper) => (
             <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span dir="auto" className="line-clamp-2">{paper.title}{paper.year === undefined ? "" : ` (${paper.year})`}</span></NextLink></li>
           ))}
@@ -792,7 +798,7 @@ function Facts({ open }: { open: Open }) {
   const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
   const offSpent = spent - models.reduce((sum, model) => sum + open.spent(model), 0);
   // Just started: its papers are in and none has reached a model yet. Nothing is read, so nothing says every paper is.
-  const unreached = open.total > 0 && !screening.finishedAt && models.length > 0 && models.every((model) => (model.tally?.dealt ?? 0) === 0);
+  const unreached = open.total > 0 && !screening.finishedAt && open.counts.waiting + open.counts.conflict > 0 && models.length > 0 && models.every((model) => (model.tally?.dealt ?? 0) === 0);
   // The readings that failed: the line under what was spent says so, as each model's row does.
   const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
   // The workspace's credits are its members' to see: anyone else is told nothing of them.

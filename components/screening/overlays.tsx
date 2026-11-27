@@ -7,7 +7,8 @@
 
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useOpenInAddress } from "./address";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { BellOff, CircleCheck, CirclePause, Coins, Copy, Download, History, LogOut, Mail, Move, Play, RefreshCw, RotateCcw, Settings2, Trash2, UserPlus, Users } from "@/components/icons";
@@ -89,29 +90,28 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
 }
 
 /**
- * The overlays of one screening and the ways to open them. `start` opens one at once, for a row's menu
- * in the list. `onClosed` runs when the last of them has closed, and `onDeleted` after a deletion.
+ * The overlays of one screening and the ways to open them, kept in the address over its pages and over the list's row
+ * (./address.ts): opening one is a step in the history, Back closes it, and closing it steps back. `onDeleted` runs
+ * after a deletion.
  */
-export function useScreeningOverlays(state: Open | null, { start = null, address = false, onClosed, onDeleted }: { start?: Over | null; /** Over an open screening, what is open is kept in the address: Back closes it (./address.ts). A list's row menu keeps it to itself. */ address?: boolean; onClosed?: () => void; onDeleted?: () => void } = {}) {
+export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDeleted?: () => void } = {}) {
   const t = useTranslations("screening.frame");
   const words = useWords();
-  const [kept, setKept] = useState<Over | null>(start);
-  const [addressed, setAddressed] = useOpenInAddress("over", OVERS, { inner: ["tab"] });
-  const over = address ? addressed : kept;
-  const setOver = (next: Over | null) => (address ? setAddressed(next) : setKept(next));
+  const [over, setOver] = useOpenInAddress("over", OVERS, { inner: ["tab", "whose", "group", "row"] });
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
   const [emailsLink, setEmailsLink] = useQueryState("emails");
-  // The Export dialog's tab, in the address with it, so a reload keeps it. A dialog is one step in the history: its tabs replace each other there, and Back closes it.
-  const [keptTab, setKeptTab] = useState<ExportTab>("papers");
-  const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "replace", scroll: false }));
-  const exportTab = address ? (tabInAddress ?? "papers") : keptTab;
-  const setExportTab = (tab: ExportTab) => (address ? void setTabInAddress(tab === "papers" ? null : tab) : setKeptTab(tab));
+  // The Export dialog's tab, in the address with it: each tab is a step, Back returns to the one before, and closing Export goes back over all of them.
+  const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "push", scroll: false }));
+  const exportTab = tabInAddress ?? "papers";
+  const setExportTab = (tab: ExportTab) => void setTabInAddress(tab === "papers" ? null : tab);
   // A reviewer about to be added, one about to be taken off and one about to be made a viewer: each says what it does before it happens.
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const [demoting, setDemoting] = useState<Reviewer | null>(null);
   // A confirmation is open over the page as anything else is (`over=confirm`), taking People's place when asked from there and going back to it once answered.
   const [fromPeople, setFromPeople] = useState(false);
+  // A delete or leave under way: the dialog stays until the page it leads to replaces this one.
+  const going = useRef(false);
   const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean) => { set(reviewer); setFromPeople(people); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
@@ -127,7 +127,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
 
   const { screening } = state;
   const { id } = screening;
-  const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); onClosed?.(); };
+  const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); };
+  // A screening deleted or left: its own pages lead away to the list in place of this entry; over the list, the dialog takes itself out of the address.
+  const gone = () => { going.current = false; if (onDeleted) onDeleted(); else setOver(null, { inPlace: true }); };
   const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) setOver("people"); else close(); };
   // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
   const confirming = over === "confirm" && Boolean(adding || leaving || demoting);
@@ -188,14 +190,15 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
           ]}
         />
         {/* The papers that would be left unsettled, one press away. */}
-        {unsettled ? <OpenPapersChips id={id} conflict={state.counts.conflict} waiting={state.counts.waiting} onClick={close} /> : null}
+        {unsettled ? <OpenPapersChips id={id} conflict={state.counts.conflict} waiting={state.counts.waiting} /> : null}
       </ConfirmChange>
       {/* Whoever made it deletes it, or an admin of its workspace (convex/workspaces/actor.ts `requireMakerOrAdmin`): the menu offers it to nobody else. */}
-      <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={close} onConfirm={() => void state.remove().then(() => onDeleted?.(), failed(t))}>
+      {/* Once confirmed, it doesn't step back to the page it was asked on, which is gone: the page it leads to takes that entry's place, and Forward never returns to it. */}
+      <ConfirmChange open={over === "delete"} variant="destructive" title={t("delete.title", { name: words.quoted(screening.name) })} confirm={t("menu.delete")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; void state.remove().then(gone, (error) => { going.current = false; failed(t)(error); }); }}>
         <EffectList lines={[t("delete.goes"), ...(collection && state.counts.include ? [t("delete.saved", { count: state.counts.include, collection: words.quoted(collection) })] : []), t("delete.final")]} />
       </ConfirmChange>
       {/* A guest gives up their own place: what they voted stays, and what they hadn't goes to the others, as when a member takes them off. */}
-      <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={close} onConfirm={() => void leave({ id }).then(() => onDeleted?.(), failed(t))}>
+      <ConfirmChange open={over === "leave"} title={t("leave.title")} confirm={t("leave.confirm")} onClose={() => !going.current && close()} onConfirm={() => { going.current = true; void leave({ id }).then(gone, (error) => { going.current = false; failed(t)(error); }); }}>
         <EffectList
           lines={[
             mine?.cast ? t("leave.votesCount", { count: mine.cast }) : t("leave.noVotes"),
@@ -212,8 +215,14 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   return { ...controls, overlays };
 }
 
+/** Asks the server again to count what a change does, where it couldn't: the same as Settings offers. */
+function CountAgain({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("screening.effects");
+  return <Button variant="outline" size="sm" className="mt-2.5" onClick={onClick}><RefreshCw />{t("countAgain")}</Button>;
+}
+
 /** What a confirmation says while the server counts what the change does, or once it couldn't: never a change of nothing. */
-const uncounted = (t: (key: "counting" | "countFailed") => string, counted: { data?: unknown; error?: unknown }) => (counted.data ? undefined : counted.error ? t("countFailed") : t("counting"));
+const uncounted = (t: (key: "counting" | "countFailed") => string, counted: { data?: unknown; error?: unknown }) => (counted.error ? t("countFailed") : counted.data ? undefined : t("counting"));
 
 const failed = (t: T) => (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
 
@@ -250,11 +259,12 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
           {noCriteria ? (
             <Panel tone="warning" className="space-y-3 rounded-xl p-3">
               <p className="text-sm ink-warning">{screening.criteria.length ? t("add.noMustHave") : t("add.noCriteria")}</p>
-              <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>{screening.criteria.length ? t("add.markMustHave") : t("add.addCriteria")}</NextLink></Button>
+              <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")}>{screening.criteria.length ? t("add.markMustHave") : t("add.addCriteria")}</NextLink></Button>
             </Panel>
           ) : (
             <EffectList lines={!change || counted.data ? effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict }) : []} none={change ? uncounted(say.t, counted) : undefined} />
           )}
+          {change && counted.error ? <CountAgain onClick={() => void counted.mutate()} /> : null}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
           {reviewer.model && open.wallet !== undefined && counted.data ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
         </>
@@ -281,8 +291,9 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
   const votes = reviewer?.tally?.cast ?? 0;
   const close = () => { setDiscard(false); onClose(); };
   return (
-    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isLoading || (Boolean(counted.error) && !counted.data)} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
-      {reviewer ? <EffectList lines={counted.data ? [...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])] : []} moves={preview.moves} none={uncounted(say.t, counted)} screening={screening.id} /> : null}
+    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isValidating || Boolean(counted.error)} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
+      {/* What the change does as counted for the choice as it now stands: the count for the choice before stays dimmed while the new one is read, and confirming waits for it. */}
+      {reviewer ? <div className={cn("transition-opacity", counted.isValidating && "opacity-55")}><EffectList lines={counted.data && !counted.error ? [...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])] : []} moves={counted.error ? [] : preview.moves} none={uncounted(say.t, counted)} screening={screening.id} />{counted.error ? <CountAgain onClick={() => void counted.mutate()} /> : null}</div> : null}
       {/* Their work stands unless whoever takes them off says otherwise: the votes stop counting only where that is asked for, and what it undoes shows above before it is done. */}
       {reviewer && votes && !viewer ? (
         <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">

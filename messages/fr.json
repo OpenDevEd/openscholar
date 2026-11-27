@@ -7782,7 +7782,8 @@
   "screening": {
     "effects": {
       "counting": "Calcul de ce que cela fait",
-      "countFailed": "Impossible de calculer ce que cela fait. Fermez puis réessayez",
+      "countFailed": "Impossible de calculer ce que cela fait",
+      "countAgain": "Réessayer",
       "criterionUnwritten": "le critère encore sans question",
       "reopens": "{count, plural, one {# article redevient ouvert. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert} other {# articles redeviennent ouverts. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert}}",
       "model": {
@@ -8409,7 +8410,6 @@
         "willDo": "Ce que fait l'enregistrement",
         "counting": "Calcul de ce que fait l'enregistrement",
         "countFailed": "Impossible de calculer ce que fait l'enregistrement, donc l'enregistrement n'est pas encore possible",
-        "countAgain": "Réessayer",
         "did": "Ce qu'a fait l'enregistrement",
         "recheck": "Revérifier les articles tranchés",
         "recheckOn": "Chaque article tranché est revérifié avec les nouveaux paramètres. Ceux listés ci-dessus obtiennent un autre résultat.",

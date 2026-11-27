@@ -7783,7 +7783,8 @@
   "screening": {
     "effects": {
       "counting": "Inakokotoa hii itafanya nini",
-      "countFailed": "Haikuweza kukokotoa hii itafanya nini. Funga hii na ujaribu tena",
+      "countFailed": "Haikuweza kukokotoa hii itafanya nini",
+      "countAgain": "Jaribu tena",
       "criterionUnwritten": "kigezo ambacho bado hakina swali",
       "reopens": "{count, plural, one {Makala # inarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayeipigia kura hadi ufunguliwe tena} other {Makala # zinarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayezipigia kura hadi ufunguliwe tena}}",
       "model": {
@@ -8410,7 +8411,6 @@
         "willDo": "Kuhifadhi kunafanya nini",
         "counting": "Inakokotoa kuhifadhi kutafanya nini",
         "countFailed": "Haikuweza kukokotoa kuhifadhi kutafanya nini, kwa hivyo bado haiwezi kuhifadhiwa",
-        "countAgain": "Jaribu tena",
         "did": "Kuhifadhi kulifanya nini",
         "recheck": "Kagua tena makala zilizoamuliwa",
         "recheckOn": "Kila makala iliyoamuliwa inakaguliwa chini ya mipangilio mipya. Zile zilizoorodheshwa juu zinapata matokeo mengine.",

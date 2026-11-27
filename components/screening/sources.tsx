@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs";
+import { searchHistory } from "./address";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { hash, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip, SEARCH_PILL } from "./pieces";
@@ -212,6 +213,8 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
     onAdd({ ref: refOf(file), name: file.name, detail: t("upload.table"), total: tableCounts(table, picked).records, set: { kind: "upload", file: kept, columns: picked as Record<string, string> } });
   };
   const take = async (list: FileList) => {
+    // A PDF is paid for as it is added: nothing is taken until its price is on the screen.
+    if (lookCredits === undefined) return;
     const files = [...list];
     setRefused([]);
     const [pdfs, references] = [files.filter((file) => PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
@@ -316,7 +319,7 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
         {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. Its line is held while the price is read. */}
         {lookCredits === null || lookCredits === 0 ? null : <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", lookCredits === undefined && "invisible")}><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.creditsOf(lookCredits ?? 0) })}</p>}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
+        <Button variant="outline" size="sm" className="mt-2" disabled={lookCredits === undefined} onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>
       {reading.length || pending.length || sending.length ? (
         <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
@@ -490,13 +493,20 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const openTree = useWorkspaceMutation(api.zotero.tree.open);
   const own: ZoteroLibrary = { name: t("zotero.myLibrary") };
   // The library and the collections opened on the way to where the list stands, the last of them the one it stands in, are in the address together: each one opened is a step in the history, and Back returns to a folder with the library it is in. What each is, is kept as it was read.
-  const [where, setWhere] = useQueryStates({ zoteroLibrary: parseAsString, folder: parseAsArrayOf(parseAsString) }, { history: "push", scroll: false });
+  const [where, setWhere] = useQueryStates({ zoteroLibrary: parseAsString, folder: parseAsArrayOf(parseAsString), zoteroFind: parseAsString.withDefault("") }, { history: "push", scroll: false });
   const [seen, setSeen] = useState<{ libraries: Record<string, ZoteroLibrary>; folders: Record<string, ZoteroCollection> }>({ libraries: {}, folders: {} });
   const keys = where.folder ?? [];
-  const path = keys.every((key) => seen.folders[key]) ? keys.map((key) => seen.folders[key]!) : [];
+  // A folder opened before a reload, or before the tab was left, is read back by its key.
+  const unknown = keys.some((key) => !seen.folders[key]);
+  const named = useProtectedQuery(api.zotero.tree.path, inWorkspace(workspaceId, unknown && account?.connected ? { ...(where.zoteroLibrary ? { groupId: where.zoteroLibrary } : {}), keys } : "skip")).data;
+  const known = { ...Object.fromEntries((named ?? []).map((one) => [one.key, one])), ...seen.folders };
+  const resolving = keys.some((key) => !known[key]) && named === undefined;
+  const path = keys.flatMap((key) => (known[key] ? [known[key]] : []));
   const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
-  const [find, setFind] = useState("");
+  // The search over the library's collections is in the address with them: starting and clearing it are steps.
+  const find = where.zoteroFind;
+  const setFind = (next: string) => void setWhere({ zoteroFind: next || null }, searchHistory(find, next));
   const words = useDebouncedValue(find.trim(), 300);
   const deepId = useId();
   const connected = account?.connected === true;
@@ -513,7 +523,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   useSWR(connected ? ["zotero-open", library.id ?? ""] : null, () => openTree(of), { revalidateOnFocus: false });
   const tree = useProtectedQuery(api.zotero.tree.state, inWorkspace(workspaceId, connected ? of : "skip")).data;
   const here = path.at(-1);
-  const level = useCursorPageAt("folderPage", api.zotero.tree.level, inWorkspace(workspaceId, connected && !words ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
+  const level = useCursorPageAt("folderPage", api.zotero.tree.level, inWorkspace(workspaceId, connected && !words && !resolving ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
   const found = useCursorPageAt("folderPage", api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
   const listed = words ? found : level;
 
@@ -543,19 +553,17 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const rows: ZoteroCollection[] = listed.items;
   // The library's collections are still on their way from Zotero: the list fills as they arrive, and says how far the reading is.
   const reading = tree === undefined || tree === null || tree.state === "reading";
-  const loading = reading || listed.isLoading;
+  const loading = reading || listed.isLoading || resolving;
   // A collection opened says how many it holds, so its pager stands before its first page comes.
   const pagerKnown = listed.hasPages || Boolean(!words && here && here.inside > PAGE);
   const go = (next: ZoteroCollection[]) => {
     setSeen((now) => ({ ...now, folders: { ...now.folders, ...Object.fromEntries(next.map((one) => [one.key, one])) } }));
-    void setWhere({ folder: next.length ? next.map((one) => one.key) : null });
-    setFind("");
+    void setWhere({ folder: next.length ? next.map((one) => one.key) : null, zoteroFind: null });
   };
   const pick = (next: ZoteroLibrary) => {
     if (next.id) setSeen((now) => ({ ...now, libraries: { ...now.libraries, [next.id!]: next } }));
-    void setWhere({ zoteroLibrary: next.id ?? null, folder: null });
+    void setWhere({ zoteroLibrary: next.id ?? null, folder: null, zoteroFind: null });
     setPicking(false);
-    setFind("");
   };
   const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
   const under = (one: ZoteroCollection) => deep && one.inside > 0;

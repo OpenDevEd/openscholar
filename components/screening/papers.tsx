@@ -45,7 +45,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -240,6 +240,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // The drawer keeps the paper it shows while the next one is read, so it never empties between two papers.
   if (found && found !== held) setHeld(found);
   const paper = opened && read !== null ? (found ?? held) : undefined;
+  // The paper before, kept while the one asked for is read (by its id, or by its place on a page still loading): dimmed and out of reach.
+  const stale = Boolean(paper && (turning || (openId && paper.id !== openId)));
   const at = paper ? shown.findIndex((one) => one.id === paper.id) : -1;
   const inView = at >= 0;
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
@@ -766,7 +768,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <SheetDescription className="sr-only">{t("panel.says")}</SheetDescription>
           {/* Each paper has its own scroll, so the next one starts at its title and not where the last was left. */}
           {/* The paper before stays while the one asked for is read, dimmed and out of reach: a vote can only go to the paper the address names. */}
-          {paper ? <ScrollArea key={paper.id} shades inert={Boolean(openId && paper.id !== openId)} className={cn("min-h-0 flex-1 transition-opacity", openId && paper.id !== openId && "opacity-55")}><PaperPanel paper={paper} open={open} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
+          {paper ? <ScrollArea key={paper.id} shades inert={stale} className={cn("min-h-0 flex-1 transition-opacity", stale && "opacity-55")}><PaperPanel paper={paper} open={open} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
         </SheetContent>
       </Sheet>
     </div>
@@ -881,8 +883,9 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
   const setNote = onNote ?? setOwn;
   if (writing) {
     return (
-      <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
-        <Input autoFocus value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} data-reason-note placeholder={screen("exclude.why")} aria-label={screen("exclude.whyLabel")} className="h-8 bg-card text-sm" />
+      <form data-reason-note className="space-y-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
+        {/* Escape anywhere in the note's form goes back to the reasons, as its Back button shows, and never closes what it sits in. */}
+        <Input autoFocus value={note} onChange={(event) => setNote(event.target.value)} placeholder={screen("exclude.why")} aria-label={screen("exclude.whyLabel")} className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setWriting(false)}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
           <Button type="submit" variant="destructive" className="h-9 rounded-xl" disabled={!note.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
@@ -936,13 +939,15 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const awaited = awaitedOn(screening, paper);
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (notes[kind].trim() || undefined);
-    // Saved at once, with a way back, as a vote on Screen and a settling over a selection have: what stood before is put back.
-    if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch((error) => notSaved(t, error));
-    else open.resolve(paper.id, decision, said, reason).catch((error) => notSaved(t, error));
+    // Saved at once, with a way back, as a vote on Screen and a settling over a selection have: what stood before is put back. Refused, the toast that said it was done goes, and the note written comes back to be sent again.
+    const typed = notes[kind];
+    const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); notSaved(t, error); };
+    if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch(refused);
+    else open.resolve(paper.id, decision, said, reason).catch(refused);
     const undo = () => (kind === "vote" ? open.vote(paper.id, mine ? { decision: mine.decision, answers: mine.answers, ...(mine.reason ? { reason: mine.reason } : {}), ...(mine.note ? { note: mine.note } : {}) } : null) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason)).catch((error) => notSaved(t, error));
     // Undo puts back only what you did: a result someone else settled is theirs, and isn't put back in your name.
     const mayUndo = kind === "vote" || !state.resolvedBy || state.resolvedBy === open.me;
-    toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);
+    const shownToast = toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);
     setDeciding(null);
     setReasonFor(null);
     setNote(kind, "");
@@ -983,7 +988,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PaperPdf id={open.screening.id} paper={paper} terms={[]} /> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

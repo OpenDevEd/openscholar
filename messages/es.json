@@ -7783,7 +7783,8 @@
   "screening": {
     "effects": {
       "counting": "Calculando qué hace esto",
-      "countFailed": "No se pudo calcular qué hace esto. Ciérrelo e inténtelo de nuevo",
+      "countFailed": "No se pudo calcular qué hace esto",
+      "countAgain": "Reintentar",
       "criterionUnwritten": "el criterio que aún no tiene pregunta",
       "reopens": "{count, plural, one {# artículo vuelve a estar abierto. El cribado sigue terminado, así que nadie vota en él hasta que se reabra} other {# artículos vuelven a estar abiertos. El cribado sigue terminado, así que nadie vota en ellos hasta que se reabra}}",
       "model": {
@@ -8410,7 +8411,6 @@
         "willDo": "Qué hace el guardado",
         "counting": "Calculando qué hace el guardado",
         "countFailed": "No se pudo calcular qué hace el guardado, así que aún no se puede guardar",
-        "countAgain": "Reintentar",
         "did": "Qué hizo el guardado",
         "recheck": "Volver a comprobar los artículos resueltos",
         "recheckOn": "Todos los artículos resueltos se comprueban con los nuevos ajustes. Los que aparecen arriba reciben otro resultado.",

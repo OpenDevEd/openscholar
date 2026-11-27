@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 
 import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -47,7 +47,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -368,8 +368,8 @@ function Screen({ open }: { open: Open }) {
     setHistory((all) => all.filter((one) => one !== last));
   };
 
-  // The keyboard is the outside system: one listener for the keys the buttons show. The reasons' keys are the menu's own.
-  const onKey = useCallback(
+  // The keyboard is the outside system: one listener for the keys the buttons show. The reasons' keys are the menu's own. It reads this render's paper and handlers whenever a key comes, so a key always acts on the paper on the screen.
+  const onKey = useEffectEvent(
     (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
@@ -406,13 +406,12 @@ function Screen({ open }: { open: Open }) {
       else return;
       event.preventDefault();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers close over this render's state, and the listener is renewed with it
-    [at, items, history, answers, notes, advance, queue, mayDecide, lit, tablet, folded, paced, switching],
   );
   useEffect(() => {
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onKey]);
+    const listen = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener("keydown", listen);
+    return () => window.removeEventListener("keydown", listen);
+  }, []);
 
   const given: Record<string, Answer> = paper && !resolving ? { ...mine?.answers, ...answers[paper.id] } : {};
   const current = paper && lit?.paper === paper.id ? criteria.find((criterion) => criterion.key === lit.key) : undefined;
@@ -523,7 +522,9 @@ function Screen({ open }: { open: Open }) {
       </li>
     );
   };
-  const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queue !== "done" && !narrowed ? { pageCount: Math.max(1, Math.ceil(left / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
+  // How many the queue holds, where it is counted: Done by your votes (all of them, or the decision it is narrowed to), the others by what is left. A search isn't counted, and its pager says only the page.
+  const queueTotal = searched ? undefined : queue === "done" ? (voted === "any" ? (counted?.cast ?? 0) : (counted?.[voted] ?? 0)) : left;
+  const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queueTotal !== undefined ? { pageCount: Math.max(1, Math.ceil(queueTotal / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
   const findField = (className: string) => (
     <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className={SEARCH_PILL} />
   );
@@ -792,7 +793,7 @@ function Screen({ open }: { open: Open }) {
                       </div>
                       <div className="space-y-3">
                         {/* A paper with no abstract is read as the PDF it is. */}
-                        {paper.pdf ? <PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /> : (
+                        {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1}><PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /></PdfRoom> : (
                         <p dir="auto" className="text-[0.95rem] leading-7">
                           {sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} lit={current?.terms ?? []} />)}
                         </p>
@@ -986,9 +987,9 @@ function Screen({ open }: { open: Open }) {
               {!mayDecide ? (
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
-                <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
-                  {/* Escape goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <Input autoFocus onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
+                  {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
+                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
                     <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>

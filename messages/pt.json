@@ -7783,7 +7783,8 @@
   "screening": {
     "effects": {
       "counting": "A calcular o que isto faz",
-      "countFailed": "Não foi possível calcular o que isto faz. Feche e tente novamente",
+      "countFailed": "Não foi possível calcular o que isto faz",
+      "countAgain": "Tentar novamente",
       "criterionUnwritten": "o critério ainda sem pergunta",
       "reopens": "{count, plural, one {# artigo volta a estar em aberto. A triagem continua terminada, por isso ninguém vota nele até ela ser reaberta} other {# artigos voltam a estar em aberto. A triagem continua terminada, por isso ninguém vota neles até ela ser reaberta}}",
       "model": {
@@ -8410,7 +8411,6 @@
         "willDo": "O que guardar faz",
         "counting": "A calcular o que guardar faz",
         "countFailed": "Não foi possível calcular o que guardar faz, por isso ainda não é possível guardar",
-        "countAgain": "Tentar novamente",
         "did": "O que foi feito ao guardar",
         "recheck": "Verificar de novo os artigos decididos",
         "recheckOn": "Cada artigo decidido é verificado com as novas definições. Os que aparecem acima recebem outro resultado.",

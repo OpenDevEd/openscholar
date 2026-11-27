@@ -7782,7 +7782,8 @@
   "screening": {
     "effects": {
       "counting": "Kubalwa okwenziwa yilokhu",
-      "countFailed": "Akukwazekanga ukubala okwenziwa yilokhu. Vala lokhu bese uzama futhi",
+      "countFailed": "Akukwazekanga ukubala okwenziwa yilokhu",
+      "countAgain": "Zama futhi",
       "criterionUnwritten": "umbandela ongakabi nawo umbuzo",
       "reopens": "{count, plural, one {# iphepha liyavuleka futhi. Ukuskrini kuhlala kuqediwe, ngakho akekho olivotelayo kuze kuvulwe futhi} other {# amaphepha ayavuleka futhi. Ukuskrini kuhlala kuqediwe, ngakho akekho owavotelayo kuze kuvulwe futhi}}",
       "model": {
@@ -8409,7 +8410,6 @@
         "willDo": "Okwenziwa wukugcina",
         "counting": "Kubalwa okwenziwa wukugcina",
         "countFailed": "Akukwazekanga ukubala okwenziwa wukugcina, ngakho akukakwazi ukugcinwa",
-        "countAgain": "Zama futhi",
         "did": "Okwenziwe wukugcina",
         "recheck": "Hlola futhi amaphepha axazululiwe",
         "recheckOn": "Wonke amaphepha axazululiwe ahlolwa ngaphansi kwezilungiselelo ezintsha. Lawo abhalwe ngenhla athola omunye umphumela.",

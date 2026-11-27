@@ -88,6 +88,18 @@ export const level = workspaceQuery({
   },
 });
 
+/** The collections an address names by key, in order: a folder opened before a reload is shown by its name again. */
+export const path = workspaceQuery({
+  args: { groupId: v.optional(v.string()), keys: v.array(v.string()) },
+  returns: v.array(rowValidator),
+  handler: async (ctx, { userId }, { groupId, keys }) => {
+    const library = groupId ?? "";
+    const tree = await treeOf(ctx, userId, library);
+    const rows = await Promise.all(keys.slice(0, LEVELS).map((key) => rowOf(ctx, userId, library, key)));
+    return rows.flatMap((row) => (row ? [shown(tree, row)] : []));
+  },
+});
+
 /** A page of the collections of one of the person's Zotero libraries whose name holds these words, at any level, each with where it sits. */
 export const find = workspaceQuery({
   args: { groupId: v.optional(v.string()), text: v.string(), paginationOpts: paginationOptsValidator },
