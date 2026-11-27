@@ -6526,6 +6526,7 @@
       "registration": "DOI registration",
       "zenodoSandbox": "Zenodo sandbox",
       "crossrefSandbox": "Crossref sandbox",
+      "docidSandbox": "DOCiD sandbox",
       "off": "Off",
       "zenodoHint": "Archives each report's PDF.",
       "crossrefHint": "Each report gets a DOI under your prefix. Off, publishing stops: Zenodo alone can't give a report its DOI yet.",

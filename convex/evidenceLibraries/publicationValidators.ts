@@ -33,12 +33,12 @@ export const publicationSettingsValidator = v.object({
   }),
   /**
    * DOCiD, the Africa PID Alliance's Handles (plans/identifier-services): Openscholar Reports' account only, as
-   * communities show the DOCiDs their records come with and never register one. It has no test service, so it is
-   * off or a real account. Its types are mapped from each report, by name, against DOCiD's lists.
+   * communities show the DOCiDs their records come with and never register one. Its sandbox is our account on
+   * DOCiD's demo. Its types are mapped from each report, by name, against DOCiD's lists.
    */
   docid: v.optional(
     v.object({
-      mode: v.union(v.literal("off"), v.literal("custom")),
+      mode,
       email: v.string(),
       /** DOCiD's lists as the account saw them when last verified, which deposits find their types in; written by the server only. */
       options: v.optional(
@@ -78,6 +78,9 @@ export const keptCustomValidator = v.object({
   crossref: v.union(customCrossrefValidator, v.null()),
   zenodoToken: v.boolean(),
   crossrefLogin: v.boolean(),
+  /** The email of the account on DOCiD itself, and whether its password is kept. */
+  docidEmail: v.optional(v.string()),
+  docidPassword: v.optional(v.boolean()),
 });
 
 export const publicationPayloadValidator = v.object({
@@ -90,11 +93,13 @@ export const publicationPayloadValidator = v.object({
  * they were custom.
  */
 export function keptCustomOf(settings: PublicationSettings, stored: Infer<typeof keptCustomValidator> | undefined): Infer<typeof keptCustomValidator> {
-  if (stored) return stored;
+  const ownDocid = settings.docid?.mode === "custom" && { docidEmail: settings.docid.email, docidPassword: true };
+  if (stored) return { ...stored, ...(stored.docidEmail === undefined && ownDocid) };
   const crossref = settings.crossref.mode === "custom";
   return {
     crossref: crossref ? { prefix: settings.crossref.prefix, depositorName: settings.crossref.depositorName, email: settings.crossref.email, registrant: settings.crossref.registrant } : null,
     zenodoToken: settings.zenodo.mode === "custom",
     crossrefLogin: crossref,
+    ...ownDocid,
   };
 }

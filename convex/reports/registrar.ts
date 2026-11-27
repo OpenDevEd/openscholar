@@ -222,10 +222,14 @@ export const register = internalAction({
             // the DOI the report registered, each kept the moment DOCiD gives it, so a later try carries on and never
             // makes a second. A withdrawn report's record shows a retired page; a reinstated one is restored.
             const docid = job.publication.docid;
-            if (docid?.mode !== "custom" || !secrets.docidPassword || !docid.options) throw new Error("DOCiD isn't connected in the publishing settings.");
-            const client = docidClient();
+            if (!docid || docid.mode === "off" || !secrets.docidPassword || !docid.options) throw new Error("DOCiD isn't connected in the publishing settings.");
+            const sandbox = docid.mode === "sandbox";
+            // A Handle stays with the DOCiD that minted it: its record is never looked for, changed or retired on the other.
+            if (job.docid?.handle && job.docid.sandbox !== undefined && job.docid.sandbox !== sandbox)
+              throw new Error(job.docid.sandbox ? "This report's DOCiD was minted on DOCiD's demo, and DOCiD is now set to an account on DOCiD itself." : "This report's DOCiD was minted on DOCiD itself, and DOCiD is now set to its sandbox.");
+            const client = docidClient(sandbox);
             const { token, userId } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
-            const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean; docidDepositTried?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
+            const note = (kept: { docidHandle?: string; docidSandbox?: boolean; docidPublicationId?: number; docidRetired?: boolean; docidDepositTried?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
             const held = { ...(job.docid ?? { state: "queued" as const }) };
             // A deposit sent before whose answer never came is found in the account's records first: it may need
             // retiring, and it is never sent twice.
@@ -252,7 +256,7 @@ export const register = internalAction({
             let handle = held.handle;
             if (!handle) {
               handle = await client.mint({ token, title: record.title, description: record.abstract ?? record.title, idempotencyKey: mintKey(job.key) });
-              await note({ docidHandle: handle });
+              await note({ docidHandle: handle, docidSandbox: sandbox });
             }
             if (held.publicationId === undefined) {
               await note({ docidDepositTried: true });
@@ -271,7 +275,7 @@ export const register = internalAction({
                   {
                     docid: handle,
                     // Read now, so a type DOCiD added since the settings were saved is used.
-                    lists: await readDocidLists(token),
+                    lists: await readDocidLists(token, sandbox),
                     organizationTypes,
                     // Its file only when anyone may get it: DOCiD shows what it holds to everyone.
                     ...(openFile && { file: { filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await openFile.arrayBuffer()) } }),
@@ -323,12 +327,13 @@ export const mintAtSigning = internalAction({
       const secrets: PublicationSecrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
       password = secrets.docidPassword;
       const docid = job.publication.docid;
-      if (docid?.mode !== "custom" || !password) throw new Error("DOCiD isn't connected in the publishing settings.");
-      const client = docidClient();
+      if (!docid || docid.mode === "off" || !password) throw new Error("DOCiD isn't connected in the publishing settings.");
+      const sandbox = docid.mode === "sandbox";
+      const client = docidClient(sandbox);
       const { token } = await client.signIn({ email: docid.email, password });
       const handle = await client.mint({ token, title: `Openscholar Reports ${job.key}`, description: `A report in Openscholar Reports, ${job.key}.`, idempotencyKey: mintKey(job.key) });
       console.info(JSON.stringify({ event: "report-docid-mint-at-signing", reportId, key: job.key, handle }));
-      await ctx.runMutation(internal.reports.registration.mintedAtSigning, { reportId, handle });
+      await ctx.runMutation(internal.reports.registration.mintedAtSigning, { reportId, handle, sandbox });
     } catch (error) {
       const said = (error instanceof ProviderHttpError ? `DOCiD answered ${error.status}: ${error.body.slice(0, 300)}` : String(error)).replaceAll(password || "\u0000", "[hidden]");
       console.error(JSON.stringify({ event: "report-docid-mint-at-signing-failed", reportId, key: job.key, error: said }));

@@ -104,7 +104,7 @@ export function settingsProblem(ids: Identifiers): "noService" | "rule" | "nothi
 type Accounts = { crossref: { mode: string }; zenodo: { mode: string }; docid?: { mode: string; options?: { resourceTypes: DocidOption[] } | undefined } | undefined };
 
 /** Whether DOCiD can take a deposit: its account set, and allowed to file a report under the resource type reports map to. */
-export const docidReady = (publication: Accounts) => publication.docid?.mode === "custom" && docidResourceType("Report", publication.docid.options?.resourceTypes ?? []) !== undefined;
+export const docidReady = (publication: Accounts) => !!publication.docid && publication.docid.mode !== "off" && docidResourceType("Report", publication.docid.options?.resourceTypes ?? []) !== undefined;
 
 /** Which services' accounts are set under Registration, ready to register a report. */
 export const connectedOf = (publication: Accounts): Record<ServiceId, boolean> => ({ crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: docidReady(publication) });

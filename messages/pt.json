@@ -6527,6 +6527,7 @@
       "registration": "Registo de DOI",
       "zenodoSandbox": "Ambiente de testes do Zenodo",
       "crossrefSandbox": "Ambiente de testes da Crossref",
+      "docidSandbox": "Ambiente de testes da DOCiD",
       "off": "Desativado",
       "zenodoHint": "Arquiva o PDF de cada relatório.",
       "crossrefHint": "Cada relatório recebe um DOI com o seu prefixo. Desativado, a publicação para: o Zenodo sozinho ainda não consegue dar um DOI a um relatório.",
