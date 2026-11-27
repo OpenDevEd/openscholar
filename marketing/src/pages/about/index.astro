@@ -9,6 +9,7 @@ import TeamGrid from "../../components/TeamGrid.astro";
 import TeamShelf from "../../components/TeamShelf.astro";
 import OrgPanel from "../../components/OrgPanel.astro";
 import Close from "../../components/Close.astro";
+import Follow from "../../components/Follow.astro";
 import Arrow from "../../components/Arrow.astro";
 import { ORGS, TEAM } from "../../data/team.mjs";
 import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
@@ -31,7 +32,7 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
       <span class="seal" aria-hidden="true"><img src="/favicon-dark.svg" width="44" height="44" alt="" loading="lazy" /></span>
     </div>
   </section>
-  <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a></Close>
+  <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a><Follow slot="action" /></Close>
 </Base>
 <style>
   .team { padding: clamp(56px, 7vw, 96px) var(--edge) clamp(48px, 6vw, 80px); } .team h2 { margin-bottom: clamp(24px, 3vw, 40px); }

@@ -1,0 +1,11 @@
+---
+// Openscholar's own profiles as round service buttons (.svc, in global.css), on a dark surface.
+import Mark from "./Mark.astro";
+import { PROFILES } from "../../../lib/seo/organization";
+import { LINK_NAMES } from "../data/team.mjs";
+import { LOGOS } from "../data/logos.mjs";
+---
+<ul class="soc" aria-label="Openscholar elsewhere">{PROFILES.map(([kind, url]) => <li><a class="svc" href={url} target="_blank" rel="me noopener" aria-label={`Openscholar on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}</ul>
+<style>
+  .soc { display: flex; gap: 10px; }
+</style>
