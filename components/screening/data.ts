@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, advisory, canConflict, hidesVotes, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 // The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
@@ -289,6 +289,15 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
   const invited = invitedOf(screening, pending);
   return { people, invited, each: readersFor(eachOf(screening.rule), people.length + invited) };
 };
+/** How a screening hides votes from a reviewer until they vote, for what its pages say about it (lib/screening/rules.ts `hidesVotes`). */
+export type Blind = "none" | "all" | "people" | "done";
+/**
+ * "none" where it hides nothing: votes show at any time, or one person reads each paper and the models only advise.
+ * "people" where only the people's votes are hidden, since the models' are advice and show at once. "all" where every
+ * other vote is hidden. "done" once it is finished, and every vote that was hidden shows.
+ */
+export const blindOf = (screening: Pick<Screening, "reviewers" | "rule" | "finishedAt">, pending: Pending[] = []): Blind =>
+  !hidesVotes(screening.rule, readersOf(screening, pending).each) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
 /**
  * Whether this screening's papers can be in conflict, and so need someone to settle them: more than one vote settles a
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with

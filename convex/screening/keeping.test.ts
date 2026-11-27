@@ -143,3 +143,23 @@ it("shows a model's vote before the person votes where the models only advise, a
   expect(await seen("advice")).toEqual({ sees: false, model: "exclude", ann: "hidden" });
   expect(await seen("vote")).toEqual({ sees: false, model: "hidden", ann: "hidden" });
 });
+
+it("hides nothing where one person reads each paper and the models only advise", async () => {
+  const made = await team(["ann", "ben"]);
+  const { workspaceId } = made;
+  const { jobId, papers } = await started(made, ["ann", "ben"], 2, { rule: { each: 1, settle: "all", blind: "after", models: "advice" } });
+  await made.t.run(async (ctx) => {
+    const reviewerId = await ctx.db.insert("screeningReviewers", { jobId, kind: "model", addedAt: 1, addedBy: made.ids.ann!, dealt: 2 });
+    for (const [at, paper] of papers.entries()) await ctx.db.insert("screeningVotes", { jobId, resultId: paper._id, reviewerId, place: at, status: "cast", decision: "include", at: 1 });
+  });
+  await settleAll(made.t);
+  // Each paper is one person's: before voting on it, they see everything on it, and nothing of anyone's counts is kept.
+  for (const name of ["ann", "ben"]) {
+    const view = (await made.as[name]!.query(api.screening.view.get, { workspaceId, jobId }))!;
+    expect(view.reviewers.some((one) => one.kept)).toBe(false);
+    for (const paper of papers) {
+      const seen = await made.as[name]!.query(api.screening.paperViews.paper, { workspaceId, jobId, paperId: paper._id });
+      if (seen?.mine) expect(seen.sees).toBe(true);
+    }
+  }
+});

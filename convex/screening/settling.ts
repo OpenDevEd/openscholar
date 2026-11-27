@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { cellOf, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
+import { advisory, cellOf, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
@@ -174,7 +174,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const given = cast.flatMap((one) => (one.status === "cast" && one.decision ? [one.decision] : []));
     const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
     // The reason comes from the votes that decide the paper: where the models' votes are advice, or "first vote decides" gives a person's vote the say, the people's.
-    const voters = (job.rule?.models === "advice" || job.rule?.settle === "one") && cast.some((one) => one.kind === "person" && one.status === "cast") ? cast.filter((one) => one.kind === "person") : cast;
+    const voters = job.rule && advisory(job.rule) && cast.some((one) => one.kind === "person" && one.status === "cast") ? cast.filter((one) => one.kind === "person") : cast;
     // Under "first vote decides", the one vote that settled it gives the reason too, whatever later votes say.
     const first = job.rule?.settle === "one" ? voters.filter((one) => one.status === "cast" && one.decision).reduce<(typeof voters)[number] | undefined>((earliest, one) => (!earliest || (one.at ?? 0) < (earliest.at ?? 0) ? one : earliest), undefined) : undefined;
     const deciding = first ? [first] : voters;

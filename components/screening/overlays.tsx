@@ -24,7 +24,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { growing, modelKey, modelsOf, peopleOf, withTwins, withoutReviewer, type Reviewer, type Screening } from "./data";
+import { blindOf, growing, modelKey, modelsOf, peopleOf, withTwins, withoutReviewer, type Reviewer, type Screening } from "./data";
 import { useKept } from "./drafts";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
 import { ExportDialog } from "./export-dialog";
@@ -206,7 +206,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
           lines={[
             ...(unsettled ? [t("finish.unsettled", { count: unsettled })] : []),
             t("finish.votingStops"),
-            ...(screening.rule.blind === "after" ? [t("finish.votesShow")] : []),
+            ...({ all: [t("finish.votesShow")], people: [t("finish.peopleVotesShow")], none: [], done: [] } as const)[blindOf(screening, state.invited)],
             ...(state.reading.length ? [t("finish.modelsStop")] : []),
             ...(screening.living ? [t("finish.checksStop")] : []),
             t("finish.movesToFinished"),

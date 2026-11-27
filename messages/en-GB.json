@@ -7789,6 +7789,8 @@
       },
       "votesStay": "Votes already cast stay as they are",
       "modelVotes": {
+        "voteHidden": "A model's vote counts as one reviewer's on the papers still open, and is hidden from a reviewer until they vote on the paper",
+        "adviceSeen": "The papers still open that a person has are settled on the people's votes alone, with the models' votes as advice, which a reviewer sees before voting",
         "advice": "The papers still open that a person has are settled on the people's votes alone, with the models' votes as advice",
         "vote": "A model's vote counts as one reviewer's on the papers still open"
       },
@@ -7816,6 +7818,7 @@
         "stillShare": "Each paper still goes to {each, plural, one {# person} other {# people}}. Anyone added later takes an even share of the open papers, not every one"
       },
       "blind": {
+        "untilVotedAdvice": "A reviewer sees the other people's votes on a paper once they vote on it or it is settled. The models' votes show before then, as advice",
         "never": "Everyone sees every vote as it is cast",
         "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled"
       },
@@ -7969,6 +7972,7 @@
         "noneMine": "You haven't voted Include on a paper yet."
       },
       "votes": {
+        "leftOutPeople": "Any vote another person cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours. The models' votes are included.",
         "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
         "help": "One row for each paper a reviewer was given, with their vote, its reason and note, the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
         "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
@@ -8353,6 +8357,7 @@
         "addModel": "Add a model"
       },
       "decided": {
+        "seeingNothing": "Nothing to hide with one person on each paper",
         "votesAgree": "Votes agree",
         "settled": "Settled",
         "votesSplit": "Votes split",
@@ -8367,7 +8372,7 @@
         "countAsVote": "Count like a person's",
         "adviceOnly": "Advice only",
         "modelVotesVote": "When the models' votes count like a person's, each is one reviewer's vote, and a paper is settled on the people's and the models' votes together. Where the models alone would outvote every person on it, the paper is in conflict instead.",
-        "modelVotesAdvice": "When they are advice only, a paper a person has is settled on the people's votes alone, and the models' votes show beside theirs.",
+        "modelVotesAdvice": "When they are advice only, a paper a person has is settled on the people's votes alone, and a reviewer sees the models' votes before casting their own.",
         "modelVotesNever": "Either way, a paper no person is given is settled on the models' votes. Under First vote decides, the models' votes are advice on any paper a person has.",
         "addModel": "Add a model to choose",
         "modelsUnderOne": "Advice on papers a person has",
@@ -8383,7 +8388,7 @@
         "whoSettles": "Who settles a conflict",
         "seeVotes": "Reviewers see the other votes",
         "seeingTitle": "Seeing other votes",
-        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Anyone who doesn't vote on a paper sees its votes at any time.",
+        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time.",
         "after": "After they vote",
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
@@ -8498,6 +8503,8 @@
         "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "People's votes hidden in reviewers' To do",
+        "peopleHiddenMine": "People's votes hidden in your To do",
         "advice": "The models' votes are advice",
         "title": "How a paper is settled",
         "eachPaper": "{who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# model} other {# models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# model} other {# models}}}} on each paper",
@@ -8562,6 +8569,7 @@
         "nothingElse": "Nothing else changes"
       },
       "finish": {
+        "peopleVotesShow": "The people's votes that were hidden from reviewers show to everyone on it",
         "title": "Mark this screening as finished?",
         "unsettled": "{count, plural, one {# paper is not settled, and stays as it is} other {# papers are not settled, and stay as they are}}",
         "votingStops": "Nobody can vote on it until it is reopened",
@@ -8792,6 +8800,7 @@
         "stillWait": "See which of them still wait for other votes"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {# reviewer invited by email, who votes once they have joined and this is reopened} other {# reviewers invited by email, who vote once they have joined and this is reopened}}} other {{count, plural, one {# reviewer invited by email, who votes once they join} other {# reviewers invited by email, who vote once they join}}}}",
         "title": "Reviewers",
         "everyoneDone": "Everyone done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}, at this pace",
         "move": "Move papers",
@@ -8979,6 +8988,7 @@
         "none": "This screening has no papers yet."
       },
       "sort": {
+        "peopleShut": "This screening hides other people's votes on the papers you have yet to vote on, and this order would give them away",
         "added": "As added",
         "title": "Title, A to Z",
         "title-desc": "Title, Z to A",
@@ -9098,11 +9108,12 @@
         "stopPapersWaiting": "{you, select, true {Stop showing only the papers waiting for your vote} other {Stop showing only the papers waiting for {name}'s vote}}"
       },
       "marks": {
+        "peopleHidden": "A person voted, hidden while the paper waits for your vote",
         "title": "Vote marks",
         "aReviewer": "A reviewer",
         "aModel": "A model",
         "voted": "Voted {decision}",
-        "hidden": "Voted, hidden while the paper waits for the reviewer's own vote",
+        "hidden": "Voted, hidden while the paper waits for your vote",
         "empty": "An empty cell is a paper that isn't theirs to vote on"
       },
       "why": {
@@ -9184,7 +9195,7 @@
         "join": "You aren't a reviewer on this screening. Join as a reviewer to vote."
       },
       "votesShut": "The other votes stay out of sight so they can't sway yours.",
-      "peopleVotesShut": "The other people's votes stay out of sight so they can't sway yours. The models' advice shows.",
+      "peopleVotesShut": "{people, plural, =0 {} one {The other person's vote stays out of sight so it can't sway yours.} other {The other people's votes stay out of sight so they can't sway yours.}} {models, plural, one {The model's vote shows as soon as it is cast.} other {The models' votes show as soon as they are cast.}}",
       "creditsShort": "{short, plural, one {# credit short} other {# credits short}}",
       "retry": "{papers, plural, one {Try the paper again for {cost, plural, one {# credit} other {# credits}}} other {Try all # papers again for {cost, plural, one {# credit} other {# credits}}}}",
       "votesBy": "{you, select, true {Your votes} other {Votes by {name}}}",
@@ -9544,6 +9555,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "People's votes hidden until you vote",
+      "votesWereHiddenSays": "Votes were hidden from a reviewer only on papers that waited for their own vote. Now the screening is finished, every vote shows.",
+      "votesHiddenPeopleSays": "This screening hides other people's votes from a reviewer only on papers that still wait for that reviewer's own vote. The models' votes are advice, and show at any time.",
       "decision": {
         "include": "Include",
         "maybe": "Maybe",

@@ -143,6 +143,17 @@ export const readersFor = (each: Rule["each"], people: number) => (each === "all
 export const advisory = (rule: Pick<Rule, "settle" | "models">) => rule.models === "advice" || rule.settle === "one";
 /** Whether the models' votes are only advice where `people` people and `models` models vote on a paper (`advisory`). A paper no person has is settled by its models. */
 export const modelsAdvise = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => advisory(rule) && people > 0 && models > 0;
+/** Whether a reviewer's votes show to a person before that person votes: a model's, where the models only advise. Every count and filter of their votes is open then too. */
+export const showsEarly = (rule: Pick<Rule, "settle" | "models">, kind: "person" | "model" | undefined) => kind === "model" && advisory(rule);
+/** Whether the papers waiting for a person's vote may be put in order by the models' votes: only where those votes show before the person votes. */
+export const leansOpen = (rule: Pick<Rule, "settle" | "models" | "blind">) => rule.blind === "always" || advisory(rule);
+/**
+ * Whether a running screening hides anyone's vote from a reviewer until they vote: votes are hidden until then, and
+ * another person can be on the same paper. Where one person reads each paper and the models only advise, nothing is
+ * left to hide. `each`: how many people read each paper (`readersFor`). Every page, file and figure that says votes
+ * are hidden, or keeps something because they are, asks this.
+ */
+export const hidesVotes = (rule: Pick<Rule, "settle" | "models" | "blind">, each: number) => rule.blind === "after" && !(advisory(rule) && each <= 1);
 /** Whether a paper can be in conflict: only where more than one vote settles it. One person, or one person with the models as advice, or "first vote decides", never splits, and nobody need settle anything. */
 export const canConflict = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.settle !== "one" && (modelsAdvise(rule, people, models) ? 0 : models) + people > 1;
 

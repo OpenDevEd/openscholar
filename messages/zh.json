@@ -7789,6 +7789,8 @@
       },
       "votesStay": "已投的票保持不变",
       "modelVotes": {
+        "voteHidden": "在仍未定案的论文上，模型的一票算作一位审核人的一票，并且在审核人对该论文投票前对其隐藏",
+        "adviceSeen": "仍未定案且已分配给人员的论文只按人员的投票定案，模型的投票作为参考，审核人在投票前就能看到",
         "advice": "仍未定案且已分配给人员的论文只按人员的投票定案，模型的投票作为参考",
         "vote": "在仍未定案的论文上，模型的一票算作一位审核人的一票"
       },
@@ -7816,6 +7818,7 @@
         "stillShare": "每篇论文仍分配给 {each, plural, other {# 人}}。之后加入的人会平均分到一部分未定案的论文，而不是全部"
       },
       "blind": {
+        "untilVotedAdvice": "审核人对论文投票后或论文定案后，才能看到其他人员的投票。模型的投票在此之前就会显示，作为参考",
         "never": "所有人都能在投票时看到每一票",
         "untilVoted": "审核人对论文投票后或论文定案后，才能看到其他人的投票"
       },
@@ -7969,6 +7972,7 @@
         "noneMine": "你还没有对任何论文投入选。"
       },
       "votes": {
+        "leftOutPeople": "对于你还没投票的 {count, plural, other {# 篇论文}}，其他人员投出的任何票都不包含在内，以免影响你的判断。模型的投票包含在内。",
         "title": "{voters, plural, other {# 名审核人}}的 {votes, plural, other {# 票}}",
         "help": "审核人分到的每篇论文占一行，包括其投票、投票原因和备注、对每条标准的答案，以及论文当前的状态。还没投票的审核人也有一行，无法读取论文的模型也有。如果论文只有模型无法读取的 PDF，就不会分配给该模型；之后加入的审核人也不会分到在其加入前已定案的论文。",
         "leftOut": "对于你还没投票的 {count, plural, other {# 篇论文}}，其他人投出的任何票都不包含在内，以免影响你的判断。",
@@ -8353,6 +8357,7 @@
         "addModel": "添加模型"
       },
       "decided": {
+        "seeingNothing": "每篇论文只有一人，无需隐藏投票",
         "votesAgree": "投票一致",
         "settled": "定案",
         "votesSplit": "投票分歧",
@@ -8367,7 +8372,7 @@
         "countAsVote": "与人员同等计票",
         "adviceOnly": "仅作参考",
         "modelVotesVote": "模型的投票与人员同等计票时，每个模型的一票算作一位审核人的一票，论文由人员和模型的投票共同定案。如果仅凭模型的投票就能压过论文上的每个人员，论文会转为冲突。",
-        "modelVotesAdvice": "模型的投票仅作参考时，分配给人员的论文只按人员的投票定案，模型的投票显示在旁边。",
+        "modelVotesAdvice": "模型的投票仅作参考时，分配给人员的论文只按人员的投票定案，审核人在自己投票前就能看到模型的投票。",
         "modelVotesNever": "无论哪种方式，没有分配给任何人的论文都按模型的投票定案。在“首票决定”下，模型的投票对任何已分配给人员的论文都只作参考。",
         "addModel": "添加模型后可选择",
         "modelsUnderOne": "对分配给人员的论文仅作参考",
@@ -8383,7 +8388,7 @@
         "whoSettles": "谁裁决冲突",
         "seeVotes": "审核人何时能看到其他人的投票",
         "seeingTitle": "查看其他人的投票",
-        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。不对某篇论文投票的人随时都能看到其投票。",
+        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。仅作参考的模型投票在此之前就会显示。不对某篇论文投票的人随时都能看到其投票。",
         "after": "投票后",
         "always": "随时",
         "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
@@ -8498,6 +8503,8 @@
         "add": "{you, select, true {把自己加入筛选条件} other {把 {name} 加入筛选条件}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "审核人的待处理中隐藏人员投票",
+        "peopleHiddenMine": "你的待处理中隐藏人员投票",
         "advice": "模型投票仅作参考",
         "title": "论文如何定案",
         "eachPaper": "每篇论文由{who, select, both {{people, plural, other {# 人}}和{models, plural, other {# 个模型}}} people {{people, plural, other {# 人}}} other {{models, plural, other {# 个模型}}}}投票",
@@ -8562,6 +8569,7 @@
         "nothingElse": "其他一切不变"
       },
       "finish": {
+        "peopleVotesShow": "原先对审核人隐藏的人员投票会向筛选中的所有人显示",
         "title": "将此筛选标记为已完成？",
         "unsettled": "{count, plural, other {# 篇论文尚未定案，将保持现状}}",
         "votingStops": "重新打开之前，任何人都不能对它投票",
@@ -8792,6 +8800,7 @@
         "stillWait": "查看其中哪些仍在等待其他人投票"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, other {已通过邮件邀请 # 位审核人，对方加入且筛选重新打开后即可投票}}} other {{count, plural, other {已通过邮件邀请 # 位审核人，加入后即可投票}}}}",
         "title": "审核人",
         "everyoneDone": "按目前的速度，大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成",
         "move": "转移论文",
@@ -8979,6 +8988,7 @@
         "none": "此筛选还没有论文。"
       },
       "sort": {
+        "peopleShut": "这次筛选会隐藏其他人员在你尚未投票的论文上的投票，而这种排序会泄露这些投票",
         "added": "按添加顺序",
         "title": "标题，A 到 Z",
         "title-desc": "标题，Z 到 A",
@@ -9098,11 +9108,12 @@
         "stopPapersWaiting": "{you, select, true {不再只显示等待你投票的论文} other {不再只显示等待 {name} 投票的论文}}"
       },
       "marks": {
+        "peopleHidden": "有人已投票，在论文等待你投票期间隐藏",
         "title": "投票标记",
         "aReviewer": "审核人",
         "aModel": "模型",
         "voted": "投了{decision}",
-        "hidden": "已投票，在论文等待该审核人自己投票期间隐藏",
+        "hidden": "已投票，在论文等待你投票期间隐藏",
         "empty": "空白格表示这篇论文不需要他们投票"
       },
       "why": {
@@ -9184,7 +9195,7 @@
         "join": "你不是此筛选的审核人。以审核人身份加入即可投票。"
       },
       "votesShut": "其他人的投票不予显示，以免影响你的判断。",
-      "peopleVotesShut": "其他人的投票不予显示，以免影响你的判断。模型的建议会显示。",
+      "peopleVotesShut": "{people, plural, =0 {} other {其他人的投票不予显示，以免影响你的判断。}}{models, plural, other {模型的投票一经投出就会显示。}}",
       "creditsShort": "{short, plural, other {还差 # 积分}}",
       "retry": "{papers, plural, other {重试 # 篇论文，需 {cost, plural, other {# 积分}}}}",
       "votesBy": "{you, select, true {你的投票} other {{name} 的投票}}",
@@ -9544,6 +9555,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "你投票后才显示人员的投票",
+      "votesWereHiddenSays": "此前只有在论文等待某位审核人自己投票时，才会向其隐藏投票。现在筛选已完成，所有投票均可见。",
+      "votesHiddenPeopleSays": "对于仍在等待某位审核人投票的论文，此筛选会向该审核人隐藏其他人员的投票。模型的投票仅作参考，随时可见。",
       "decision": {
         "include": "入选",
         "maybe": "待定",

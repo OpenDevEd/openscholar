@@ -17,12 +17,12 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
-import { advisory, isFinal, modelsProgress, nameHas, twinsNamed } from "../../lib/screening/rules";
+import { hidesVotes, isFinal, modelsProgress, nameHas, readersFor, showsEarly, twinsNamed } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
+import { dealable, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
 import { invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
@@ -104,8 +104,8 @@ type Counts = NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screenin
  * the person has yet to vote on. A finished screening keeps nothing: no vote can be cast in it any more. One
  * function, for every figure a page or a file shows of the others.
  */
-export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined) =>
-  job.rule?.blind === "after" && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined, reviewers: Iterable<Doc<"screeningReviewers">>) =>
+  job.rule !== undefined && hidesVotes(job.rule, readersFor(job.rule.each, [...reviewers].filter(dealable).length)) && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
 
 /** A reviewer's row as the pages read it, with their counts. `kept`: how they voted is kept from whoever looks (`keepsVotes`). */
 async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: Counts | undefined, members: Map<Id<"users">, boolean>, kept = false): Promise<ReviewerView> {
@@ -171,8 +171,8 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     job.rule ? ctx.db.get("users", job.rule.resolver) : null,
   ]);
   const members = new Map<Id<"users">, boolean>();
-  const keeps = keepsVotes(job, reviewer, progress?.reviewers);
-  const viewed = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id && !(row.kind === "model" && advisory(job.rule!)))));
+  const keeps = keepsVotes(job, reviewer, progress?.reviewers, rows);
+  const viewed = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id && !showsEarly(job.rule!, row.kind))));
   // One model put on it at two efforts is two reviewers: each then says its effort, so a filter, a row or a vote names the one it means.
   const reviewers = twinsNamed(viewed, (model) => model.modelId);
   const settled = { ...NO_RESULTS, ...progress?.counts };
@@ -509,7 +509,7 @@ export const figuresAction = defineUserQuery({
       reasons: progress?.reasons ?? {},
       included: progress?.included ?? {},
       // How far two reviewers agree is how they voted, for someone who still has papers to vote on.
-      pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
+      pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers, reviewers) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
       recent: Object.fromEntries(recent),
       startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
       checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },

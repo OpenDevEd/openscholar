@@ -44,15 +44,15 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { blindOf, type Blind, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
 import { searchHistory, useOpenInAddress } from "./address";
-import { advisory, decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
+import { decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
@@ -453,7 +453,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={fixedOrder ? "added" : sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: one === "added" && fixedOrder ? t(`sort.${fixedOrder}Label`) : t(`sort.${one}`), icon: <Icon />, ...(one !== "added" && fixedOrder ? { shut: t(`sort.${fixedOrder}`) } : open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={fixedOrder ? "added" : sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: one === "added" && fixedOrder ? t(`sort.${fixedOrder}Label`) : t(`sort.${one}`), icon: <Icon />, ...(one !== "added" && fixedOrder ? { shut: t(`sort.${fixedOrder}`) } : open.keepsVotes && (one === "split" || one === "points") ? { shut: blindOf(screening, open.invited) === "people" ? t("sort.peopleShut") : t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
@@ -503,7 +503,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             <SlidersHorizontal />{t("filters")}
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
           </Button>
-          <VoteMarksHelp blind={screening.rule.blind === "after"} className="@2xl/papers:hidden">{t("marksOnPhone")}</VoteMarksHelp>
+          <VoteMarksHelp blind={blindOf(screening, open.invited)} className="@2xl/papers:hidden">{t("marksOnPhone")}</VoteMarksHelp>
         </div>
       </div>
 
@@ -516,7 +516,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       </div>
 
       {/* A filter by how someone else voted can't count the votes hidden from the person looking: it says how many it leaves out, as the Overview and the files do. */}
-      {open.keepsVotes && who && who !== open.me && !(advisory(screening.rule) && screening.reviewers.some((one) => one.id === who && one.kind === "model")) && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
+      {open.keepsVotes && who && who !== open.me && screening.reviewers.find((one) => one.id === who)?.tally?.kept && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
       {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
@@ -638,7 +638,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                               </Legend>
                             </Help>
                           ) : (
-                            <VoteMarksHelp blind={screening.rule.blind === "after"}>{t("marksInTable")}</VoteMarksHelp>
+                            <VoteMarksHelp blind={blindOf(screening, open.invited)}>{t("marksInTable")}</VoteMarksHelp>
                           )}
                         </span>
                       </TableHead>
@@ -694,7 +694,6 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   </TableHeader>
                   <TableBody className="border-t border-border-subtle">
                     {shown.map((one) => {
-                      const visible = one.sees;
                       const cast = castOf(screening, one);
                       const state = settledOf(one);
                       const waitsForMe = open.isReviewer && !screening.finishedAt && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);
@@ -719,7 +718,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                 return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} settled={Boolean(state.final)} hidden={theirs.hidden} who={r.id === open.me ? words.t("you") : r.name} className="align-middle" /> : null}</TableCell>;
                               })
                             : criteria.map((criterion) => {
-                                const given = visible ? [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))] : [];
+                                const given = [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))];
                                 return (
                                   <TableCell key={criterion.key} className="px-1 text-center">
                                     {given.length === 1 ? <span className="inline-flex align-middle"><AnswerMark answer={given[0]!} label={criterion.short} /></span> : given.length > 1 ? <DifferMark label={t("table.differOn", { name: criterion.short })} /> : null}
@@ -811,16 +810,16 @@ function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode })
 }
 
 /** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
-function VoteMarksHelp({ blind, children, className }: { /** The screening hides the others' votes until you vote. */ blind: boolean; children: ReactNode; className?: string }) {
+function VoteMarksHelp({ blind, children, className }: { /** How the screening hides the others' votes until you vote (./data.ts `blindOf`). */ blind: Blind; children: ReactNode; className?: string }) {
   const t = useTranslations("screening.papers");
   const words = useWords();
   return (
     <Help title={t("marks.title")} side="bottom" className={className}>
       <p>{children}</p>
-      {blind ? <p>{words.t("votesHiddenSays")}</p> : null}
+      {blindSays(words, blind) ? <p>{blindSays(words, blind)}</p> : null}
       <Legend>
         {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who={t("marks.aReviewer")} />}>{t("marks.voted", { decision: words.decision(decision) })}</LegendRow>)}
-        {blind ? <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who={t("marks.aReviewer")} />}>{t("marks.hidden")}</LegendRow> : null}
+        {blind === "all" || blind === "people" ? <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who={t("marks.aReviewer")} />}>{blind === "people" ? t("marks.peopleHidden") : t("marks.hidden")}</LegendRow> : null}
         <LegendRow mark={<VoteMark who={t("marks.aReviewer")} />}>{words.t("noVoteSays.yet")}</LegendRow>
         <LegendRow mark={<VoteMark settled who={t("marks.aReviewer")} />}>{words.t("noVoteSays.none")}</LegendRow>
         <LegendRow mark={<VoteMark failed who={t("marks.aModel")} />}>{words.t("noVoteSays.failed")}</LegendRow>
@@ -944,8 +943,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const isMine = cast.some((one) => one.reviewer.id === open.me);
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer && one.vote) : undefined;
   const quotedCriterion = shown && quoting ? screening.criteria.find((c) => c.key === shown.criterion) : undefined;
-  // A vote kept from you until you vote: the models' advice shows before it, so only the people's can be.
-  const kept = !visible && cast.some((one) => one.hidden);
+  const shut = votesShutOf(visible, cast);
+  const blind = blindOf(screening, open.invited);
   // The sentence marked in the abstract: the one a model named for the answer of its that is open.
   const quoted = quotedCriterion && quoting?.reviewer.kind === "model" ? (quoting.vote?.passages?.[quotedCriterion.key] ?? -1) : -1;
   const sentences = sentencesOf(paper.abstract);
@@ -1043,10 +1042,10 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       ) : null}
 
       {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
-      <Section title={t("panel.everyonesVotes")} help={<VotesHelp blind={screening.rule.blind === "after"} side="left" />} aside={kept ? <ShutChip by="vote" /> : undefined}>
-          <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible && !cast.some((one) => one.vote)} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
-        {kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, cast)}</ShutNote> : null}
-        {visible ? (
+      <Section title={t("panel.everyonesVotes")} help={<VotesHelp blind={blind} side="left" />} aside={shut.kept ? <HiddenChip blind={blind} /> : undefined}>
+          <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={shut.none} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
+        {shut.kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, blind, cast, open.me)}</ShutNote> : null}
+        {!shut.none ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {
               const unread = reviewer.tally?.failed ?? 0;
