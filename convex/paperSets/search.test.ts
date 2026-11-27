@@ -557,3 +557,12 @@ describe("a paper taken from a search", () => {
     expect(paper.authors).toEqual(["A. Pettifor", "Catherine MacPhail", "J. Hughes"]);
   });
 });
+
+describe("a search result as a paper", () => {
+  it("keeps the record our index knows it by, so two records of one OpenAlex work are two records", async () => {
+    const { toPaper } = await import("./search");
+    const [first, second] = [toPaper({ id: "https://openalex.org/W1", openscholar_id: "OS1", title: "A trial" }), toPaper({ id: "https://openalex.org/W1", openscholar_id: "OS2", title: "A trial" })];
+    expect(first.paper).toBe(second.paper);
+    expect(first.record).not.toBe(second.record);
+  });
+});

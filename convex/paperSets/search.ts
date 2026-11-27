@@ -127,12 +127,16 @@ export type Work = {
   open_access?: { is_oa?: boolean | null; oa_url?: string | null; oa_status?: string | null } | null;
   funders?: Array<{ id?: string | null; display_name?: string | null }> | null;
   has_content?: { pdf?: boolean | null } | null;
+  /** The ID our index knows it by, where it goes by OpenAlex's (lib/openalex/work-id.ts `appWork`). */
+  openscholar_id?: string;
 };
 
 export function toPaper(work: Work): SearchPaper {
   const authors = onceEach(work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
     paper: toPaperKey(work.id)!,
+    // Our index can hold two records of one OpenAlex work, such as a preprint and the paper: each is a record of its own, so the second is counted as a duplicate merged and not taken for the first read again (convex/screening/gathering.ts `fill`).
+    ...(work.openscholar_id ? { record: work.openscholar_id } : {}),
     title: work.title ?? work.display_name ?? "",
     ...(work.abstract_inverted_index ? { abstract: abstractFromIndex(work.abstract_inverted_index) } : {}),
     ...(authors.length ? { authors } : {}),
