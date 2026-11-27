@@ -7822,7 +7822,7 @@
         "untilVotedAdvice": "A reviewer sees the other people's votes on a paper once they vote on it or it is settled. The models' votes show before then, as advice",
         "never": "Everyone sees every vote as it is cast",
         "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled",
-        "discussion": "A paper’s discussion shows to a reviewer at the same moment"
+        "discussion": "A reviewer reads a paper's discussion once they can see its votes"
       },
       "criteria": {
         "modelsAnswerNew": "The models answer the new {count, plural, one {criterion} other {criteria}} on the open papers they have read",
@@ -8396,7 +8396,7 @@
         "whoSettles": "Who settles a conflict",
         "seeVotes": "Reviewers see the other votes",
         "seeingTitle": "Seeing other votes",
-        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time. How far the reviewers agree, and how each voted overall, shows to a reviewer once no paper waits for their vote.",
+        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time. How far the reviewers agree, and how each voted overall, shows to a reviewer once no paper waits for their vote. A paper's discussion shows when its votes do.",
         "after": "After they vote",
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
@@ -8854,7 +8854,7 @@
         "doneAfter": "<b>Everyone done in about {afterWeeks, plural, =0 {{afterDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}</b>{same, select, true {<muted>, the same as now</muted>} other {<muted>, where it is about {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}} now</muted>}}",
         "startsAt": "It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {you, select, true {your} other {{name}'s}} queue go. Votes already cast stay where they are.",
         "hasAll": "{takerYou, select, true {You already have} other {{taker} already has}} all of {giverYou, select, true {your} other {{giver}'s}} papers.",
-        "noneNear": "{takerYou, select, true {You already have} other {{taker} already has}} every paper at the end of {giverYou, select, true {your} other {{giver}’s}} queue, the end a move takes papers from.",
+        "noneNear": "{takerYou, select, true {You already have} other {{taker} already has}} the last papers in {giverYou, select, true {your} other {{giver}'s}} queue. Move papers to someone else.",
         "nobodyElse": "There is nobody else to move papers to.",
         "doneIn": "Done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}"
       },
@@ -9140,7 +9140,7 @@
       "back": "Back",
       "panel": {
         "placeOf": "{at, number} of {of, number}",
-        "notInList": "Not in this list",
+        "notInList": "Not in this list now",
         "close": "Close",
         "paper": "Paper",
         "says": "The abstract, votes and result of this paper",
@@ -9377,6 +9377,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {This screening is finished, so no more votes are cast. Reopen it to vote again.} other {This screening is finished, so no more votes are cast.}}",
+        "left": "This paper left the screening with its source. Its votes stay on record and count for nothing",
         "settler": "{you, select, true {You settle conflicts on this screening. You can read them here.} other {{name} settles conflicts on this screening. You can read them here.}}"
       },
       "through": {

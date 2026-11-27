@@ -7823,7 +7823,7 @@
         "untilVotedAdvice": "’n Beoordelaar sien die ander mense se stemme op ’n artikel sodra hulle daarop stem of dit beslis is. Die modelle se stemme wys al voor dit, as advies",
         "never": "Almal sien elke stem soos dit uitgebring word",
         "untilVoted": "’n Beoordelaar sien die ander stemme op ’n artikel sodra hulle daarop stem of dit beslis is",
-        "discussion": "’n Artikel se bespreking wys op dieselfde oomblik aan ’n beoordelaar"
+        "discussion": "’n Beoordelaar lees ’n artikel se bespreking sodra hulle sy stemme kan sien"
       },
       "criteria": {
         "modelsAnswerNew": "Die modelle beantwoord {count, plural, one {die nuwe kriterium} other {die nuwe kriteria}} op die oop artikels wat hulle gelees het",
@@ -8397,7 +8397,7 @@
         "whoSettles": "Wie ’n konflik beslis",
         "seeVotes": "Beoordelaars sien die ander stemme",
         "seeingTitle": "Hoe ander stemme gesien word",
-        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd. Hoe ver die beoordelaars saamstem, en hoe elkeen oor die algemeen gestem het, wys vir ’n beoordelaar sodra geen artikel meer op hulle stem wag nie.",
+        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd. Hoe ver die beoordelaars saamstem, en hoe elkeen oor die algemeen gestem het, wys vir ’n beoordelaar sodra geen artikel meer op hulle stem wag nie. ’n Artikel se bespreking wys wanneer sy stemme wys.",
         "after": "Nadat hulle stem",
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
@@ -8855,7 +8855,7 @@
         "doneAfter": "<b>Almal klaar oor omtrent {afterWeeks, plural, =0 {{afterDays, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}</b>{same, select, true {<muted>, dieselfde as nou</muted>} other {<muted>, waar dit nou omtrent {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}} is</muted>}}",
         "startsAt": "Dit begin by die getal wat die twee met ewe veel artikels laat. Die artikels heel onder in {you, select, true {jou} other {{name} se}} ry gaan. Stemme wat reeds uitgebring is, bly waar hulle is.",
         "hasAll": "{takerYou, select, true {Jy het reeds} other {{taker} het reeds}} al {giverYou, select, true {jou} other {{giver} se}} artikels.",
-        "noneNear": "{takerYou, select, true {Jy het reeds} other {{taker} het reeds}} elke artikel aan die einde van {giverYou, select, true {jou} other {{giver} se}} tou, die kant waarvandaan ’n skuif artikels neem.",
+        "noneNear": "{takerYou, select, true {Jy het reeds} other {{taker} het reeds}} die laaste artikels in {giverYou, select, true {jou} other {{giver} se}} tou. Skuif artikels na iemand anders.",
         "nobodyElse": "Daar is niemand anders om artikels na te skuif nie.",
         "doneIn": "Klaar oor omtrent {weeks, plural, =0 {{days, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}"
       },
@@ -9141,7 +9141,7 @@
       "back": "Terug",
       "panel": {
         "placeOf": "{at, number} van {of, number}",
-        "notInList": "Nie in hierdie lys nie",
+        "notInList": "Nie meer in hierdie lys nie",
         "close": "Maak toe",
         "paper": "Artikel",
         "says": "Die opsomming, stemme en uitslag van hierdie artikel",
@@ -9378,6 +9378,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Hierdie siftering is klaar, so geen stemme word meer uitgebring nie. Maak dit weer oop om weer te stem.} other {Hierdie siftering is klaar, so geen stemme word meer uitgebring nie.}}",
+        "left": "Hierdie artikel het die keuring saam met sy bron verlaat. Sy stemme bly aangeteken en tel vir niks",
         "settler": "{you, select, true {Jy beslis konflikte op hierdie siftering. Jy kan hulle hier lees.} other {{name} beslis konflikte op hierdie siftering. Jy kan hulle hier lees.}}"
       },
       "through": {

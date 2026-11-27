@@ -516,7 +516,7 @@ export const figuresAction = defineUserQuery({
       pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers, reviewers, (await invitationsTo(ctx, jobId)).length) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
       recent: Object.fromEntries(recent),
       startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
-      checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },
+      checks: { later: later.length, listed: checks.filter((check) => check.from !== 0 && check.state !== "running").length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },
       // What the methods paragraph says was changed: the settings, and who reviews.
       changes: saves.filter((row) => CHANGED.has(row.code ?? "")).length,
       changedParts: [...new Set(saves.flatMap((row) => (row.code === "settings" ? (row.more ?? []).flatMap((line) => (line.code === "part" && line.detail ? [line.detail] : [])) : CHANGED.has(row.code ?? "") ? ["reviewers"] : [])))].slice(0, 12),

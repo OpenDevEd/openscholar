@@ -7822,7 +7822,7 @@
         "untilVotedAdvice": "レビュアーは、論文に投票するか結果が確定した後に、その論文へのほかの人の投票を見られます。モデルの投票はそれより前に参考として表示されます",
         "never": "投票は行われた時点で全員に表示されます",
         "untilVoted": "レビュアーは、論文に投票するか結果が確定した後に、その論文へのほかの投票を見られます",
-        "discussion": "論文のディスカッションも同じタイミングでレビュアーに表示されます"
+        "discussion": "レビュアーは、論文の投票が見られるようになると、そのディスカッションも読めます"
       },
       "criteria": {
         "modelsAnswerNew": "モデルは、読み取り済みの未確定の論文について、新しい{count, plural, other {基準}}に答えます",
@@ -8396,7 +8396,7 @@
         "whoSettles": "不一致を判定する人",
         "seeVotes": "レビュアーがほかの投票を見られるタイミング",
         "seeingTitle": "ほかの投票の表示",
-        "seeingHelp": "「投票後」にすると、レビュアーがほかの人に影響されません。各レビュアーは、論文に投票した後か結果が確定した後に、その論文へのほかの投票を見られます。参考のみのモデルの投票は、それより前に表示されます。論文に投票しない人は、いつでも投票を見られます。レビュアー同士の一致度と、各自の投票の内訳は、自分の投票を待つ論文がなくなった時点で表示されます。",
+        "seeingHelp": "「投票後」にすると、レビュアーがほかの人に影響されません。各レビュアーは、論文に投票した後か結果が確定した後に、その論文へのほかの投票を見られます。参考のみのモデルの投票は、それより前に表示されます。論文に投票しない人は、いつでも投票を見られます。レビュアー同士の一致度と、各自の投票の内訳は、自分の投票を待つ論文がなくなった時点で表示されます。 論文のディスカッションは、投票が見えるときに表示されます。",
         "after": "投票後",
         "always": "いつでも",
         "withVotes": "{count, plural, other {たとえば論文への投票が # 票の場合}}",
@@ -8854,7 +8854,7 @@
         "doneAfter": "<b>全員が約 {afterWeeks, plural, =0 {{afterDays, plural, other {# 日}}} other {# 週間}}で終わります</b>{same, select, true {<muted>、今と同じです</muted>} other {<muted>、今は約 {beforeWeeks, plural, =0 {{beforeDays, plural, other {# 日}}} other {# 週間}}です</muted>}}",
         "startsAt": "最初は、2 人の論文数が同じになる数に設定されています。{you, select, true {あなた} other {{name}}}のキューの最後の方にある論文から移ります。投票済みの票はそのまま残ります。",
         "hasAll": "{takerYou, select, true {あなた} other {{taker}}}は{giverYou, select, true {あなた} other {{giver}}}の論文をすでにすべて持っています。",
-        "noneNear": "{giverYou, select, true {あなたの} other {{giver}の}}キューの末尾にある論文は、すべて{takerYou, select, true {あなた} other {{taker}}}がすでに担当しています。移動は末尾から論文を移します。",
+        "noneNear": "{giverYou, select, true {あなたの} other {{giver}の}}キューの最後の論文は、すでに{takerYou, select, true {あなた} other {{taker}}}が担当しています。ほかの人に移してください。",
         "nobodyElse": "論文を移せる人がほかにいません。",
         "doneIn": "約 {weeks, plural, =0 {{days, plural, other {# 日}}} other {# 週間}}で完了"
       },
@@ -9140,7 +9140,7 @@
       "back": "戻る",
       "panel": {
         "placeOf": "{of, number} 件中 {at, number} 件目",
-        "notInList": "この一覧にはありません",
+        "notInList": "今はこの一覧にありません",
         "close": "閉じる",
         "paper": "論文",
         "says": "この論文の要約、投票、結果",
@@ -9377,6 +9377,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {このスクリーニングは完了しているため、これ以上投票できません。再び投票するには再開してください。} other {このスクリーニングは完了しているため、これ以上投票できません。}}",
+        "left": "この論文は出典とともにスクリーニングから外れました。投票は記録に残りますが、数えられません",
         "settler": "{you, select, true {このスクリーニングの不一致はあなたが判定します。ここで内容を確認できます。} other {このスクリーニングの不一致は {name} が判定します。ここで内容を確認できます。}}"
       },
       "through": {

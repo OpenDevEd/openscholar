@@ -135,8 +135,22 @@ export type Source = {
 /** What finds the words the criteria mark in a text, each with whatever ending the text gives it ("programme" marks "programmes" too). Splitting a text by it leaves the marked words at the odd places. Null with no word to find. */
 export function termsPattern(terms: string[]) {
   const words = [...new Set(terms)].filter(Boolean).sort((a, b) => b.length - a.length);
-  return words.length ? new RegExp(`(?<![\\p{L}\\p{N}])((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})[\\p{L}\\p{N}]*)`, "giu") : null;
+  if (!words.length) return null;
+  const escape = (word: string) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const any = (list: string[]) => list.map(escape).join("|");
+  // A word goes on through its letters, the marks on them (accents, vowel signs) and its digits.
+  const letter = "[\\p{L}\\p{M}\\p{N}]";
+  // Where words are spaced, a term starts a word and marks the rest of it. Arabic joins small words to the front of the next (al-, wa-), so a term there may start inside one.
+  // Chinese, Japanese, Thai and their neighbours write no space between words: a term there is marked as it is written.
+  const unspaced = words.filter((word) => UNSPACED.test(word));
+  const joined = words.filter((word) => !UNSPACED.test(word) && JOINED.test(word));
+  const spaced = words.filter((word) => !UNSPACED.test(word) && !JOINED.test(word));
+  const parts = [spaced.length ? `(?<!${letter})(?:${any(spaced)})${letter}*` : "", joined.length ? `(?:${any(joined)})${letter}*` : "", unspaced.length ? `(?:${any(unspaced)})` : ""].filter(Boolean);
+  return new RegExp(`(${parts.join("|")})`, "giu");
 }
+/** Scripts that write no space between words, and the one that joins small words to the next. */
+const UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+const JOINED = /\p{Script=Arabic}/u;
 
 /** Why a paper that was found isn't screened. */
 const NO_ABSTRACT = "No abstract";

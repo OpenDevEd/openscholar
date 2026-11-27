@@ -7822,7 +7822,7 @@
         "untilVotedAdvice": "审核人对论文投票后或论文定案后，才能看到其他人员的投票。模型的投票在此之前就会显示，作为参考",
         "never": "所有人都能在投票时看到每一票",
         "untilVoted": "审核人对论文投票后或论文定案后，才能看到其他人的投票",
-        "discussion": "论文的讨论也在同一时间向审核人显示"
+        "discussion": "审核人能看到论文的投票时，也能阅读其讨论"
       },
       "criteria": {
         "modelsAnswerNew": "模型会在已读过的未定案论文上回答新的{count, plural, other {标准}}",
@@ -8396,7 +8396,7 @@
         "whoSettles": "谁裁决冲突",
         "seeVotes": "审核人何时能看到其他人的投票",
         "seeingTitle": "查看其他人的投票",
-        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。仅作参考的模型投票在此之前就会显示。不对某篇论文投票的人随时都能看到其投票。审核人之间的一致程度，以及每人的总体投票情况，会在没有论文再等待某位审核人投票时向其显示。",
+        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。仅作参考的模型投票在此之前就会显示。不对某篇论文投票的人随时都能看到其投票。审核人之间的一致程度，以及每人的总体投票情况，会在没有论文再等待某位审核人投票时向其显示。 论文的讨论会在其投票显示时显示。",
         "after": "投票后",
         "always": "随时",
         "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
@@ -8854,7 +8854,7 @@
         "doneAfter": "<b>大约 {afterWeeks, plural, =0 {{afterDays, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成</b>{same, select, true {<muted>，与现在相同</muted>} other {<muted>，现在大约是 {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {一天} other {# 天}}} other {# 周}}</muted>}}",
         "startsAt": "初始数量会让两人的论文数相同。转走的是{you, select, true {你} other {{name} }}的队列中最靠后的论文。已投的票保持不变。",
         "hasAll": "{takerYou, select, true {你} other {{taker} }}已经有{giverYou, select, true {你} other {{giver} }}的全部论文。",
-        "noneNear": "{giverYou, select, true {你} other {{giver}}}队列末尾的每篇论文，{takerYou, select, true {你} other {{taker}}}都已经有了；转移正是从末尾取论文。",
+        "noneNear": "{giverYou, select, true {你} other {{giver}}}队列最后的论文{takerYou, select, true {你} other {{taker}}}都已经有了。请把论文转给其他人。",
         "nobodyElse": "没有其他人可以接收论文。",
         "doneIn": "大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后完成"
       },
@@ -9140,7 +9140,7 @@
       "back": "返回",
       "panel": {
         "placeOf": "{at, number} / {of, number}",
-        "notInList": "不在此列表中",
+        "notInList": "现已不在此列表中",
         "close": "关闭",
         "paper": "论文",
         "says": "这篇论文的摘要、投票和结果",
@@ -9377,6 +9377,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {此筛选已完成，不再接受投票。重新打开即可再次投票。} other {此筛选已完成，不再接受投票。}}",
+        "left": "这篇论文已随其来源离开这项筛选。对它的投票仍有记录，但不计入",
         "settler": "{you, select, true {你负责裁决此筛选的冲突。你可以在这里阅读它们。} other {{name} 负责裁决此筛选的冲突。你可以在这里阅读它们。}}"
       },
       "through": {

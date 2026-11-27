@@ -7823,7 +7823,7 @@
         "untilVotedAdvice": "Um revisor vê os votos das outras pessoas num artigo depois de votar nele ou de o artigo ficar decidido. Os votos dos modelos aparecem antes disso, como conselho",
         "never": "Todos veem cada voto assim que é dado",
         "untilVoted": "Um revisor vê os outros votos num artigo depois de votar nele ou de o artigo ficar decidido",
-        "discussion": "A discussão de um artigo aparece ao revisor no mesmo momento"
+        "discussion": "Um revisor lê a discussão de um artigo quando pode ver os votos nele"
       },
       "criteria": {
         "modelsAnswerNew": "Os modelos respondem {count, plural, one {ao novo critério} other {aos novos critérios}} nos artigos em aberto que já leram",
@@ -8397,7 +8397,7 @@
         "whoSettles": "Quem resolve um conflito",
         "seeVotes": "Os revisores veem os outros votos",
         "seeingTitle": "Ver os outros votos",
-        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento. Até que ponto os revisores concordam, e como cada um votou no total, aparece a um revisor quando nenhum artigo espera já o seu voto.",
+        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento. Até que ponto os revisores concordam, e como cada um votou no total, aparece a um revisor quando nenhum artigo espera já o seu voto. A discussão de um artigo aparece quando os votos aparecem.",
         "after": "Depois de votar",
         "always": "A qualquer momento",
         "withVotes": "{count, plural, one {Com # voto num artigo, por exemplo} other {Com # votos num artigo, por exemplo}}",
@@ -8855,7 +8855,7 @@
         "doneAfter": "<b>Todos terminam dentro de cerca de {afterWeeks, plural, =0 {{afterDays, plural, =1 {um dia} other {# dias}}} one {# semana} other {# semanas}}</b>{same, select, true {<muted>, o mesmo que agora</muted>} other {<muted>, quando agora são cerca de {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {um dia} other {# dias}}} one {# semana} other {# semanas}}</muted>}}",
         "startsAt": "Começa no número que deixa os dois com tantos artigos um como o outro. Saem os artigos mais abaixo na fila {you, select, true {da sua lista} other {de {name}}}. Os votos já dados ficam onde estão.",
         "hasAll": "{takerYou, select, true {Já tem} other {{taker} já tem}} todos os artigos {giverYou, select, true {seus} other {de {giver}}}.",
-        "noneNear": "{takerYou, select, true {Você já tem} other {{taker} já tem}} todos os artigos do fim da fila de {giverYou, select, true {você} other {{giver}}}, a ponta de onde uma transferência tira artigos.",
+        "noneNear": "{takerYou, select, true {Você já tem} other {{taker} já tem}} os últimos artigos da fila de {giverYou, select, true {você} other {{giver}}}. Passe artigos a outra pessoa.",
         "nobodyElse": "Não há mais ninguém para quem mover artigos.",
         "doneIn": "Termina dentro de cerca de {weeks, plural, =0 {{days, plural, =1 {um dia} other {# dias}}} one {# semana} other {# semanas}}"
       },
@@ -9141,7 +9141,7 @@
       "back": "Voltar",
       "panel": {
         "placeOf": "{at, number} de {of, number}",
-        "notInList": "Não está nesta lista",
+        "notInList": "Já não está nesta lista",
         "close": "Fechar",
         "paper": "Artigo",
         "says": "O resumo, os votos e o resultado deste artigo",
@@ -9378,6 +9378,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Esta triagem está terminada, por isso não se dão mais votos. Reabra-a para votar de novo.} other {Esta triagem está terminada, por isso não se dão mais votos.}}",
+        "left": "Este artigo saiu da triagem com a sua fonte. Os votos nele ficam registados e não contam",
         "settler": "{you, select, true {Você resolve os conflitos desta triagem. Pode lê-los aqui.} other {{name} resolve os conflitos desta triagem. Pode lê-los aqui.}}"
       },
       "through": {

@@ -613,7 +613,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </PopoverContent>
           </Popover>
         ) : null}
-        {notGiven?.papers ? <p className="flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground"><FileText className="size-3.5 shrink-0" />{notGiven.why === "text" ? t("row.notGivenText", { count: notGiven.papers }) : t("row.notGivenLong", { count: notGiven.papers })}</p> : null}
+        {notGiven?.papers ? <p className="flex items-start gap-1 text-xs text-muted-foreground"><FileText className="mt-px size-3.5 shrink-0" />{notGiven.why === "text" ? t("row.notGivenText", { count: notGiven.papers }) : t("row.notGivenLong", { count: notGiven.papers })}</p> : null}
       </div>
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
@@ -978,7 +978,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
   }
   const all = read.items.filter((check) => !check.first && check.state !== "running");
   const shown = checks === "all" ? all : all.slice(0, RECENT_CHECKS);
-  const later = figures?.checks.later ?? all.length;
+  // How many rows the list of every check has, counted as it lists them: failed checks and sources added included.
+  const later = figures?.checks.listed ?? all.length;
   const fixed = screening.sources.length - sources.length;
   return (
     <Section
@@ -996,7 +997,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
           {screening.living ? (
             <>
-            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every })}</Chip>
+            <Chip icon={RefreshCw} className={SENTENCE_CHIP}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every })}</Chip>
             {screening.finishedAt ? null : <Chip>{t("checks.next", { day: words.day(screening.living.next) })}</Chip>}
             </>
           ) : (

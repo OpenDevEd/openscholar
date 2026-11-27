@@ -95,6 +95,10 @@ export const say = workspaceMutation({
       if (to === actor.userId) throw createError("VALIDATION_ERROR", "Ask someone else.");
       const asked = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", to)).first();
       if (job.rule?.resolver !== to && (!asked || asked.left !== undefined)) throw createError("VALIDATION_ERROR", "Only someone on this screening can be asked.");
+      // Nobody is asked about a paper whose discussion is kept from them until they vote on it: they couldn't read the question.
+      const [votes, reviewers] = await Promise.all([votesOf(ctx, paperId), reviewersOf(ctx, jobId)]);
+      const kinds = new Map(reviewers.map((one) => [one._id, one.kind]));
+      if (!seesPaper(job, paper.result, votes, (id) => kinds.get(id), asked?.left === undefined ? asked?._id : undefined)) throw createError("VALIDATION_ERROR", "They can read this paper's discussion once they vote on it. Ask them then.");
     }
     // Writing on the paper answers every question that waited there for the writer: the questions on this paper put to them are read by themselves, however many lines came after them or wait on other papers.
     for (const line of await ctx.db.query("screeningMessages").withIndex("by_result_and_to_and_open", (q) => q.eq("resultId", paperId).eq("to", actor.userId).eq("open", true)).take(ANSWERED)) await ctx.db.patch("screeningMessages", line._id, { open: undefined });

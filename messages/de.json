@@ -7823,7 +7823,7 @@
         "untilVotedAdvice": "Ein Reviewer sieht die Stimmen der anderen Personen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist. Die Stimmen der Modelle sind schon vorher als Empfehlung sichtbar",
         "never": "Alle sehen jede Stimme, sobald sie abgegeben ist",
         "untilVoted": "Ein Reviewer sieht die anderen Stimmen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist",
-        "discussion": "Die Diskussion zu einem Artikel wird einem Reviewer im selben Moment sichtbar"
+        "discussion": "Ein Reviewer liest die Diskussion zu einem Artikel, sobald er dessen Stimmen sehen kann"
       },
       "criteria": {
         "modelsAnswerNew": "Die Modelle beantworten {count, plural, one {das neue Kriterium} other {die neuen Kriterien}} bei den offenen Artikeln, die sie gelesen haben",
@@ -8397,7 +8397,7 @@
         "whoSettles": "Wer einen Konflikt entscheidet",
         "seeVotes": "Reviewer sehen die anderen Stimmen",
         "seeingTitle": "Andere Stimmen sehen",
-        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit. Wie weit die Reviewer übereinstimmen und wie jeder insgesamt gestimmt hat, sieht ein Reviewer, sobald kein Artikel mehr auf seine Stimme wartet.",
+        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit. Wie weit die Reviewer übereinstimmen und wie jeder insgesamt gestimmt hat, sieht ein Reviewer, sobald kein Artikel mehr auf seine Stimme wartet. Die Diskussion zu einem Artikel wird sichtbar, wenn seine Stimmen sichtbar werden.",
         "after": "Nach der eigenen Stimme",
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
@@ -8855,7 +8855,7 @@
         "doneAfter": "<b>Alle fertig in etwa {afterWeeks, plural, =0 {{afterDays, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}</b>{same, select, true {<muted>, so wie jetzt</muted>} other {<muted>, jetzt sind es etwa {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {ein Tag} other {# Tage}}} one {# Woche} other {# Wochen}}</muted>}}",
         "startsAt": "Es beginnt bei der Zahl, mit der beide gleich viele Artikel haben. Es gehen die Artikel ganz unten in {you, select, true {Ihrer Warteschlange} other {der Warteschlange von {name}}}. Bereits abgegebene Stimmen bleiben, wo sie sind.",
         "hasAll": "{takerYou, select, true {Sie haben} other {{taker} hat}} bereits alle Artikel von {giverYou, select, true {Ihnen} other {{giver}}}.",
-        "noneNear": "{takerYou, select, true {Sie haben schon} other {{taker} hat schon}} jeden Artikel am Ende {giverYou, select, true {Ihrer} other {der}} Warteschlange{giverYou, select, true {} other { von {giver}}}, dem Ende, von dem ein Verschieben Artikel nimmt.",
+        "noneNear": "{takerYou, select, true {Sie haben schon} other {{taker} hat schon}} die letzten Artikel {giverYou, select, true {Ihrer Warteschlange} other {der Warteschlange von {giver}}}. Verschieben Sie Artikel zu jemand anderem.",
         "nobodyElse": "Es gibt niemanden sonst, an den Artikel verschoben werden können.",
         "doneIn": "Fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}"
       },
@@ -9141,7 +9141,7 @@
       "back": "Zurück",
       "panel": {
         "placeOf": "{at, number} von {of, number}",
-        "notInList": "Nicht in dieser Liste",
+        "notInList": "Nicht mehr in dieser Liste",
         "close": "Schließen",
         "paper": "Artikel",
         "says": "Abstract, Stimmen und Ergebnis dieses Artikels",
@@ -9378,6 +9378,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Dieses Screening ist abgeschlossen, es werden keine Stimmen mehr abgegeben. Öffnen Sie es wieder, um erneut abzustimmen.} other {Dieses Screening ist abgeschlossen, es werden keine Stimmen mehr abgegeben.}}",
+        "left": "Dieser Artikel hat das Screening mit seiner Quelle verlassen. Seine Stimmen bleiben verzeichnet und zählen nicht",
         "settler": "{you, select, true {Sie entscheiden die Konflikte in diesem Screening. Sie können sie hier lesen.} other {{name} entscheidet die Konflikte in diesem Screening. Sie können sie hier lesen.}}"
       },
       "through": {
