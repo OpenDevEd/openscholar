@@ -399,7 +399,8 @@ export const fill = internalMutation({
       }
       if (twin) {
         // The first source added keeps the paper: one another source holds is a duplicate merged, and so is one a file lists again under another of its records. A source read again finds its own papers, which are neither new nor merged: a file's by the record each was made from, any other's by its key.
-        const own = twin.sourceId === sourceId && (paper.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
+        // A paper kept before its source named records is told by its paper alone.
+        const own = twin.sourceId === sourceId && (paper.record === undefined || twin.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
         if (!own && (await merge(title, twin._id, named))) duplicates++;
         continue;
       }
