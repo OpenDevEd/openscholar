@@ -99,6 +99,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
  */
 export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDeleted?: () => void } = {}) {
   const t = useTranslations("screening.frame");
+  const common = useTranslations("common");
   // The router as it is, for an address already in the workspace it names (a screening moved to another).
   const nextRouter = useRouter();
   const words = useWords();
@@ -209,13 +210,20 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         <p className="text-sm text-muted-foreground">{t("stopEmails.says")}</p>
       </ConfirmChange>
       {/* The link in an email that turns them off, followed when they are off already: it says so, with the way to have them again, never a page that does nothing. */}
-      <ConfirmChange
-        open={emailsLink === "off" && !state.emails && (state.isReviewer || state.canResolve)}
-        title={t("menu.emailsOff")}
-        confirm={t("menu.emailAgain")}
-        onClose={() => void setEmailsLink(null)}
-        onConfirm={() => void state.setEmails(true).then(() => toast(t("menu.emailsOn"))).catch(failed(t))}
-      />
+      {(() => {
+        // Someone still on it can have them again. Anyone else gets none from it, whatever an old email offered.
+        const receives = state.isReviewer || state.canResolve;
+        return (
+          <ConfirmChange
+            open={emailsLink === "off" && !(state.emails && receives)}
+            title={t("menu.emailsOff")}
+            confirm={receives ? t("menu.emailAgain") : common("close")}
+            cancel={receives ? t("stopEmails.keepOff") : null}
+            onClose={() => void setEmailsLink(null)}
+            onConfirm={() => (receives ? void state.setEmails(true).then(() => toast(t("menu.emailsOn"))).catch(failed(t)) : undefined)}
+          />
+        );
+      })()}
       <ConfirmChange open={over === "finish"} title={t("finish.title")} confirm={t("markFinished")} onClose={close} onConfirm={() => void state.finish().catch(failed(t))}>
         <EffectList
           lines={[

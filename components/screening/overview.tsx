@@ -787,14 +787,14 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, max-content) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
-                <NextLink key={reviewer.id} href={reviewerHref(screening.id, reviewer) ?? papersHref(screening.id, { reviewer: reviewer.id })} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
+                <LinkOr key={reviewer.id} href={reviewerHref(screening.id, reviewer)} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
                   <ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} />
                   <span className="max-w-full truncate text-2xs text-muted-foreground">{short(reviewer)}</span>
-                </NextLink>
+                </LinkOr>
               ))}
               {reviewers.slice(1).map((a, i) => (
                 <div key={a.id} className="contents">
-                  <NextLink href={reviewerHref(screening.id, a) ?? papersHref(screening.id, { reviewer: a.id })} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
+                  <LinkOr href={reviewerHref(screening.id, a)} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></LinkOr>
                   {reviewers.slice(0, -1).map((b, column) => {
                     if (column > i) return <span key={b.id} className="h-12" />;
                     const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
@@ -987,7 +987,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         </Help>
       }
       aside={open.canChange ? (() => { // While papers arrive it waits, and says why where it is pointed at.
-        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
+        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -1194,4 +1194,9 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       </AutoHeight>
     </Section>
   );
+}
+
+/** A name that opens its papers where it has any, and stands as a name, with nothing to press, where it has none (./links.ts `reviewerHref`). */
+function LinkOr({ href, className, children, ...rest }: Omit<ComponentProps<typeof NextLink>, "href"> & { href: string | null }) {
+  return href ? <NextLink href={href} className={className} {...rest}>{children}</NextLink> : <span className={className} aria-label={rest["aria-label"]}>{children}</span>;
 }

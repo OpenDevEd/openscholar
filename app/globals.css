@@ -817,3 +817,13 @@ body:has([data-action-bar]) [data-sonner-toaster][data-y-position="bottom"] {
   --offset-bottom: 5.5rem !important;
   --mobile-offset-bottom: 9rem !important;
 }
+
+/* A field the keyboard moves to is brought into view above that bar, never left under it while someone types. */
+html:has([data-action-bar]) {
+  scroll-padding-bottom: 6rem;
+}
+@media (max-width: 40rem) {
+  html:has([data-action-bar]) {
+    scroll-padding-bottom: 10rem;
+  }
+}

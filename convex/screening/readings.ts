@@ -15,7 +15,7 @@ import { readsPdfs } from "../../lib/assistant/files";
 import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
 import { pricingOf } from "../../lib/pricing/estimate";
 import { bookkeepLater } from "./bookkeeping";
-import { modelsFree, reviewersOf, touched } from "./dealing";
+import { modelRow, modelsFree, reviewersOf, touched } from "./dealing";
 import { startWaitingVotes } from "./slots";
 import { criteriaValidator, voteAnswersValidator, votePassagesValidator } from "./validators";
 
@@ -91,6 +91,11 @@ export const done = screeningPool.defineOnComplete({
     const thrown = reviewer?.left !== undefined && reviewer?.discarded !== undefined;
     if (reading?.read && vote.status === "waiting" && thrown) {
       await ctx.db.patch("screeningVotes", vote._id, { status: "discarded", at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+    } else if (reading?.read && vote.status === "waiting" && job && reviewer && reading.askedAt !== undefined && (job.criteria ?? []).some((criterion) => Math.max(criterion.addedAt, criterion.changedAt ?? 0) > reading.askedAt!)) {
+      // Asked before a criterion was added or reworded: the reading is paid for, and the paper is read again for the criteria it has now, so no vote stands on answers to questions it no longer asks.
+      const paper = (await ctx.db.get("screeningResults", vote.resultId)) as Doc<"screeningResults"> | null;
+      await ctx.db.patch("screeningVotes", vote._id, { ...(paper ? modelRow(job, paper, reviewer) : {}), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+      await startWaitingVotes(ctx, job.workspaceId);
     } else if (reading?.read && vote.status === "waiting") {
       // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
       await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: reading.askedAt ?? Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });

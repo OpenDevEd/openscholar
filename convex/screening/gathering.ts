@@ -24,6 +24,7 @@ import { actorIn } from "../workspaces/actor";
 import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, dealable, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
+import { progressRow } from "./bookkeeping";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
@@ -345,7 +346,8 @@ export const fill = internalMutation({
   returns: v.null(),
   handler: async (ctx, { checkId, sourceId, papers, read, resume, ended, leftOut }) => {
     const [check, source] = await Promise.all([ctx.db.get("screeningChecks", checkId), ctx.db.get("screeningSources", sourceId)]);
-    const job = check?.state === "running" && source?.state === "reading" ? await ctx.db.get("screeningJobs", check.jobId) : null;
+    // A source taken out while its reading was out takes nothing in: its papers would arrive after it left.
+    const job = check?.state === "running" && source?.state === "reading" && source.removedAt === undefined ? await ctx.db.get("screeningJobs", check.jobId) : null;
     if (!check || !source || !job) return null;
     const reviewers = await reviewersOf(ctx, job._id);
     const reads = await readsOf(ctx, reviewers);
@@ -355,6 +357,8 @@ export const fill = internalMutation({
     const fileSpread = { ...source.fileSpread };
     // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
+    // The papers of sources taken out leave room for others: the limit counts the papers the screening has now.
+    const gone = (await progressRow(ctx, job._id))?.withdrawn ?? 0;
     let capped = false;
     // This reading of the source: each time it is read from its start is a pass of its own (./dealing.ts `readAgain`).
     const pass = source.pass ?? 0;
@@ -412,7 +416,7 @@ export const fill = internalMutation({
       // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.
       if (!abstract && !paper.file) { await leave(title, "abstract", named); continue; }
       const place = check.from + check.added + taken;
-      if (typeof most === "number" && place >= most) { capped = true; break; }
+      if (typeof most === "number" && place - gone >= most) { capped = true; break; }
       const resultId = await ctx.db.insert("screeningResults", {
         ...sourceMetadata(paper),
         jobId: job._id,

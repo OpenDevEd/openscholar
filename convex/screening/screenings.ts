@@ -379,6 +379,9 @@ export const finish = workspaceMutation({
   },
 });
 
+/** The guests of a finished screening looked through for reviewers to put on it as it reopens: more than any plan lets it have. */
+const GUESTS_PLACED = 100;
+
 /**
  * Opens a finished screening again: its reviewers vote on what is left, and its models go on reading.
  */
@@ -390,6 +393,9 @@ export const reopen = workspaceMutation({
     if (job.finishedAt === undefined) return null;
     const now = Date.now();
     await ctx.db.patch("screeningJobs", jobId, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now), ...(job.living ? { living: { ...job.living, next: now + EVERY_MS[job.living.every] } } : {}) });
+    // Whoever was given it to review while it was finished had no place on it then: they get theirs now, and their papers with it.
+    const on = new Set((await reviewersOf(ctx, jobId)).flatMap((one) => (one.kind === "person" ? [one.userId] : [])));
+    for (const grant of await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", jobId)).take(GUESTS_PLACED)) if (grant.role === "editor" && !on.has(grant.userId)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.guestChanged, { item: jobId, userId: grant.userId });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
     await logChange(ctx, actor, job, "reopened");
     return null;

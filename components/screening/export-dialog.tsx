@@ -260,7 +260,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 {whose === state.me ? null : leftOut}
                 {/* The file's columns over its first rows: a table may scroll sideways only where it can't fit. */}
                 {/* With no vote cast yet there is no row to show: the line under it says what the file holds instead, never a table of headings alone. */}
-                {voted.isLoading || sample.length ? (
+                {(voted.isLoading && votes > 0) || sample.length ? (
                 <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle">
                   {/* The paper takes what the other columns leave, and only it and the free text are ever cut. */}
                   <table className="w-full min-w-[60rem] text-sm">

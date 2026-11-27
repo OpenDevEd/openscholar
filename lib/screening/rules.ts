@@ -44,12 +44,20 @@ export type Rule = {
 
 /** How long a criterion's short name can be. */
 export const SHORT_NAME_LENGTH = 40;
+/** How long a criterion's question and its guidance can be, and how many words it marks in an abstract. */
+export const CRITERION_LENGTH = 500;
+export const GUIDANCE_LENGTH = 2_000;
+export const MAX_TERMS = 20;
 /** The longest note on a vote or a settled result: the fields stop there, and the server refuses longer. */
 export const NOTE_LENGTH = 2_000;
 /** The short name a criterion has until someone writes one: its question's own words, cut where they run longer than a short name can be. */
 export const shortOf = (text: string) => {
   const words = text.replace(/[?.]$/, "").trim();
-  return words.length > SHORT_NAME_LENGTH ? `${words.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}…` : words;
+  if (words.length <= SHORT_NAME_LENGTH) return words;
+  // Cut at the last whole word that fits, so a name never ends halfway through one, unless that would leave little of it.
+  const cut = words.slice(0, SHORT_NAME_LENGTH - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > SHORT_NAME_LENGTH / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 };
 
 /** Why a paper is excluded when no criterion is the reason. */

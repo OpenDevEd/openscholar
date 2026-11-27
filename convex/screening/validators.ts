@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { PDF_BANDS } from "../../lib/pricing/estimate";
-import { NOTE_LENGTH } from "../../lib/screening/rules";
+import { CRITERION_LENGTH, GUIDANCE_LENGTH, MAX_TERMS, NOTE_LENGTH, SHORT_NAME_LENGTH } from "../../lib/screening/rules";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
@@ -203,9 +203,9 @@ export const decisionValidator = v.union(v.literal("include"), v.literal("maybe"
 /** Where a paper stands: settled one way, split between its reviewers, or still short of votes. */
 export const paperResultValidator = v.union(v.literal("include"), v.literal("maybe"), v.literal("exclude"), v.literal("conflict"), v.literal("waiting"));
 
-/** Words an organiser marks on one criterion, and how long each is. */
-export const MAX_TERMS = 20;
-const TEXT = { name: 200, question: 2_000, criterion: 500, short: 40, note: 2_000, term: 80, voteNote: NOTE_LENGTH, message: 4_000 } as const;
+/** Words an organiser marks on one criterion (../../lib/screening/rules.ts), and how long each is. */
+export { MAX_TERMS };
+const TEXT = { name: 200, question: 2_000, criterion: CRITERION_LENGTH, short: SHORT_NAME_LENGTH, note: GUIDANCE_LENGTH, term: 80, voteNote: NOTE_LENGTH, message: 4_000 } as const;
 export const SCREENING_TEXT = TEXT;
 
 /** One criterion: the question, its short name, whether a paper must meet it, guidance, marked words, and what each answer is worth. */
@@ -365,7 +365,9 @@ export const invitedViewValidator = capped(v.optional(v.array(v.object({ /** Sho
 /** Screenings in the person's other workspaces that one page points at. */
 export const ELSEWHERE_MAX = 20;
 /** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
-export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number(), asked: v.number() })), ELSEWHERE_MAX);
+/** Where a question put to someone is opened for them to answer (./dealing.ts `waitsOn`). */
+export const askedWhereValidator = v.union(v.literal("conflicts"), v.literal("screen"), v.literal("papers"));
+export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number(), asked: v.number(), askedFirst: v.optional(v.id("screeningResults")), askedWhere: v.optional(askedWhereValidator) })), ELSEWHERE_MAX);
 
 /** What tells a source from another of the same name, as the list it was picked from said it: a few short facts. */
 export const SOURCE_FACTS = 6;

@@ -25,7 +25,7 @@ import { progressRow } from "./bookkeeping";
 import { dealable, inWhole, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn, wholePass } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { askedWhereValidator, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -83,6 +83,7 @@ const summaryFields = {
   // How many, counted up to a few dozen, and the first of them, which a link to "your questions" opens.
   asked: v.number(),
   askedFirst: v.optional(v.id("screeningResults")),
+  askedWhere: v.optional(askedWhereValidator),
   models: modelsStateValidator,
   // The screening whose models read before this one's, while its own wait for the workspace's slots.
   ahead: v.optional(aheadValidator),
@@ -203,7 +204,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     forYou: waits.forYou,
     conflicts: waits.conflicts,
     asked: waits.asked.length,
-    ...(waits.asked[0] ? { askedFirst: waits.asked[0] } : {}),
+    ...(waits.asked[0] ? { askedFirst: waits.asked[0], ...(waits.askedWhere ? { askedWhere: waits.askedWhere } : {}) } : {}),
     models: state,
     ...(ahead ? { ahead } : {}),
     criteria: job.criteria?.length ?? 0,
@@ -298,7 +299,7 @@ async function waitsFor(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
     if (!job || job.shape !== 2 || job.finishedAt !== undefined) return [];
     const [reviewer, progress] = await Promise.all([ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first(), progressRow(ctx as QueryCtx, jobId)]);
     const waits = await waitsOn(ctx, job, userId, reviewer, progress);
-    return waits.forYou + waits.conflicts + waits.asked.length ? [{ job, forYou: waits.forYou, conflicts: waits.conflicts, asked: waits.asked.length }] : [];
+    return waits.forYou + waits.conflicts + waits.asked.length ? [{ job, forYou: waits.forYou, conflicts: waits.conflicts, asked: waits.asked.length, ...(waits.asked[0] ? { askedFirst: waits.asked[0], ...(waits.askedWhere ? { askedWhere: waits.askedWhere } : {}) } : {}) }] : [];
   }));
   return found.flat();
 }
@@ -338,12 +339,12 @@ export const elsewhere = workspaceQuery({
     const [user, own] = await Promise.all([ctx.db.get("users", actor.userId), inOwnWorkspace(ctx, actor)]);
     if (!user) return [];
     const there = (await waitsFor(ctx, actor.userId)).filter(({ job }) => job.workspaceId !== actor.workspaceId);
-    const pointed = await Promise.all(there.map(async ({ job, forYou, conflicts, asked }) => {
+    const pointed = await Promise.all(there.map(async ({ job, forYou, conflicts, asked, askedFirst, askedWhere }) => {
       const member = (await actorIn(ctx, user, job.workspaceId)) !== null;
       // One shared with them from outside is in their own workspace's list already.
       if (!member && own) return [];
       const workspace = await workspaceOf(ctx, job.workspaceId);
-      return [{ id: job._id, name: job.name ?? "Screening", in: workspace.name, ...(member && workspace.slug ? { slug: workspace.slug } : {}), forYou, conflicts, asked }];
+      return [{ id: job._id, name: job.name ?? "Screening", in: workspace.name, ...(member && workspace.slug ? { slug: workspace.slug } : {}), forYou, conflicts, asked, ...(askedFirst ? { askedFirst } : {}), ...(askedWhere ? { askedWhere } : {}) }];
     }));
     return pointed.flat().slice(0, ELSEWHERE_MAX);
   },
