@@ -8290,7 +8290,7 @@
         "helpTitle": "Lazima na hiari",
         "factPeople": "Watu wanapiga kura moja kwa moja",
         "factModels": "Majibu yanaamua kura za modeli",
-        "help": "Andika kila kigezo kama swali la ndiyo au hapana. Modeli inajibu kila kimoja ndiyo, hapana au haieleweki. Hapana kwenye kigezo cha lazima inaifanya modeli ipige kura Tenga, na haieleweki inaifanya ipige kura Labda. Kigezo cha hiari hakifanyi modeli ipige kura Tenga kamwe, lakini mtu bado anaweza kukitaja kama sababu yake. Mwongozo chini ya swali unasema kinachohesabika. Mkaguzi anaufungua kwa \"Mwongozo\" chini ya swali kwenye Chuja, na modeli inausoma pamoja na swali. Maneno unayowekea alama kwa kigezo yanawekewa alama kwenye kila muhtasari mtu anapopiga kura.",
+        "help": "Andika kila kigezo kama swali la ndiyo au hapana. Muundo hujibu kila kimoja kwa ndiyo, hapana au haijulikani. Hapana kwenye kigezo cha lazima hufanya muundo upige kura ya Ondoa, na haijulikani hufanya upige Huenda. Kigezo cha hiari hakifanyi muundo upige kura ya Ondoa kamwe. Mwongozo chini ya swali unaeleza kinachohesabika. Mkaguzi huufungua kwa \"Mwongozo\" chini ya swali kwenye Screen, na muundo huusoma pamoja na swali. Maneno unayoweka alama kwa kigezo huwekwa alama katika kila muhtasari mtu anapopiga kura.",
         "import": "{searches, plural, one {{count, plural, one {Ongeza swali # kutoka utafutaji wako} other {Ongeza maswali # kutoka utafutaji wako}}} other {{count, plural, one {Ongeza swali # kutoka tafutaji zako} other {Ongeza maswali # kutoka tafutaji zako}}}}",
         "copyFrom": "Nakili kutoka uchujaji",
         "copyAdds": "Inaongeza vigezo vya uchujaji huo na pointi zake kwenye hivi",
@@ -8884,7 +8884,9 @@
         "chance": "0 si bora kuliko bahati",
         "worse": "Chini ya 0 ni mbaya kuliko bahati",
         "means": "Kiwango ambacho wakaguzi wawili wanakubaliana zaidi ya bahati, kwenye makala ambazo wote wawili wamepigia kura. Sehemu za mbinu huiripoti. Kiwango cha jumla ni wastani wa kila jozi.",
-        "swings": "Kwenye makala chache inabadilika sana, na inaweza kushuka chini ya 0. Inatulia kadiri makala nyingi zaidi zinavyopata kura zote mbili."
+        "swings": "Kwenye makala chache inabadilika sana, na inaweza kushuka chini ya 0. Inatulia kadiri makala nyingi zaidi zinavyopata kura zote mbili.",
+        "none": "haitumiki",
+        "noneFact": "haitumiki kila mmoja alifanya uamuzi uleule kila mara, hivyo bahati inaeleza yote"
       },
       "facts": {
         "startedIt": "aliuanzisha {ago}"
@@ -9396,7 +9398,8 @@
         "help": "Modeli inakadiria kila jibu lake kutoka 0 hadi 100%. Chini ya 65%, soma muhtasari kabla ya kutegemea jibu hilo.",
         "unsure": "Uhakika wa {sure, number, percent} tu",
         "sure": "Uhakika {sure, number, percent}"
-      }
+      },
+      "helpAnswering": "Kujibu ni hiari, na kura pekee inatosha. Hapana kwenye kigezo cha lazima inaelekeza kwenye Ondoa, na kigezo hicho ndicho sababu unapoondoa. Vinginevyo Ondoa inauliza tu kama kuna sababu, hakuna, nakala rudufu, au nyingine unayoiandika."
     },
     "sources": {
       "add": "Ongeza",
@@ -9598,10 +9601,6 @@
         "unstated": "Hakuna sababu iliyotolewa"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Makala hizi zinashindwa sharti lipi la lazima?} other {Inashindwa sharti lipi la lazima?}}",
-        "criterion": "{many, select, true {Makala hizi zinashindwa kigezo kipi?} other {Inashindwa kigezo kipi?}}",
-        "orCriterion": "Au kigezo kingine",
-        "orReason": "Au sababu nyingine",
         "why": "{many, select, true {Kwa nini uzitenge?} other {Kwa nini uitenge?}}"
       },
       "notMet": "{name} hakijatimizwa",

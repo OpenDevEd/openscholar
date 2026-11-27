@@ -8289,7 +8289,7 @@
         "helpTitle": "Must-have and nice-to-have",
         "factPeople": "People vote directly",
         "factModels": "Answers decide models' votes",
-        "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude, but a person can still give it as their reason. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
+        "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
         "import": "{searches, plural, one {{count, plural, one {Add # question from your search} other {Add # questions from your search}}} other {{count, plural, one {Add # question from your searches} other {Add # questions from your searches}}}}",
         "copyFrom": "Copy from a screening",
         "copyAdds": "Adds that screening's criteria and their points to these",
@@ -8883,7 +8883,9 @@
         "chance": "0 no better than chance",
         "worse": "Below 0 worse than chance",
         "means": "How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.",
-        "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes."
+        "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes.",
+        "none": "n/a",
+        "noneFact": "n/a each gave one decision every time, so chance explains it all"
       },
       "facts": {
         "startedIt": "started it {ago}"
@@ -9395,7 +9397,8 @@
         "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
         "unsure": "Only {sure, number, percent} sure",
         "sure": "{sure, number, percent} sure"
-      }
+      },
+      "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and that must-have is the reason when you exclude. Otherwise Exclude asks only whether there is a reason: none, a duplicate, or another you write down."
     },
     "sources": {
       "add": "Add",
@@ -9597,10 +9600,6 @@
         "unstated": "No reason given"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
-        "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
-        "orCriterion": "Or another criterion",
-        "orReason": "Or another reason",
         "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
       },
       "notMet": "{name} not met",

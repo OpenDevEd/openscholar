@@ -8290,7 +8290,7 @@
         "helpTitle": "Vereiste en wenslik",
         "factPeople": "Mense stem direk",
         "factModels": "Antwoorde bepaal modelle se stemme",
-        "help": "Skryf elke kriterium as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n vereiste kriterium laat die model Sluit uit stem, en ’n onduidelik laat dit Miskien stem. ’n Wenslike kriterium laat ’n model nooit Sluit uit stem nie, maar ’n persoon kan dit steeds as hul rede gee. Riglyne onder ’n vraag sê wat tel. ’n Beoordelaar maak dit oop met “Riglyne” onder die vraag op Sif, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n kriterium merk, word in elke opsomming gemerk terwyl ’n persoon stem.",
+        "help": "Skryf elke maatstaf as ’n ja-of-nee-vraag. ’n Model beantwoord elkeen met ja, nee of onduidelik. ’n Nee op ’n moet-maatstaf laat die model vir Sluit uit stem, en ’n onduidelik vir Miskien. ’n Mag-maatstaf laat ’n model nooit vir Sluit uit stem nie. Leiding onder ’n vraag sê wat tel. ’n Beoordelaar maak dit met \"Leiding\" onder die vraag op Screen oop, en ’n model lees dit saam met die vraag. Die woorde wat jy vir ’n maatstaf merk, word in elke opsomming gemerk terwyl iemand stem.",
         "import": "{searches, plural, one {{count, plural, one {Voeg # vraag uit jou soektog by} other {Voeg # vrae uit jou soektog by}}} other {{count, plural, one {Voeg # vraag uit jou soektogte by} other {Voeg # vrae uit jou soektogte by}}}}",
         "copyFrom": "Kopieer uit ’n siftering",
         "copyAdds": "Voeg daardie siftering se kriteria en hul punte by hierdie",
@@ -8884,7 +8884,9 @@
         "chance": "0 nie beter as toeval nie",
         "worse": "Onder 0 slegter as toeval",
         "means": "Hoe ver twee beoordelaars bo toeval saamstem, op die artikels waarop albei gestem het. Metode-afdelings rapporteer dit. Die algehele syfer is die gemiddelde van elke paar.",
-        "swings": "Op ’n handvol artikels swaai dit wyd, en kan dit onder 0 val. Dit stabiliseer soos meer artikels albei stemme het."
+        "swings": "Op ’n handvol artikels swaai dit wyd, en kan dit onder 0 val. Dit stabiliseer soos meer artikels albei stemme het.",
+        "none": "n.v.t.",
+        "noneFact": "n.v.t. elkeen het elke keer dieselfde besluit geneem, so toeval verklaar alles"
       },
       "facts": {
         "startedIt": "het dit {ago} begin"
@@ -9396,7 +9398,8 @@
         "help": "Die model gee elkeen van sy antwoorde ’n telling van 0 tot 100%. Onder 65%, lees die opsomming voordat jy op daardie antwoord staatmaak.",
         "unsure": "Net {sure, number, percent} seker",
         "sure": "{sure, number, percent} seker"
-      }
+      },
+      "helpAnswering": "Antwoord is opsioneel, en ’n stem alleen is genoeg. ’n Nee op ’n moet-maatstaf wys na Sluit uit, en daardie maatstaf is die rede wanneer jy uitsluit. Andersins vra Sluit uit net of daar ’n rede is. Geen, ’n duplikaat of ’n ander een wat jy neerskryf."
     },
     "sources": {
       "add": "Voeg by",
@@ -9598,10 +9601,6 @@
         "unstated": "Geen rede gegee nie"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Aan watter vereiste voldoen hierdie artikels nie?} other {Aan watter vereiste voldoen dit nie?}}",
-        "criterion": "{many, select, true {Aan watter kriterium voldoen hierdie artikels nie?} other {Aan watter kriterium voldoen dit nie?}}",
-        "orCriterion": "Of ’n ander kriterium",
-        "orReason": "Of ’n ander rede",
         "why": "{many, select, true {Hoekom sluit jy hulle uit?} other {Hoekom sluit jy dit uit?}}"
       },
       "notMet": "{name} nie voldoen nie",

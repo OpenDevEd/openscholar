@@ -48,6 +48,8 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
   const member = open.canChange;
   const live = !screening.finishedAt;
   const t = useTranslations("screening.frame");
+  // Only whoever started it, or an admin of its workspace, deletes it: the others aren't offered what they can't do.
+  const mayDelete = useCurrentWorkspace()?.role === "admin" || screening.createdBy === open.me;
   return (
     <>
       {member && !bar ? <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />{t("settings")}</NextLink></DropdownMenuItem> : null}
@@ -68,12 +70,12 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />{t("menu.move")}</DropdownMenuItem> : null}
       {/* In the widest windows the bar over a screening has this as a button. */}
       {member && live && !open.isReviewer ? <DropdownMenuItem className={bar ? "2xl:hidden" : undefined} onSelect={() => void open.join()}><UserPlus />{t("join")}</DropdownMenuItem> : null}
-      {member ? (
+      {member && mayDelete ? (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => show("delete")}><Trash2 />{t("menu.delete")}</DropdownMenuItem>
         </>
-      ) : open.guest ? (
+      ) : !member && open.guest ? (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => show("leave")}><LogOut />{t("leaveScreening")}</DropdownMenuItem>

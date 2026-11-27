@@ -8289,7 +8289,7 @@
         "helpTitle": "Imfuneko nokuhle ukuba nakho",
         "factPeople": "Abantu bavota ngqo",
         "factModels": "Izimpendulo zinquma amavoti amamodeli",
-        "help": "Bhala umbandela ngamunye njengombuzo ka-yebo noma cha. Imodeli iphendula ngamunye ngo-yebo, cha noma akucacile. U-cha embandeleni oyimfuneko wenza imodeli ivotele u-Khipha, futhi u-akucacile wenza ivotele u-Mhlawumbe. Umbandela okuhle ukuba nawo awulokothi wenze imodeli ivotele u-Khipha, kodwa umuntu usengawunikeza njengesizathu sakhe. Isiqondiso ngaphansi kombuzo sisho okubalwayo. Umbuyekezi usivula ngo-“Isiqondiso” ngaphansi kombuzo ku-Skrina, futhi imodeli isifunda nombuzo. Amagama owamakela umbandela amakwa esifingqweni ngasinye ngesikhathi umuntu evota.",
+        "help": "Bhala umbandela ngamunye njengombuzo wokuthi yebo noma cha. Imodeli iphendula ngamunye ngo-yebo, cha noma akucacile. U-Cha embandeleni oyimpoqo wenza imodeli ivotele u-Khipha, kanti u-akucacile uyenza ivotele u-Mhlawumbe. Umbandela ongewona owempoqo awulokothi wenze imodeli ivotele u-Khipha. Umhlahlandlela ngaphansi kombuzo uthi yini ebalwayo. Umbuyekezi uwuvula ngo-\"Umhlahlandlela\" ngaphansi kombuzo ku-Screen, futhi imodeli iwufunda nombuzo. Amagama owamakayo embandeleni amakwa kuzo zonke izifinyezo ngesikhathi umuntu evota.",
         "import": "{searches, plural, one {{count, plural, one {Engeza # umbuzo ovela ekuseshweni kwakho} other {Engeza # imibuzo evela ekuseshweni kwakho}}} other {{count, plural, one {Engeza # umbuzo ovela ezisesheni zakho} other {Engeza # imibuzo evela ezisesheni zakho}}}}",
         "copyFrom": "Kopisha kusuka ekuskrinini",
         "copyAdds": "Yengeza imibandela yalokho kuskrini namaphoyinti ayo kule",
@@ -8883,7 +8883,9 @@
         "chance": "0 akungcono kunethuba",
         "worse": "Ngaphansi kuka-0 kubi kunethuba",
         "means": "Ukuthi ababuyekezi ababili bavumelana kangakanani ngaphezu kwethuba, kumaphepha bobabili abavote kuwo. Izigaba zezindlela zocwaningo ziyakubika. Isibalo sisonke yisilinganiso sawo wonke amapheya.",
-        "swings": "Kumaphepha ambalwa kushintsha kakhulu, futhi kungehla ngaphansi kuka-0. Kuyazinza njengoba amaphepha amaningi eba namavoti omabili."
+        "swings": "Kumaphepha ambalwa kushintsha kakhulu, futhi kungehla ngaphansi kuka-0. Kuyazinza njengoba amaphepha amaningi eba namavoti omabili.",
+        "none": "akusebenzi",
+        "noneFact": "akusebenzi ngamunye wenza isinqumo esifanayo njalo, ngakho inhlanhla ichaza konke"
       },
       "facts": {
         "startedIt": "ukuqale {ago}"
@@ -9395,7 +9397,8 @@
         "help": "Imodeli ilinganisa impendulo yayo ngayinye kusuka ku-0 kuya ku-100%. Ngaphansi kuka-65%, funda isifingqo ngaphambi kokuthi uthembele kuleyo mpendulo.",
         "unsure": "Iqiniseke ngo-{sure, number, percent} kuphela",
         "sure": "Iqiniseke ngo-{sure, number, percent}"
-      }
+      },
+      "helpAnswering": "Ukuphendula kungokuzikhethela, ivoti lodwa lanele. U-Cha embandeleni oyimpoqo ukhomba ku-Khipha, futhi lowo mbandela uyisizathu uma ukhipha. Uma kungenjalo u-Khipha ubuza kuphela ukuthi sikhona yini isizathu, asikho, okuphindiwe, noma esinye osibhalayo."
     },
     "sources": {
       "add": "Engeza",
@@ -9597,10 +9600,6 @@
         "unstated": "Asikho isizathu esinikeziwe"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Yiyiphi imfuneko la maphepha ahluleka kuyo?} other {Yiyiphi imfuneko elihluleka kuyo?}}",
-        "criterion": "{many, select, true {Yimuphi umbandela la maphepha ahluleka kuwo?} other {Yimuphi umbandela elihluleka kuwo?}}",
-        "orCriterion": "Noma omunye umbandela",
-        "orReason": "Noma esinye isizathu",
         "why": "{many, select, true {Kungani uwakhipha?} other {Kungani ulikhipha?}}"
       },
       "notMet": "{name} akufinyelelwanga",

@@ -130,7 +130,9 @@
     "chance": "0 no better than chance",
     "worse": "Below 0 worse than chance",
     "means": "How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.",
-    "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes."
+    "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes.",
+    "none": "n/a",
+    "noneFact": "n/a each gave one decision every time, so chance explains it all"
   },
   "facts": {
     "startedIt": "started it {ago}"

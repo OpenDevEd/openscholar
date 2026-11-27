@@ -9,9 +9,9 @@ import { useId, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
+import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources } from "./library-sources";
@@ -39,7 +39,6 @@ import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { Input } from "@/components/ui/input";
 import { hash, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip } from "./pieces";
 import { useWords } from "./words";
@@ -604,10 +603,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       </Popover>
       {/* The switch sits beside the search; where the row is narrow it moves under it whole. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="relative min-w-[min(14rem,100%)] flex-1">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="h-8 rounded-full bg-card ps-8 text-sm" />
-        </div>
+        <ListSearch box="min-w-[min(14rem,100%)] flex-1" value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="w-full" />
         <span className="flex shrink-0 items-center gap-1">
           <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} size="sm" checked={deep} onCheckedChange={setDeep} />{t("zotero.includeSub")}</label>
           <Help title={t("zotero.subHelpTitle")} facts={<HelpFact>{t("zotero.subTakenOnce")}</HelpFact>}>{t("zotero.subAbout")}</Help>

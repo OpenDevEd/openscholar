@@ -8289,7 +8289,7 @@
         "helpTitle": "Indispensable et souhaitable",
         "factPeople": "Les personnes votent directement",
         "factModels": "Les réponses décident des votes des modèles",
-        "help": "Écrivez chaque critère comme une question à réponse oui ou non. Un modèle répond à chacune par oui, non ou incertain. Un non sur un critère indispensable fait voter Exclure au modèle, et un incertain lui fait voter Peut-être. Un critère souhaitable ne fait jamais voter Exclure à un modèle, mais une personne peut tout de même le donner comme raison. Les consignes sous une question disent ce qui compte. Un évaluateur les ouvre avec « Consignes » sous la question, dans Cribler, et un modèle les lit avec la question. Les mots que vous indiquez pour un critère sont surlignés dans chaque résumé pendant qu'une personne vote.",
+        "help": "Rédigez chaque critère comme une question fermée. Un modèle répond à chacune par oui, non ou incertain. Un non sur un critère obligatoire fait voter le modèle Exclure, et un incertain, Peut-être. Un critère souhaitable ne fait jamais voter un modèle Exclure. Les consignes sous une question disent ce qui compte. Un relecteur les ouvre avec « Consignes » sous la question sur Screen, et un modèle les lit avec la question. Les mots que vous marquez pour un critère sont surlignés dans chaque résumé pendant qu’une personne vote.",
         "import": "{searches, plural, one {{count, plural, one {Ajouter # question de votre recherche} other {Ajouter # questions de votre recherche}}} other {{count, plural, one {Ajouter # question de vos recherches} other {Ajouter # questions de vos recherches}}}}",
         "copyFrom": "Copier depuis un criblage",
         "copyAdds": "Ajoute les critères de ce criblage et leurs points à ceux-ci",
@@ -8883,7 +8883,9 @@
         "chance": "0 : pas mieux que le hasard",
         "worse": "Moins de 0 : pire que le hasard",
         "means": "Le degré d'accord entre deux évaluateurs au-delà du hasard, sur les articles où tous deux ont voté. Les sections Méthodes le rapportent. Le chiffre global est la moyenne de toutes les paires.",
-        "swings": "Sur quelques articles seulement, il varie fortement et peut descendre sous 0. Il se stabilise à mesure que davantage d'articles ont les deux votes."
+        "swings": "Sur quelques articles seulement, il varie fortement et peut descendre sous 0. Il se stabilise à mesure que davantage d'articles ont les deux votes.",
+        "none": "n/d",
+        "noneFact": "n/d chacun a pris la même décision à chaque fois, donc le hasard explique tout"
       },
       "facts": {
         "startedIt": "l'a démarré {ago}"
@@ -9395,7 +9397,8 @@
         "help": "Le modèle note chacune de ses réponses de 0 à 100 %. Sous 65 %, lisez le résumé avant de vous fier à cette réponse.",
         "unsure": "Sûr à {sure, number, percent} seulement",
         "sure": "Sûr à {sure, number, percent}"
-      }
+      },
+      "helpAnswering": "Répondre est facultatif, un vote suffit. Un Non sur un critère obligatoire oriente vers Exclure, et ce critère devient le motif quand vous excluez. Sinon, Exclure demande seulement s’il y a un motif. Aucun, un doublon ou un autre que vous écrivez."
     },
     "sources": {
       "add": "Ajouter",
@@ -9597,10 +9600,6 @@
         "unstated": "Aucun motif indiqué"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Quel critère indispensable ces articles ne remplissent-ils pas ?} other {Quel critère indispensable ne remplit-il pas ?}}",
-        "criterion": "{many, select, true {Quel critère ces articles ne remplissent-ils pas ?} other {Quel critère ne remplit-il pas ?}}",
-        "orCriterion": "Ou un autre critère",
-        "orReason": "Ou une autre raison",
         "why": "{many, select, true {Pourquoi les exclure ?} other {Pourquoi l'exclure ?}}"
       },
       "notMet": "{name} non rempli",

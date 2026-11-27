@@ -217,7 +217,7 @@
     "helpTitle": "Must-have and nice-to-have",
     "factPeople": "People vote directly",
     "factModels": "Answers decide models' votes",
-    "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude, but a person can still give it as their reason. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
+    "help": "Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have makes the model vote Exclude, and an unclear makes it vote Maybe. A nice-to-have never makes a model vote Exclude. Guidance under a question says what counts. A reviewer opens it with \"Guidance\" under the question on Screen, and a model reads it with the question. The words you mark for a criterion are marked in each abstract while a person votes.",
     "import": "{searches, plural, one {{count, plural, one {Add # question from your search} other {Add # questions from your search}}} other {{count, plural, one {Add # question from your searches} other {Add # questions from your searches}}}}",
     "copyFrom": "Copy from a screening",
     "copyAdds": "Adds that screening's criteria and their points to these",

@@ -8290,7 +8290,7 @@
         "helpTitle": "Requisitos y deseables",
         "factPeople": "Las personas votan directamente",
         "factModels": "Las respuestas deciden el voto de los modelos",
-        "help": "Escriba cada criterio como una pregunta de sí o no. Un modelo responde cada una con sí, no o dudoso. Un no en un criterio que es requisito hace que el modelo vote Excluir, y un dudoso hace que vote Quizá. Un criterio deseable nunca hace que un modelo vote Excluir, pero una persona puede darlo igualmente como motivo. La orientación bajo una pregunta dice qué cuenta. Un revisor la abre con «Orientación» bajo la pregunta en Cribar, y un modelo la lee con la pregunta. Las palabras que marque para un criterio se marcan en cada resumen mientras una persona vota.",
+        "help": "Escriba cada criterio como una pregunta de sí o no. Un modelo responde cada una con sí, no o dudoso. Un no en un criterio imprescindible hace que el modelo vote Excluir, y un dudoso, Quizá. Un criterio deseable nunca hace que un modelo vote Excluir. La guía bajo una pregunta dice qué cuenta. Un revisor la abre con «Guía» bajo la pregunta en Screen, y un modelo la lee con la pregunta. Las palabras que marque para un criterio se resaltan en cada resumen mientras una persona vota.",
         "import": "{searches, plural, one {{count, plural, one {Añadir # pregunta de su búsqueda} other {Añadir # preguntas de su búsqueda}}} other {{count, plural, one {Añadir # pregunta de sus búsquedas} other {Añadir # preguntas de sus búsquedas}}}}",
         "copyFrom": "Copiar de un cribado",
         "copyAdds": "Añade los criterios de ese cribado y sus puntos a estos",
@@ -8884,7 +8884,9 @@
         "chance": "0 no es mejor que el azar",
         "worse": "Menos de 0, peor que el azar",
         "means": "Cuánto coinciden dos revisores más allá del azar, en los artículos que ambos han votado. Se indica en la sección de métodos. La cifra global es la media de todos los pares.",
-        "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos."
+        "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos.",
+        "none": "n/d",
+        "noneFact": "n/d cada uno tomó siempre la misma decisión, así que el azar lo explica todo"
       },
       "facts": {
         "startedIt": "lo empezó {ago}"
@@ -9396,7 +9398,8 @@
         "help": "El modelo puntúa cada una de sus respuestas de 0 a 100 %. Por debajo del 65 %, lea el resumen antes de fiarse de esa respuesta.",
         "unsure": "Solo {sure, number, percent} de seguridad",
         "sure": "{sure, number, percent} de seguridad"
-      }
+      },
+      "helpAnswering": "Responder es opcional y basta con un voto. Un No en un criterio imprescindible apunta a Excluir, y ese criterio es el motivo cuando excluye. Si no, Excluir solo pregunta si hay un motivo. Ninguno, un duplicado u otro que usted escribe."
     },
     "sources": {
       "add": "Añadir",
@@ -9598,10 +9601,6 @@
         "unstated": "Sin motivo indicado"
       },
       "excludeAsk": {
-        "must": "{many, select, true {¿Qué requisito no cumplen estos artículos?} other {¿Qué requisito no cumple?}}",
-        "criterion": "{many, select, true {¿Qué criterio no cumplen estos artículos?} other {¿Qué criterio no cumple?}}",
-        "orCriterion": "U otro criterio",
-        "orReason": "U otro motivo",
         "why": "{many, select, true {¿Por qué excluirlos?} other {¿Por qué excluirlo?}}"
       },
       "notMet": "{name} no se cumple",

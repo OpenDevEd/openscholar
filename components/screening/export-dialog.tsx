@@ -57,6 +57,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const [picked, setPicked] = useState<Group | null>(null);
   const { screening, counts, total } = state;
   const { id } = screening;
+  // The figures the diagram and the paragraph count from (the reasons, the checks, the agreement): until they are in, neither is taken, or it would leave them out.
   const { figures } = useFigures(id);
 
   // Every file is built by export.ts, from the screening as it stands and from the papers as the server gives them to whoever takes the file out: what is hidden from them on a page is hidden from them in the file.
@@ -332,12 +333,12 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), "text/csv", votesCsv(state.filed, await every({}), whose === "all" ? undefined : whose)), off: !total }]
               : tab === "flow"
                 ? [
-                    { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: false },
-                    { key: "png", format: "PNG", run: png, off: false },
+                    { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: !figures },
+                    { key: "png", format: "PNG", run: png, off: !figures },
                   ]
                 : tab === "record"
                   ? [{ key: "json", format: "JSON", run: async () => { if (!workspaceId) throw new Error(t("notLoaded")); save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2)); }, off: false }]
-                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), off: false }]
+                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), off: !figures }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}

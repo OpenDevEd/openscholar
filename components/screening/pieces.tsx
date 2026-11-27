@@ -22,7 +22,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, NO_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, NO_REASON, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
@@ -702,7 +702,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
-  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === OTHER_REASON ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const question = asked ? questionOf(reason, criteria, "label") : undefined;
   return (

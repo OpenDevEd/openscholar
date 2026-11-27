@@ -8,14 +8,14 @@ import dynamic from "next/dynamic";
 // reviewers said to each other about them. From a laptop's width the page fits the window and each of
 // the three scrolls on its own. Under that the page scrolls.
 
-import { ListEmpty, ListLoading, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -38,12 +38,12 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, modelsAdvise } from "@/lib/screening/rules";
+import { canConflict, decide, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, modelsOf, readersOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
@@ -63,7 +63,6 @@ const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" 
 /** The keys, each with who it is for: a vote's are for whoever may vote here, an answer's for whoever answers the criteria. */
 const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
 const ANSWER_KEY: Record<Answer, string> = { yes: "Y", no: "N", unclear: "U" };
-const OTHER = "other";
 /** The bar is one row of controls on a wide screen, and grows by a row where a note is being written. */
 const BAR_HEIGHT = "lg:min-h-[4.5rem]";
 /**
@@ -278,7 +277,7 @@ function Screen({ open }: { open: Open }) {
     if (!paper || !mayDecide) return;
     const note = notes[paper.id]?.trim() || (resolving ? undefined : mine?.note);
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
-    if (decision === "exclude" && reason === OTHER && !note) {
+    if (decision === "exclude" && reason === OTHER_REASON && !note) {
       setReasonFor(null);
       return setWriting(paper.id);
     }
@@ -318,10 +317,10 @@ function Screen({ open }: { open: Open }) {
   const press = (decision: Decision) => {
     if (!paper || !mayDecide) return;
     // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
-    const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...answers[paper.id] }, criteria).reason : undefined;
+    const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers, ...answers[paper.id] }, criteria).reason : undefined;
     // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
     const written = (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim();
-    if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER);
+    if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER_REASON);
     else if (decision === "exclude" && !failed) setReasonFor(paper.id);
     else decideOn(decision, failed);
   };
@@ -396,7 +395,10 @@ function Screen({ open }: { open: Open }) {
   const failing = pointsTo?.reason ? criteria.find((criterion) => criterion.key === pointsTo.reason) : criteria.find((criterion) => criterion.must && given[criterion.key] === "unclear");
   // The vote your answers lead to, once they say why: a must-have answered No or Unclear, or every must-have met. Its button is outlined only then, with the line that explains it.
   const pointed = !mine && pointsTo && (failing || (pointsTo.decision === "include" && criteria.filter((criterion) => criterion.must).every((criterion) => given[criterion.key] === "yes"))) ? pointsTo.decision : null;
-  const against = mine && pointsTo && pointsTo.decision !== mine.decision && (pointsTo.decision === "exclude" || mine.decision === "exclude");
+  // Against your vote only where the answers say why, as above, and never for an exclusion whose reason is not a criterion: a duplicate is excluded whatever the answers.
+  const sayWhy = Boolean(failing) || criteria.filter((criterion) => criterion.must).every((criterion) => given[criterion.key] === "yes");
+  const beyondCriteria = mine?.decision === "exclude" && Boolean(mine.reason) && !criteria.some((criterion) => criterion.key === mine.reason);
+  const against = mine && pointsTo && sayWhy && !beyondCriteria && pointsTo.decision !== mine.decision && (pointsTo.decision === "exclude" || mine.decision === "exclude");
   const quoting = paper && shown && visible ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const quotedCriterion = quoting ? criteria.find((c) => c.key === shown!.criterion) : undefined;
   // The sentence marked in the abstract: the one a model named for the answer of its that is open.
@@ -437,7 +439,9 @@ function Screen({ open }: { open: Open }) {
   };
 
   // A vote cast before a criterion became a must-have asks for a new one: its queue shows while any does, and while it is the one open.
-  const queues = open.isReviewer ? (["todo", ...(open.flagged || queue === "again" ? (["again"] as const) : []), "done", "conflicts"] as const) : (["conflicts"] as const);
+  // Conflicts is a queue only where a paper can be in conflict, or one is: with one vote on each paper there is none to settle.
+  const splits = canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length) || conflicts > 0 || queue === "conflicts";
+  const queues = open.isReviewer ? (["todo", ...(open.flagged || queue === "again" ? (["again"] as const) : []), "done", ...(splits ? (["conflicts"] as const) : [])] as const) : (["conflicts"] as const);
   const tabs = (
     <Segmented
       label={t("queue.label")}
@@ -481,12 +485,9 @@ function Screen({ open }: { open: Open }) {
       </li>
     );
   };
-  const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
+  const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queue !== "done" && !narrowed ? { pageCount: Math.max(1, Math.ceil(left / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
   const findField = (className: string) => (
-    <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className="h-8 rounded-full ps-8 text-sm" />
-    </div>
+    <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className="w-full" />
   );
 
   // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is.
@@ -601,7 +602,7 @@ function Screen({ open }: { open: Open }) {
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">{t("votes.settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}</span> : null}
                             {/* What the reviewers said about it is further down the pane: this goes there. */}
                             {discussion ? <DiscussionLink count={said} writes={open.isReviewer || open.canResolve} onClick={toDiscussion} /> : null}
-                            {!state.resolvedBy && state.result === "exclude" && cast.some((one) => one.vote?.reason) ? <ReasonChip reason={cast.find((one) => one.vote?.reason)!.vote!.reason!} criteria={criteria} /> : null}
+                            {!state.resolvedBy && state.result === "exclude" && state.reason ? <ReasonChip reason={state.reason} criteria={criteria} /> : null}
                           </>
                         ) : null
                       }
@@ -901,7 +902,7 @@ function Screen({ open }: { open: Open }) {
                 </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
-                  {SHORTCUTS.filter(([, , who]) => !who || (who === "vote" ? mayDecide : answering)).map(([keys, what]) => (
+                  {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer"))).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
                       <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>
@@ -947,7 +948,7 @@ function Screen({ open }: { open: Open }) {
               {!mayDecide ? (
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
-                <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
+                <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
                   <Input autoFocus onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
@@ -1018,7 +1019,7 @@ function Screen({ open }: { open: Open }) {
                                 <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{group.name}</DropdownMenuLabel>
                                 {group.list.map((reason) => (
                                   <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
-                                    <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} /></span>
+                                    <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} asked /></span>
                                     {reason.hotkey ? <Kbd>{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
                                   </DropdownMenuItem>
                                 ))}

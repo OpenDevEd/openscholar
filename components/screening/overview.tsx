@@ -33,7 +33,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
 import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
-import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
+import { canConflict, gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -224,7 +224,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening, open.invited).each > 1 || (modelsOf(screening).length > 0 && !modelsAdvise(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length))) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {open.counts.waiting && !screening.finishedAt && canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -335,7 +335,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
           <span className="flex items-center gap-1">
             <NextLink href={pairHref(screening.id, b!, a!)} className={cn("flex items-center gap-2 px-2 py-1 text-sm", ROW_LINK)}>
               <span className="text-muted-foreground">{t("reviewers.agreement")}</span>
-              <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa)}</span>
+              <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
               <span className="tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
             </NextLink>
             <KappaHelp />
@@ -649,17 +649,18 @@ const BANDS = [
   { says: "between", from: 0.6, to: 0.8, kappa: 0.7 },
   { says: "above", from: 0.8, to: 1, kappa: 0.9 },
 ] as const;
-const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
+const shade = (kappa: number | null) => (kappa === null ? "var(--muted)" : kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
 /** The papers two reviewers both voted on, the ones they split on first. */
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
 /** How often two reviewers voted the same, with the papers that is of: a share with nothing to be a share of says little. */
 const sameText = (t: T, pair: { same: number; papers: number }) => t("agreement.sameOf", { share: pair.same, count: pair.papers });
 /** A kappa as it is read, to two places: "0.62". */
-const kappaText = (format: ReturnType<typeof useFormatter>, kappa: number) => format.number(kappa, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** A kappa as a figure, or what stands for one where every vote was the same and it has no value. */
+const kappaText = (format: ReturnType<typeof useFormatter>, kappa: number | null, none: string) => (kappa === null ? none : format.number(kappa, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 function KappaHelp() {
   const t = useTranslations("screening.overview.kappa");
   return (
-    <Help title={t("title")} facts={<><HelpFact>{t("full")}</HelpFact><HelpFact>{t("substantial")}</HelpFact><HelpFact>{t("chance")}</HelpFact><HelpFact>{t("worse")}</HelpFact></>}>
+    <Help title={t("title")} facts={<><HelpFact>{t("full")}</HelpFact><HelpFact>{t("substantial")}</HelpFact><HelpFact>{t("chance")}</HelpFact><HelpFact>{t("worse")}</HelpFact><HelpFact>{t("noneFact")}</HelpFact></>}>
       <p>{t("means")}</p>
       <p>{t("swings")}</p>
     </Help>
@@ -676,7 +677,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
   if (reviewers.length < 3) return null;
-  const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
+  const known = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.kappa] : []));
   // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
   const shared = pairs.flatMap((one) => (one.pair ? [one.pair.papers] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
@@ -707,7 +708,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span className="flex items-center gap-3">
-              <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall)}</span>
+              <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall, t("kappa.none"))}</span>
               <span className="text-sm">
                 <span className="font-medium">{t("agreement.mean")}</span>
                 <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span>
@@ -734,8 +735,8 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
                     const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
                     if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">{t("agreement.noneYet")}</span>;
                     return (
-                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa), share: pair.same, papers: pair.papers })} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
-                        <span className="text-xs font-semibold tabular-nums">{kappaText(format, pair.kappa)}</span>
+                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
+                        <span className="text-xs font-semibold tabular-nums">{kappaText(format, pair.kappa, t("kappa.none"))}</span>
                         <span className="text-2xs tabular-nums text-foreground/70">{sameText(t, pair)}</span>
                       </NextLink>
                     );
@@ -755,7 +756,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
                   {pair ? (
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="text-xs tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
-                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa)}</span>
+                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
                     </span>
                   ) : (
                     <span className="shrink-0 text-xs text-muted-foreground">{t("agreement.noneYet")}</span>

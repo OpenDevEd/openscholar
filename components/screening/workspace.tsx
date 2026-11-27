@@ -4,7 +4,7 @@
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
-import { modelsAdvise } from "@/lib/screening/rules";
+import { canConflict, modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
@@ -316,6 +316,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     </>
   );
 
+  // Whether a paper here can be in conflict: with one vote on each, nobody settles anything, and the help says nothing of it.
+  const splits = canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length);
   // How a paper is decided. From a tablet's width it is one line, and its chips scroll sideways where the line is too short for them. On a phone its name and the way to change it share a line, and the chips wrap under them at the card's whole width, so none is cut. In the settings the form itself says the same.
   const rule = (
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
@@ -326,13 +328,13 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           title={t("rule.title")}
           facts={
             <>
-              {screening.rule.settle !== "one" ? <HelpFact icon={Users}>{t("rule.conflictsGoTo", { who: words.whoIs(screening, screening.rule.resolver, open.me) })}</HelpFact> : null}
+              {splits ? <HelpFact icon={Users}>{t("rule.conflictsGoTo", { who: words.whoIs(screening, screening.rule.resolver, open.me) })}</HelpFact> : null}
               {screening.living && !screening.finishedAt ? <HelpFact icon={RefreshCw}>{t("rule.checks", { every: screening.living.every })}</HelpFact> : null}
             </>
           }
         >
           <p>{t("rule.chips")}</p>
-          <p>{words.t(`settle.means.${screening.rule.settle}`)}</p>{screening.rule.settle === "one" ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
+          <p>{words.t(`settle.means.${screening.rule.settle}`)}</p>{!splits ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
           {screening.rule.blind === "after" ? <p>{words.t("votesHiddenSays")}</p> : null}
           {screening.living ? <p>{t("rule.living")}</p> : null}

@@ -171,5 +171,6 @@
     "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
     "unsure": "Only {sure, number, percent} sure",
     "sure": "{sure, number, percent} sure"
-  }
+  },
+  "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and that must-have is the reason when you exclude. Otherwise Exclude asks only whether there is a reason: none, a duplicate, or another you write down."
 }

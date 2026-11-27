@@ -8290,7 +8290,7 @@
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
         "factPeople": "Personen stimmen direkt ab",
         "factModels": "Antworten bestimmen die Stimmen der Modelle",
-        "help": "Formulieren Sie jedes Kriterium als Ja-oder-Nein-Frage. Ein Modell beantwortet jedes mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium lässt das Modell für Ausschließen stimmen, ein Unklar für Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen, aber eine Person kann es trotzdem als Grund angeben. Hinweise unter einer Frage sagen, was zählt. Ein Reviewer öffnet sie unter Prüfen über „Hinweise“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, werden in jedem Abstract markiert, während eine Person abstimmt.",
+        "help": "Formulieren Sie jedes Kriterium als Ja-Nein-Frage. Ein Modell beantwortet jede mit Ja, Nein oder Unklar. Ein Nein bei einem Muss-Kriterium lässt das Modell für Ausschließen stimmen, ein Unklar für Vielleicht. Ein Kann-Kriterium lässt ein Modell nie für Ausschließen stimmen. Eine Anleitung unter einer Frage sagt, was zählt. Reviewer öffnen sie auf Screen mit „Anleitung“ unter der Frage, und ein Modell liest sie mit der Frage. Die Wörter, die Sie für ein Kriterium markieren, werden in jedem Abstract markiert, während eine Person abstimmt.",
         "import": "{searches, plural, one {{count, plural, one {# Frage aus Ihrer Suche hinzufügen} other {# Fragen aus Ihrer Suche hinzufügen}}} other {{count, plural, one {# Frage aus Ihren Suchen hinzufügen} other {# Fragen aus Ihren Suchen hinzufügen}}}}",
         "copyFrom": "Aus einem Screening kopieren",
         "copyAdds": "Fügt die Kriterien jenes Screenings mit ihren Punkten zu diesen hinzu",
@@ -8884,7 +8884,9 @@
         "chance": "0 nicht besser als Zufall",
         "worse": "Unter 0 schlechter als Zufall",
         "means": "Wie weit zwei Reviewer über den Zufall hinaus übereinstimmen, bei den Artikeln, über die beide abgestimmt haben. Methodenteile geben es an. Der Gesamtwert ist der Mittelwert aller Paare.",
-        "swings": "Bei wenigen Artikeln schwankt es stark und kann unter 0 fallen. Es stabilisiert sich, je mehr Artikel beide Stimmen haben."
+        "swings": "Bei wenigen Artikeln schwankt es stark und kann unter 0 fallen. Es stabilisiert sich, je mehr Artikel beide Stimmen haben.",
+        "none": "k. A.",
+        "noneFact": "k. A. jeder traf jedes Mal dieselbe Entscheidung, also erklärt der Zufall alles"
       },
       "facts": {
         "startedIt": "hat es {ago} gestartet"
@@ -9396,7 +9398,8 @@
         "help": "Das Modell bewertet jede seiner Antworten von 0 bis 100 %. Lesen Sie unter 65 % das Abstract, bevor Sie sich auf diese Antwort verlassen.",
         "unsure": "Nur {sure, number, percent} sicher",
         "sure": "{sure, number, percent} sicher"
-      }
+      },
+      "helpAnswering": "Antworten ist freiwillig, eine Stimme allein genügt. Ein Nein bei einem Muss-Kriterium weist auf Ausschließen, und dieses Muss-Kriterium ist der Grund, wenn Sie ausschließen. Sonst fragt Ausschließen nur, ob es einen Grund gibt. Keinen, ein Duplikat oder einen anderen, den Sie aufschreiben."
     },
     "sources": {
       "add": "Hinzufügen",
@@ -9598,10 +9601,6 @@
         "unstated": "Kein Grund angegeben"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Welches Muss-Kriterium erfüllen diese Artikel nicht?} other {Welches Muss-Kriterium erfüllt er nicht?}}",
-        "criterion": "{many, select, true {Welches Kriterium erfüllen diese Artikel nicht?} other {Welches Kriterium erfüllt er nicht?}}",
-        "orCriterion": "Oder ein anderes Kriterium",
-        "orReason": "Oder ein anderer Grund",
         "why": "{many, select, true {Warum ausschließen?} other {Warum ausschließen?}}"
       },
       "notMet": "{name} nicht erfüllt",

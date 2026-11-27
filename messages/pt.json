@@ -8290,7 +8290,7 @@
         "helpTitle": "Obrigatório e opcional",
         "factPeople": "As pessoas votam diretamente",
         "factModels": "As respostas decidem os votos dos modelos",
-        "help": "Escreva cada critério como uma pergunta de sim ou não. Um modelo responde a cada um com sim, não ou incerto. Um não num critério obrigatório faz o modelo votar Excluir, e um incerto fá-lo votar Talvez. Um critério opcional nunca faz um modelo votar Excluir, mas uma pessoa pode, ainda assim, dá-lo como motivo. As orientações por baixo de uma pergunta dizem o que conta. Um revisor abre-as com «Orientações» por baixo da pergunta em Triar, e um modelo lê-as com a pergunta. As palavras que marcar para um critério ficam marcadas em cada resumo enquanto uma pessoa vota.",
+        "help": "Escreva cada critério como uma pergunta de sim ou não. Um modelo responde a cada uma com sim, não ou incerto. Um não num critério obrigatório faz o modelo votar Excluir, e um incerto, Talvez. Um critério opcional nunca faz um modelo votar Excluir. As orientações sob uma pergunta dizem o que conta. Um revisor abre-as com «Orientações» sob a pergunta no Screen, e um modelo lê-as com a pergunta. As palavras que marcar para um critério são realçadas em cada resumo enquanto uma pessoa vota.",
         "import": "{searches, plural, one {{count, plural, one {Adicionar # pergunta da sua pesquisa} other {Adicionar # perguntas da sua pesquisa}}} other {{count, plural, one {Adicionar # pergunta das suas pesquisas} other {Adicionar # perguntas das suas pesquisas}}}}",
         "copyFrom": "Copiar de uma triagem",
         "copyAdds": "Acrescenta os critérios dessa triagem e os pontos a estes",
@@ -8884,7 +8884,9 @@
         "chance": "0 não é melhor do que o acaso",
         "worse": "Abaixo de 0 pior do que o acaso",
         "means": "Quanto dois revisores concordam para além do acaso, nos artigos em que ambos votaram. As secções de métodos indicam-no. O valor global é a média de todos os pares.",
-        "swings": "Com poucos artigos oscila muito, e pode descer abaixo de 0. Estabiliza à medida que mais artigos têm os dois votos."
+        "swings": "Com poucos artigos oscila muito, e pode descer abaixo de 0. Estabiliza à medida que mais artigos têm os dois votos.",
+        "none": "n/d",
+        "noneFact": "n/d cada um tomou sempre a mesma decisão, por isso o acaso explica tudo"
       },
       "facts": {
         "startedIt": "iniciou-a {ago}"
@@ -9396,7 +9398,8 @@
         "help": "O modelo avalia cada uma das suas respostas de 0 a 100%. Abaixo de 65%, leia o resumo antes de confiar nessa resposta.",
         "unsure": "Só {sure, number, percent} de certeza",
         "sure": "{sure, number, percent} de certeza"
-      }
+      },
+      "helpAnswering": "Responder é opcional e basta um voto. Um Não num critério obrigatório aponta para Excluir, e esse critério é o motivo quando exclui. Caso contrário, Excluir só pergunta se há um motivo. Nenhum, um duplicado ou outro que escreve."
     },
     "sources": {
       "add": "Adicionar",
@@ -9598,10 +9601,6 @@
         "unstated": "Sem motivo indicado"
       },
       "excludeAsk": {
-        "must": "{many, select, true {Que critério obrigatório falham estes artigos?} other {Que critério obrigatório falha este artigo?}}",
-        "criterion": "{many, select, true {Que critério falham estes artigos?} other {Que critério falha este artigo?}}",
-        "orCriterion": "Ou outro critério",
-        "orReason": "Ou outro motivo",
         "why": "{many, select, true {Porquê excluí-los?} other {Porquê excluí-lo?}}"
       },
       "notMet": "{name} não cumprido",

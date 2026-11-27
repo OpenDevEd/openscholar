@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
-import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -14,7 +14,7 @@ import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, 
 import { useConvex } from "convex/react";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FileSearch, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FileSearch, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -50,6 +50,7 @@ import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
+import { decide, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
@@ -459,10 +460,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 max-sm:w-full">
-          <div className="relative min-w-0 flex-1 @2xl/papers:max-w-md">
-            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className="h-8 rounded-full ps-8 text-sm" />
-          </div>
+          <ListSearch box="min-w-0 flex-1 @2xl/papers:max-w-md" value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className="w-full" />
           {/* The included papers can go to extraction from the list that shows them, whether or not every other paper is settled: the Overview offers the same once they all are. */}
           {filter === "include" && open.counts.include ? <Button asChild variant="outline" size="sm" className={cn(PILL, "shrink-0")}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, open.screening, open.counts.include)}><FileSearch />{t("extractIncluded")}</NextLink></Button> : null}
           {/* Under a wide window the bar's Export is in its menu: here it is beside the list it exports. */}
@@ -856,30 +854,28 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
 /** The drawer's own scroll is the outside system: a step that opens low in it is brought into view once, as it is first drawn. Kept outside the panel so it is the same function on every draw: one made anew each draw would be called again whenever a model reads on, and pull the drawer back. */
 const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
-function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds: it is shown here as it was written, and never looks lost. Left out, the picker keeps its own. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
+function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
   const t = useTranslations("screening.papers");
+  const words = useWords();
   const [own, setOwn] = useState("");
-  const [missing, setMissing] = useState(false);
-  const field = useRef<HTMLInputElement>(null);
+  // "Another reason" is written down, as on Screen: the field opens in place of the reasons, Enter excludes and Escape goes back.
+  const [writing, setWriting] = useState(false);
   const note = given ?? own;
   const setNote = onNote ?? setOwn;
+  if (writing) {
+    return (
+      <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
+        <Input autoFocus value={note} onChange={(event) => setNote(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} placeholder={t("note.neededForOther")} aria-label={t("note.label")} className="h-8 bg-card text-sm" />
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setWriting(false)}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
+          <Button type="submit" variant="destructive" className="h-9 rounded-xl" disabled={!note.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
+        </div>
+      </form>
+    );
+  }
   return (
     <div className="space-y-2">
-      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder={t("note.neededForOther")} aria-label={t("note.label")} aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 bg-card text-sm" />
-      {missing ? <p id="reason-note-error" className="text-xs ink-destructive">{t("note.writeReason")}</p> : null}
-      <ReasonRows
-        criteria={criteria}
-        many={many}
-        onPick={(reason) => {
-          // A reason no criterion covers is the note itself.
-          if (reason === "other" && !note.trim()) {
-            setMissing(true);
-            field.current?.focus();
-            return;
-          }
-          onPick(reason, note.trim() || undefined);
-        }}
-      />
+      <ReasonRows criteria={criteria} many={many} onPick={(reason) => (reason === OTHER_REASON && !note.trim() ? setWriting(true) : onPick(reason, note.trim() || undefined))} />
       {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>{t("back")}</Button> : null}
     </div>
   );
@@ -927,6 +923,13 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     setReasonFor(null);
     setNote("");
   };
+  // Excluding asks why only where nothing says it yet: your own answers failing a must-have, or a note already written, is the reason. The same rule as on Screen.
+  const exclude = (kind: "vote" | "result") => {
+    const failedMust = kind === "vote" ? decide({ ...Object.fromEntries(screening.criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers }, screening.criteria).reason : undefined;
+    if (failedMust) settle(kind, "exclude", failedMust);
+    else if (note.trim()) settle(kind, "exclude", OTHER_REASON);
+    else setReasonFor(kind);
+  };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
       <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={note} onNote={setNote} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
@@ -934,7 +937,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       <div className="space-y-2">
         <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-3 gap-2">
-          {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? setReasonFor(kind) : settle(kind, decision))} />)}
+          {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>
       </div>
     );
@@ -966,7 +969,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}</span>
-              {finished ? null : <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>{t("panel.changeIt")}</Button>}
+              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote(mine?.note ?? ""); }}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
         ) : finished ? (

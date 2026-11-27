@@ -79,10 +79,6 @@
     "unstated": "No reason given"
   },
   "excludeAsk": {
-    "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
-    "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
-    "orCriterion": "Or another criterion",
-    "orReason": "Or another reason",
     "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
   },
   "notMet": "{name} not met",
