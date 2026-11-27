@@ -8865,7 +8865,7 @@
         "noOtherPerson": "比べるほかの人がいません",
         "noPeople": "比べる人がいません",
         "nothingYet": "比べるものはまだありません",
-        "agrees": "{share, number, percent}<muted>{person, select, true { ほかの人と同じ投票} other { 人と同じ投票}}</muted>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { ほかの人と同じ投票} other { 人と同じ投票}}</muted><all>（比較した投票 {count, plural, other {# 件}}）</all>",
         "missedOf": "採用 {included, number} 件中 {missed, number} 件に除外を投票",
         "ofPairs": "{count, plural, other {投票の組 # 件中}}",
         "more": "その他",
