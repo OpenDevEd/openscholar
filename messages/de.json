@@ -8186,7 +8186,8 @@
         "noCriteria": "Keine Kriterien",
         "invited": "{count, plural, other {# eingeladen}}",
         "nobody": "Noch niemand",
-        "decided": "{you, select, true {{rule}, und Sie entscheiden Konflikte} other {{rule}, und {name} entscheidet Konflikte}}"
+        "decided": "{you, select, true {{rule}, und Sie entscheiden Konflikte} other {{rule}, und {name} entscheidet Konflikte}}",
+        "withAdvice": "{decided}, KI-Stimmen als Empfehlung"
       },
       "filledFrom": "Ausgefüllt aus <b>{name}</b>",
       "openIt": "Öffnen",
@@ -9268,6 +9269,7 @@
       },
       "votes": {
         "title": "Alle Stimmen",
+        "titleAdvice": "Stimmen und KI-Empfehlung",
         "forSettler": "{you, select, true {Von Ihnen zu entscheiden} other {Von {name} zu entscheiden}}",
         "waitingFrom": "von {names}",
         "more": "{count, plural, other {# weitere}}",

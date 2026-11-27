@@ -8185,7 +8185,8 @@
         "noCriteria": "Ayikho imibandela",
         "invited": "{count, plural, other {# bamenyiwe}}",
         "nobody": "Akekho okwamanje",
-        "decided": "{you, select, true {{rule}, futhi wena uxazulula ukungqubuzana} other {{rule}, futhi u-{name} uxazulula ukungqubuzana}}"
+        "decided": "{you, select, true {{rule}, futhi wena uxazulula ukungqubuzana} other {{rule}, futhi u-{name} uxazulula ukungqubuzana}}",
+        "withAdvice": "{decided}, amavoti e-AI eyiseluleko"
       },
       "filledFrom": "Kugcwaliswe kusuka ku-<b>{name}</b>",
       "openIt": "Kuvule",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "Amavoti abo bonke",
+        "titleAdvice": "Amavoti neseluleko se-AI",
         "forSettler": "{you, select, true {Ukuze wena ukuxazulule} other {Ukuze {name} akuxazulule}}",
         "waitingFrom": "kusuka ku-{names}",
         "more": "{count, plural, other {abanye abangu-#}}",

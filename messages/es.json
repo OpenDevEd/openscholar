@@ -8186,7 +8186,8 @@
         "noCriteria": "Sin criterios",
         "invited": "{count, plural, one {# invitado} other {# invitados}}",
         "nobody": "Nadie todavía",
-        "decided": "{you, select, true {{rule}, y usted resuelve los conflictos} other {{rule}, y {name} resuelve los conflictos}}"
+        "decided": "{you, select, true {{rule}, y usted resuelve los conflictos} other {{rule}, y {name} resuelve los conflictos}}",
+        "withAdvice": "{decided}, con los votos de la IA como consejo"
       },
       "filledFrom": "Rellenado a partir de <b>{name}</b>",
       "openIt": "Abrirlo",
@@ -9268,6 +9269,7 @@
       },
       "votes": {
         "title": "Los votos de todos",
+        "titleAdvice": "Votos y consejo de la IA",
         "forSettler": "{you, select, true {Para que usted lo resuelva} other {Para que lo resuelva {name}}}",
         "waitingFrom": "de {names}",
         "more": "{count, plural, other {# más}}",

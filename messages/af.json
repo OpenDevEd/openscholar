@@ -8186,7 +8186,8 @@
         "noCriteria": "Geen kriteria nie",
         "invited": "{count, plural, other {# uitgenooi}}",
         "nobody": "Nog niemand nie",
-        "decided": "{you, select, true {{rule}, en jy besleg konflikte} other {{rule}, en {name} besleg konflikte}}"
+        "decided": "{you, select, true {{rule}, en jy besleg konflikte} other {{rule}, en {name} besleg konflikte}}",
+        "withAdvice": "{decided}, met KI-stemme as advies"
       },
       "filledFrom": "Ingevul uit <b>{name}</b>",
       "openIt": "Maak dit oop",
@@ -9268,6 +9269,7 @@
       },
       "votes": {
         "title": "Almal se stemme",
+        "titleAdvice": "Stemme en KI-advies",
         "forSettler": "{you, select, true {Vir jou om te beslis} other {Vir {name} om te beslis}}",
         "waitingFrom": "van {names}",
         "more": "{count, plural, other {nog #}}",

@@ -53,6 +53,7 @@
   },
   "votes": {
     "title": "Everyone's votes",
+    "titleAdvice": "Votes and AI advice",
     "forSettler": "{you, select, true {For you to settle} other {For {name} to settle}}",
     "waitingFrom": "from {names}",
     "more": "{count, plural, other {# more}}",

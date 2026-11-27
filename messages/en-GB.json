@@ -8185,7 +8185,8 @@
         "noCriteria": "No criteria",
         "invited": "{count, plural, other {# invited}}",
         "nobody": "Nobody yet",
-        "decided": "{you, select, true {{rule}, and you settle conflicts} other {{rule}, and {name} settles conflicts}}"
+        "decided": "{you, select, true {{rule}, and you settle conflicts} other {{rule}, and {name} settles conflicts}}",
+        "withAdvice": "{decided}, with AI votes as advice"
       },
       "filledFrom": "Filled in from <b>{name}</b>",
       "openIt": "Open it",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "Everyone's votes",
+        "titleAdvice": "Votes and AI advice",
         "forSettler": "{you, select, true {For you to settle} other {For {name} to settle}}",
         "waitingFrom": "from {names}",
         "more": "{count, plural, other {# more}}",
