@@ -28,9 +28,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useUpload } from "./sources";
 import { blindOf, reasonCriteria, RESULTS, type Result, slug, bylineOf, questionOf, inOrder, nameOn, votingReviewers } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./pieces";
@@ -387,8 +386,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
 
 
 /**
- * Sends the files of the tab open to an email address, with a note: built here as their download is, kept for a moment,
- * and mailed with a link to the screening (convex/screening/sending.ts). Replies go to the sender.
+ * Sends the files of the tab open to an email address, with a note: built here as their download is and mailed as they
+ * are, with a link to the screening (convex/screening/sending.ts). Replies go to the sender.
  */
 function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise<{ name: string; type: string; body: string }>> }) {
   const t = useTranslations("screening.files");
@@ -396,14 +395,12 @@ function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise
   const [to, setTo] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const upload = useUpload();
-  const sendFiles = useWorkspaceMutation(api.screening.sending.sendFiles);
+  const sendFiles = useWorkspaceAction(api.screening.sending.sendFiles);
   const send = async () => {
     setBusy(true);
     try {
       const made = await Promise.all(files.map((make) => make()));
-      const kept = await Promise.all(made.map(async (one) => ({ name: one.name, type: one.type, file: await upload(new Blob([one.body], { type: one.type })) })));
-      await sendFiles({ jobId: jobId as Id<"screeningJobs">, to: to.trim(), files: kept, ...(note.trim() ? { note: note.trim() } : {}) });
+      await sendFiles({ jobId: jobId as Id<"screeningJobs">, to: to.trim(), files: made, ...(note.trim() ? { note: note.trim() } : {}) });
       toast(t("send.sent", { to: to.trim(), count: made.length }));
       setOpen(false);
       setNote("");
