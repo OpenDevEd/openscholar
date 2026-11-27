@@ -52,12 +52,14 @@ const ROW = 57;
 export type Added = { ref: string; name: string; detail: string; total: number; set: SourceSet; filters?: string[] };
 type Offer = Pick<Added, "name" | "detail" | "total" | "filters">;
 
-export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
+export function OfferRow({ offer, label, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
   offer: Offer;
+  /** Its name as it is drawn, where that is more than the text: a search's query with its terms marked, or "No query". */
+  label?: ReactNode;
   icon: AppIcon;
   /** What else tells this row from the others, after its detail. */
   chips?: ReactNode;
-  /** Where it sits, as steps that lead back up, in place of its detail. */
+  /** What goes under its name in place of its detail: where it sits, as steps that lead back up, or a search's filters. */
   trail?: ReactNode;
   added: boolean;
   onAdd: () => void;
@@ -78,11 +80,11 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
           <span className="flex h-5 shrink-0 items-center"><Icon className="size-4 text-muted-foreground" /></span>
           {onOpen ? (
             <button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-1 rounded text-start text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
-              <span className={name}>{offer.name}</span>
+              <span className={name}>{label ?? offer.name}</span>
               <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           ) : (
-            <p className={cn("min-w-0 text-sm font-medium", name)}>{offer.name}</p>
+            <p className={cn("min-w-0 text-sm font-medium", name)}>{label ?? offer.name}</p>
           )}
         </div>
         {trail ? (

@@ -519,6 +519,11 @@ function Screen({ open }: { open: Open }) {
   );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
+  // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
+  const [arrivedQueue, setArrivedQueue] = useState(queue);
+  if (arrived && arrivedQueue !== queue) setArrivedQueue(queue);
+  const switching = arrivedQueue !== queue && !picked;
+  const known = queue !== "done" && !narrowed && !picked && left === 0;
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -535,7 +540,7 @@ function Screen({ open }: { open: Open }) {
       </div>
     );
   }
-  if (reading || (!paper && !narrowed && !opening)) {
+  if (reading || (switching && known) || (!paper && !narrowed && !opening)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -645,7 +650,7 @@ function Screen({ open }: { open: Open }) {
 
   return (
     <>
-      <div className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE)}>
+      <div aria-busy={switching || undefined} className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE, "*:not-first:transition-opacity", switching && "*:not-first:pointer-events-none *:not-first:opacity-60")}>
         {/* The queue's bar: its tabs and the way to its list, over the queue and the paper from a laptop's width. The button has one place and one look. From 1400px it hides the queue's pane and shows it again, and under that it opens the list over the page. */}
         {/* With no paper to show, the bar has the whole width, as there are no answers to sit beside. */}
         <div className={cn("flex flex-col gap-2 lg:col-start-1 lg:row-start-1 lg:flex-row lg:items-center lg:gap-3", QUEUE_BAR, paper ? "min-[87.5rem]:col-end-3" : "lg:-col-end-1 lg:border-e-0")}>
