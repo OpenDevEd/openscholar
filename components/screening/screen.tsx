@@ -252,8 +252,8 @@ function Screen({ open }: { open: Open }) {
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("notSaved")));
 
   const [advance, setAdvance] = useState(true);
-  // When a vote last opened the next paper. A press within a double-click's half second of it is the same press again (Safari counts each tap of a double tap as one click), not a vote on a paper nobody has read.
-  const advancedAt = useRef(0);
+  // The paper a vote last opened, and when. A press on it within a double-click's half second is the same press again (Safari counts each tap of a double tap as one click), not a vote on a paper nobody has read. The vote buttons also ignore a click counted twice, a double-click at whatever speed the system allows.
+  const advanced = useRef<{ paper: string; at: number } | null>(null);
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
   // On a phone the queue opens over the paper.
@@ -342,7 +342,7 @@ function Screen({ open }: { open: Open }) {
     // The next one down that still waits, or failing that the first that does: a paper skipped earlier comes round again once the end is reached.
     const next = advance && queue !== "done" ? (items.find((one, index) => index > at && waits(one)) ?? items.find(waits)) : undefined;
     if (next) {
-      advancedAt.current = Date.now();
+      advanced.current = { paper: next.id, at: Date.now() };
       openIt(next);
     }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
@@ -359,7 +359,7 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).catch(failed);
   };
   const press = (decision: Decision) => {
-    if (!paper || !mayDecide || Date.now() - advancedAt.current < 500) return;
+    if (!paper || !mayDecide || (advanced.current?.paper === paper.id && Date.now() - advanced.current.at < 500)) return;
     // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
     const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers, ...answers[paper.id] }, criteria).reason : undefined;
     // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
@@ -607,7 +607,7 @@ function Screen({ open }: { open: Open }) {
   const voteButton = (decision: Decision) => {
     const on = resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision;
     return (
-      <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : () => press(decision)}>
+      <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : (event) => event.detail < 2 && press(decision)}>
         <Kbd className={cn("max-lg:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
       </VoteButton>
     );
