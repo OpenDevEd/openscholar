@@ -9211,6 +9211,7 @@
         "lock": "Ein Schloss steht dort, wo eine Stimme verborgen ist."
       },
       "anotherReason": "Ein anderer Grund…",
+      "noReason": "Kein Grund",
       "paperFacts": {
         "from": "Aus {name}",
         "added": "Hinzugefügt {ago}",

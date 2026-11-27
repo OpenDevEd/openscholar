@@ -6,7 +6,7 @@
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
 import { useFormatter, useTranslations } from "next-intl";
-import { NAMED_REASONS, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
+import { NAMED_REASONS, NO_REASON, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed } from "./data";
 
 /** A criterion as far as its name goes. */
@@ -102,17 +102,10 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
      * criterion it fails, or another reason. Each has a key for the keyboard: a criterion its own number, as far as the
      * digits go, and another reason its first letter.
      */
-    excludeGroups: (criteria: Named[], many = false) => {
-      const keyed = criteria.map((criterion, i) => ({ key: criterion.key, must: criterion.must, hotkey: i < 9 ? String(i + 1) : "" }));
-      const [musts, nice] = [keyed.filter((one) => one.must), keyed.filter((one) => !one.must)];
-      const others = OTHER_REASONS.map((key) => ({ key: key as string, hotkey: key[0]!.toUpperCase() }));
-      // Asked of one paper, or of several picked together.
-      return [
-        { name: t("excludeAsk.must", { many: String(many) }), list: musts },
-        { name: musts.length ? t("excludeAsk.orCriterion") : t("excludeAsk.criterion", { many: String(many) }), list: nice },
-        { name: criteria.length ? t("excludeAsk.orReason") : t("excludeAsk.why", { many: String(many) }), list: others },
-      ].filter((group) => group.list.length);
-    },
+    excludeGroups: (many = false) => [
+      // A title and abstract needs no reason to be excluded (PRISMA 2020 asks for reasons only of full texts): no reason comes first, on Enter. A duplicate is counted on its own; another reason is written down.
+      { name: t("excludeAsk.why", { many: String(many) }), list: [{ key: NO_REASON as string, hotkey: "Enter" }, ...OTHER_REASONS.map((key) => ({ key: key as string, hotkey: key[0]!.toUpperCase() }))] },
+    ],
     /** The name a screening's own collection of included papers has, unless it is given another. */
     includedIn: (name: string) => t("includedIn", { name }),
     /** Where a screening's included papers are saved, by name, or null where they stay in it. The pages and the files both read this. */

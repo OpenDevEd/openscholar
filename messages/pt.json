@@ -9211,6 +9211,7 @@
         "lock": "Um cadeado aparece onde um voto está oculto."
       },
       "anotherReason": "Outro motivo…",
+      "noReason": "Sem motivo",
       "paperFacts": {
         "from": "De {name}",
         "added": "Adicionado {ago}",

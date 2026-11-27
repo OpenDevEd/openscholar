@@ -9210,6 +9210,7 @@
         "lock": "投票が非表示の箇所には鍵が表示されます。"
       },
       "anotherReason": "その他の理由…",
+      "noReason": "理由なし",
       "paperFacts": {
         "from": "取得元: {name}",
         "added": "{ago}に追加",

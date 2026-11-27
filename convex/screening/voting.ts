@@ -8,7 +8,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { workspaceMutation } from "../lib/userActions";
-import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
+import { NAMED_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, personRow, votesOf } from "./dealing";
@@ -26,7 +26,7 @@ const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">) => ctx.db.pat
 
 /** A reason to exclude is one of the screening's criteria, or one of the others. */
 function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
-  if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(OTHER_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
+  if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
 const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()) };

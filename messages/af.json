@@ -9211,6 +9211,7 @@
         "lock": "’n Slot staan waar ’n stem versteek is."
       },
       "anotherReason": "’n Ander rede…",
+      "noReason": "Geen rede nie",
       "paperFacts": {
         "from": "Uit {name}",
         "added": "{ago} bygevoeg",

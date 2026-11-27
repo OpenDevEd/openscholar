@@ -21,6 +21,7 @@ import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,7 +46,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
+import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -180,6 +181,7 @@ function Screen({ open }: { open: Open }) {
   const items = kept ? insertAt(listed.items, stood?.id === paper.id ? Math.min(stood.at, listed.items.length) : 0, paper) : listed.items;
   const at = paper ? items.findIndex((one) => one.id === paper.id) : -1;
   const sentences = useMemo(() => sentencesOf(paper?.abstract ?? ""), [paper?.abstract]);
+  const [reasonFor, setReasonFor] = useState<string | null>(null);
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
   const [keysOpen, setKeysOpen] = useState(false);
@@ -198,6 +200,7 @@ function Screen({ open }: { open: Open }) {
   }, []);
   const openIt = (next: Paper) => {
     void setPlace({ paper: next.id }, { history: "replace" });
+    setReasonFor(null);
     setWriting(null);
     setShown(null);
     // The note's field was opened for the paper being left: the next one starts with it shut, and keeps its room.
@@ -262,11 +265,16 @@ function Screen({ open }: { open: Open }) {
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
+  // What a paper can be excluded for: no reason, which Enter gives, a duplicate, or another reason, which is written in the note. Each has its key.
+  const reasonGroups = words.excludeGroups();
+  const reasons = reasonGroups.flatMap((group) => group.list);
+
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
     const note = notes[paper.id]?.trim() || (resolving ? undefined : mine?.note);
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER && !notes[paper.id]?.trim()) {
+      setReasonFor(null);
       return setWriting(paper.id);
     }
     const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() };
@@ -283,6 +291,7 @@ function Screen({ open }: { open: Open }) {
     if (resolving) open.resolve(paper.id, decision, note, reason).catch(refused);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
     else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(refused);
+    setReasonFor(null);
     setWriting(null);
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
     // The next one down that still waits, or failing that the first that does: a paper skipped earlier comes round again once the end is reached.
@@ -303,9 +312,12 @@ function Screen({ open }: { open: Open }) {
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide) return;
-    // Excluding on a title and abstract asks for no reason: the must-have your own answers fail is the reason where there is one. Settling a conflict with a note written gives that note as the reason.
+    // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
     const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...answers[paper.id] }, criteria).reason : undefined;
-    decideOn(decision, decision === "exclude" && resolving && notes[paper.id]?.trim() ? OTHER : failed);
+    // Settling a conflict with a reason already written: that is the reason, and nothing more is asked.
+    if (decision === "exclude" && resolving && notes[paper.id]?.trim()) decideOn("exclude", OTHER);
+    else if (decision === "exclude" && !failed) setReasonFor(paper.id);
+    else decideOn(decision, failed);
   };
   const undo = () => {
     if (!last) return;
@@ -541,7 +553,7 @@ function Screen({ open }: { open: Open }) {
   const voteButton = (decision: Decision) => {
     const on = resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision;
     return (
-      <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision onClick={() => press(decision)}>
+      <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : () => press(decision)}>
         <Kbd className={cn("max-lg:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
       </VoteButton>
     );
@@ -933,10 +945,11 @@ function Screen({ open }: { open: Open }) {
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
-                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                  {/* Escape goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
+                  <Input autoFocus onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}</Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}</Button>
+                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
+                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
                   </div>
                 </form>
               ) : (
@@ -975,7 +988,42 @@ function Screen({ open }: { open: Open }) {
                     <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
                       {voteButton("include")}
                       {voteButton("maybe")}
-                      {voteButton("exclude")}
+                      {tablet ? (
+                        voteButton("exclude")
+                      ) : (
+                        <DropdownMenu open={reasonFor === paper.id} onOpenChange={(next) => (next ? press("exclude") : setReasonFor(null))}>
+                          <DropdownMenuTrigger asChild>{voteButton("exclude")}</DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            side="top"
+                            align="end"
+                            sideOffset={8}
+                            className="w-80 p-1.5"
+                            // After a reason the next paper opens: the keyboard stays with the page, not on Exclude.
+                            onCloseAutoFocus={(event) => event.preventDefault()}
+                            onKeyDown={(event) => {
+                              // Enter on a reason that has the focus picks that reason, as the menu does. Anywhere else it is no reason.
+                              if (event.key === "Enter" && (event.target as HTMLElement).closest("[role=menuitem]")) return;
+                              const reason = reasons.find((one) => one.hotkey && one.hotkey.toLowerCase() === event.key.toLowerCase());
+                              if (!reason || event.metaKey || event.ctrlKey || event.altKey) return;
+                              event.preventDefault();
+                              decideOn("exclude", reason.key);
+                            }}
+                          >
+                            {reasonGroups.map((group, i) => (
+                              <div key={group.name} role="group" aria-label={group.name}>
+                                {i ? <DropdownMenuSeparator /> : null}
+                                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{group.name}</DropdownMenuLabel>
+                                {group.list.map((reason) => (
+                                  <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
+                                    <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} /></span>
+                                    {reason.hotkey ? <Kbd>{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
+                                  </DropdownMenuItem>
+                                ))}
+                              </div>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 </>
@@ -1015,6 +1063,20 @@ function Screen({ open }: { open: Open }) {
         </ActionBar>
       ) : null}
 
+      {/* On a phone the reasons open from the foot of the screen. */}
+      {paper && tablet ? (
+        <Sheet open={reasonFor === paper.id} onOpenChange={(next) => !next && setReasonFor(null)}>
+          <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 p-0">
+            <SheetHeader className="border-b border-border-subtle p-4">
+              <SheetTitle>{t("exclude.why")}</SheetTitle>
+              <SheetDescription className="sr-only">{t("exclude.pick")}</SheetDescription>
+            </SheetHeader>
+            <ScrollArea shades className="min-h-0 flex-1">
+              <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} onPick={(reason) => decideOn("exclude", reason)} /></div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </>
   );
 }

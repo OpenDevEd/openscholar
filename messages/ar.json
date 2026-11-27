@@ -9211,6 +9211,7 @@
         "lock": "يظهر قفل حيث يكون الصوت مخفيًا."
       },
       "anotherReason": "سبب آخر…",
+      "noReason": "بلا سبب",
       "paperFacts": {
         "from": "من {name}",
         "added": "أُضيفت {ago}",

@@ -9211,6 +9211,7 @@
         "lock": "Un candado marca dónde hay un voto oculto."
       },
       "anotherReason": "Otro motivo…",
+      "noReason": "Sin motivo",
       "paperFacts": {
         "from": "De {name}",
         "added": "Añadido {ago}",

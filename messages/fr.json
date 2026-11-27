@@ -9210,6 +9210,7 @@
         "lock": "Un cadenas remplace un vote masqué."
       },
       "anotherReason": "Une autre raison…",
+      "noReason": "Aucun motif",
       "paperFacts": {
         "from": "De {name}",
         "added": "Ajouté {ago}",

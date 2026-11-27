@@ -9210,6 +9210,7 @@
         "lock": "锁图标表示该处投票已隐藏。"
       },
       "anotherReason": "其他原因…",
+      "noReason": "无理由",
       "paperFacts": {
         "from": "来自 {name}",
         "added": "{ago}添加",

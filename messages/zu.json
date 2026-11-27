@@ -9210,6 +9210,7 @@
         "lock": "Ingidi ime lapho ivoti lifihliwe khona."
       },
       "anotherReason": "Esinye isizathu…",
+      "noReason": "Asikho isizathu",
       "paperFacts": {
         "from": "Kusuka ku-{name}",
         "added": "Kungezwe {ago}",
