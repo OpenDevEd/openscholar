@@ -36,7 +36,7 @@ export const save = action({
       await ctx.runMutation(internal.reports.publication.saveVerified, {
         settings,
         encryptedCredentials: encrypt(JSON.stringify(credentials), encryptionKey),
-        customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId, ...(custom.docidEmail && { docidEmail: custom.docidEmail }), docidPassword: !!custom.credentials.docidPassword },
+        customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId, ...(custom.docidEmail && { docidEmail: custom.docidEmail }), ...(custom.credentials.docidPassword && { docidPassword: true }) },
         encryptedCustomCredentials: encrypt(JSON.stringify(custom.credentials), encryptionKey),
         expectedUpdatedAt: args.expectedUpdatedAt,
       });
