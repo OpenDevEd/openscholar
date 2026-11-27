@@ -166,6 +166,8 @@ export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v
 export const docidRegistrationValidator = v.object({
   state: v.union(v.literal("none"), v.literal("queued"), v.literal("registered"), v.literal("failed")),
   handle: v.optional(v.string()),
+  /** Its Handle was minted on DOCiD's demo, the sandbox: what follows goes there too. Unknown on Handles minted before it was kept. */
+  sandbox: v.optional(v.boolean()),
   publicationId: v.optional(v.number()),
   retired: v.optional(v.boolean()),
   /** A deposit was sent: until DOCiD's record of it is kept, the next try looks for it before sending another. */

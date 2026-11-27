@@ -46,21 +46,20 @@ export function DocidAccount({
     >
       {docid.mode !== "off" ? (
         <div className="space-y-4">
+          {/* The demo's Handles are under the same prefix, and as permanent. */}
+          <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-pretty text-muted-foreground">
+            <TriangleAlert className="mt-px size-3.5 shrink-0" />
+            {t("docidPermanent")}
+          </p>
           <CredentialMode
             provider="DOCiD"
             value={docid.mode}
             // The account on DOCiD itself comes back as it was kept.
             onChange={(mode: ActiveMode) => update({ mode, ...(mode === "custom" && { email: keptEmail ?? "" }) })}
           >
-            <div className="space-y-4">
-              <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-pretty text-muted-foreground">
-                <TriangleAlert className="mt-px size-3.5 shrink-0" />
-                {t("docidPermanent")}
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t("docidEmail")}>{(id) => <Input id={id} type="email" autoComplete="off" value={docid.email} placeholder="name@example.org" onChange={(e) => update({ email: e.target.value })} />}</Field>
-                <Field label={t("docidCredential")}>{(id) => <Input id={id} type="password" autoComplete="new-password" value={password} placeholder={stored ? t("storedHint") : undefined} onChange={(e) => onPassword(e.target.value)} />}</Field>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("docidEmail")}>{(id) => <Input id={id} type="email" autoComplete="off" value={docid.email} placeholder="name@example.org" onChange={(e) => update({ email: e.target.value })} />}</Field>
+              <Field label={t("docidCredential")}>{(id) => <Input id={id} type="password" autoComplete="new-password" value={password} placeholder={stored ? t("storedHint") : undefined} onChange={(e) => onPassword(e.target.value)} />}</Field>
             </div>
           </CredentialMode>
           {cantFile ? (

@@ -93,12 +93,13 @@ export const publicationPayloadValidator = v.object({
  * they were custom.
  */
 export function keptCustomOf(settings: PublicationSettings, stored: Infer<typeof keptCustomValidator> | undefined): Infer<typeof keptCustomValidator> {
-  if (stored) return stored;
+  const ownDocid = settings.docid?.mode === "custom" && { docidEmail: settings.docid.email, docidPassword: true };
+  if (stored) return { ...stored, ...(stored.docidEmail === undefined && ownDocid) };
   const crossref = settings.crossref.mode === "custom";
   return {
     crossref: crossref ? { prefix: settings.crossref.prefix, depositorName: settings.crossref.depositorName, email: settings.crossref.email, registrant: settings.crossref.registrant } : null,
     zenodoToken: settings.zenodo.mode === "custom",
     crossrefLogin: crossref,
-    ...(settings.docid?.mode === "custom" && { docidEmail: settings.docid.email, docidPassword: true }),
+    ...ownDocid,
   };
 }

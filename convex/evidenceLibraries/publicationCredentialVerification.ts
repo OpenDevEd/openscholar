@@ -217,15 +217,16 @@ export async function verifiedPublication(
   settings.crossref.suffixNamespace ||= namespace;
   // The own accounts stay kept through a spell on the sandbox: switching back takes them up again, and anything typed
   // replaces them.
-  const before: KeptCustom = kept.custom ?? {
+  const stored: KeptCustom = kept.custom ?? {
     ...(kept.settings?.crossref.mode === "custom" && { crossref: Object.fromEntries(CUSTOM_CROSSREF.map((key) => [key, kept.settings!.crossref[key]])) as CustomCrossref }),
-    ...(kept.settings?.docid?.mode === "custom" && { docidEmail: kept.settings.docid.email }),
     credentials: {
       ...(kept.settings?.zenodo.mode === "custom" && { zenodoToken: kept.credentials.zenodoToken }),
       ...(kept.settings?.crossref.mode === "custom" && { crossrefLoginId: kept.credentials.crossrefLoginId, crossrefPassword: kept.credentials.crossrefPassword }),
-      ...(kept.settings?.docid?.mode === "custom" && { docidPassword: kept.credentials.docidPassword }),
     },
   };
+  // DOCiD's own account, from before it was kept apart, is the one in use if it was custom.
+  const ownDocid = kept.settings?.docid?.mode === "custom" && !stored.docidEmail ? { email: kept.settings.docid.email, password: kept.credentials.docidPassword } : null;
+  const before: KeptCustom = ownDocid ? { ...stored, docidEmail: ownDocid.email, credentials: { ...stored.credentials, docidPassword: ownDocid.password } } : stored;
   const custom: KeptCustom = { ...(before.crossref && { crossref: before.crossref }), ...(before.docidEmail && { docidEmail: before.docidEmail }), credentials: { ...before.credentials } };
   const credentials: PublicationSecrets = {};
   if (settings.zenodo.mode === "sandbox")
