@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {每篇新论文 {credits, plural, other {# 积分}}，按 PDF 读取的更多} other {每篇新论文 {credits, plural, other {# 积分}}}}",
         "noneGrow": "这些来源都不会增加论文。添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
         "addToCheck": "添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
-        "lastSpent": "上次检查约 {spent, plural, other {# 积分}}，{count, plural, other {# 篇论文}}"
+        "lastSpent": "阅读上次检查新增的{count, plural, other {# 篇论文}}约需{spent, plural, other {# 积分}}"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
@@ -8388,7 +8388,7 @@
         "whoSettles": "谁裁决冲突",
         "seeVotes": "审核人何时能看到其他人的投票",
         "seeingTitle": "查看其他人的投票",
-        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。仅作参考的模型投票在此之前就会显示。不对某篇论文投票的人随时都能看到其投票。",
+        "seeingHelp": "“投票后”可以避免审核人受到影响。每人在对论文投票后或论文定案后，才能看到其他人对它的投票。仅作参考的模型投票在此之前就会显示。不对某篇论文投票的人随时都能看到其投票。审核人之间的一致程度，以及每人的总体投票情况，会在没有论文再等待某位审核人投票时向其显示。",
         "after": "投票后",
         "always": "随时",
         "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} 篇等待投票",
       "inConflictFor": "{count} 篇有冲突，由 {who} 裁决",
       "upToDate": "已是最新",
-      "allSettled": "所有论文均已定案，可以完成",
+      "allSettled": "{finish, select, true {所有论文均已定案，可以完成} other {所有论文均已定案}}",
       "none": "{show, select, you {没有需要你处理的。} finished {没有已完成的筛选。} open {没有进行中的筛选。} other {没有筛选。}}",
       "noneCalled": "{show, select, you {没有名为 {name} 且需要你处理的筛选。} finished {没有名为 {name} 的已完成筛选。} open {没有名为 {name} 的进行中筛选。} other {没有名为 {name} 的筛选。}}",
       "showEvery": "显示所有筛选",
@@ -8892,7 +8892,7 @@
         "none": "有两位审核人对同样的论文投票后，这里会显示他们的一致程度。",
         "mean": "两两 Cohen's kappa 的平均值",
         "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}。{left, plural, =0 {} other {其余 # 对在每篇论文上都投了同样的票，这种情况下无法计算 kappa。}}",
-        "splitMost": "分歧最大的论文",
+        "splitMost": "全部论文，分歧最大的在前",
         "noneYet": "暂无",
         "cell": "{a} 与 {b}，kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
       },
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "未投票"
       },
       "pointsOf": "{points, number} / {max, plural, other {# 分}}",
-      "note": {
-        "label": "备注",
-        "forOthers": "写给其他人的备注（可选）",
-        "forRecord": "供记录的备注（可选）"
-      },
       "back": "返回",
       "panel": {
         "placeOf": "{at, number} / {of, number}",
@@ -9262,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {裁决 {count, plural, other {# 个冲突}}} other {查看 {count, plural, other {# 个冲突}}}}",
       "screenPapers": "筛选 {count, plural, other {# 篇论文}}",
       "queue": {
+        "readFurther": "继续读取",
+        "noMatchYet": "目前读到的论文中没有匹配的",
         "label": "队列",
         "todo": "待处理",
         "again": "重新投票",

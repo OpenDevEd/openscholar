@@ -674,7 +674,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                 <DropdownMenuContent align="center" className="w-auto min-w-60 [&_[role=menuitem]]:whitespace-nowrap">
                                   <DropdownMenuLabel><ReviewerName reviewer={one} you={one.id === open.me} /></DropdownMenuLabel>
                                   <DropdownMenuSeparator />
-                                  {DECISIONS.map((decision) => {
+                                  {/* Only the lists that hold papers: a way of voting they never used, or one kept from you, would open empty. */}
+                                  {DECISIONS.filter((decision) => !one.tally || (!one.tally.kept && one.tally[decision] > 0)).map((decision) => {
                                     const Icon = RESULT_STYLE[decision].icon;
                                     return (
                                       <DropdownMenuItem key={decision} asChild>
@@ -682,7 +683,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                       </DropdownMenuItem>
                                     );
                                   })}
-                                  <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />{t("menu.papersWaiting", { you: String(one.id === open.me), name: shortName(one) })}</NextLink></DropdownMenuItem>
+                                  {!one.tally || one.tally.waiting > 0 ? <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />{t("menu.papersWaiting", { you: String(one.id === open.me), name: shortName(one) })}</NextLink></DropdownMenuItem> : null}
+                                  {one.tally && !one.tally.waiting && (one.tally.kept || DECISIONS.every((decision) => !one.tally![decision])) ? <DropdownMenuItem disabled><Hourglass />{one.tally.kept ? words.t("hiddenWhileToDo") : words.t("noVote.yet")}</DropdownMenuItem> : null}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableHead>
@@ -923,15 +925,13 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
     );
   }
   return (
-    // Escape goes back from the reasons, as from the note's form, and never closes what they sit in: the list takes the focus when it opens, so the key reaches it.
-    <div ref={onBack ? takeFocus : undefined} tabIndex={onBack ? -1 : undefined} className="space-y-2 outline-none" onKeyDown={onBack ? (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onBack(); } } : undefined}>
+    // Escape goes back from the reasons, as from the note's form, and never closes what they sit in: the drawer lets a key from inside `data-reason-note` through, and the first reason, which has the focus, passes it up here.
+    <div data-reason-note={onBack ? "" : undefined} className="space-y-2" onKeyDown={onBack ? (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onBack(); } } : undefined}>
       <ReasonRows criteria={criteria} many={many} onPick={(reason) => (reason === OTHER_REASON && !note.trim() ? setWriting(true) : onPick(reason, note.trim() || undefined))} />
       {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button> : null}
     </div>
   );
 }
-/** Takes the focus once, as the element arrives: stable, so a later render doesn't take it again. */
-const takeFocus = (node: HTMLElement | null) => node?.focus({ preventScroll: true });
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
 function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; canStep: { previous: boolean; next: boolean }; /** Where it is in the list, and how many the list holds where that is counted. */ place: { at: number; of?: number } }) {
@@ -1010,7 +1010,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     ) : (
       <div className="space-y-2">
         {/* The note wraps and grows to a few lines, as on Screen: a long one stays in view as it is written. */}
-        <Textarea maxLength={NOTE_LENGTH} rows={1} value={noteOf(kind)} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" && othersRead(screening, open.me, open.invited) ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
+        <Textarea maxLength={NOTE_LENGTH} rows={1} value={noteOf(kind)} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" && othersRead(screening, open.me, open.invited) ? screen("note.voting") : screen("note.settling")} aria-label={screen("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
         <div className="grid grid-cols-3 gap-2">
           {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>
@@ -1044,14 +1044,14 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={reasonCriteria(screening)} className="min-w-0 shrink" /> : null}</span>
-              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", mine?.note ?? ""); }}>{t("panel.changeIt")}</Button>}
+              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", noteOf("vote")); }}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
         ) : finished ? (
           <ShutNote by="reviewer">{screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
-            <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
+            <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.resolvedBy === open.me ? screen("votes.settledBy", { you: "true", name: "" }) : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
             {buttons("vote")}
             {/* Changing a vote can be let go, as the override can: the vote stands as it was. */}
             {mine && reasonFor !== "vote" ? <Button variant="ghost" size="sm" className="w-full" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); }}>{t("panel.cancel")}</Button> : null}

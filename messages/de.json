@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel}}",
         "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
         "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
-        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}} bei der letzten Prüfung, {count, plural, one {# Artikel} other {# Artikel}}"
+        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}}, um die {count, plural, one {# Arbeit} other {# Arbeiten}} zu lesen, die die letzte Prüfung hinzugefügt hat"
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
@@ -8389,7 +8389,7 @@
         "whoSettles": "Wer einen Konflikt entscheidet",
         "seeVotes": "Reviewer sehen die anderen Stimmen",
         "seeingTitle": "Andere Stimmen sehen",
-        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
+        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit. Wie weit die Reviewer übereinstimmen und wie jeder insgesamt gestimmt hat, sieht ein Reviewer, sobald kein Artikel mehr auf seine Stimme wartet.",
         "after": "Nach der eigenen Stimme",
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} warten auf Stimmen",
       "inConflictFor": "{count} im Konflikt, {who} entscheidet",
       "upToDate": "Aktuell",
-      "allSettled": "Alle Artikel sind entschieden, bereit zum Abschließen",
+      "allSettled": "{finish, select, true {Alle Artikel sind entschieden, bereit zum Abschließen} other {Alle Artikel sind entschieden}}",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
       "showEvery": "Alle Screenings anzeigen",
@@ -8893,7 +8893,7 @@
         "none": "Wie weit die Reviewer übereinstimmen, zeigt sich hier, sobald zwei von ihnen über dieselben Artikel abgestimmt haben.",
         "mean": "Mittleres paarweises Cohen's Kappa",
         "across": "0 ist nicht besser als Zufall, 1 ist volle Übereinstimmung. Über {pairs, plural, one {# Paar} other {# Paare}} von Reviewern, {range, select, true {je {min, number} bis {max, number} Artikel} other {{min, plural, one {je # Artikel} other {je # Artikel}}}}.{left, plural, =0 {} one { Das andere Paar hat bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.} other { Die anderen # Paare haben bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.}}",
-        "splitMost": "Die Artikel, bei denen sie am meisten uneins sind",
+        "splitMost": "Alle Artikel, die umstrittensten zuerst",
         "noneYet": "Noch keine",
         "cell": "{a} und {b}, Kappa {kappa}, gleiche Stimme bei {share, number, percent} von {papers, plural, one {# Artikel} other {# Artikeln}}"
       },
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Keine Stimme von"
       },
       "pointsOf": "{points, number} von {max, plural, one {# Punkt} other {# Punkten}}",
-      "note": {
-        "label": "Notiz",
-        "forOthers": "Notiz für die anderen (optional)",
-        "forRecord": "Notiz fürs Protokoll (optional)"
-      },
       "back": "Zurück",
       "panel": {
         "placeOf": "{at, number} von {of, number}",
@@ -9263,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {{count, plural, one {# Konflikt entscheiden} other {# Konflikte entscheiden}}} other {{count, plural, one {# Konflikt ansehen} other {# Konflikte ansehen}}}}",
       "screenPapers": "{count, plural, one {# Artikel prüfen} other {# Artikel prüfen}}",
       "queue": {
+        "readFurther": "Weiterlesen",
+        "noMatchYet": "Keiner der bisher gelesenen Artikel passt",
         "label": "Warteschlange",
         "todo": "Offen",
         "again": "Neu abstimmen",

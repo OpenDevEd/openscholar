@@ -36,10 +36,10 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
 import { inOrder, RESULTS } from "./data";
 import { searchHistory } from "./address";
-import { newHref, overviewHref, papersHref, screenHref } from "./links";
+import { newHref, overviewHref, papersHref, reviewerHref, screenHref } from "./links";
 import { draftOf, useKept } from "./drafts";
 import { OVERS, ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
-import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
+import { Faces, FilterMenu, Help, LinkChip, StateChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
 import { toReviewers, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWords } from "./words";
@@ -258,14 +258,19 @@ export function ScreeningsIndex() {
                           </span>
                           {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
                           <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
-                            <Faces reviewers={reviewers} me={me} className="[grid-area:faces] @5xl:row-span-2" linkOf={(reviewer) => ({ href: papersHref(id, { reviewer: reviewer.id }), says: votesBy(tp, reviewer, me) })} more={{ href: overviewHref(id, "reviewers"), says: t("everyReviewer") }} />
+                            <Faces reviewers={reviewers} me={me} className="[grid-area:faces] @5xl:row-span-2" linkOf={(reviewer) => ({ href: reviewerHref(id, reviewer) ?? papersHref(id, { reviewer: reviewer.id }), says: votesBy(tp, reviewer, me) })} more={{ href: overviewHref(id, "reviewers"), says: t("everyReviewer") }} />
                             <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @5xl:row-span-2 @5xl:[grid-area:when]">{t.rich("lastActivity", { when: words.ago(row.activeAt), label: (chunks) => <span className="@5xl:hidden">{chunks}</span> })}</span>
                           </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
                             <ResultBar counts={stands} hrefOf={(result) => papersHref(id, { result })} />
-                            <NextLink href={row.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, FIGURE_LINK, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground")}>
-                              {row.finishedAt ? t("includedOf", { included: words.num(stands.include), total: words.num(total) }) : t("settledOf", { settled: words.num(settled), total: words.num(total) })}
-                            </NextLink>
+                            {/* A count of none opens nothing: its list would be empty. */}
+                            {(row.finishedAt ? stands.include : total) ? (
+                              <NextLink href={row.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, FIGURE_LINK, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground")}>
+                                {row.finishedAt ? t("includedOf", { included: words.num(stands.include), total: words.num(total) }) : t("settledOf", { settled: words.num(settled), total: words.num(total) })}
+                              </NextLink>
+                            ) : (
+                              <p className="text-xs tabular-nums text-muted-foreground">{row.finishedAt ? t("includedOf", { included: words.num(stands.include), total: words.num(total) }) : t("settledOf", { settled: words.num(settled), total: words.num(total) })}</p>
+                            )}
                           </span>
                           <span className="flex min-w-0 flex-wrap items-center gap-1.5 [grid-area:status] @5xl:row-span-2">
                             {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{t("forYouToScreen", { count: forYou })}</LinkChip> : null}
@@ -279,12 +284,14 @@ export function ScreeningsIndex() {
                               : null}
                             {/* Where its papers stand shows where nothing waits for you. */}
                             {forYou || conflicts ? null
-                              : row.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{t("finishedIncluded", { included: words.num(stands.include) })}</LinkChip>
+                              : row.finishedAt ? (stands.include ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{t("finishedIncluded", { included: words.num(stands.include) })}</LinkChip> : <StateChip tone="success" icon={CircleCheck} className="relative shrink-0">{t("finishedIncluded", { included: words.num(0) })}</StateChip>)
                               : models ? null
                               : stands.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{t("waitingForVotes", { count: words.num(stands.waiting) })}</LinkChip>
                               : stands.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{t("inConflictFor", { count: words.num(stands.conflict), who: resolver })}</LinkChip>
                               : row.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">{t("upToDate")}</LinkChip>
-                              : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">{t("allSettled")}</LinkChip>}
+                              // Ready to finish is said to whoever may finish it; a screening with no papers has nothing settled to say.
+                              : total ? <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">{t("allSettled", { finish: String(row.member) })}</LinkChip>
+                              : null}
                           </span>
                           <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">
                             <RowMenu id={id} name={row.name} onOpen={(what) => void openOver({ row: id, over: what })} />

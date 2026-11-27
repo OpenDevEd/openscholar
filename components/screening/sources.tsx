@@ -50,7 +50,7 @@ const PAGE = 5;
 const ROW = 57;
 
 /** What a tab hands the form to add as a source: what the server reads, under the name its list gave it, with how many papers it holds and what tells it from another of the same name. */
-export type Added = { ref: string; name: string; detail: string; total: number; set: SourceSet; filters?: string[] };
+export type Added = { ref: string; name: string; detail: string; total: number; set: SourceSet; filters?: string[]; untitled?: boolean };
 type Offer = Pick<Added, "name" | "detail" | "total" | "filters">;
 
 export function OfferRow({ offer, label, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
@@ -713,7 +713,7 @@ export function CommunityTab({ sources, onAdd }: { sources: Source[]; onAdd: (ad
   const labelOf = useRowLabel();
   const add = (row: LibraryRow, library: { name: string }) => {
     const ref = `evidenceLibrary:${rowKey(row)}`;
-    if (!added(ref)) onAdd({ ref, name: labelOf(row), detail: t("in", { name: library.name }), total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
+    if (!added(ref)) onAdd({ ref, name: labelOf(row), ...(row.what === "search" && !row.label ? { untitled: true } : {}), detail: t("in", { name: library.name }), total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
   };
   return <LibrarySources state={libraries} isOn={(row) => added(`evidenceLibrary:${rowKey(row)}`)} onToggle={(row, library) => add(row, library)} onPasted={(held) => add(held.row, held.library)} scope={() => null} />;
 }

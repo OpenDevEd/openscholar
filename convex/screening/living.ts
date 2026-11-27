@@ -41,7 +41,7 @@ export const checkNow = workspaceMutation({
   returns: v.null(),
   handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
-    if (job.reading) throw createError("CONFLICT", "Its papers are still arriving.");
+    if (job.reading) throw createError("CONFLICT", "The papers are still arriving from the sources.");
     await check(ctx, job, actor.userId);
     return null;
   },

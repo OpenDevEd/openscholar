@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",
         "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
         "addToCheck": "確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
-        "lastSpent": "前回の確認で約{spent, plural, other {# クレジット}}、{count, plural, other {論文 # 件}}"
+        "lastSpent": "前回の確認で追加された論文 {count, plural, other {# 件}}を読むのに約{spent, plural, other {# クレジット}}"
       },
       "criteria": {
         "helpTitle": "必須基準と望ましい基準",
@@ -8388,7 +8388,7 @@
         "whoSettles": "不一致を判定する人",
         "seeVotes": "レビュアーがほかの投票を見られるタイミング",
         "seeingTitle": "ほかの投票の表示",
-        "seeingHelp": "「投票後」にすると、レビュアーがほかの人に影響されません。各レビュアーは、論文に投票した後か結果が確定した後に、その論文へのほかの投票を見られます。参考のみのモデルの投票は、それより前に表示されます。論文に投票しない人は、いつでも投票を見られます。",
+        "seeingHelp": "「投票後」にすると、レビュアーがほかの人に影響されません。各レビュアーは、論文に投票した後か結果が確定した後に、その論文へのほかの投票を見られます。参考のみのモデルの投票は、それより前に表示されます。論文に投票しない人は、いつでも投票を見られます。レビュアー同士の一致度と、各自の投票の内訳は、自分の投票を待つ論文がなくなった時点で表示されます。",
         "after": "投票後",
         "always": "いつでも",
         "withVotes": "{count, plural, other {たとえば論文への投票が # 票の場合}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "投票待ち {count} 件",
       "inConflictFor": "不一致 {count} 件、{who} が判定",
       "upToDate": "最新です",
-      "allSettled": "すべての論文の結果が確定しました。完了にできます",
+      "allSettled": "{finish, select, true {すべての論文の結果が確定しました。完了にできます} other {すべての論文の結果が確定しました}}",
       "none": "{show, select, you {対応が必要なものはありません。} finished {完了したスクリーニングはありません。} open {進行中のスクリーニングはありません。} other {スクリーニングはありません。}}",
       "noneCalled": "{show, select, you {「{name}」という名前で対応が必要なものはありません。} finished {「{name}」という名前の完了したスクリーニングはありません。} open {「{name}」という名前の進行中のスクリーニングはありません。} other {「{name}」という名前のスクリーニングはありません。}}",
       "showEvery": "すべてのスクリーニングを表示",
@@ -8892,7 +8892,7 @@
         "none": "2 人のレビュアーが同じ論文に投票すると、一致度がここに表示されます。",
         "mean": "ペアごとの Cohen's kappa の平均",
         "across": "0 は偶然と変わらず、1 は完全な一致です。レビュアーの{pairs, plural, other {# 組}}について、{range, select, true {各 {min, number}〜{max, number} 件の論文} other {{min, plural, other {各 # 件の論文}}}}。{left, plural, =0 {} other {残りの # 組はどの論文にも同じ投票をしたため、kappa を算出できません。}}",
-        "splitMost": "意見が最も分かれた論文",
+        "splitMost": "意見が分かれた順にすべての論文",
         "noneYet": "まだありません",
         "cell": "{a} と {b}、kappa {kappa}、{papers, plural, other {論文 # 件}}中 {share, number, percent} で同じ投票"
       },
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "投票なし:"
       },
       "pointsOf": "{max, plural, other {# 点}}中 {points, number} 点",
-      "note": {
-        "label": "メモ",
-        "forOthers": "ほかの人へのメモ（任意）",
-        "forRecord": "記録用のメモ（任意）"
-      },
       "back": "戻る",
       "panel": {
         "placeOf": "{of, number} 件中 {at, number} 件目",
@@ -9262,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {{count, plural, other {不一致 # 件を判定}}} other {{count, plural, other {不一致 # 件を見る}}}}",
       "screenPapers": "{count, plural, other {論文 # 件をスクリーニング}}",
       "queue": {
+        "readFurther": "さらに読む",
+        "noMatchYet": "これまでに読んだ論文に一致するものはありません",
         "label": "キュー",
         "todo": "未投票",
         "again": "再投票",

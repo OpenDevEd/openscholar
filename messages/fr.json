@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédit} other {# crédits}} par nouvel article, plus s'il est lu depuis un PDF} other {{credits, plural, one {# crédit} other {# crédits}} par nouvel article}}",
         "noneGrow": "Aucune de ces sources ne reçoit de nouveaux articles. Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
         "addToCheck": "Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
-        "lastSpent": "Environ {spent, plural, one {# crédit} other {# crédits}} lors de la dernière vérification, {count, plural, one {# article} other {# articles}}"
+        "lastSpent": "Environ {spent, plural, one {# crédit} other {# crédits}} pour lire {count, plural, one {l'article} other {les # articles}} ajoutés par la dernière vérification"
       },
       "criteria": {
         "helpTitle": "Indispensable et souhaitable",
@@ -8388,7 +8388,7 @@
         "whoSettles": "Qui tranche un désaccord",
         "seeVotes": "Les évaluateurs voient les autres votes",
         "seeingTitle": "Voir les autres votes",
-        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment.",
+        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment. Le niveau d'accord entre les évaluateurs, et la façon dont chacun a voté dans l'ensemble, s'affichent pour un évaluateur dès qu'aucun article n'attend plus son vote.",
         "after": "Après leur vote",
         "always": "À tout moment",
         "withVotes": "{count, plural, one {Avec # vote sur un article, par exemple} other {Avec # votes sur un article, par exemple}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} en attente de votes",
       "inConflictFor": "{count} en désaccord, à trancher par {who}",
       "upToDate": "À jour",
-      "allSettled": "Tous les articles sont tranchés, prêt à terminer",
+      "allSettled": "{finish, select, true {Tous les articles sont tranchés, prêt à terminer} other {Tous les articles sont tranchés}}",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
@@ -8892,7 +8892,7 @@
         "none": "Le degré d'accord des évaluateurs s'affiche ici dès que deux d'entre eux ont voté sur les mêmes articles.",
         "mean": "Kappa de Cohen moyen par paire",
         "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}.{left, plural, =0 {} one { L'autre paire a voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.} other { Les # autres paires ont voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.}}",
-        "splitMost": "Les articles sur lesquels ils divergent le plus",
+        "splitMost": "Tous les articles, les plus partagés d'abord",
         "noneYet": "Aucun pour l'instant",
         "cell": "{a} et {b}, kappa {kappa}, même vote sur {share, number, percent} de {papers, plural, one {# article} other {# articles}}"
       },
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "Pas de vote de"
       },
       "pointsOf": "{points, number} sur {max, plural, one {# point} other {# points}}",
-      "note": {
-        "label": "Remarque",
-        "forOthers": "Remarque pour les autres (facultative)",
-        "forRecord": "Remarque pour mémoire (facultative)"
-      },
       "back": "Retour",
       "panel": {
         "placeOf": "{at, number} sur {of, number}",
@@ -9262,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {Trancher {count, plural, one {# désaccord} other {# désaccords}}} other {Voir {count, plural, one {# désaccord} other {# désaccords}}}}",
       "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
       "queue": {
+        "readFurther": "Lire la suite",
+        "noMatchYet": "Aucun des articles lus jusqu'ici ne correspond",
         "label": "File",
         "todo": "À faire",
         "again": "Revoter",

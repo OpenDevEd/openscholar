@@ -5123,7 +5123,7 @@
     "error": {
       "notAddress": "That isn't an address.",
       "notHosted": "Openscholar doesn't run that community.",
-      "private": "That collection is private. Its owner can share it with you.",
+      "private": "That collection is private. Whoever owns it can share it with you.",
       "notFound": "There's nothing at that address.",
       "empty": "That search or collection holds no records.",
       "profile": "Open one of their collections and copy that address.",
@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# credit} other {# credits}} a new paper, more if read as a PDF} other {{credits, plural, one {# credit} other {# credits}} a new paper}}",
         "noneGrow": "None of these sources gains papers. Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
         "addToCheck": "Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
-        "lastSpent": "About {spent, plural, one {# credit} other {# credits}} last check, {count, plural, one {# paper} other {# papers}}"
+        "lastSpent": "About {spent, plural, one {# credit} other {# credits}} to read the {count, plural, one {# paper} other {# papers}} the last check added"
       },
       "criteria": {
         "helpTitle": "Must-have and nice-to-have",
@@ -8388,7 +8388,7 @@
         "whoSettles": "Who settles a conflict",
         "seeVotes": "Reviewers see the other votes",
         "seeingTitle": "Seeing other votes",
-        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time.",
+        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time. How far the reviewers agree, and how each voted overall, shows to a reviewer once no paper waits for their vote.",
         "after": "After they vote",
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} waiting for votes",
       "inConflictFor": "{count} in conflict, for {who} to settle",
       "upToDate": "Up to date",
-      "allSettled": "Every paper is settled, ready to finish",
+      "allSettled": "{finish, select, true {Every paper is settled, ready to finish} other {Every paper is settled}}",
       "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
       "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
       "showEvery": "Show every screening",
@@ -8892,7 +8892,7 @@
         "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
         "mean": "Mean pairwise Cohen's kappa",
         "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}.{left, plural, =0 {} one { The other pair voted one way on every paper, where kappa can't be worked out.} other { The other # pairs voted one way on every paper, where kappa can't be worked out.}}",
-        "splitMost": "The papers they split on most",
+        "splitMost": "Every paper, the most split first",
         "noneYet": "None yet",
         "cell": "{a} and {b}, kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
       },
@@ -9125,11 +9125,6 @@
         "noVoteFrom": "No vote from"
       },
       "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
-      "note": {
-        "label": "Note",
-        "forOthers": "Note for the others (optional)",
-        "forRecord": "Note for the record (optional)"
-      },
       "back": "Back",
       "panel": {
         "placeOf": "{at, number} of {of, number}",
@@ -9262,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {Settle {count, plural, one {# conflict} other {# conflicts}}} other {See {count, plural, one {# conflict} other {# conflicts}}}}",
       "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
       "queue": {
+        "readFurther": "Read further",
+        "noMatchYet": "None of the papers read so far match",
         "label": "Queue",
         "todo": "To do",
         "again": "Vote again",

@@ -20,6 +20,7 @@ import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { modelKey, type Person } from "./data";
@@ -37,7 +38,12 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   const [text, setText] = useState("");
   const workspaceId = useWorkspace();
   // The workspace's members whose name or email holds what was typed.
-  const found = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  const read = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  // While the next letter's people are read, the last ones found stay, dimmed: the list never empties into placeholders under the typing.
+  const [last, setLast] = useState(read);
+  if (read !== undefined && read !== last) setLast(read);
+  const found = read ?? last;
+  const stale = read === undefined && last !== undefined;
   const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
   const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
   // Someone typed as an address who is a member is added as that member, never invited.
@@ -70,7 +76,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
             ) : null}
             <CommandEmpty>{email || found === undefined ? null : text.trim() ? t("nobodyByName") : t("nobodyElse")}</CommandEmpty>
             {left.length ? (
-              <CommandGroup heading={words.t("person.member")}>
+              <CommandGroup heading={words.t("person.member")} className={cn("transition-opacity", stale && "opacity-60")}>
                 {left.map((person) => (
                   <CommandItem key={person.id} value={person.id} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />

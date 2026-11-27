@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artigo novo, mais se for lido como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artigo novo}}",
         "noneGrow": "Nenhuma destas fontes ganha artigos. Adicione uma pesquisa, uma coleção, uma Evidence Community, uma biblioteca do Zotero ou outra triagem para verificar.",
         "addToCheck": "Adicione uma pesquisa, uma coleção, uma Evidence Community, uma biblioteca do Zotero ou outra triagem para verificar.",
-        "lastSpent": "Cerca de {spent, plural, one {# crédito} other {# créditos}} na última verificação, {count, plural, one {# artigo} other {# artigos}}"
+        "lastSpent": "Cerca de {spent, plural, one {# crédito} other {# créditos}} para ler {count, plural, one {o # artigo} other {os # artigos}} que a última verificação acrescentou"
       },
       "criteria": {
         "helpTitle": "Obrigatório e opcional",
@@ -8389,7 +8389,7 @@
         "whoSettles": "Quem resolve um conflito",
         "seeVotes": "Os revisores veem os outros votos",
         "seeingTitle": "Ver os outros votos",
-        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento.",
+        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento. Até que ponto os revisores concordam, e como cada um votou no total, aparece a um revisor quando nenhum artigo espera já o seu voto.",
         "after": "Depois de votar",
         "always": "A qualquer momento",
         "withVotes": "{count, plural, one {Com # voto num artigo, por exemplo} other {Com # votos num artigo, por exemplo}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} à espera de votos",
       "inConflictFor": "{count} em conflito, para {who} resolver",
       "upToDate": "Atualizada",
-      "allSettled": "Todos os artigos estão decididos, pronto a terminar",
+      "allSettled": "{finish, select, true {Todos os artigos estão decididos, pronto a terminar} other {Todos os artigos estão decididos}}",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
@@ -8893,7 +8893,7 @@
         "none": "A concordância entre os revisores aparece aqui quando dois deles tiverem votado nos mesmos artigos.",
         "mean": "Kappa de Cohen médio entre pares",
         "across": "0 não é melhor do que o acaso, 1 é concordância total. Em {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {{min, number} a {max, number} artigos cada} other {{min, plural, one {# artigo cada} other {# artigos cada}}}}.{left, plural, =0 {} one { O outro par votou da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.} other { Os outros # pares votaram da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.}}",
-        "splitMost": "Os artigos em que mais se dividem",
+        "splitMost": "Todos os artigos, os mais divididos primeiro",
         "noneYet": "Ainda nenhum",
         "cell": "{a} e {b}, kappa {kappa}, mesmo voto em {share, number, percent} de {papers, plural, one {# artigo} other {# artigos}}"
       },
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Sem voto de"
       },
       "pointsOf": "{points, number} de {max, plural, one {# ponto} other {# pontos}}",
-      "note": {
-        "label": "Nota",
-        "forOthers": "Nota para os outros (opcional)",
-        "forRecord": "Nota para o registo (opcional)"
-      },
       "back": "Voltar",
       "panel": {
         "placeOf": "{at, number} de {of, number}",
@@ -9263,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {Resolver {count, plural, one {# conflito} other {# conflitos}}} other {Ver {count, plural, one {# conflito} other {# conflitos}}}}",
       "screenPapers": "Triar {count, plural, one {# artigo} other {# artigos}}",
       "queue": {
+        "readFurther": "Ler mais",
+        "noMatchYet": "Nenhum dos artigos lidos até agora corresponde",
         "label": "Fila",
         "todo": "Por fazer",
         "again": "Votar de novo",

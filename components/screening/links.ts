@@ -39,7 +39,16 @@ export const screenHref = (id: string, query?: { queue?: "again" | "done" | "con
  * `sort`: added, title, newest, split or points. `paper`: the paper open beside the table.
  */
 export const papersHref = (id: string, query?: { result?: string; source?: string; added?: string; reviewer?: string; voted?: string; with?: string; reason?: string; sort?: string; paper?: string }) => withQuery(`${BASE}/${id}/papers`, query);
-/** A reviewer's papers: the ones they voted on, or, before their first vote, the ones that wait for it, so the link never opens an empty list. */
-export const reviewerHref = (id: string, reviewer: { id: string; tally?: { cast: number } }) => papersHref(id, { reviewer: reviewer.id, ...(reviewer.tally && !reviewer.tally.cast ? { voted: "none" } : {}) });
+/**
+ * A reviewer's papers: the ones they voted on, or, before their first vote, the ones that wait for it, or a model's
+ * that it couldn't read, so the link never opens an empty list. Null where they have none of these yet: nothing to open.
+ */
+export const reviewerHref = (id: string, reviewer: { id: string; tally?: { cast: number; waiting: number; failed: number } }) => {
+  const tally = reviewer.tally;
+  if (!tally || tally.cast) return papersHref(id, { reviewer: reviewer.id });
+  if (tally.waiting) return papersHref(id, { reviewer: reviewer.id, voted: "none" });
+  if (tally.failed) return papersHref(id, { reviewer: reviewer.id, voted: "failed" });
+  return null;
+};
 /** Its settings, at one of their sections. */
 export const settingsHref = (id: string, section?: "papers" | "new-papers" | "criteria" | "reviewers" | "decided" | "goes-to") => withQuery(`${BASE}/${id}/settings`, undefined, section);

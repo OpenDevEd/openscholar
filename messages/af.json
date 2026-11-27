@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel, meer as dit as ’n PDF gelees word} other {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel}}",
         "noneGrow": "Geeneen van hierdie bronne kry artikels by nie. Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
         "addToCheck": "Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
-        "lastSpent": "Sowat {spent, plural, one {# krediet} other {# krediete}} by die laaste kontrole, {count, plural, one {# artikel} other {# artikels}}"
+        "lastSpent": "Sowat {spent, plural, one {# krediet} other {# krediete}} om die {count, plural, one {# artikel} other {# artikels}} te lees wat die laaste kontrole bygevoeg het"
       },
       "criteria": {
         "helpTitle": "Vereiste en wenslik",
@@ -8389,7 +8389,7 @@
         "whoSettles": "Wie ’n konflik beslis",
         "seeVotes": "Beoordelaars sien die ander stemme",
         "seeingTitle": "Hoe ander stemme gesien word",
-        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
+        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd. Hoe ver die beoordelaars saamstem, en hoe elkeen oor die algemeen gestem het, wys vir ’n beoordelaar sodra geen artikel meer op hulle stem wag nie.",
         "after": "Nadat hulle stem",
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} wag vir stemme",
       "inConflictFor": "{count} in konflik, vir {who} om te beslis",
       "upToDate": "Op datum",
-      "allSettled": "Elke artikel is beslis, gereed om af te sluit",
+      "allSettled": "{finish, select, true {Elke artikel is beslis, gereed om af te sluit} other {Elke artikel is beslis}}",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
@@ -8893,7 +8893,7 @@
         "none": "Hoe ver die beoordelaars saamstem, verskyn hier sodra twee van hulle op dieselfde artikels gestem het.",
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
         "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}.{left, plural, =0 {} one { Die ander paar het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.} other { Die ander # pare het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.}}",
-        "splitMost": "Die artikels waaroor hulle die meeste verskil het",
+        "splitMost": "Elke artikel, die mees verdeelde eerste",
         "noneYet": "Nog geen",
         "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
       },
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Geen stem van"
       },
       "pointsOf": "{points, number} van {max, plural, one {# punt} other {# punte}}",
-      "note": {
-        "label": "Nota",
-        "forOthers": "Nota vir die ander (opsioneel)",
-        "forRecord": "Nota vir die rekord (opsioneel)"
-      },
       "back": "Terug",
       "panel": {
         "placeOf": "{at, number} van {of, number}",
@@ -9263,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {Beslis {count, plural, one {# konflik} other {# konflikte}}} other {Sien {count, plural, one {# konflik} other {# konflikte}}}}",
       "screenPapers": "Sif {count, plural, one {# artikel} other {# artikels}}",
       "queue": {
+        "readFurther": "Lees verder",
+        "noMatchYet": "Geen van die artikels wat tot dusver gelees is, pas nie",
         "label": "Ry",
         "todo": "Om te doen",
         "again": "Stem weer",

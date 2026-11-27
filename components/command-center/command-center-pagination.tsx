@@ -88,7 +88,8 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
       {/* Info text */}
       <p className="text-xs tabular-nums text-muted-foreground">
         {/* A total not counted is left unsaid, never written as "50+": the range shown is what is known. */}
-        {steps && steps.total === undefined ? tc("showingStartEndOnly", { start: startItem, end: endItem, label: itemLabel }) : tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
+        {/* A page that found nothing, with more still to read, shows no range: "1 to 0" says nothing true. */}
+        {steps && !steps.shown ? null : steps && steps.total === undefined ? tc("showingStartEndOnly", { start: startItem, end: endItem, label: itemLabel }) : tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
       </p>
 
       {/* Pagination controls */}

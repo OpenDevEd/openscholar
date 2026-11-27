@@ -59,14 +59,14 @@ import { cn } from "@/lib/utils";
 import { advisory, EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceHref, useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, hidingReaders, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
-import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
+import { useScreeningsCrumb, overviewHref, papersHref, reviewerHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
+import { settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -93,13 +93,13 @@ const OFFER_PAGE = 5;
 /** Collections one page of the places included papers can go holds. */
 const DESTINATION_PAGE = 6;
 /** Something a tab offers to add: what the server reads it from, the name its list gave it, and how many papers that list counted. `ref` tells two apart where they share a name. */
-type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[] };
+type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[]; /** Named for the reader, with no name of its own (./data.ts `Source`). */ untitled?: boolean };
 /** A list read a page at a time, as its pager needs it. */
 /** A saved search as something to add, with the questions its own page screens with. */
 /** A saved search as a source to add. One run with no words, on its filters alone, is named "No query", as the History page names it. */
-const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `search:${search.id}`, name: search.query.trim() || noQuery, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
+const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `search:${search.id}`, name: search.query.trim() || noQuery, ...(search.query.trim() ? {} : { untitled: true }), detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
 /** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
-const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
+const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, ...(offer.untitled ? { untitled: true } : {}), detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
 /** A criterion made from a question as it was written. */
 const criterionFrom = (question: string, more: { short?: string; terms?: string[] } = {}): Criterion => ({ key: `new:${hash(question)}`, text: question, short: more.short ?? shortOf(question), must: true, terms: more.terms ?? [], addedAt: Date.now() });
 
@@ -138,7 +138,7 @@ const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.
 const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : taken(source));
 /** A source the server hasn't read yet, as its row shows it. */
 const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
-const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
+const sourceOf = (source: Source) => ({ set: source.set as never, name: source.untitled ? "" : source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
 const saveToOf = (say: Say, screening: Screening) =>
   screening.destination.kind === "community" && screening.destination.community
     ? screening.destination.community.collection === "new"
@@ -382,7 +382,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
       const name = rowLabel(handed.row);
-      return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, detail: t("inLibrary", { name: handed.library.name }), total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
+      return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, ...(handed.row.what === "search" && !handed.row.label ? { untitled: true } : {}), detail: t("inLibrary", { name: handed.library.name }), total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied) return start;
     // A copy takes the papers the one it copies took: the same part of each source. Whoever votes on that one from outside its workspace is not on the copy: a screening is shared with a guest once it exists (`guestsLeft`).
@@ -537,9 +537,12 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Someone invited by email reads papers once they have joined.
   // Who the rule can put on a paper: the people on it and the ones invited by email, those a running screening's invitations wait for among them.
   const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
+  // Whose votes a reviewer may be kept from, counting people taken off whose votes stay (./data.ts `hidingReaders`).
+  const hiding = hidingReaders(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
-  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
+  const pending = saved ? (open?.invited ?? []) : [];
+  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, pending);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -579,7 +582,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const reread = models.reduce((sum, model) => sum + atOnce(model), 0);
   // How many settled papers the change would move if they were checked again. They keep their result unless that is asked for.
   const again = saved ? preview.again : 0;
-  const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
+  // What is left to read already holds the papers a change has read again at once (`reread`, shown as a part of it): counted once.
+  const cost = models.reduce((sum, model) => sum + due(model), 0);
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
   // What the last check's papers cost is set by the models saved on the screening, not by an edit not yet saved; while its models are held, they read none of them yet.
   const lastPerNew = saved && !saved.paused ? modelsOf(saved).reduce((sum, model) => sum + paperCredits(model.model!), 0) : 0;
@@ -904,7 +908,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ) : null,
     },
     // The same words as the rule's chip on the screening's pages (./workspace.tsx), with who settles its conflicts.
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.says.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.says.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" || !conflicts ? settleSays(words, draft, pending) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: settleSays(words, draft, pending, open?.counts.conflict ?? 0), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -962,7 +966,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reading ? <Chip><Spinner className="size-3" />{t("papers.stillReading")}</Chip> : null}
                 <Chip>{t.rich("papers.found", { soFar, n: () => <AnimatedNumber value={found + leftTotal(sources)} /> })}</Chip>
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
-                <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip>
+                {found - papers > 0 ? <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip> : null}
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved && papers ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
@@ -1217,14 +1221,17 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <Help title={t("living.title")} facts={<><HelpFact>{t("living.factFixed")}</HelpFact><HelpFact>{t("living.factEmail")}</HelpFact><HelpFact icon={Coins}>{t("living.factCharge")}</HelpFact></>}>{t("living.help")}</Help>
                     {changed("new-papers")}
                   </p>
-                  <Segmented
+                  {/* Where no source can gain papers there is nothing to check: no schedule is offered, and the line under says why. One already set can still be turned off. */}
+                  {draft.sources.length && !growing(draft).length && !draft.living ? null : <Segmented
                     label={t("living.check")}
                     value={draft.living?.every ?? "off"}
                     onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + EVERY_MS[next] } })}
                     options={[{ id: "off" as const, label: t("living.off") }, ...(["day", "week", "month"] as const).map((id) => ({ id, label: words.t(`every.${id}`) }))]}
-                  />
+                  />}
                 </div>
-                {draft.living ? (
+                {draft.sources.length && !growing(draft).length && !draft.living ? (
+                  <p className="bg-inset px-4 py-2.5 text-sm text-muted-foreground">{t("living.noneGrow")}</p>
+                ) : draft.living ? (
                   growing(draft).length ? (
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? t("living.checksAll", { count: draft.sources.length }) : t("living.checksSome", { count: draft.sources.length, growing: growing(draft).length })}</Chip>
@@ -1418,7 +1425,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       key={reviewer.id}
                       reviewer={reviewer}
                       you={reviewer.id === me}
-                      href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
+                      href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
                       detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
@@ -1434,7 +1441,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{pieces("modelsSay.paused.row")}</StateChip> : null}
                                 <Chip icon={Coins}>{perPaper({ words, t: list }, reviewer.model)}</Chip>
                                 {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
-                                {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText}>{t("reviewers.pdfsMissed", { why: pdfsMissed(reviewer.model, pdfs).why === "text" ? "text" : "long", count: pdfsMissed(reviewer.model, pdfs).papers })}</StateChip> : null}
+                                {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText} className={SENTENCE_CHIP}>{t("reviewers.pdfsMissed", { why: pdfsMissed(reviewer.model, pdfs).why === "text" ? "text" : "long", count: pdfsMissed(reviewer.model, pdfs).papers })}</StateChip> : null}
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{t("reviewers.creditsFor", { credits: words.creditsOf(due(reviewer)), count: left })}</Chip>
                                 ) : null}
@@ -1482,7 +1489,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Segmented label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
-              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: words.t(`settle.means.${rule}`), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
+              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, saved ? (open?.invited ?? []) : []), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
                 <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
@@ -1504,10 +1511,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, each) ? { detail: t("decided.seeingAdvice") } : {})}>
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, hiding) ? { detail: t("decided.seeingAdvice") } : {})}>
                 {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
                 {/* Whether the choice could hide anything at all, asked as if votes were hidden until one votes: under At any time nothing is hidden either way. */}
-                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, each) ? (
+                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, hiding) ? (
                   <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
                 ) : (
                   <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />

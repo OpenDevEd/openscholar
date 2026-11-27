@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya}}",
         "noneGrow": "Hakuna kati ya vyanzo hivi kinachopata makala mpya. Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
         "addToCheck": "Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
-        "lastSpent": "Takriban {spent, plural, one {krediti #} other {krediti #}} ukaguzi wa mwisho, {count, plural, one {makala #} other {makala #}}"
+        "lastSpent": "Takriban {spent, plural, one {salio #} other {salio #}} kusoma {count, plural, one {makala #} other {makala #}} ambazo ukaguzi wa mwisho uliongeza"
       },
       "criteria": {
         "helpTitle": "Lazima na hiari",
@@ -8389,7 +8389,7 @@
         "whoSettles": "Nani anaamua mgongano",
         "seeVotes": "Wakaguzi wanaona kura nyingine",
         "seeingTitle": "Kuona kura nyingine",
-        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote.",
+        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote. Kiwango ambacho wakaguzi wanakubaliana, na jinsi kila mmoja alivyopiga kura kwa jumla, huonekana kwa mkaguzi pale ambapo hakuna makala inayosubiri kura yake.",
         "after": "Baada ya kupiga kura",
         "always": "Wakati wowote",
         "withVotes": "{count, plural, one {Na kura # kwenye makala, kwa mfano} other {Na kura # kwenye makala, kwa mfano}}",
@@ -8716,7 +8716,7 @@
       "waitingForVotes": "{count} zinasubiri kura",
       "inConflictFor": "{count} zenye mgongano, {who} aamue",
       "upToDate": "Uko sasa",
-      "allSettled": "Kila makala imeamuliwa, tayari kukamilishwa",
+      "allSettled": "{finish, select, true {Kila makala imeamuliwa, tayari kukamilishwa} other {Kila makala imeamuliwa}}",
       "none": "{show, select, you {Hakuna kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika.} open {Hakuna uchujaji unaoendelea.} other {Hakuna uchujaji.}}",
       "noneCalled": "{show, select, you {Hakuna kinachoitwa {name} kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika unaoitwa {name}.} open {Hakuna uchujaji unaoendelea unaoitwa {name}.} other {Hakuna uchujaji unaoitwa {name}.}}",
       "showEvery": "Onyesha kila uchujaji",
@@ -8893,7 +8893,7 @@
         "none": "Kiwango cha makubaliano ya wakaguzi kinaonekana hapa wawili kati yao wakishapigia kura makala zilezile.",
         "mean": "Wastani wa Cohen's kappa ya kila jozi",
         "across": "0 si bora kuliko bahati, 1 ni makubaliano kamili. Kwenye {pairs, plural, one {jozi #} other {jozi #}} za wakaguzi, {range, select, true {makala {min, number} hadi {max, number} kila jozi} other {{min, plural, one {makala # kila jozi} other {makala # kila jozi}}}}.{left, plural, =0 {} one { Jozi nyingine ilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.} other { Jozi # nyingine zilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.}}",
-        "splitMost": "Makala walizotofautiana nazo zaidi",
+        "splitMost": "Makala zote, zenye tofauti zaidi kwanza",
         "noneYet": "Bado hakuna",
         "cell": "{a} na {b}, kappa {kappa}, kura sawa kwenye {share, number, percent} ya {papers, plural, one {makala #} other {makala #}}"
       },
@@ -9126,11 +9126,6 @@
         "noVoteFrom": "Hakuna kura kutoka kwa"
       },
       "pointsOf": "{points, number} kati ya {max, plural, one {pointi #} other {pointi #}}",
-      "note": {
-        "label": "Dokezo",
-        "forOthers": "Dokezo kwa wengine (si lazima)",
-        "forRecord": "Dokezo la kumbukumbu (si lazima)"
-      },
       "back": "Rudi",
       "panel": {
         "placeOf": "{at, number} kati ya {of, number}",
@@ -9263,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {Amua {count, plural, one {mgongano #} other {migongano #}}} other {Ona {count, plural, one {mgongano #} other {migongano #}}}}",
       "screenPapers": "Chuja {count, plural, one {makala #} other {makala #}}",
       "queue": {
+        "readFurther": "Soma zaidi",
+        "noMatchYet": "Hakuna makala iliyosomwa hadi sasa inayolingana",
         "label": "Foleni",
         "todo": "Kufanya",
         "again": "Piga kura tena",

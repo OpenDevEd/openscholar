@@ -27,6 +27,8 @@ const NO_STARTS: Start[] = [];
  * carries on from there; a server index per filter would fill a page in one read.
  */
 const MAX_READS_PER_PAGE = 5;
+/** Reads a page with nothing in it yet may take: an empty page that isn't the end says nothing, so it reads on further. */
+const MAX_EMPTY_READS = 20;
 
 /** Whether the server refused a read's cursor, the way Convex's own usePaginatedQuery recognizes it. */
 const invalidCursor = (error: Error) =>
@@ -164,7 +166,7 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
       // its start, so no row falls between two reads or shows in both.
       // The page's own end moves with it, so where the list ended is found again.
       setState({ ...current, reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }], id: id + 1, end: undefined });
-    } else if (count < pageSize && !last.isDone && reads.length < MAX_READS_PER_PAGE) {
+    } else if (count < pageSize && !last.isDone && reads.length < (count ? MAX_READS_PER_PAGE : MAX_EMPTY_READS)) {
       setState({ ...current, reads: [...reads, { cursor: last.continueCursor, numItems: pageSize - count }] });
     } else if (count < pageSize && !last.isDone && current.packed !== count) {
       // Out of reads, short, and not at the end. Where rows left the ranges its reads keep, as a queue's do while a

@@ -106,7 +106,10 @@ export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; fai
 export type Source = {
   id: string;
   kind: SourceKind;
+  /** In the reader's language where it has no name of its own (`untitled`): a search with no words is "No query". */
   name: string;
+  /** It has no name of its own, so it is saved with none and every reader names it in their own language. */
+  untitled?: boolean;
   detail: string;
   total: number;
   scope: "all" | "range";
@@ -300,6 +303,16 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
   const invited = invitedOf(screening, pending);
   return { people, invited, each: readersFor(eachOf(screening.rule), people.length + invited) };
 };
+/**
+ * How many people's votes a reviewer may be kept from on a paper: the people on it and invited, as `readersOf` counts
+ * them, and anyone taken off whose votes stay, which still stand on the papers the others vote on. The server counts
+ * the same (convex/screening/view.ts `keepsVotes`).
+ */
+export const hidingReaders = (screening: Pick<Screening, "reviewers" | "rule">, pending: Pending[] = []) => {
+  const { people, invited } = readersOf(screening, pending);
+  const kept = screening.reviewers.filter((reviewer) => reviewer.kind === "person" && reviewer.left !== undefined && !reviewer.discarded && (reviewer.tally?.cast ?? 0) > 0).length;
+  return readersFor(eachOf(screening.rule), people.length + invited + kept);
+};
 /** How a screening hides votes from a reviewer until they vote, for what its pages say about it (lib/screening/rules.ts `hidesVotes`). */
 export type Blind = "none" | "all" | "people" | "done";
 /**
@@ -308,7 +321,7 @@ export type Blind = "none" | "all" | "people" | "done";
  * other vote is hidden. "done" once it is finished, and every vote that was hidden shows.
  */
 export const blindOf = (screening: Pick<Screening, "reviewers" | "rule" | "finishedAt">, pending: Pending[] = []): Blind =>
-  !hidesVotes(screening.rule, readersOf(screening, pending).each) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
+  !hidesVotes(screening.rule, hidingReaders(screening, pending)) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
 /**
  * Whether this screening's papers can be in conflict, and so need someone to settle them: more than one vote settles a
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with

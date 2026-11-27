@@ -296,6 +296,9 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
     // A vote is compared with each person's on the same paper, and never with a model's: every pair of votes on a paper both voted on, and how many of them are the same.
     const withPeople = (figures?.pairs ?? []).filter((pair) => (pair.a === reviewer.id && isPerson.has(pair.b)) || (pair.b === reviewer.id && isPerson.has(pair.a)));
     const compared = withPeople.reduce((sum, pair) => sum + pair.matrix.reduce((all, n) => all + n, 0), 0);
+    // Where the share rests on one other person it opens the papers the two voted on; on more, the comparison pair by pair.
+    const other = withPeople.length === 1 ? (withPeople[0]!.a === reviewer.id ? withPeople[0]!.b : withPeople[0]!.a) : null;
+    const agreesHref = other ? papersHref(screening.id, { reviewer: reviewer.id, with: other, sort: "split" }) : "#agreement";
     const same = withPeople.reduce((sum, pair) => sum + SAME.reduce((all, cell) => all + pair.matrix[cell]!, 0), 0);
     const left = tally?.waiting ?? 0;
     // A person's pace is what they voted on in the last three days. There is a pace to go by once they have been on it a day: five votes in the first five minutes say nothing about the weeks to come.
@@ -307,6 +310,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       done: gotThrough(tally),
       split: DECISIONS.map((decision) => tally?.[decision] ?? 0),
       agrees: compared ? same / compared : null,
+      agreesHref,
       known: figures !== undefined,
       compared,
       missed: tally?.missed ?? 0,
@@ -529,7 +533,7 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   );
 }
 
-type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; /** The figures agreement is counted from have arrived: until then there is no "nothing to compare". */ known: boolean; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
+type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; /** Where the share opens: the papers it rests on, or the comparison pair by pair. */ agreesHref: string; /** The figures agreement is counted from have arrived: until then there is no "nothing to compare". */ known: boolean; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
 /** When someone gets through so many papers at their pace, in days from now, or nothing where they have no pace to go by. It is said as a day to come ("done in"), so it never reads as Screen's count of the minutes the papers themselves take. */
 const doneIn = (t: T, left: number, perDay: number) => (left <= 0 || perDay <= 0 ? null : t("move.doneIn", daysFrom(Math.ceil(left / perDay))));
 /** A number of days as a message says it: a day, so many days, or so many weeks from two weeks on. */
@@ -538,7 +542,7 @@ const daysFrom = (days: number) => ({ days, weeks: days < 14 ? 0 : Math.round(da
 /** One reviewer: the whole row opens the papers they voted on, and each count opens its own. */
 function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void; /** Opens the move of some of this person's papers to someone else, where they have papers that can go. */ onMove?: () => void }) {
   const { screening } = open;
-  const { reviewer, assigned, done, split, agrees, known, compared, missed, included, left, perDay, idle } = row;
+  const { reviewer, assigned, done, split, agrees, agreesHref, known, compared, missed, included, left, perDay, idle } = row;
   const t = useTranslations("screening.overview");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
@@ -556,14 +560,20 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const mine = reviewer.id === open.me;
   // Above the row's own link, so a count or a menu opens itself and not the row.
   const above = "relative z-[1]";
+  const papersAt = reviewerHref(id, reviewer);
   return (
     <div role="row" className={cn(COLUMNS, "relative py-3 transition-colors hover:bg-muted/40")}>
       <div role="cell" className="flex min-w-0 items-start gap-3 @max-2xl/reviewers:col-span-2">
         <ReviewerMark reviewer={reviewer} className="size-8" />
         <div className="min-w-0">
-          <NextLink href={reviewerHref(id, reviewer)} className="flex min-w-0 text-sm font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:underline">
-            <ReviewerName reviewer={reviewer} you={mine} wrap />
-          </NextLink>
+          {/* Someone with no paper to open yet (just added, nothing dealt) is named, not linked: their list would be empty. */}
+          {papersAt ? (
+            <NextLink href={papersAt} className="flex min-w-0 text-sm font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:underline">
+              <ReviewerName reviewer={reviewer} you={mine} wrap />
+            </NextLink>
+          ) : (
+            <span className="flex min-w-0 text-sm font-medium"><ReviewerName reviewer={reviewer} you={mine} wrap /></span>
+          )}
           {reviewer.kind === "model" ? (
             <p className={cn("flex min-w-0 items-center gap-1 text-xs tabular-nums", reading && held?.stop ? "ink-warning" : "text-muted-foreground")}>
               {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
@@ -577,7 +587,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
         <div className="flex items-center gap-3">
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-          <NextLink href={reviewerHref(id, reviewer)} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><span className={FIGURE_LINK}>{/* While its papers are still being read from their sources nobody has any yet: "0 of 0" would say it never will. */}{open.gathering && !assigned ? t("row.arriving") : t.rich("row.doneOf", { done, assigned, num: () => <AnimatedNumber value={done} /> })}</span></NextLink>
+          {papersAt ? <NextLink href={papersAt} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><span className={FIGURE_LINK}>{/* While its papers are still being read from their sources nobody has any yet: "0 of 0" would say it never will. */}{open.gathering && !assigned ? t("row.arriving") : t.rich("row.doneOf", { done, assigned, num: () => <AnimatedNumber value={done} /> })}</span></NextLink> : <span className="-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]"><span className={FIGURE_LINK}>{/* While its papers are still being read from their sources nobody has any yet: "0 of 0" would say it never will. */}{open.gathering && !assigned ? t("row.arriving") : t.rich("row.doneOf", { done, assigned, num: () => <AnimatedNumber value={done} /> })}</span></span>}
         </div>
         {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
         {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
@@ -629,7 +639,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       })}
       {/* The share goes to the comparison it is drawn from, pair by pair: the rest of the row opens the reviewer's votes. */}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : <a href="#agreement" className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</a>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : <NextLink href={agreesHref} className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</NextLink>}</p>
         {/* How many pairs of votes the share rests on, a model's as a person's: a share of two votes reads as one. */}
         {agrees !== null && reviewer.kind === "model" && included ? <p className="text-xs tabular-nums text-muted-foreground">{t("row.ofPairs", { count: compared })}</p> : null}
         {reviewer.kind === "model" && included ? (
@@ -653,7 +663,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               </DropdownMenuTrigger>
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
-              {done ? <DropdownMenuItem asChild><NextLink href={reviewerHref(id, reviewer)}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem> : null}
+              {done && papersAt ? <DropdownMenuItem asChild><NextLink href={papersAt}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem> : null}
               {unread && !screening.finishedAt ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && left ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
@@ -777,14 +787,14 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, max-content) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
-                <NextLink key={reviewer.id} href={reviewerHref(screening.id, reviewer)} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
+                <NextLink key={reviewer.id} href={reviewerHref(screening.id, reviewer) ?? papersHref(screening.id, { reviewer: reviewer.id })} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
                   <ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} />
                   <span className="max-w-full truncate text-2xs text-muted-foreground">{short(reviewer)}</span>
                 </NextLink>
               ))}
               {reviewers.slice(1).map((a, i) => (
                 <div key={a.id} className="contents">
-                  <NextLink href={reviewerHref(screening.id, a)} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
+                  <NextLink href={reviewerHref(screening.id, a) ?? papersHref(screening.id, { reviewer: a.id })} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
                   {reviewers.slice(0, -1).map((b, column) => {
                     if (column > i) return <span key={b.id} className="h-12" />;
                     const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
@@ -976,7 +986,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <p>{t("checks.means")}</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button> : null}
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button> : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
