@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { useOpenInAddress } from "./address";
+import { searchHistory, useOpenInAddress } from "./address";
 import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -142,7 +142,10 @@ function Screen({ open }: { open: Open }) {
   const workspaceId = usePageWorkspace();
   // Another queue, order or choice of votes is a step Back returns from. Going from paper to paper and typing in the search box change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
-  const { paper: picked, q: find, voted, order } = place;
+  const { paper: inAddress, q: find, voted, order } = place;
+  // A step back past a page's first paper names the page's last one as "last": the paper it is shows once the page arrives, and is named before the next step, so Back and Forward show it again.
+  const fromEnd = inAddress === "last";
+  const picked = fromEnd ? null : inAddress;
   // Someone who is not a reviewer has no paper to do: they read the conflicts.
   const queue: Queue = open.isReviewer ? place.queue : "conflicts";
   const searched = useDebouncedValue(find.trim(), 300);
@@ -154,12 +157,13 @@ function Screen({ open }: { open: Open }) {
   const holding = `${id}:${queue}:${order}:${searched.toLowerCase()}:${voted}`;
   // With no paper named in the address, the page's first is the open one, and stays it while the queue changes under the person: someone else settling a conflict never swaps the paper being read, or written about, for the next one.
   const [led, setLed] = useState<{ of: string; id: string } | null>(null);
-  const leading = `${holding}:${listed.page}`;
+  const leading = `${holding}:${listed.page}${fromEnd ? ":last" : ""}`;
   // The list shown is the one asked for: not an earlier search or page that stays up while the new one is read.
   const arrived = !listed.isLoading && !listed.isStale;
-  if (!picked && arrived && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
+  if (!picked && arrived && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: (fromEnd ? listed.items.at(-1)! : listed.items[0]).id });
   // It follows a paper the address names too. Whatever then takes the name out, a search, a page turn, another order or choice of votes, leaves that paper open until the list asked for arrives, and never the first paper of a page read long before.
-  if (picked && led?.id !== picked) setLed({ of: leading, id: picked });
+  // Marked as named, so an entry that names no paper (Back to where the queue opened) opens the list's first paper, never the one named after it.
+  if (picked && led?.id !== picked) setLed({ of: `${leading}:named`, id: picked });
   // Until the list asked for arrives, the paper that was open stays open.
   const opened = picked ?? (led && (led.of === leading || !arrived) ? led.id : null);
   // The open paper is read by itself, so Back, a reload or a link shows the paper its address says, whether or not the queue still holds it.
@@ -174,8 +178,9 @@ function Screen({ open }: { open: Open }) {
   // Typing in the search box takes the paper out of the address, so the first paper found opens.
   // Starting a search, and clearing one, is a step in the history: the list changes in front of the person. The letters typed between replace each other.
   const setFind = (next: string) => {
-    const step = Boolean(next.trim()) !== Boolean(find.trim());
-    const search = () => void setPlace({ q: next, paper: null }, step ? undefined : { history: "replace" });
+    const how = searchHistory(find, next);
+    const step = how.history === "push";
+    const search = () => void setPlace({ q: next, paper: null }, how);
     if (step && !picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(search);
     else search();
   };
@@ -230,15 +235,15 @@ function Screen({ open }: { open: Open }) {
     });
   };
   // Past the page's last paper is the next page's first, and before its first the page before.
-  const turn = (to: () => void) => {
-    const step = () => { void setPlace({ paper: null }); to(); };
+  const turn = (to: () => void, end = false) => {
+    const step = () => { void setPlace({ paper: end ? "last" : null }); to(); };
     // As with a paper: the one on the screen gets its own entry before the page moves on.
     if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(step);
     else step();
   };
   const go = (index: number) => {
     if (index >= items.length && listed.canNext) return turn(listed.next);
-    if (index < 0 && listed.canPrevious) return turn(listed.previous);
+    if (index < 0 && listed.canPrevious) return turn(listed.previous, true);
     const next = items[Math.max(0, Math.min(items.length - 1, index))];
     if (next) openIt(next);
   };
@@ -251,7 +256,12 @@ function Screen({ open }: { open: Open }) {
   // The queue's sheet, on a phone or a tablet, is in the address: Back closes it.
   const [listingOpen, setListingOpen] = useOpenInAddress("list", LIST_OPEN);
   const listing = listingOpen !== null;
-  const setListing = (next: boolean | ((now: boolean) => boolean), how?: { inPlace?: boolean }) => setListingOpen((typeof next === "function" ? next(listing) : next) ? "open" : null, how);
+  // Opening the queue's sheet names the paper under it first, as any step does, so Back from a paper picked in it comes back to that paper.
+  const setListing = (next: boolean | ((now: boolean) => boolean), how?: { inPlace?: boolean }) => {
+    const open = typeof next === "function" ? next(listing) : next;
+    if (open && !listing && !picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setListingOpen("open"));
+    else setListingOpen(open ? "open" : null, how);
+  };
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);

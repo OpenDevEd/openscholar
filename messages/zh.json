@@ -7781,12 +7781,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "正在计算此操作的影响",
+      "countFailed": "无法计算此操作的影响。请关闭后重试",
       "criterionUnwritten": "尚未写问题的标准",
       "reopens": "{count, plural, other {# 篇论文重新变为未定。筛选仍保持已完成，因此在重新打开之前，没有人会对其投票}}",
       "model": {
         "startsLater": "{name} 会在论文到达后开始",
         "nothingToRead": "{name} 没有剩余要读的论文",
-        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {没有人先定案的未定案论文，今天最多 {count, plural, other {# 篇}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}"
+        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {{count, plural, other {# 篇未定案论文}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}{upTo, select, true {，并跳过在它读到之前已定案的论文} other {}}"
       },
       "person": {
         "invited": "{name} 会通过邮件收到邀请，加入后分到论文",
@@ -8349,7 +8351,7 @@
         "votesKeep": "{count, plural, other {# 票仍然计入}}",
         "pdfsMissed": "{why, select, text {{count, plural, other {无法读取 PDF，因此 # 篇论文得不到它的投票}}} other {{count, plural, other {无法读取最长的 PDF，因此 # 篇论文得不到它的投票}}}}",
         "creditsFor": "{count, plural, other {# 篇论文}} {credits, plural, other {# 积分}}",
-        "allRead": "已全部读取",
+        "allRead": "没有剩余要读的论文",
         "none": "还没有审核人",
         "addPerson": "添加人员",
         "guestsLeft": "{count, plural, other {{names} 以访客身份在此筛选复制自的原筛选中投票，但不在此筛选中。筛选开始后再与其共享。}}",
@@ -8406,6 +8408,8 @@
         "activity": "动态",
         "willDo": "保存后的影响",
         "counting": "正在计算保存后的影响",
+        "countFailed": "无法计算保存后的影响，因此暂时不能保存",
+        "countAgain": "重试",
         "did": "此次保存的结果",
         "recheck": "重新检查已定案的论文",
         "recheckOn": "每篇已定案的论文都会按新设置重新检查。上面列出的论文会得到另一个结果。",

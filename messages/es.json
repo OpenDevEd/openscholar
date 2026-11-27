@@ -7782,12 +7782,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Calculando qué hace esto",
+      "countFailed": "No se pudo calcular qué hace esto. Ciérrelo e inténtelo de nuevo",
       "criterionUnwritten": "el criterio que aún no tiene pregunta",
       "reopens": "{count, plural, one {# artículo vuelve a estar abierto. El cribado sigue terminado, así que nadie vota en él hasta que se reabra} other {# artículos vuelven a estar abiertos. El cribado sigue terminado, así que nadie vota en ellos hasta que se reabra}}",
       "model": {
         "startsLater": "{name} empieza cuando lleguen los artículos",
         "nothingToRead": "A {name} no le quedan artículos que leer",
-        "reads": "{name} lee {upTo, select, true {los artículos abiertos que nadie resuelva antes, {count, plural, one {# artículo} other {# artículos}} hoy} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
+        "reads": "{name} lee {upTo, select, true {{count, plural, one {el # artículo abierto} other {los # artículos abiertos}}} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}{upTo, select, true {, y omite los que se resuelvan antes de leerlos} other {}}"
       },
       "person": {
         "invited": "{name} recibe una invitación por correo, y artículos cuando se una",
@@ -8350,7 +8352,7 @@
         "votesKeep": "{count, plural, one {# voto sigue contando} other {# votos siguen contando}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {No puede leer PDF, así que # artículo no recibe su voto} other {No puede leer PDF, así que # artículos no reciben su voto}}} other {{count, plural, one {No puede leer los PDF más largos, así que # artículo no recibe su voto} other {No puede leer los PDF más largos, así que # artículos no reciben su voto}}}}",
         "creditsFor": "{credits, plural, one {# crédito} other {# créditos}} por {count, plural, one {# artículo} other {# artículos}}",
-        "allRead": "Todos leídos",
+        "allRead": "No queda nada por leer",
         "none": "Todavía no hay revisores",
         "addPerson": "Añadir una persona",
         "guestsLeft": "{count, plural, one {{names} vota como invitado en el cribado del que se copia este, y no está en este. Compártalo con esa persona cuando haya empezado.} other {{names} votan como invitados en el cribado del que se copia este, y no están en este. Compártalo con ellos cuando haya empezado.}}",
@@ -8407,6 +8409,8 @@
         "activity": "Actividad",
         "willDo": "Qué hace el guardado",
         "counting": "Calculando qué hace el guardado",
+        "countFailed": "No se pudo calcular qué hace el guardado, así que aún no se puede guardar",
+        "countAgain": "Reintentar",
         "did": "Qué hizo el guardado",
         "recheck": "Volver a comprobar los artículos resueltos",
         "recheckOn": "Todos los artículos resueltos se comprueban con los nuevos ajustes. Los que aparecen arriba reciben otro resultado.",
@@ -8430,8 +8434,8 @@
         "free": "Gratis",
         "credits": "{credits, plural, one {# crédito} other {# créditos}}",
         "noPapers": "Todavía no hay artículos",
-        "pdfsRead": "{count, plural, one {# artículo se lee como su PDF} other {# artículos se leen como sus PDF}}, {pages, plural, one {# página} other {# páginas}} en total{capped, select, true {. Cuestan hasta {credits} de estos créditos.} other {.}}",
-        "pdfsUnpriced": "Un artículo nuevo que llega como su PDF cuesta más, por página. Lo que cuesta se muestra cuando el cribado haya leído las fuentes nuevas.",
+        "pdfsRead": "{count, plural, one {# artículo se lee como PDF} other {# artículos se leen como PDF}}, {pages, plural, one {# página} other {# páginas}} en total{capped, select, true {. Cuestan hasta {credits} de estos créditos.} other {.}}",
+        "pdfsUnpriced": "Un artículo nuevo que llega como PDF cuesta más, por página. Lo que cuesta se muestra cuando el cribado haya leído las fuentes nuevas.",
         "firstReading": "{count, plural, one {Primera lectura de # PDF, pagada al añadirlo} other {Primera lectura de # PDF, pagada al añadirlos}}",
         "upTo": "Hasta {credits, plural, one {# crédito} other {# créditos}}",
         "answering": "{count, plural, one {Responder el nuevo criterio en artículos ya leídos} other {Responder los nuevos criterios en artículos ya leídos}}",

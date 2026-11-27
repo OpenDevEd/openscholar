@@ -197,6 +197,7 @@ export { SledgehammerIcon as Hammer } from "@solar-icons/react/bold-duotone/sled
 export { Grid3x3Icon as Grid3X3 } from "@solar-icons/react/bold-duotone/grid-3x3";
 export { SquareAcademicCapIcon as GraduationCap } from "@solar-icons/react/bold-duotone/square-academic-cap";
 export { TransferHorizontalIcon as GitCompare } from "@solar-icons/react/bold-duotone/transfer-horizontal";
+export { BranchingPathsUpIcon as AnswersDiffer } from "@solar-icons/react/bold-duotone/branching-paths-up";
 export { FolderCheckIcon as FolderCheck } from "@solar-icons/react/bold-duotone/folder-check";
 export { TestTubeIcon as FlaskConical } from "@solar-icons/react/bold-duotone/test-tube";
 export { FileRemoveIcon as FileX2, FileRemoveIcon as FileX } from "@solar-icons/react/bold-duotone/file-remove";

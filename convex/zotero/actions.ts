@@ -20,6 +20,7 @@ import { PDFDocument } from "@cantoo/pdf-lib";
 import { downloadPdf } from "../../lib/pdf/download";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/assistant/files";
 import { paperKey } from "../../lib/papers/paper-ref";
+import { workTypeOf } from "../../lib/screening/files";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
@@ -101,6 +102,7 @@ type ZoteroItemResponse = {
     publicationTitle?: string;
     collections?: string[];
     itemType: string;
+    thesisType?: string;
     contentType?: string;
     parentItem?: string;
     deleted?: boolean | number | string;
@@ -543,6 +545,7 @@ type ZoteroItem = {
   year?: number;
   doi?: string;
   itemType: string;
+  thesisType?: string;
   venueName?: string;
   numChildren?: number;
 };
@@ -613,6 +616,7 @@ async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, gr
           year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
           doi: d.DOI || undefined,
           itemType: d.itemType,
+          ...(d.thesisType ? { thesisType: d.thesisType } : {}),
           venueName: d.publicationTitle || undefined,
           numChildren: item.meta?.numChildren,
           hasPdfChild,
@@ -640,6 +644,7 @@ export const itemsOf = internalAction({
         year: v.optional(v.number()),
         doi: v.optional(v.string()),
         itemType: v.string(),
+        thesisType: v.optional(v.string()),
         venueName: v.optional(v.string()),
         numChildren: v.optional(v.number()),
         hasPdfChild: v.boolean(),
@@ -681,7 +686,7 @@ export const papersOf = internalAction({
       ...(item.year === undefined ? {} : { year: item.year }),
       ...(item.doi ? { doi: item.doi.slice(0, ZOTERO_NAME_MAX) } : {}),
       ...(item.venueName ? { venue: item.venueName.slice(0, ZOTERO_NAME_MAX) } : {}),
-      ...(item.itemType ? { workType: item.itemType } : {}),
+      ...(item.itemType ? { workType: workTypeOf(item.itemType, item.thesisType) } : {}),
     }));
     return { papers, ended: read.nextCursor === undefined, zoteroUserId: connection.zoteroUserId };
   },

@@ -7782,12 +7782,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Es wird ermittelt, was dies bewirkt",
+      "countFailed": "Was dies bewirkt, ließ sich nicht ermitteln. Schließen Sie dies und versuchen Sie es erneut",
       "criterionUnwritten": "das Kriterium, das noch keine Frage hat",
       "reopens": "{count, plural, one {# Artikel ist wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist} other {# Artikel sind wieder offen. Das Screening bleibt abgeschlossen, daher stimmt niemand darüber ab, bis es wieder geöffnet ist}}",
       "model": {
         "startsLater": "{name} startet, sobald die Artikel da sind",
         "nothingToRead": "{name} hat keine Artikel mehr zu lesen",
-        "reads": "{name} liest {upTo, select, true {die offenen Artikel, die niemand vorher entscheidet, heute {count, plural, one {# Artikel} other {# Artikel}}} other {{all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
+        "reads": "{name} liest {upTo, select, true {{count, plural, one {den # offenen Artikel} other {die # offenen Artikel}}} other {{all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}{upTo, select, true {, wobei jeder Artikel übersprungen wird, der vor dem Lesen entschieden ist} other {}}"
       },
       "person": {
         "invited": "{name} erhält eine Einladung per E-Mail und nach dem Beitritt Artikel",
@@ -8350,7 +8352,7 @@
         "votesKeep": "{count, plural, one {# Stimme zählt weiter} other {# Stimmen zählen weiter}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Kann keine PDFs lesen, daher erhält # Artikel keine Stimme von ihm} other {Kann keine PDFs lesen, daher erhalten # Artikel keine Stimme von ihm}}} other {{count, plural, one {Kann die längsten PDFs nicht lesen, daher erhält # Artikel keine Stimme von ihm} other {Kann die längsten PDFs nicht lesen, daher erhalten # Artikel keine Stimme von ihm}}}}",
         "creditsFor": "{credits, plural, one {# Credit} other {# Credits}} für {count, plural, one {# Artikel} other {# Artikel}}",
-        "allRead": "Alle gelesen",
+        "allRead": "Nichts mehr zu lesen",
         "none": "Noch keine Reviewer",
         "addPerson": "Person hinzufügen",
         "guestsLeft": "{count, plural, one {{names} stimmt als Gast über das Screening ab, von dem dieses kopiert ist, und ist bei diesem nicht dabei. Teilen Sie es mit dieser Person, sobald es gestartet ist.} other {{names} stimmen als Gäste über das Screening ab, von dem dieses kopiert ist, und sind bei diesem nicht dabei. Teilen Sie es mit ihnen, sobald es gestartet ist.}}",
@@ -8407,6 +8409,8 @@
         "activity": "Aktivität",
         "willDo": "Was das Speichern bewirkt",
         "counting": "Es wird ermittelt, was das Speichern bewirkt",
+        "countFailed": "Was das Speichern bewirkt, ließ sich nicht ermitteln, daher kann noch nicht gespeichert werden",
+        "countAgain": "Erneut versuchen",
         "did": "Was das Speichern bewirkt hat",
         "recheck": "Entschiedene Artikel erneut prüfen",
         "recheckOn": "Jeder entschiedene Artikel wird mit den neuen Einstellungen erneut geprüft. Die oben aufgeführten erhalten ein anderes Ergebnis.",

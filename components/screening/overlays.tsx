@@ -37,7 +37,7 @@ import { useWords } from "./words";
 /** This part's messages, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
-export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails"] as const;
+export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails", "confirm"] as const;
 export type Over = (typeof OVERS)[number];
 const EXPORT_TABS = ["papers", "votes", "flow", "methods", "record"] as const;
 
@@ -96,12 +96,12 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const t = useTranslations("screening.frame");
   const words = useWords();
   const [kept, setKept] = useState<Over | null>(start);
-  const [addressed, setAddressed] = useOpenInAddress("over", OVERS);
+  const [addressed, setAddressed] = useOpenInAddress("over", OVERS, { inner: ["tab"] });
   const over = address ? addressed : kept;
   const setOver = (next: Over | null) => (address ? setAddressed(next) : setKept(next));
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
   const [emailsLink, setEmailsLink] = useQueryState("emails");
-  // The Export dialog's tab, in the address with it, so a reload or Back keeps it.
+  // The Export dialog's tab, in the address with it, so a reload keeps it. A dialog is one step in the history: its tabs replace each other there, and Back closes it.
   const [keptTab, setKeptTab] = useState<ExportTab>("papers");
   const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "replace", scroll: false }));
   const exportTab = address ? (tabInAddress ?? "papers") : keptTab;
@@ -110,6 +110,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const [demoting, setDemoting] = useState<Reviewer | null>(null);
+  // A confirmation is open over the page as anything else is (`over=confirm`), taking People's place when asked from there and going back to it once answered.
+  const [fromPeople, setFromPeople] = useState(false);
+  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean) => { set(reviewer); setFromPeople(people); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
@@ -117,14 +120,17 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const controls = {
     show: (next: Over) => setOver(next),
     exportTo: (tab: ExportTab) => { setExportTab(tab); setOver("export"); },
-    add: (reviewer: Reviewer) => setAdding(reviewer),
-    takeOff: (reviewer: Reviewer) => setLeaving(reviewer),
+    add: (reviewer: Reviewer) => ask(setAdding, reviewer, false),
+    takeOff: (reviewer: Reviewer) => ask(setLeaving, reviewer, false),
   };
   if (!state) return { ...controls, overlays: null };
 
   const { screening } = state;
   const { id } = screening;
   const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); onClosed?.(); };
+  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) setOver("people"); else close(); };
+  // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
+  const confirming = over === "confirm" && Boolean(adding || leaving || demoting);
   const unsettled = state.counts.conflict + state.counts.waiting;
   const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = words.collectionName(screening);
@@ -136,7 +142,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
       <ActivitySheet open={over === "activity"} onClose={close} state={state} />
       {/* Its files are read only once it is opened. */}
       {over === "export" ? <ExportDialog open onClose={close} state={state} tab={exportTab} onTab={setExportTab} /> : null}
-      <PeopleDialog open={over === "people"} onClose={close} state={state} onAdd={(reviewer) => { setOver(null); setAdding(reviewer); }} onRemove={(reviewer) => { setOver(null); setLeaving(reviewer); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
+      <PeopleDialog open={over === "people" || (over === "confirm" && !confirming)} onClose={close} state={state} onAdd={(reviewer) => ask(setAdding, reviewer, true)} onRemove={(reviewer) => ask(setLeaving, reviewer, true)} onDemote={(reviewer) => ask(setDemoting, reviewer, true)} />
       <MoveDialog
         open={over === "move"}
         onOpenChange={(next) => !next && close()}
@@ -198,13 +204,16 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
           ]}
         />
       </ConfirmChange>
-      <AddReviewer open={state} reviewer={adding} onConfirm={confirmAdd} onClose={close} />
-      <TakeOff open={state} reviewer={leaving} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={close} />
-      <TakeOff open={state} reviewer={demoting} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={close} />
+      <AddReviewer open={state} reviewer={confirming ? adding : null} onConfirm={confirmAdd} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? leaving : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? demoting : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
     </>
   );
   return { ...controls, overlays };
 }
+
+/** What a confirmation says while the server counts what the change does, or once it couldn't: never a change of nothing. */
+const uncounted = (t: (key: "counting" | "countFailed") => string, counted: { data?: unknown; error?: unknown }) => (counted.data ? undefined : counted.error ? t("countFailed") : t("counting"));
 
 const failed = (t: T) => (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
 
@@ -244,10 +253,10 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
               <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>{screening.criteria.length ? t("add.markMustHave") : t("add.addCriteria")}</NextLink></Button>
             </Panel>
           ) : (
-            <EffectList lines={effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict })} />
+            <EffectList lines={!change || counted.data ? effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict }) : []} none={change ? uncounted(say.t, counted) : undefined} />
           )}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
-          {reviewer.model && open.wallet !== undefined ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
+          {reviewer.model && open.wallet !== undefined && counted.data ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
         </>
       ) : null}
     </ConfirmChange>
@@ -272,8 +281,8 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
   const votes = reviewer?.tally?.cast ?? 0;
   const close = () => { setDiscard(false); onClose(); };
   return (
-    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isLoading} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
-      {reviewer ? <EffectList lines={[...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])]} moves={preview.moves} screening={screening.id} /> : null}
+    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isLoading || (Boolean(counted.error) && !counted.data)} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
+      {reviewer ? <EffectList lines={counted.data ? [...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])] : []} moves={preview.moves} none={uncounted(say.t, counted)} screening={screening.id} /> : null}
       {/* Their work stands unless whoever takes them off says otherwise: the votes stop counting only where that is asked for, and what it undoes shows above before it is done. */}
       {reviewer && votes && !viewer ? (
         <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">

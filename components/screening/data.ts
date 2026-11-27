@@ -8,7 +8,7 @@ import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
-// The English a file is written in: the same messages the pages read in English, so a file and a page never name a result two ways.
+// The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };
@@ -289,13 +289,12 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
  * their votes kept. Every page that offers a settler, or says a paper settles on one vote, asks this.
  */
 export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => {
-  const { each } = readersOf(screening, pending);
-  // A model taken off with its votes kept still votes on the papers it read. A person taken off adds a vote only under "everyone"; with a set number, their kept vote holds their place on a paper.
+  const { people, invited } = readersOf(screening, pending);
+  // Reviewers taken off with their votes kept: a kept vote sits beside the places still open on its paper, so it counts as one more reader there.
   const kept = screening.reviewers.filter((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0);
   const keptModels = kept.filter((one) => one.kind === "model").length;
-  // Under "everyone", a person taken off keeps their vote beside every place still open, so their votes add to each paper's too.
-  const keptPeople = screening.rule.each === "all" ? kept.filter((one) => one.kind === "person").length : 0;
-  return conflicts > 0 || canConflict(screening.rule, each + keptPeople, modelsOf(screening).length + keptModels);
+  const keptPeople = kept.filter((one) => one.kind === "person").length;
+  return conflicts > 0 || canConflict(screening.rule, readersFor(eachOf(screening.rule), people.length + invited + keptPeople), modelsOf(screening).length + keptModels);
 };
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));

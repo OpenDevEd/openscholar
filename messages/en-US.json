@@ -7781,12 +7781,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Working out what this does",
+      "countFailed": "Couldn't work out what this does. Close this and try again",
       "criterionUnwritten": "the criterion with no question yet",
       "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
       "model": {
         "startsLater": "{name} starts once the papers arrive",
         "nothingToRead": "{name} has no papers left to read",
-        "reads": "{name} reads {upTo, select, true {the open papers nobody settles first, {count, plural, one {# paper} other {# papers}} today} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
+        "reads": "{name} reads {upTo, select, true {the {count, plural, one {# open paper} other {# open papers}}} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}{upTo, select, true {, skipping any settled before it reads them} other {}}"
       },
       "person": {
         "invited": "{name} gets an invitation by email, and papers once they join",
@@ -8349,7 +8351,7 @@
         "votesKeep": "{count, plural, one {# vote keeps counting} other {# votes keep counting}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Can't read PDFs, so # paper gets no vote from it} other {Can't read PDFs, so # papers get no vote from it}}} other {{count, plural, one {Can't read the longest PDFs, so # paper gets no vote from it} other {Can't read the longest PDFs, so # papers get no vote from it}}}}",
         "creditsFor": "{credits, plural, one {# credit} other {# credits}} for {count, plural, one {# paper} other {# papers}}",
-        "allRead": "All read",
+        "allRead": "Nothing left to read",
         "none": "No reviewers yet",
         "addPerson": "Add a person",
         "guestsLeft": "{count, plural, one {{names} votes on the screening this is copied from as a guest, and is not on this one. Share it with them once it has started.} other {{names} vote on the screening this is copied from as guests, and are not on this one. Share it with them once it has started.}}",
@@ -8406,6 +8408,8 @@
         "activity": "Activity",
         "willDo": "What saving does",
         "counting": "Working out what saving does",
+        "countFailed": "Couldn't work out what saving does, so it can't be saved yet",
+        "countAgain": "Try again",
         "did": "What the save did",
         "recheck": "Check the settled papers again",
         "recheckOn": "Every settled paper is checked under the new settings. The ones listed above get another result.",
@@ -8429,8 +8433,8 @@
         "free": "Free",
         "credits": "{credits, plural, one {# credit} other {# credits}}",
         "noPapers": "No papers yet",
-        "pdfsRead": "{count, plural, one {# paper is read as its PDF} other {# papers are read as their PDFs}}, {pages, plural, one {# page} other {# pages}} in all{capped, select, true {. They cost up to {credits} of these credits.} other {.}}",
-        "pdfsUnpriced": "A new paper that comes as its PDF costs more, by the page. What it costs shows once the screening has read the new sources.",
+        "pdfsRead": "{count, plural, one {# paper is read as a PDF} other {# papers are read as PDFs}}, {pages, plural, one {# page} other {# pages}} in all{capped, select, true {. They cost up to {credits} of these credits.} other {.}}",
+        "pdfsUnpriced": "A new paper that comes as a PDF costs more, by the page. What it costs shows once the screening has read the new sources.",
         "firstReading": "{count, plural, one {First reading of # PDF, paid as it was added} other {First reading of # PDFs, paid as they were added}}",
         "upTo": "Up to {credits, plural, one {# credit} other {# credits}}",
         "answering": "{count, plural, one {Answering the new criterion on papers already read} other {Answering the new criteria on papers already read}}",

@@ -7782,12 +7782,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Inakokotoa hii itafanya nini",
+      "countFailed": "Haikuweza kukokotoa hii itafanya nini. Funga hii na ujaribu tena",
       "criterionUnwritten": "kigezo ambacho bado hakina swali",
       "reopens": "{count, plural, one {Makala # inarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayeipigia kura hadi ufunguliwe tena} other {Makala # zinarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayezipigia kura hadi ufunguliwe tena}}",
       "model": {
         "startsLater": "{name} inaanza makala zikishafika",
         "nothingToRead": "{name} haina makala zilizobaki za kusoma",
-        "reads": "{name} inasoma {upTo, select, true {makala zilizo wazi ambazo hakuna anayeziamua kwanza, {count, plural, one {makala #} other {makala #}} leo} other {{all, select, true {{count, plural, one {makala #} other {makala zote #}}} other {{count, plural, one {makala # ambayo bado haijaamuliwa} other {makala # ambazo bado hazijaamuliwa}}}}}}{when, select, gathered { makala zote zikishafika} finished { uchujaji ukishafunguliwa tena} paused { modeli zikishaendelezwa} credits { nafasi kazi ikishakuwa na krediti za kutosha kwa makala inayofuata} waiting { zamu ya uchujaji huu ikifika} save { mara tu hii itakapohifadhiwa} other {}}"
+        "reads": "{name} inasoma {upTo, select, true {{count, plural, one {makala # iliyo wazi} other {makala # zilizo wazi}}} other {{all, select, true {{count, plural, one {makala #} other {makala zote #}}} other {{count, plural, one {makala # ambayo bado haijaamuliwa} other {makala # ambazo bado hazijaamuliwa}}}}}}{when, select, gathered { makala zote zikishafika} finished { uchujaji ukishafunguliwa tena} paused { modeli zikishaendelezwa} credits { nafasi kazi ikishakuwa na krediti za kutosha kwa makala inayofuata} waiting { zamu ya uchujaji huu ikifika} save { mara tu hii itakapohifadhiwa} other {}}{upTo, select, true {, ikiruka zozote zilizoamuliwa kabla haijazisoma} other {}}"
       },
       "person": {
         "invited": "{name} anapata mwaliko kwa barua pepe, na makala akishajiunga",
@@ -8350,7 +8352,7 @@
         "votesKeep": "{count, plural, one {kura # inaendelea kuhesabiwa} other {kura # zinaendelea kuhesabiwa}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Haiwezi kusoma PDF, kwa hivyo makala # haipati kura kutoka kwake} other {Haiwezi kusoma PDF, kwa hivyo makala # hazipati kura kutoka kwake}}} other {{count, plural, one {Haiwezi kusoma PDF ndefu zaidi, kwa hivyo makala # haipati kura kutoka kwake} other {Haiwezi kusoma PDF ndefu zaidi, kwa hivyo makala # hazipati kura kutoka kwake}}}}",
         "creditsFor": "{credits, plural, one {Krediti #} other {Krediti #}} kwa {count, plural, one {makala #} other {makala #}}",
-        "allRead": "Zote zimesomwa",
+        "allRead": "Hakuna kilichobaki cha kusoma",
         "none": "Bado hakuna wakaguzi",
         "addPerson": "Ongeza mtu",
         "guestsLeft": "{count, plural, one {{names} anapiga kura kama mgeni kwenye uchujaji ambao huu umenakiliwa kutoka kwake, na hayuko kwenye huu. Ushiriki naye ukishaanza.} other {{names} wanapiga kura kama wageni kwenye uchujaji ambao huu umenakiliwa kutoka kwake, na hawako kwenye huu. Ushiriki nao ukishaanza.}}",
@@ -8407,6 +8409,8 @@
         "activity": "Shughuli",
         "willDo": "Kuhifadhi kunafanya nini",
         "counting": "Inakokotoa kuhifadhi kutafanya nini",
+        "countFailed": "Haikuweza kukokotoa kuhifadhi kutafanya nini, kwa hivyo bado haiwezi kuhifadhiwa",
+        "countAgain": "Jaribu tena",
         "did": "Kuhifadhi kulifanya nini",
         "recheck": "Kagua tena makala zilizoamuliwa",
         "recheckOn": "Kila makala iliyoamuliwa inakaguliwa chini ya mipangilio mipya. Zile zilizoorodheshwa juu zinapata matokeo mengine.",
@@ -8430,8 +8434,8 @@
         "free": "Bure",
         "credits": "{credits, plural, one {Krediti #} other {Krediti #}}",
         "noPapers": "Bado hakuna makala",
-        "pdfsRead": "{count, plural, one {Makala # inasomwa kutoka PDF yake} other {Makala # zinasomwa kutoka PDF zake}}, {pages, plural, one {ukurasa #} other {kurasa #}} kwa jumla{capped, select, true {. Zinagharimu hadi krediti {credits} kati ya hizi.} other {.}}",
-        "pdfsUnpriced": "Makala mpya inayokuja kama PDF yake inagharimu zaidi, kwa kila ukurasa. Gharama yake inaonekana baada ya uchujaji kusoma vyanzo vipya.",
+        "pdfsRead": "{count, plural, one {Makala # inasomwa kama PDF} other {Makala # zinasomwa kama PDF}}, {pages, plural, one {ukurasa #} other {kurasa #}} kwa jumla{capped, select, true {. Zinagharimu hadi krediti {credits} kati ya hizi.} other {.}}",
+        "pdfsUnpriced": "Makala mpya inayokuja kama PDF inagharimu zaidi, kwa kila ukurasa. Gharama yake inaonekana baada ya uchujaji kusoma vyanzo vipya.",
         "firstReading": "{count, plural, one {Usomaji wa kwanza wa PDF #, ulilipwa ilipoongezwa} other {Usomaji wa kwanza wa PDF #, ulilipwa zilipoongezwa}}",
         "upTo": "Hadi {credits, plural, one {krediti #} other {krediti #}}",
         "answering": "{count, plural, one {Kujibu kigezo kipya kwenye makala zilizokwisha kusomwa} other {Kujibu vigezo vipya kwenye makala zilizokwisha kusomwa}}",

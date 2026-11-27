@@ -14,7 +14,7 @@ import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, 
 import { useConvex } from "convex/react";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FileSearch, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { AnswersDiffer, ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FileSearch, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -50,7 +50,7 @@ import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
-import { useOpenInAddress } from "./address";
+import { searchHistory, useOpenInAddress } from "./address";
 import { decide, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
@@ -245,10 +245,12 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
 
   // The step to the paper before or after the open one. Past the page's last paper is the next page's first, and before its first the last of the page before.
-  const step = (by: 1 | -1) => {
+  // A paper reached by its place on a page is named in its step of the history before the next step, so Back returns to that paper whatever the page then holds.
+  const step = async (by: 1 | -1) => {
     const next = at >= 0 ? shown[at + by] : undefined;
+    if (!next && (at < 0 || !(by === 1 ? listed.canNext : listed.canPrevious))) return;
+    if ((opened === "first" || opened === "last") && paper) await setPlace({ paper: paper.id }, { history: "replace" });
     if (next) return void setPlace({ paper: next.id });
-    if (at < 0 || !(by === 1 ? listed.canNext : listed.canPrevious)) return;
     void setPlace({ paper: by === 1 ? "first" : "last" });
     (by === 1 ? listed.next : listed.previous)();
   };
@@ -472,7 +474,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 max-sm:w-full">
-          <ListSearch box="min-w-0 flex-1 @2xl/papers:max-w-md" value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, Boolean(event.target.value.trim()) !== Boolean(query.trim()) ? undefined : { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className={SEARCH_PILL} />
+          <ListSearch box="min-w-0 flex-1 @2xl/papers:max-w-md" value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, searchHistory(query, event.target.value))} placeholder={t("find")} aria-label={t("findLabel")} className={SEARCH_PILL} />
           {/* The included papers can go to extraction from the list that shows them, whether or not every other paper is settled: the Overview offers the same once they all are. */}
           {filter === "include" && open.counts.include ? <Button asChild variant="outline" size="sm" className={cn(PILL, "shrink-0")}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, open.screening, open.counts.include)}><FileSearch />{t("extractIncluded")}</NextLink></Button> : null}
           {/* Under a wide window the bar's Export is in its menu: here it is beside the list it exports. */}
@@ -763,7 +765,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <SheetTitle className="sr-only">{paper?.title ?? t("panel.paper")}</SheetTitle>
           <SheetDescription className="sr-only">{t("panel.says")}</SheetDescription>
           {/* Each paper has its own scroll, so the next one starts at its title and not where the last was left. */}
-          {paper ? <ScrollArea key={paper.id} shades className="min-h-0 flex-1"><PaperPanel paper={paper} open={open} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={step} canStep={canStep} /></ScrollArea> : null}
+          {/* The paper before stays while the one asked for is read, dimmed and out of reach: a vote can only go to the paper the address names. */}
+          {paper ? <ScrollArea key={paper.id} shades inert={Boolean(openId && paper.id !== openId)} className={cn("min-h-0 flex-1 transition-opacity", openId && paper.id !== openId && "opacity-55")}><PaperPanel paper={paper} open={open} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
         </SheetContent>
       </Sheet>
     </div>
@@ -775,7 +778,7 @@ function DifferMark({ label }: { label?: string }) {
   const t = useTranslations("screening.papers");
   return (
     <span role="img" aria-label={label ?? t("answersHelp.differ")} className="inline-flex size-6 items-center justify-center rounded-md bg-foreground/[0.07] align-middle text-foreground">
-      <GitCompare aria-hidden className="size-3.5" />
+      <AnswersDiffer aria-hidden className="size-3.5" />
     </span>
   );
 }

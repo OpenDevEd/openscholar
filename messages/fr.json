@@ -7781,12 +7781,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Calcul de ce que cela fait",
+      "countFailed": "Impossible de calculer ce que cela fait. Fermez puis réessayez",
       "criterionUnwritten": "le critère encore sans question",
       "reopens": "{count, plural, one {# article redevient ouvert. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert} other {# articles redeviennent ouverts. Le criblage reste terminé, donc personne ne vote dessus tant qu'il n'est pas rouvert}}",
       "model": {
         "startsLater": "{name} démarre une fois les articles arrivés",
         "nothingToRead": "{name} n'a plus d'articles à lire",
-        "reads": "{name} lit {upTo, select, true {les articles ouverts que personne ne tranche avant, {count, plural, one {# article} other {# articles}} aujourd'hui} other {{all, select, true {{count, plural, one {l'article} other {les # articles}}} other {{count, plural, one {l'article pas encore tranché} other {les # articles pas encore tranchés}}}}}}{when, select, gathered { une fois tous les articles arrivés} finished { une fois le criblage rouvert} paused { quand les modèles reprennent} credits { une fois que l'espace de travail a assez de crédits pour son prochain article} waiting { quand vient le tour de ce criblage} save { dès l'enregistrement} other {}}"
+        "reads": "{name} lit {upTo, select, true {{count, plural, one {l'article ouvert} other {les # articles ouverts}}} other {{all, select, true {{count, plural, one {l'article} other {les # articles}}} other {{count, plural, one {l'article pas encore tranché} other {les # articles pas encore tranchés}}}}}}{when, select, gathered { une fois tous les articles arrivés} finished { une fois le criblage rouvert} paused { quand les modèles reprennent} credits { une fois que l'espace de travail a assez de crédits pour son prochain article} waiting { quand vient le tour de ce criblage} save { dès l'enregistrement} other {}}{upTo, select, true {, en sautant ceux qui sont tranchés avant qu'il les lise} other {}}"
       },
       "person": {
         "invited": "{name} reçoit une invitation par e-mail, puis des articles après avoir rejoint",
@@ -8349,7 +8351,7 @@
         "votesKeep": "{count, plural, one {# vote continue de compter} other {# votes continuent de compter}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Ne lit pas les PDF, donc # article ne reçoit pas son vote} other {Ne lit pas les PDF, donc # articles ne reçoivent pas son vote}}} other {{count, plural, one {Ne lit pas les PDF les plus longs, donc # article ne reçoit pas son vote} other {Ne lit pas les PDF les plus longs, donc # articles ne reçoivent pas son vote}}}}",
         "creditsFor": "{credits, plural, one {# crédit} other {# crédits}} pour {count, plural, one {# article} other {# articles}}",
-        "allRead": "Tout est lu",
+        "allRead": "Plus rien à lire",
         "none": "Pas encore d'évaluateurs",
         "addPerson": "Ajouter une personne",
         "guestsLeft": "{count, plural, one {{names} vote comme invité sur le criblage copié, mais pas sur celui-ci. Partagez-le avec cette personne une fois qu'il aura démarré.} other {{names} votent comme invités sur le criblage copié, mais pas sur celui-ci. Partagez-le avec ces personnes une fois qu'il aura démarré.}}",
@@ -8406,6 +8408,8 @@
         "activity": "Activité",
         "willDo": "Ce que fait l'enregistrement",
         "counting": "Calcul de ce que fait l'enregistrement",
+        "countFailed": "Impossible de calculer ce que fait l'enregistrement, donc l'enregistrement n'est pas encore possible",
+        "countAgain": "Réessayer",
         "did": "Ce qu'a fait l'enregistrement",
         "recheck": "Revérifier les articles tranchés",
         "recheckOn": "Chaque article tranché est revérifié avec les nouveaux paramètres. Ceux listés ci-dessus obtiennent un autre résultat.",
@@ -8429,7 +8433,7 @@
         "free": "Gratuit",
         "credits": "{credits, plural, one {# crédit} other {# crédits}}",
         "noPapers": "Pas encore d'articles",
-        "pdfsRead": "{count, plural, one {# article est lu depuis son PDF} other {# articles sont lus depuis leur PDF}}, {pages, plural, one {# page} other {# pages}} au total{capped, select, true {. Ils coûtent jusqu'à {credits} de ces crédits.} other {.}}",
+        "pdfsRead": "{count, plural, one {# article est lu depuis un PDF} other {# articles sont lus depuis des PDF}}, {pages, plural, one {# page} other {# pages}} au total{capped, select, true {. Ils coûtent jusqu'à {credits} de ces crédits.} other {.}}",
         "pdfsUnpriced": "Un nouvel article qui arrive sous forme de PDF coûte plus, à la page. Son coût s'affiche une fois que le criblage a lu les nouvelles sources.",
         "firstReading": "{count, plural, one {Première lecture de # PDF, payée à son ajout} other {Première lecture de # PDF, payée à leur ajout}}",
         "upTo": "Jusqu'à {credits, plural, one {# crédit} other {# crédits}}",

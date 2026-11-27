@@ -7781,12 +7781,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "これで起きることを計算中",
+      "countFailed": "これで起きることを計算できませんでした。閉じてからもう一度お試しください",
       "criterionUnwritten": "質問がまだない基準",
       "reopens": "{count, plural, other {論文 # 件が未確定に戻ります。スクリーニングは完了のままなので、再開するまで誰も投票しません}}",
       "model": {
         "startsLater": "{name} は論文が届いてから開始します",
         "nothingToRead": "{name} が読む論文は残っていません",
-        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{upTo, select, true {誰も先に確定しない未確定の論文のうち、今日は最大{count, plural, other {論文 # 件}}} other {{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}}}を読みます"
+        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{upTo, select, true {{count, plural, other {未確定の論文 # 件}}} other {{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}}}を読みます{upTo, select, true {。読む前に確定した論文は読みません} other {}}"
       },
       "person": {
         "invited": "{name} にメールで招待が届き、参加すると論文が割り当てられます",
@@ -8349,7 +8351,7 @@
         "votesKeep": "{count, plural, other {# 票は引き続き数えられます}}",
         "pdfsMissed": "{why, select, text {{count, plural, other {PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}} other {{count, plural, other {最も長い PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}}}",
         "creditsFor": "{count, plural, other {論文 # 件}}で {credits, plural, other {# クレジット}}",
-        "allRead": "すべて読み取り済み",
+        "allRead": "読む論文は残っていません",
         "none": "レビュアーはまだいません",
         "addPerson": "人を追加",
         "guestsLeft": "{count, plural, other {{names} は複製元のスクリーニングにゲストとして投票していますが、このスクリーニングには参加していません。開始したら共有してください。}}",
@@ -8406,6 +8408,8 @@
         "activity": "アクティビティ",
         "willDo": "保存すると起きること",
         "counting": "保存すると起きることを計算中",
+        "countFailed": "保存すると起きることを計算できなかったため、まだ保存できません",
+        "countAgain": "再試行",
         "did": "保存で起きたこと",
         "recheck": "結果が確定した論文を再確認",
         "recheckOn": "結果が確定した論文をすべて新しい設定で再確認します。上に挙げた論文は結果が変わります。",
