@@ -143,7 +143,6 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
   const reviewers = inOrder(votingReviewers(screening), open.me);
   const criteria = screening.criteria;
-  const blind = screening.rule.blind === "after";
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const narrow = useNarrow(id, open.me);
@@ -242,6 +241,18 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious), next: at >= 0 && (at < shown.length - 1 || listed.canNext) };
 
+  // The open paper's row is brought to the middle of the window where it is off the screen: after a link that opened it, or a step onto another page. A row already in view stays where it is. The window's scroll is the outside system.
+  useEffect(() => {
+    if (!opened || !inView) return;
+    // The table and the phone's list both carry the paper: the one that is drawn is its row.
+    const row = [...document.querySelectorAll<HTMLElement>(`[data-paper="${CSS.escape(opened)}"]`)].find((one) => one.getClientRects().length);
+    if (!row) return;
+    const box = row.getBoundingClientRect();
+    const covered = (row.closest("table")?.querySelector("thead") ?? document.querySelector("[data-sticky-page-header]"))?.getBoundingClientRect().bottom ?? 0;
+    if (box.top < covered || box.bottom > window.innerHeight) row.scrollIntoView({ block: "center" });
+    // Again when the table is put in another order or narrowed, which can move the row. Not on a search being typed or on papers arriving: the page would move under the person.
+  }, [opened, inView, listed.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]);
+
   // The keyboard is the outside system: J and K or the arrows step through the list.
   useEffect(() => {
     if (!opened) return;
@@ -259,17 +270,17 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   // The window's scroll is the outside system. The line under the page's header, in pixels: `top`'s scroll margin is that line and 1rem.
   const underHeader = () => parseFloat(getComputedStyle(top.current!).scrollMarginTop) - parseFloat(getComputedStyle(document.documentElement).fontSize);
-  // The open paper's row is brought to the middle of what the page's header and the table's head leave of the window where it is out of view: after a link that opened it, a step onto another page, or another order or filter that moved it. A row already in view stays where it is. Not on a search being typed or on papers arriving: the page would move under the person.
+  // The paper opened or stepped to has its row in view, under the table's head, also after a step onto another page.
   useLayoutEffect(() => {
-    if (!opened || !inView || !top.current) return;
-    // The table and the phone's list both carry the paper: the one that is drawn is its row.
-    const row = [...top.current.querySelectorAll<HTMLElement>(`[data-paper="${CSS.escape(opened)}"]`)].find((one) => one.getClientRects().length);
+    if (!opened || !top.current) return;
+    const row = [...top.current.querySelectorAll<HTMLElement>(`[data-paper="${opened}"]`)].find((one) => one.getClientRects().length);
     if (!row) return;
     const head = top.current.querySelector("thead");
     const line = underHeader() + (head?.getClientRects().length ? head.offsetHeight : 0);
     const box = row.getBoundingClientRect();
-    if (box.top < line || box.bottom > window.innerHeight) window.scrollBy(0, box.top - line - Math.max(0, (window.innerHeight - line - box.height) / 2));
-  }, [opened, inView, listed.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]); // eslint-disable-line react-hooks/exhaustive-deps -- underHeader reads the page as it is drawn
+    if (box.top < line) window.scrollBy(0, box.top - line);
+    else if (box.bottom > window.innerHeight) window.scrollBy(0, box.bottom - window.innerHeight);
+  }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when another paper opens
   const list = useRef<HTMLDivElement>(null);
 
   // A reviewer's column fits their first name under their face.
