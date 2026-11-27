@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "Die modelle se advies wys voor 'n stem",
-        "seeingNothing": "Elke stem is sigbaar met een persoon op elke artikel",
+        "seeingNothing": "Die modelle se advies wys voor 'n stem. Elke stem is sigbaar met een persoon op elke artikel",
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",
         "votesSplit": "Stemme verdeel",
@@ -8847,6 +8847,7 @@
         "doneIn": "Klaar oor omtrent {weeks, plural, =0 {{days, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Vergelyk sodra die genooide beoordelaar aansluit} other {Vergelyk sodra die # genooide beoordelaars aansluit}}",
         "reading": "Lees",
         "creditsSpent": "{credits, plural, one {# krediet} other {# krediete}} bestee",
         "done": "Klaar",

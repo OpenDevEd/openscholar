@@ -8358,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "The models' advice shows before a vote",
-        "seeingNothing": "Every vote shows with one person on each paper",
+        "seeingNothing": "The models' advice shows before a vote. Every vote shows with one person on each paper",
         "votesAgree": "Votes agree",
         "settled": "Settled",
         "votesSplit": "Votes split",
@@ -8846,6 +8846,7 @@
         "doneIn": "Done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Compared once the invited reviewer joins} other {Compared once the # invited reviewers join}}",
         "reading": "Reading",
         "creditsSpent": "{credits, plural, one {# credit} other {# credits}} spent",
         "done": "Done",

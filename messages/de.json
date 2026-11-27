@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "Der Rat der Modelle ist vor der Stimme sichtbar",
-        "seeingNothing": "Mit einer Person pro Artikel ist jede Stimme sichtbar",
+        "seeingNothing": "Der Rat der Modelle ist vor der Stimme sichtbar. Mit einer Person pro Artikel ist jede Stimme sichtbar",
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",
@@ -8847,6 +8847,7 @@
         "doneIn": "Fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Vergleich, sobald die eingeladene Person beitritt} other {Vergleich, sobald die # eingeladenen Personen beitreten}}",
         "reading": "Liest",
         "creditsSpent": "{credits, plural, one {# Credit} other {# Credits}} ausgegeben",
         "done": "Fertig",

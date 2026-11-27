@@ -8358,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "Iseluleko samamodeli siyabonakala ngaphambi kokuvota",
-        "seeingNothing": "Wonke amavoti ayabonakala uma kunomuntu oyedwa ephepheni ngalinye",
+        "seeingNothing": "Iseluleko samamodeli siyabonakala ngaphambi kokuvota. Wonke amavoti ayabonakala uma kunomuntu oyedwa ephepheni ngalinye",
         "votesAgree": "Amavoti ayavumelana",
         "settled": "Kuxazululiwe",
         "votesSplit": "Amavoti ayehlukana",
@@ -8846,6 +8846,7 @@
         "doneIn": "Kuqedwa cishe {weeks, plural, =0 {{days, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Kuzoqhathaniswa uma umbuyekezi omenyiwe ejoyina} other {Kuzoqhathaniswa uma ababuyekezi abangu-# abamenyiwe bejoyina}}",
         "reading": "Iyafunda",
         "creditsSpent": "{credits, plural, one {# ikhredithi isetshenzisiwe} other {# amakhredithi asetshenzisiwe}}",
         "done": "Kuqediwe",

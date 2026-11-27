@@ -901,14 +901,15 @@ export function ScreeningForm({ id }: { id?: string }) {
       ) : null}
       {/* Where the summary follows the form instead of standing beside it, its list of the form's parts is a long way down: the parts are one line of links over the form. */}
       <nav aria-label={t("partsNav")} className="border-b border-border-subtle px-4 py-2.5 sm:px-6 @6xl:hidden">
-        <FadeRow scrolls scrollbar="none" className="flex items-center gap-1.5 *:shrink-0">
+        {/* The parts wrap onto a second line on a phone: run sideways, the last one's name was cut, and three people never read it. */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {summary.map((line) => (
             <JumpLink key={line.id} to={line.id} className="flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
               {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className="size-3.5 shrink-0 ink-warning" /> : null}
               {line.label}
             </JumpLink>
           ))}
-        </FadeRow>
+        </div>
       </nav>
       {/* The summary sits beside the form only where that leaves the form's rows room to stay on one line each; below that it follows the form. */}
       <div className="grid @6xl:grid-cols-[minmax(0,1fr)_24rem] @7xl:grid-cols-[minmax(0,1fr)_26rem]">

@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "El consejo de los modelos se ve antes de votar",
-        "seeingNothing": "Con una persona en cada artículo, todos los votos se ven",
+        "seeingNothing": "El consejo de los modelos se ve antes de votar. Con una persona en cada artículo, todos los votos se ven",
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",
         "votesSplit": "Los votos se dividen",
@@ -8847,6 +8847,7 @@
         "doneIn": "Terminado en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Se compara cuando se una el revisor invitado} other {Se compara cuando se unan los # revisores invitados}}",
         "reading": "Leyendo",
         "creditsSpent": "{credits, plural, one {# crédito gastado} other {# créditos gastados}}",
         "done": "Terminado",

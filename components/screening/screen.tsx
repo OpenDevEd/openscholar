@@ -1287,12 +1287,14 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
         const earlier = Boolean(criterion.changedAt && cast.some((one) => one.vote?.answers[criterion.key] && one.vote.at < criterion.changedAt!));
         return (
           <div key={criterion.key} className="contents">
-            <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs">
+            {/* On a phone "Answers differ" goes under the criterion, so the name keeps the column's width. */}
+            <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs max-sm:flex-wrap">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
               <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {earlier ? <TooltipHint label={t("matrix.earlierWording")}><History role="img" aria-label={t("matrix.earlierWording")} className="size-3.5 shrink-0 text-muted-foreground" /></TooltipHint> : null}
+              {split ? <span aria-hidden className="sm:hidden max-sm:basis-full" /> : null}
               {split ? (
-                <button type="button" aria-label={t("matrix.differFor", { criterion: criterion.short })} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>{t("answersDiffer")}<ChevronDown aria-hidden className="size-3" /></button>
+                <button type="button" aria-label={t("matrix.differFor", { criterion: criterion.short })} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0 max-sm:ms-[1.125rem]")}>{t("answersDiffer")}<ChevronDown aria-hidden className="size-3" /></button>
               ) : null}
             </span>
             {cast.map(({ reviewer, hidden: kept }, i) => {
@@ -1354,7 +1356,8 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
   const at = vote.passages?.[criterion.key];
   const quote = at === undefined || at === null ? undefined : sentencesOf(paper.abstract)[at];
   const confidence = vote.confidences?.[criterion.key];
-  const sure = confidence === undefined ? null : Math.round(confidence * 100);
+  // A confidence of nothing at all is a model that gave none: it says nothing rather than "Only 0% sure".
+  const sure = confidence === undefined || confidence <= 0 ? null : Math.round(confidence * 100);
   return (
     <div className="space-y-2 rounded-2xl bg-inset p-3">
       {/* The model's name is never cut: the line takes a second row where the two don't fit. */}

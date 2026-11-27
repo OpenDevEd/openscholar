@@ -851,7 +851,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const missing = awaitedOn(open.screening, paper).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
     // Someone invited who hasn't joined holds a place the rule waits for, with no face to show yet.
     const invited = invitedSaid(words, open.screening, paper, open.invited);
-    const invitedSays = invited ? <span className="min-w-0 truncate">{invited}</span> : null;
+    const invitedSays = invited ? <TooltipHint label={invited} onlyWhenClipped><span className="min-w-0 truncate">{invited}</span></TooltipHint> : null;
     if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited ? <>{open.screening.finishedAt ? t("why.noVoteFrom") : t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
     const mine = missing[0]!.id === open.me;
     return (

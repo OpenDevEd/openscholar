@@ -8358,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "モデルの助言は投票前に表示されます",
-        "seeingNothing": "各論文の担当が 1 人なので、投票はすべて見えます",
+        "seeingNothing": "モデルの助言は投票前に表示されます。各論文の担当が 1 人なので、投票はすべて見えます",
         "votesAgree": "投票が一致",
         "settled": "結果が確定",
         "votesSplit": "投票が分かれる",
@@ -8846,6 +8846,7 @@
         "doneIn": "約 {weeks, plural, =0 {{days, plural, other {# 日}}} other {# 週間}}で完了"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, other {招待した # 人が参加すると比較できます}}",
         "reading": "読み取り中",
         "creditsSpent": "{credits, plural, other {# クレジット使用}}",
         "done": "完了",
