@@ -1010,7 +1010,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PdfRoom pages={1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PdfRoom pages={1} shape={paper.pdf.shape}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

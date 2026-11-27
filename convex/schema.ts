@@ -1474,6 +1474,8 @@ export default defineSchema({
     // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
     file: v.optional(v.id("_storage")),
     pages: v.optional(v.number()),
+    // Its first page's height for its width (lib/screening/files.ts `pageShapeOf`).
+    shape: v.optional(v.number()),
     // Where it stands, written by the bookkeeping worker alone, and when it came to be settled.
     result: v.optional(paperResultValidator),
     settledAt: v.optional(v.number()),
@@ -1743,6 +1745,7 @@ export default defineSchema({
     bytes: v.number(),
     state: pdfStateValidator,
     pages: v.optional(v.number()),
+    shape: v.optional(v.number()),
     title: v.optional(v.string()),
     authors: screeningAuthorsValidator,
     year: v.optional(v.number()),

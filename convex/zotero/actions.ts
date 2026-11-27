@@ -20,7 +20,7 @@ import { PDFDocument } from "@cantoo/pdf-lib";
 import { downloadPdf } from "../../lib/pdf/download";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/assistant/files";
 import { paperKey } from "../../lib/papers/paper-ref";
-import { workTypeOf } from "../../lib/screening/files";
+import { pageShapeOf, workTypeOf } from "../../lib/screening/files";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
@@ -439,10 +439,10 @@ const PDFS_AT_ONCE = 4;
  */
 export const pdfsOf = internalAction({
   args: { userId: v.id("users"), groupId: v.optional(v.string()), itemKeys: v.array(v.string()) },
-  returns: v.array(v.object({ key: v.string(), file: v.id("_storage"), pages: v.number() })),
-  handler: async (ctx, { userId, groupId, itemKeys }): Promise<Array<{ key: string; file: Id<"_storage">; pages: number }>> => {
+  returns: v.array(v.object({ key: v.string(), file: v.id("_storage"), pages: v.number(), shape: v.optional(v.number()) })),
+  handler: async (ctx, { userId, groupId, itemKeys }): Promise<Array<{ key: string; file: Id<"_storage">; pages: number; shape?: number }>> => {
     const { apiKey, connection } = await zoteroAccess(ctx, userId, groupId);
-    const kept: Array<{ key: string; file: Id<"_storage">; pages: number }> = [];
+    const kept: Array<{ key: string; file: Id<"_storage">; pages: number; shape?: number }> = [];
     if (itemKeys.length > ZOTERO_PDFS_A_CALL) throw createError("VALIDATION_ERROR", `Fetch the PDFs of up to ${ZOTERO_PDFS_A_CALL} items at a time.`);
     const keys = itemKeys;
     for (let at = 0; at < keys.length; at += PDFS_AT_ONCE) {
@@ -451,8 +451,8 @@ export const pdfsOf = internalAction({
         const got = await downloadPdf(groupId ? `zotero://select/groups/${groupId}/items/${key}` : `zotero://select/users/${connection!.zoteroUserId}/items/${key}`, { zoteroConnection: { apiKey, userId: connection!.zoteroUserId }, maxBytes: MAX_PDF_BYTES }).catch(() => null);
         if (!got?.success || !got.pdfBlob) return null;
         const bytes = new Uint8Array(await got.pdfBlob.arrayBuffer());
-        const pages = await PDFDocument.load(bytes, { updateMetadata: false }).then((file) => file.getPageCount()).catch(() => 0);
-        return pages ? { key, file: await ctx.storage.store(new Blob([bytes], { type: "application/pdf" })), pages } : null;
+        const { pages, shape } = await PDFDocument.load(bytes, { updateMetadata: false }).then((file) => ({ pages: file.getPageCount(), shape: file.getPageCount() ? pageShapeOf(file) : undefined })).catch(() => ({ pages: 0, shape: undefined }));
+        return pages ? { key, file: await ctx.storage.store(new Blob([bytes], { type: "application/pdf" })), pages, ...(shape ? { shape } : {}) } : null;
       }));
       kept.push(...read.flatMap((one) => one ?? []));
     }

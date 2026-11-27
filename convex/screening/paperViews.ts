@@ -81,7 +81,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
     ...(paper.citedByCount === undefined ? {} : { cited: paper.citedByCount }),
     ...(paper.doi ? { doi: paper.doi } : {}),
     abstract: paper.abstract ?? "",
-    ...(!paper.abstract && paper.file ? { pdf: paper.pages === undefined ? {} : { pages: paper.pages } } : {}),
+    ...(!paper.abstract && paper.file ? { pdf: { ...(paper.pages === undefined ? {} : { pages: paper.pages }), ...(paper.shape === undefined ? {} : { shape: paper.shape }) } } : {}),
     ...(paper.sourceId ? { source: paper.sourceId } : {}),
     ...(paper.checkId && paper.checkId !== first ? { batch: paper.checkId, addedAt: paper._creationTime } : {}),
     place: paper.place ?? 0,

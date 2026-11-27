@@ -23,6 +23,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
@@ -865,14 +866,14 @@ export function DiscussionLink({ count, writes = true, onClick }: { count: numbe
 }
 
 /**
- * The room a paper's PDF takes, held around the viewer while its code loads: its chip row and its pages at A4 for the
+ * The room a paper's PDF takes, held around the viewer while its code loads: its chip row and its pages at their shape for the
  * column's width (./paper-pdf.tsx holds the same once it is in), so the votes and discussion under it never move.
  */
-export function PdfRoom({ pages, children }: { pages: number; children: ReactNode }) {
+export function PdfRoom({ pages, shape = A4_SHAPE, children }: { pages: number; /** Its pages' height for their width, as the server read the file; A4's where it has none. */ shape?: number; children: ReactNode }) {
   return (
     <div className="@container">
       {/* Released once the viewer is in (`data-pdf`): from then it holds its own room, at the shape the file says. */}
-      <div style={{ minHeight: `calc(2.25rem + ${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
+      <div style={{ minHeight: `calc(2.25rem + ${pages * shape} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
     </div>
   );
 }
