@@ -9025,6 +9025,7 @@
         "byPlaceLabel": "Soos gegee"
       },
       "settledBy": "{you, select, true {Deur jou beslis} other {Deur {name} beslis}}",
+      "votedToast": "{decision} gestem op {count, plural, one {# artikel} other {# artikels}}",
       "settledToast": "{count, number} beslis as {result}",
       "undo": "Ongedaan maak",
       "filter": {
@@ -9080,6 +9081,8 @@
         "selected": "{count, plural, other {# gekies}}",
         "everyPage": "Kies elke bladsy",
         "all": "{count, plural, other {Kies al #}}",
+        "voteAs": "{count, plural, other {Stem op # wat vir jou wag as}}",
+        "notYours": "{count, plural, one {# ander wag nie vir jou stem nie} other {# ander wag nie vir jou stem nie}}",
         "settleAs": "{count, plural, other {Beslis # in konflik as}}",
         "ris": "RIS-lêer, vir ’n verwysingsbestuurder",
         "csvSeen": "CSV-lêer, met die stemme wat jy kan sien",
