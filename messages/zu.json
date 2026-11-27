@@ -9372,6 +9372,7 @@
         "voting": "Inothi labanye (uma uthanda)"
       },
       "settle": {
+        "changeTitle": "Shintsha indlela elixazululwe ngayo",
         "title": "Xazulula lokhu kungqubuzana",
         "helpTitle": "Ukuxazulula ukungqubuzana",
         "yourVote": "Ivoti lakho njengombuyekezi",
@@ -9398,6 +9399,7 @@
         "noneCanSplit": "Iphepha ngalinye lapha linqunywa ivoti elilodwa, ngakho alikho elingangqubuzana"
       },
       "matrix": {
+        "earlierWording": "Ezinye izimpendulo lapha zanikezwa ngamagama angaphambili alo mbandela",
         "nameYou": "{name}, wena",
         "theirVote": "Ivoti lika-{name}",
         "on": "{name}, {criterion}",

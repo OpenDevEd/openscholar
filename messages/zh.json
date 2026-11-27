@@ -9372,6 +9372,7 @@
         "voting": "写给其他人的备注（可选）"
       },
       "settle": {
+        "changeTitle": "更改裁决",
         "title": "裁决此冲突",
         "helpTitle": "裁决冲突",
         "yourVote": "你作为审核人的投票",
@@ -9398,6 +9399,7 @@
         "noneCanSplit": "这里每篇论文由一票决定，因此不会出现分歧"
       },
       "matrix": {
+        "earlierWording": "这里的部分答案是针对此标准改写前的措辞给出的",
         "nameYou": "{name}（你）",
         "theirVote": "{name} 的投票",
         "on": "{name}，{criterion}",

@@ -9373,6 +9373,7 @@
         "voting": "Nota vir die ander (opsioneel)"
       },
       "settle": {
+        "changeTitle": "Verander hoe dit beslis is",
         "title": "Beslis hierdie konflik",
         "helpTitle": "Hoe om ’n konflik te beslis",
         "yourVote": "Jou stem as beoordelaar",
@@ -9399,6 +9400,7 @@
         "noneCanSplit": "Elke artikel hier word deur een stem besleg, so geeneen kan in konflik wees nie"
       },
       "matrix": {
+        "earlierWording": "Sommige antwoorde hier is op 'n vroeëre bewoording van hierdie kriterium gegee",
         "nameYou": "{name}, jy",
         "theirVote": "{name} se stem",
         "on": "{name}, {criterion}",

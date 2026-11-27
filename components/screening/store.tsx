@@ -136,7 +136,7 @@ const FILE_NAMES: Pick<Words, "modelAtEffort" | "person"> = { person: (name) => 
 
 /** The screening in the shape its pages share. */
 function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">): Screening {
-  const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt }) => ({ key, text, short, must, terms, addedAt, ...(note ? { note } : {}) }));
+  const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt, changedAt }) => ({ key, text, short, must, terms, addedAt, ...(changedAt ? { changedAt } : {}), ...(note ? { note } : {}) }));
   const people: Record<string, Person> = { [view.createdBy.id]: { ...view.createdBy, name: words.person(view.createdBy.name) }, [view.resolver.id]: { ...view.resolver, name: words.person(view.resolver.name) } };
   const grows = view.sources.filter((source) => source.removedAt === undefined && GROWS.includes(source.set.kind));
   return {

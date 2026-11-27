@@ -219,6 +219,8 @@ export const criterionValidator = v.object({
   note: v.optional(v.string()),
   terms: capped(v.array(v.string()), MAX_TERMS),
   addedAt: v.number(),
+  /** When its question was last reworded: answers given before then answered the earlier wording. */
+  changedAt: v.optional(v.number()),
   points: v.object({ yes: v.number(), no: v.number(), unclear: v.number() }),
 });
 export const criteriaValidator = capped(v.array(criterionValidator), MAX_QUESTIONS);
@@ -463,8 +465,9 @@ export const figuresValidator = v.object({
   startedWith: v.number(),
   // Its checks for new papers after the start: how many, when the last one was, and what they found and added.
   checks: v.object({ later: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number(), /** The later checks with a source they couldn't read. */ unread: v.optional(v.number()) }),
-  // How many times its settings were changed.
+  // How many times its settings were changed, and which parts: the parts a save named (`partsOf` in ./settings.ts), and "reviewers" for each added or taken off.
   changes: v.number(),
+  changedParts: capped(v.optional(v.array(v.string())), 12),
 });
 
 /** The papers one move of a change's preview names, and the moves there can be: from each of five results to the four others. */

@@ -514,6 +514,7 @@ export const figuresAction = defineUserQuery({
       checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },
       // What the methods paragraph says was changed: the settings, and who reviews.
       changes: saves.filter((row) => CHANGED.has(row.code ?? "")).length,
+      changedParts: [...new Set(saves.flatMap((row) => (row.code === "settings" ? (row.more ?? []).flatMap((line) => (line.code === "part" && line.detail ? [line.detail] : [])) : CHANGED.has(row.code ?? "") ? ["reviewers"] : [])))].slice(0, 12),
     };
   },
 });
