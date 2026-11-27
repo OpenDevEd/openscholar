@@ -8221,6 +8221,11 @@
         "questionPlaceholder": "Por exemplo, «As refeições escolares melhoram a aprendizagem no ensino básico?»"
       },
       "papers": {
+        "correctDoi": "Corrigir",
+        "correctDoiFor": "O DOI {doi}, como deve ser",
+        "tryAgain": "Tentar de novo",
+        "cancel": "Cancelar",
+        "doiAgain": "A lista é lida de novo. Um DOI encontrado desta vez entra na triagem",
         "wholeSource": "lê a fonte inteira",
         "fromAll": "lê todos os {total, number} na fonte",
         "fromRange": "lê os artigos {first} a {last} dos {total, number} na fonte",

@@ -8220,6 +8220,11 @@
         "questionPlaceholder": "Njengokuthi “Ingabe ukudla kwasesikoleni kuthuthukisa ukufunda ezikoleni zamabanga aphansi?”"
       },
       "papers": {
+        "correctDoi": "Lilungise",
+        "correctDoiFor": "I-DOI {doi}, njengoba kufanele ibe",
+        "tryAgain": "Zama futhi",
+        "cancel": "Khansela",
+        "doiAgain": "Uhlu lufundwa futhi. I-DOI etholakala kulokhu ijoyina ukuhlunga",
         "wholeSource": "ifunda wonke umthombo",
         "fromAll": "ifunda wonke angu-{total, number} emthonjeni",
         "fromRange": "ifunda amaphepha {first} kuya ku-{last} kwangu-{total, number} emthonjeni",

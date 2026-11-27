@@ -8,7 +8,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { internalMutation } from "../lib/functions";
+import { internalMutation, internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
 import { placeGuests, readAgain, reviewersOf, sourcesOf, touched } from "./dealing";
@@ -62,6 +62,40 @@ export const readSourceAgain = workspaceMutation({
     // One that failed before its reading began begins again; one that failed part way goes on from its place. A community's records are listed again first: the list a look keeps is dropped when it ends.
     const begun = source.set.kind !== "evidenceLibrary" && (source.snapshot || source.total !== undefined || source.read);
     await ctx.db.patch("screeningSources", sourceId, { state: begun ? "reading" : "waiting", failure: undefined });
+    // A look under way reads it in its turn: never a second one beside it.
+    if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
+    const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
+    if (last && last.from === 0) await readOn(ctx, job, actor.userId);
+    else await startCheck(ctx, job, actor.userId, job.totalPapers);
+    return null;
+  },
+});
+
+/** The list of DOIs a source reads, for whoever corrects one of them (./held.ts `correctDoi`). */
+export const doisOf = internalQuery({
+  args: { sourceId: v.id("screeningSources"), userId: v.id("users"), workspaceId: v.id("workspaces") },
+  returns: v.id("_storage"),
+  handler: async (ctx, { sourceId, ...actor }) => {
+    const source = await ctx.db.get("screeningSources", sourceId);
+    if (!source || source.removedAt !== undefined || source.set.kind !== "dois") throw createError("NOT_FOUND", "This list of DOIs isn't in the screening any more.");
+    await requireMember(ctx, actor, source.jobId);
+    return source.set.file;
+  },
+});
+
+/**
+ * A list of DOIs kept anew with a DOI corrected, or as it was to try again: the source reads it from its start, so a
+ * DOI found this time joins the screening, and the list it read before goes.
+ */
+export const swapDois = internalMutation({
+  args: { sourceId: v.id("screeningSources"), file: v.id("_storage"), userId: v.id("users"), workspaceId: v.id("workspaces") },
+  returns: v.null(),
+  handler: async (ctx, { sourceId, file, ...actor }) => {
+    const source = await ctx.db.get("screeningSources", sourceId);
+    if (!source || source.removedAt !== undefined || source.set.kind !== "dois") throw createError("NOT_FOUND", "This list of DOIs isn't in the screening any more.");
+    const job = await requireMember(ctx, actor, source.jobId);
+    if (source.set.file !== file) await ctx.storage.delete(source.set.file);
+    await ctx.db.patch("screeningSources", sourceId, { set: { kind: "dois", file }, ...readAgain(source) });
     // A look under way reads it in its turn: never a second one beside it.
     if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
     const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();

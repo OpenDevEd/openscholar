@@ -1136,7 +1136,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {open === "left" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
                                       {/* Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own. */}
-                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} /> : null}
+                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} dois={source.kind === "dois"} /> : null}
                                     </div>
                                   ) : open === "merged" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
@@ -1935,8 +1935,27 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
     </div>
   );
 }
+/** A DOI the screening found no record of: put right where it was mistyped, or tried again as it is. The list is read again from its start, and a DOI found this time joins the screening. */
+function CorrectDoi({ sourceId, doi }: { sourceId: Id<"screeningSources">; doi: string }) {
+  const t = useTranslations("screening.form");
+  const [text, setText] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const correct = useWorkspaceAction(api.screening.held.correctDoi);
+  const send = () => {
+    setBusy(true);
+    void correct({ sourceId, from: doi, to: (text ?? doi).trim() }).then(() => { setText(null); toast(t("papers.doiAgain")); }, (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")))).finally(() => setBusy(false));
+  };
+  if (text === null) return <Button variant="ghost" size="sm" className="h-7 shrink-0 self-start text-xs" onClick={() => setText(doi)}><PenLine />{t("papers.correctDoi")}</Button>;
+  return (
+    <form className="flex w-full items-center gap-2 max-sm:basis-full" onSubmit={(event) => { event.preventDefault(); send(); }}>
+      <Input autoFocus value={text} onChange={(event) => setText(event.target.value)} aria-label={t("papers.correctDoiFor", { doi })} className="h-8 min-w-0 flex-1 px-2 text-sm" />
+      <Button type="submit" variant="outline" size="sm" className="h-8 shrink-0" disabled={busy || !text.trim()}>{busy ? <Spinner className="size-3.5" /> : <RefreshCw />}{t("papers.tryAgain")}</Button>
+      <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setText(null)}>{t("papers.cancel")}</Button>
+    </form>
+  );
+}
 /** What one of a running screening's sources held and didn't take, a page at a time, each with why. */
-function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number }) {
+function LeftOut({ jobId, sourceId, total, dois = false }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** A list of DOIs: one that wasn't found can be corrected, or tried again. */ dois?: boolean }) {
   const t = useTranslations("screening.form");
   const words = useWords();
   const rows = useCursorPageAt("records", api.screening.view.leftOut, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
@@ -1950,6 +1969,7 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
             {/* A title is read in full here: this list is where someone finds out what was left out. */}
             <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
             <StateChip tone="warning" icon={FileX} className="shrink-0 self-start">{words.t(`leftWhy.${row.why}`)}</StateChip>
+            {dois && row.why === "record" ? <CorrectDoi sourceId={sourceId} doi={row.name} /> : null}
           </li>
         ))}
       </ul>

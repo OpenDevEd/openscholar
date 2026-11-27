@@ -8221,6 +8221,11 @@
         "questionPlaceholder": "Kama vile “Je, chakula shuleni kinaboresha ujifunzaji katika shule za msingi?”"
       },
       "papers": {
+        "correctDoi": "Lirekebishe",
+        "correctDoiFor": "DOI {doi}, kama inavyopaswa kuwa",
+        "tryAgain": "Jaribu tena",
+        "cancel": "Ghairi",
+        "doiAgain": "Orodha inasomwa tena. DOI itakayopatikana sasa inajiunga na uchujaji",
         "wholeSource": "husoma chanzo chote",
         "fromAll": "husoma zote {total, number} kwenye chanzo",
         "fromRange": "husoma makala {first} hadi {last} kati ya {total, number} kwenye chanzo",

@@ -8220,6 +8220,11 @@
         "questionPlaceholder": "जैसे “क्या स्कूल का भोजन प्राथमिक स्कूलों में सीखने को बेहतर बनाता है?”"
       },
       "papers": {
+        "correctDoi": "इसे सुधारें",
+        "correctDoiFor": "DOI {doi}, जैसा होना चाहिए",
+        "tryAgain": "फिर से कोशिश करें",
+        "cancel": "रद्द करें",
+        "doiAgain": "सूची फिर से पढ़ी जाती है। इस बार मिला DOI स्क्रीनिंग में जुड़ जाता है",
         "wholeSource": "पूरा स्रोत पढ़ता है",
         "fromAll": "स्रोत के सभी {total, number} पढ़ता है",
         "fromRange": "स्रोत के {total, number} में से लेख {first} से {last} तक पढ़ता है",

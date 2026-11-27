@@ -8221,6 +8221,11 @@
         "questionPlaceholder": "Etwa „Verbessert Schulessen das Lernen in Grundschulen?“"
       },
       "papers": {
+        "correctDoi": "Korrigieren",
+        "correctDoiFor": "Die DOI {doi}, wie sie sein soll",
+        "tryAgain": "Erneut versuchen",
+        "cancel": "Abbrechen",
+        "doiAgain": "Die Liste wird erneut gelesen. Eine DOI, die diesmal gefunden wird, kommt ins Screening",
         "wholeSource": "liest die ganze Quelle",
         "fromAll": "liest alle {total, number} in der Quelle",
         "fromRange": "liest Artikel {first} bis {last} der {total, number} in der Quelle",
