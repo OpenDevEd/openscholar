@@ -12,7 +12,7 @@ import { give, holds, roomFor } from "../sharing/access";
 import { grantOf, itemGuestsOf, type Shared } from "../sharing/items";
 import { workspaceName } from "../workspaces/personal";
 import { progressRow } from "./bookkeeping";
-import { dealable, modelsFree, readingModel, reviewersOf, sourcesOf, waitingOf } from "./dealing";
+import { dealable, keepVersion, modelsFree, readingModel, reviewersOf, sourcesOf, waitingOf } from "./dealing";
 
 /** Why a screening can't move yet, in words for whoever asked, or null. */
 export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">): Promise<string | null> {
@@ -54,6 +54,8 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
     ...(saved ? { newCollection: saved.name } : {}),
     ...(job.rule && !settlesThere ? { rule: { ...job.rule, resolver: by } } : {}),
   });
+  // Who settles conflicts passing to whoever moved it is a change of the rule: the whole record lists it.
+  if (job.rule && !settlesThere) await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
   for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });
   for (const person of outside) await give(ctx, shared, person, "editor", { userId: by, author: "user" });

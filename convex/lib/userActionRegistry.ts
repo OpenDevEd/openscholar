@@ -35,7 +35,7 @@ import { estimateAction as screeningEstimateAction, listJobsAction as screeningJ
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
-import { activityAction as screeningActivityAction, checksAction as screeningChecksAction, figuresAction as screeningFiguresAction, getAction as screeningAction, leftOutAction as screeningLeftOutAction, mergedAction as screeningMergedAction, listAction as screeningsAction } from "../screening/view";
+import { activityAction as screeningActivityAction, checksAction as screeningChecksAction, figuresAction as screeningFiguresAction, getAction as screeningAction, leftOutAction as screeningLeftOutAction, mergedAction as screeningMergedAction, versionsAction as screeningVersionsAction, listAction as screeningsAction } from "../screening/view";
 import { listAction as screeningVotedPapersAction, paperAction as screeningVotedPaperAction, queueAction as screeningQueueAction } from "../screening/paperViews";
 import { allAction as screeningDiscussionAction, threadAction as screeningThreadAction } from "../screening/discussion";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
@@ -217,6 +217,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   screeningAction,
   screeningLeftOutAction,
   screeningMergedAction,
+  screeningVersionsAction,
   screeningActivityAction,
   screeningChecksAction,
   screeningFiguresAction,
