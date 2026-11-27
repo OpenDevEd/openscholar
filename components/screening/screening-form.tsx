@@ -222,6 +222,7 @@ function blank(me: Person): Screening {
   const now = Date.now();
   return {
     id: "" as Id<"screeningJobs">,
+    retired: [],
     name: "",
     createdBy: me.id,
     createdAt: now,
@@ -744,7 +745,12 @@ export function ScreeningForm({ id }: { id?: string }) {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
-      await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
+      if (sent.some((one) => one.status === "rejected")) {
+        showStyledToast("error", t("toast.notInvited"));
+        return;
+      }
       // A community's collection is checked, or made, there before the save.
       if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
       else await saveChange({ jobId: saved.id, change });

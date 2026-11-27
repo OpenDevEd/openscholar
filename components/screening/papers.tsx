@@ -43,7 +43,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
 import { PdfRoom, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
@@ -147,6 +147,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
   const reviewers = inOrder(votingReviewers(screening), open.me);
   const criteria = screening.criteria;
+  // The criteria a reason can name: these, and the ones taken off that a kept result was excluded for.
+  const reasonNames = reasonCriteria(screening);
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const narrow = useNarrow(id, open.me);
@@ -350,7 +352,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       : null,
     // Beside a reviewer's own kind of vote, the others are named apart.
     also.length && voted !== "any" ? { key: "with", label: t("chip.alsoVotedOnBy", { names: namesOf(also) }), clear: { with: null } } : null,
-    reason ? { key: "reason", label: filter === "maybe" ? words.unclear(reason, criteria) : words.failed(reason, criteria), shown: <Reason reason={reason} criteria={criteria} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
+    reason ? { key: "reason", label: filter === "maybe" ? words.unclear(reason, reasonNames) : words.failed(reason, reasonNames), shown: <Reason reason={reason} criteria={reasonNames} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
     added !== "all" ? { key: "added", label: t("chip.added", { when: addedLabel(added) }), shown: <Named name={t("filter.added")}>{addedLabel(added)}</Named>, clear: { added: null } } : null,
   ].filter((one) => one !== null);
   const anyFilter = active.length > 0 || Boolean(query.trim());
@@ -854,12 +856,12 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   if (!visible) return settledNote;
   if (state.result === "conflict" || state.resolvedBy) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
-    const label = state.result === "exclude" ? words.failed(reasonKey, open.screening.criteria) : words.unclear(reasonKey, open.screening.criteria);
+    const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
-      <QuestionHint question={questionOf(reasonKey, open.screening.criteria, "label")} label={label}>
-        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={open.screening.criteria} unclear={state.result === "maybe"} /></NextLink>
+      <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
+        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} unclear={state.result === "maybe"} /></NextLink>
       </QuestionHint>
     );
   }
@@ -999,7 +1001,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             <h3 className="text-sm font-medium">{t("panel.yourVote")}</h3>
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
-              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}</span>
+              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={reasonCriteria(screening)} className="min-w-0 shrink" /> : null}</span>
               {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", mine?.note ?? ""); }}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
@@ -1044,7 +1046,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
                 <ReviewerMark reviewer={reviewer} className="size-5" />
                 <span className="min-w-0 flex-1 space-y-1.5">
                   <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="font-medium" />
-                  <VoteFacts vote={vote} criteria={screening.criteria} />
+                  <VoteFacts vote={vote} criteria={reasonCriteria(screening)} />
                 </span>
               </li>
             ))}
@@ -1059,7 +1061,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       {state.resolvedBy ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <IdentityAvatar name={words.nameOn(open.screening, state.resolvedBy)} imageUrl={personIn(screening, state.resolvedBy)?.imageUrl} className="size-5" />
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}{state.reason ? <ReasonChip reason={state.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}{state.note ? <span className="text-muted-foreground">{words.quoted(state.note)}</span> : null}</span>
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}{state.reason ? <ReasonChip reason={state.reason} criteria={reasonCriteria(screening)} className="min-w-0 shrink" /> : null}{state.note ? <span className="text-muted-foreground">{words.quoted(state.note)}</span> : null}</span>
           {open.canResolve && !finished ? <Button variant="ghost" size="xs" onClick={() => void open.resolve(paper.id, null).catch((error) => notSaved(t, error))}><Undo2 />{t("panel.reopen")}</Button> : null}
         </div>
       ) : !open.canResolve || finished ? (

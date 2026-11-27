@@ -115,7 +115,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   const going = useRef(false);
   // Who a confirmation is about, and the change, are in the address with it: Forward or a reload asks about the same reviewer again.
   const [about, setAbout] = useQueryStates({ who: parseAsString, change: parseAsStringLiteral(CHANGES) }, { history: "push", scroll: false });
-  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean, change: (typeof CHANGES)[number]) => { set(reviewer); setFromPeople(people); void setAbout({ who: reviewer.id, change }); setOver("confirm"); };
+  // One confirmation at a time: whatever was asked before (and left by Back) is cleared first.
+  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean, change: (typeof CHANGES)[number]) => { setAdding(null); setLeaving(null); setDemoting(null); set(reviewer); setFromPeople(people); void setAbout({ who: reviewer.id, change }); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
@@ -216,8 +217,9 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         />
       </ConfirmChange>
       <AddReviewer open={state} reviewer={confirming ? adding : null} onConfirm={confirmAdd} onClose={answered} />
-      <TakeOff open={state} reviewer={confirming ? leavingNow : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
-      <TakeOff open={state} reviewer={confirming ? demotingNow : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
+      {/* Keyed by who it is about, so a choice made for someone else (Stop counting votes) never carries over. */}
+      <TakeOff key={`off:${leavingNow?.id ?? ""}`} open={state} reviewer={confirming ? leavingNow : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
+      <TakeOff key={`viewer:${demotingNow?.id ?? ""}`} open={state} reviewer={confirming ? demotingNow : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
     </>
   );
   return { ...controls, overlays };

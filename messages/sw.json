@@ -8149,6 +8149,7 @@
         "undo": "Tendua",
         "failed": "Hilo halikufanikiwa. Jaribu tena.",
         "notAdded": "Baadhi ya watu hawakuweza kuongezwa. Waongeze tena kutoka Watu.",
+        "notInvited": "Baadhi ya watu hawakuweza kualikwa, kwa hiyo bado hakuna kilichohifadhiwa. Hifadhi tena ili kujaribu kuwaalika tena.",
         "notStarted": "Uchujaji haukuweza kuanzishwa. Jaribu tena.",
         "saved": "Mabadiliko yamehifadhiwa",
         "discarded": "Mabadiliko yametupwa"

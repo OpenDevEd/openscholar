@@ -32,7 +32,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
-import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
+import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -1043,7 +1043,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       href: papersHref(id),
       rows: [
         { key: "exclude", label: words.result("exclude"), value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" },
-        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: words.failed(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria, "label"), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: words.failed(key, reasonCriteria(screening)), reason: key, question: questionOf(key, reasonCriteria(screening), "label"), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
         { key: "maybe", label: words.result("maybe"), value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar, tone: "maybe" },
         ...(splits ? [{ key: "conflict", label: words.result("conflict"), value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" as const }] : []),
         { key: "waiting", label: words.result("waiting"), value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: `bg-foreground/10 ${HATCH}` },
@@ -1100,7 +1100,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
               {step.rows.map((row) => {
                 const inner = (
                   <>
-                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 min-w-0 text-muted-foreground", row.indent && "ps-3")}>{row.reason ? <Reason reason={row.reason} criteria={screening.criteria} /> : row.label}</span><span className={cn("shrink-0 font-medium tabular-nums", row.tone && row.value ? TONE[RESULT_STYLE[row.tone].tone].ink : undefined)}>{words.num(row.value)}</span></span>
+                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 min-w-0 text-muted-foreground", row.indent && "ps-3")}>{row.reason ? <Reason reason={row.reason} criteria={reasonCriteria(screening)} /> : row.label}</span><span className={cn("shrink-0 font-medium tabular-nums", row.tone && row.value ? TONE[RESULT_STYLE[row.tone].tone].ink : undefined)}>{words.num(row.value)}</span></span>
                     <Meter value={row.value} max={Math.max(found, 1)} fill={row.fill} className={cn("h-1", row.indent && "ms-3 w-[calc(100%-0.75rem)]")} />
                   </>
                 );

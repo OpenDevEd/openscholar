@@ -8148,6 +8148,7 @@
         "undo": "Annuler",
         "failed": "Cela n'a pas marché. Réessayez.",
         "notAdded": "Certaines personnes n'ont pas pu être ajoutées. Ajoutez-les de nouveau depuis Personnes.",
+        "notInvited": "Certaines personnes n'ont pas pu être invitées, donc rien n'a encore été enregistré. Enregistrez de nouveau pour réessayer de les inviter.",
         "notStarted": "Le criblage n'a pas pu démarrer. Réessayez.",
         "saved": "Modifications enregistrées",
         "discarded": "Modifications abandonnées"

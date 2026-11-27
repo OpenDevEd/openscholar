@@ -8149,6 +8149,7 @@
         "undo": "Anular",
         "failed": "Não funcionou. Tente novamente.",
         "notAdded": "Não foi possível adicionar algumas pessoas. Adicione-as de novo em Pessoas.",
+        "notInvited": "Não foi possível convidar algumas pessoas, por isso ainda nada foi guardado. Guarde de novo para tentar convidá-las outra vez.",
         "notStarted": "Não foi possível iniciar a triagem. Tente novamente.",
         "saved": "Alterações guardadas",
         "discarded": "Alterações descartadas"

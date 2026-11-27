@@ -207,6 +207,9 @@ const TEXT = { name: 200, question: 2_000, criterion: 500, short: 40, note: 2_00
 export const SCREENING_TEXT = TEXT;
 
 /** One criterion: the question, its short name, whether a paper must meet it, guidance, marked words, and what each answer is worth. */
+/** A criterion taken off, as a reason it was a criterion for still names it. */
+export const retiredCriterionValidator = v.object({ key: v.string(), text: v.string(), short: v.string(), must: v.boolean() });
+export const RETIRED_CRITERIA = 200;
 export const criterionValidator = v.object({
   key: v.string(),
   text: v.string(),

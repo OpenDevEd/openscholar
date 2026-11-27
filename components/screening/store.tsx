@@ -149,6 +149,7 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">)
     question: view.question ?? "",
     sources: view.sources.filter((source) => source.removedAt === undefined).map(toSource),
     criteria,
+    retired: view.retired,
     reviewers: toReviewers(view.reviewers, words),
     rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind, models: view.modelVotes },
     scoring: { points: Object.fromEntries(view.criteria.map((criterion) => [criterion.key, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), stars: view.stars ?? [] },

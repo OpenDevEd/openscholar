@@ -8149,6 +8149,7 @@
         "undo": "Deshacer",
         "failed": "No funcionó. Inténtelo de nuevo.",
         "notAdded": "No se pudo añadir a algunas personas. Vuelva a añadirlas desde Personas.",
+        "notInvited": "No se pudo invitar a algunas personas, así que aún no se guardó nada. Vuelva a guardar para intentar invitarlas de nuevo.",
         "notStarted": "No se pudo iniciar el cribado. Inténtelo de nuevo.",
         "saved": "Cambios guardados",
         "discarded": "Cambios descartados"

@@ -35,6 +35,7 @@ import {
   pointsMax,
   eachOf,
   readersOf,
+  reasonCriteria,
   splitsIn,
   settledOf,
   slug,
@@ -163,7 +164,7 @@ export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper
       source: screening.sources.find((source) => source.id === paper.source)?.name ?? "",
       added: paper.addedAt === undefined ? "At the start" : iso(paper.addedAt),
       result: RESULT_LABEL[settled.result],
-      excluded_for: settled.result === "exclude" && paper.reason ? failedLabel(paper.reason, screening.criteria) : "",
+      excluded_for: settled.result === "exclude" && paper.reason ? failedLabel(paper.reason, reasonCriteria(screening)) : "",
       settled_by: settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "",
       settled_note: settled.note ?? "",
       votes_include: how("include"),
@@ -278,7 +279,7 @@ export const votesCsv = (screening: Screening, papers: Paper[], whose?: string) 
       const settled = settledOf(paper);
       return [
         paper.id, doiOf(paper) ?? "", paper.title, paper.year ?? "", reviewer.name, kindOf(reviewer), status, vote ? DECISION_LABEL[vote.decision] : "",
-        vote?.reason ? failedLabel(vote.reason, criteria) : "", ...criteria.map((criterion) => vote?.answers[criterion.key] ?? ""), vote?.note ?? "", RESULT_LABEL[settled.result],
+        vote?.reason ? failedLabel(vote.reason, reasonCriteria(screening)) : "", ...criteria.map((criterion) => vote?.answers[criterion.key] ?? ""), vote?.note ?? "", RESULT_LABEL[settled.result],
         settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "", settled.note ?? "", vote ? iso(vote.at) : "",
       ];
     }),
@@ -309,7 +310,7 @@ export function flowOf(out: Taken): FlowRow[] {
     {
       main: { title: open ? `Records in screening${on}` : `Records screened${on}`, n: kept, ...(filed ? { lines: [{ label: "On title and abstract", n: kept - filed }, { label: "On the full text, having no abstract", n: filed }] } : {}) },
       side: [
-        { title: "Records excluded", n: counts.exclude, lines: excludedBy(figures).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n })) },
+        { title: "Records excluded", n: counts.exclude, lines: excludedBy(figures).map(([key, n]) => ({ label: failedLabel(key, reasonCriteria(screening)), n })) },
         ...(counts.maybe || open ? [{ title: "Neither included nor excluded", n: counts.maybe + open, lines: [...(counts.maybe ? [{ label: "Left at Maybe", n: counts.maybe }] : []), ...(open ? [{ label: "Still open", n: open }] : [])] }] : []),
       ],
     },

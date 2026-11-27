@@ -25,7 +25,7 @@ import { progressRow } from "./bookkeeping";
 import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { INVITED_SHOWN, invitedViewValidator, libraryWriteProblemValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { INVITED_SHOWN, invitedViewValidator, libraryWriteProblemValidator, retiredCriterionValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -396,6 +396,7 @@ export const getAction = defineUserQuery({
       ...summaryFields,
       question: v.optional(v.string()),
       criteria: criteriaValidator,
+      retired: v.array(retiredCriterionValidator),
       stars: starsValidator,
       each: v.union(v.number(), v.literal("all")),
       blind: v.union(v.literal("after"), v.literal("always")),
@@ -447,6 +448,7 @@ export const getAction = defineUserQuery({
       emails: !(await noticeOf(ctx, jobId, actor.userId))?.off,
       ...(job.question ? { question: job.question } : {}),
       criteria: job.criteria ?? [],
+      retired: job.retiredCriteria ?? [],
       stars: job.stars ?? [],
       each: rule.each,
       blind: rule.blind,

@@ -44,7 +44,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
@@ -137,6 +137,8 @@ function Screen({ open }: { open: Open }) {
   const words = useWords();
   const id = screening.id;
   const criteria = screening.criteria;
+  // The criteria a reason can name: these, and the ones taken off that a kept result was excluded for.
+  const reasonNames = reasonCriteria(screening);
   const blind = screening.rule.blind === "after";
   const tablet = useIsTablet();
   const workspaceId = usePageWorkspace();
@@ -643,7 +645,7 @@ function Screen({ open }: { open: Open }) {
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">{t("votes.settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}</span> : null}
                             {/* What the reviewers said about it is further down the pane: this goes there. */}
                             {discussion ? <DiscussionLink count={said} writes={open.isReviewer || open.canResolve} onClick={toDiscussion} /> : null}
-                            {!state.resolvedBy && state.result === "exclude" && state.reason ? <ReasonChip reason={state.reason} criteria={criteria} /> : null}
+                            {!state.resolvedBy && state.result === "exclude" && state.reason ? <ReasonChip reason={state.reason} criteria={reasonNames} /> : null}
                           </>
                         ) : null
                       }
@@ -1087,7 +1089,7 @@ function Screen({ open }: { open: Open }) {
                   {lastReason || last.paper.id !== paper.id || madeConflict || differ ? (
                     <div className="flex min-w-0 items-center gap-2">
                       {/* Exclude takes its reason from your answers where they say it: the reason it took is named whole, at the head of the second line, and the paper's title after it gives up the room. Where the answers failed more must-haves than the one, they are counted. */}
-                      {lastReason ? <span className="flex min-w-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={criteria} className="min-w-0" />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={t("bar.alsoFailed", { count: alsoFailed })}>+{words.num(alsoFailed)}</span> : null}</span> : null}
+                      {lastReason ? <span className="flex min-w-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={reasonNames} className="min-w-0" />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={t("bar.alsoFailed", { count: alsoFailed })}>+{words.num(alsoFailed)}</span> : null}</span> : null}
                       {last.paper.id !== paper.id ? (
                         <TooltipHint label={last.paper.title} onlyWhenClipped>
                           <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline"><bdi>{words.quoted(last.paper.title)}</bdi></button>

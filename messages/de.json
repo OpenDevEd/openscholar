@@ -8149,6 +8149,7 @@
         "undo": "Rückgängig",
         "failed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
         "notAdded": "Einige Personen konnten nicht hinzugefügt werden. Fügen Sie sie unter Personen erneut hinzu.",
+        "notInvited": "Einige Personen konnten nicht eingeladen werden, daher wurde noch nichts gespeichert. Speichern Sie erneut, um sie noch einmal einzuladen.",
         "notStarted": "Das Screening konnte nicht gestartet werden. Versuchen Sie es erneut.",
         "saved": "Änderungen gespeichert",
         "discarded": "Änderungen verworfen"

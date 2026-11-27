@@ -183,12 +183,12 @@ export const isNamed = (criterion: Pick<Criterion, "short" | "text">) => criteri
 /** A criterion as a line names it: the name someone wrote, or else its question. Every sentence, chip and file that names one takes it from here, in whichever language. */
 export const criterionLabel = (criterion: Pick<Criterion, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
 /** A reason in words: the criterion as a line names it, or one of the others. */
-const reasonLabel = (key: string, criteria: Criterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
+const reasonLabel = (key: string, criteria: RetiredCriterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
 /**
  * A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met,
  * by the name someone gave it or by its question, or one of the other reasons. On a page it is drawn, by `Reason`.
  */
-export const failedLabel = (key: string, criteria: Criterion[]) => {
+export const failedLabel = (key: string, criteria: RetiredCriterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion ? (isNamed(criterion) ? FILE_WORDS.notMet.replace("{name}", criterion.short) : FILE_WORDS.notMetInFull.replace("{name}", criterionLabel(criterion))) : reasonLabel(key, criteria);
 };
@@ -196,7 +196,7 @@ export const failedLabel = (key: string, criteria: Criterion[]) => {
  * The question a criterion's name stands for, where what a line shows of it isn't already the question's own words:
  * its short name in a column, or its label (`criterionLabel`) in a sentence or a chip.
  */
-export const questionOf = (key: string, criteria: Criterion[], shown: "short" | "label" = "short") => {
+export const questionOf = (key: string, criteria: RetiredCriterion[], shown: "short" | "label" = "short") => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion && (shown === "label" ? criterionLabel(criterion) : criterion.short).trim() !== criterion.text.replace(/[?.]$/, "").trim() ? criterion.text : undefined;
 };
@@ -240,8 +240,13 @@ export const EVERY_LABEL: Record<Every, string> = FILE_WORDS.every;
 /** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
 export const SETTLE_LABEL: Record<Rule["settle"], string> = FILE_WORDS.settle.label;
 
+export type RetiredCriterion = Pick<Criterion, "key" | "text" | "short" | "must">;
+/** The criteria a reason can name: the screening's, and the ones taken off that a result kept through the change was excluded for. */
+export const reasonCriteria = (screening: Pick<Screening, "criteria" | "retired">): RetiredCriterion[] => [...screening.criteria, ...screening.retired];
 export type Screening = {
   id: Id<"screeningJobs">;
+  /** Criteria taken off, which reasons kept from before still name. */
+  retired: RetiredCriterion[];
   name: string;
   createdBy: string;
   createdAt: number;

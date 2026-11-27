@@ -8148,6 +8148,7 @@
         "undo": "Undo",
         "failed": "That didn't work. Try again.",
         "notAdded": "Some people couldn't be added. Add them again from People.",
+        "notInvited": "Some people couldn't be invited, so nothing was saved yet. Save again to try them again.",
         "notStarted": "The screening couldn't be started. Try again.",
         "saved": "Changes saved",
         "discarded": "Changes discarded"
