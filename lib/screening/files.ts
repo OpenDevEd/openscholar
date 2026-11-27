@@ -16,9 +16,10 @@ const BOM = /^\uFEFF/;
  */
 /** A page's height for its width where a file's own is not known: A4's. */
 export const A4_SHAPE = 1.414;
-export const pageShapeOf = (pdf: { getPage: (at: number) => { getSize: () => { width: number; height: number }; getRotation: () => { angle: number } } }) => {
+export const pageShapeOf = (pdf: { getPage: (at: number) => { getCropBox: () => { width: number; height: number }; getRotation: () => { angle: number } } }) => {
   const page = pdf.getPage(0);
-  const { width, height } = page.getSize();
+  // What a viewer draws is the page's crop box, which is its media box unless the file cuts it smaller.
+  const { width, height } = page.getCropBox();
   const turned = Math.abs(page.getRotation().angle) % 180 === 90;
   return width > 0 && height > 0 ? Math.round((turned ? width / height : height / width) * 1000) / 1000 : undefined;
 };

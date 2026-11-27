@@ -32,5 +32,9 @@ describe("pageShapeOf", () => {
     expect(pageShapeOf(pdf)).toBe(0.707);
     pdf.getPage(0).setRotation(degrees(90));
     expect(pageShapeOf(pdf)).toBe(1.415);
+    // A file that cuts its page smaller shows the cut.
+    pdf.getPage(0).setRotation(degrees(0));
+    pdf.getPage(0).setCropBox(0, 0, 400, 400);
+    expect(pageShapeOf(pdf)).toBe(1);
   });
 });
