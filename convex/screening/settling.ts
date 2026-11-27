@@ -120,7 +120,9 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       await ctx.db.patch("screeningVotes", rowOf(place)._id, row);
       if ("waitingWorkspace" in row) queued++;
     }
-    for (const place of plan.closed) if (places.includes(place)) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed", ...(place.kind === "model" ? { waitingWorkspace: undefined, waitingSince: undefined } : {}) });
+    // A model's reading already under way is left to finish: it is paid for, and what it answers is kept beside the person's vote (./readings.ts `done` keeps only a waiting row's).
+    const closing = plan.closed.filter((place) => places.includes(place) && !(place.kind === "model" && rowOf(place).workId !== undefined));
+    for (const place of closing) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed", ...(place.kind === "model" ? { waitingWorkspace: undefined, waitingSince: undefined } : {}) });
     const fresh: Vote[] = [];
     for (const place of plan.made) {
       const reviewer = byId.get(place.reviewer as Id<"screeningReviewers">)!;
@@ -131,7 +133,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       if (place.kind === "model" && "waitingWorkspace" in row) queued++;
     }
     const gone = new Set(leaving);
-    const status = new Map([...plan.reopened.map((place) => [rowOf(place)._id, "waiting"] as const), ...plan.closed.filter((place) => places.includes(place)).map((place) => [rowOf(place)._id, "closed"] as const)]);
+    const status = new Map([...plan.reopened.map((place) => [rowOf(place)._id, "waiting"] as const), ...closing.map((place) => [rowOf(place)._id, "closed"] as const)]);
     votes = [...votes.filter((vote) => !gone.has(vote)).map((vote) => (status.has(vote._id) ? { ...vote, status: status.get(vote._id)! } : vote)), ...fresh];
 
     // Each vote adds what it now is to its reviewer's counts, and each pair of votes to their agreement.
