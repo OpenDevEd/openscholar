@@ -1001,7 +1001,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
                 <li key={reviewer.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <ReviewerMark reviewer={reviewer} className="size-5" />
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><ReviewerName reviewer={reviewer} className="font-medium" /><VoteFacts vote={undefined} failed criteria={screening.criteria} /></span>
-                  {open.canChange ? <RetryRead papers={unread} cost={words.credits(retry.cost)} short={retry.short ? words.credits(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} className="justify-self-start max-sm:col-start-2" /> : null}
+                  {open.canChange ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} className="justify-self-start max-sm:col-start-2" /> : null}
                 </li>
               );
             })}

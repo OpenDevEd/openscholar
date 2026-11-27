@@ -31,9 +31,9 @@
     "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
   },
   "rule": {
-    "advice": "AI votes are advice",
-    "title": "How a paper is decided",
-    "eachPaper": "{who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# AI model} other {# AI models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# AI model} other {# AI models}}}} on each paper",
+    "advice": "The models' votes are advice",
+    "title": "How a paper is settled",
+    "eachPaper": "{who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# model} other {# models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# model} other {# models}}}} on each paper",
     "noReviewer": "No reviewer yet",
     "hiddenMine": "Votes hidden in your To do",
     "hiddenTheirs": "Votes hidden in reviewers' To do",
@@ -41,9 +41,9 @@
     "visibleFinished": "Votes visible now it is finished",
     "conflictsGoTo": "Conflicts go to {who}",
     "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
-    "chips": "These chips say who votes on each paper, what settles it, and who sees the other votes.",
+    "chips": "Who votes on each paper, what settles it, and who sees the other votes.",
     "conflictOpen": "{you, select, true {A paper in conflict stays open until you settle it.} other {A paper in conflict stays open until {name} settles it.}}",
-    "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.",
+    "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted DOIs never gain papers.",
     "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
   },
   "role": {
@@ -136,8 +136,8 @@
     "kept": "{me, select, true {Your votes keep counting.} other {Their votes keep counting.}}"
   },
   "credits": {
-    "inWorkspace": "{credits} credits in the workspace now",
-    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.} other {{credits} credits pay for none of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.}}"
+    "inWorkspace": "{credits, plural, one {# credit} other {# credits}} in the workspace now",
+    "payFor": "{some, select, true {{credits, plural, one {# credit pays} other {# credits pay}} for about {paid, number} of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.} other {{credits, plural, one {# credit pays} other {# credits pay}} for none of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.}}"
   },
   "activitySheet": {
     "says": "Every change to this screening, newest first",

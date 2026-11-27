@@ -16,7 +16,7 @@
     "ris": "RIS goes into EndNote or Mendeley",
     "csv": "CSV opens in Excel or Google Sheets",
     "columns": "A column for each criterion",
-    "ids": "Each paper by its id and DOI",
+    "ids": "Each paper by its Openscholar ID and DOI",
     "svg": "SVG opens in Inkscape or Illustrator",
     "png": "PNG goes into Word or Google Docs",
     "keeping": "For analysis and for keeping"

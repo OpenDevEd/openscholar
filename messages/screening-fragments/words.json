@@ -51,7 +51,7 @@
     "rows": "{count, plural, one {# row} other {# rows}}",
     "readings": "{count, plural, one {# reading} other {# readings}}",
     "changes": "{count, plural, one {# change} other {# changes}}",
-    "credits": "{count} credits"
+    "credits": "{count, plural, one {# credit} other {# credits}}"
   },
   "numberWord": "{n, select, 1 {One} 2 {Two} 3 {Three} 4 {Four} 5 {Five} 6 {Six} 7 {Seven} 8 {Eight} 9 {Nine} 10 {Ten} other {{n}}}",
   "quoted": "“{text}”",

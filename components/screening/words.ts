@@ -28,6 +28,8 @@ export function useWords() {
  * The shared words from a translator and a formatter: what `useWords` hands a page, and what a file is written
  * with, whose words are English whoever downloads it (./export.ts).
  */
+/** An amount of credits as it is shown: whole numbers from 10, a tenth below, and never 0 for something that costs. */
+const creditsOf = (n: number) => (n <= 0 ? 0 : n < 10 ? Math.max(0.1, Math.round(n * 10) / 10) : Math.ceil(n));
 export function wordsOf({ t, format, effort = (level) => level }: Said) {
 
   /** A number as people read it: "1,204". */
@@ -62,8 +64,10 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
     firstName,
     /** A count with its noun: "1 paper", "1,204 papers". */
     count: (noun: CountNoun, count: number) => t(`count.${noun}`, { count }),
-    /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
-    credits: (n: number) => (n === 0 ? "0" : n < 10 ? format.number(n, { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : format.number(Math.ceil(n))),
+    /** Credits as people read them: whole numbers from 10, a tenth below, and never "0" for something that costs. */
+    credits: (n: number) => format.number(creditsOf(n), { minimumFractionDigits: n > 0 && n < 1 ? 1 : 0 }),
+    /** The same amount as a number, for a message that says "credit" or "credits" after it. */
+    creditsOf,
     decision: (decision: Decision) => t(`decision.${decision}`),
     result: (result: Result) => t(`result.${result}`),
     /** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */

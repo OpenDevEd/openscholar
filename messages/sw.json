@@ -202,8 +202,8 @@
     "calendarMonth": "Chagua mwezi",
     "calendarYear": "Chagua mwaka",
     "calendarNavigation": "Urambazaji wa kalenda",
-    "upToCredits": "Hadi {credits}",
-    "upToCreditsEach": "Hadi {credits} kwa kila makala"
+    "aboutCredits": "Takriban {credits}",
+    "aboutCreditsEach": "Takriban {credits} kwa kila makala"
   },
   "home": {
     "tagline": "Tafuta, chuja na uchimbue ushahidi kutoka kwa utafiti wa kitaaluma",
@@ -7818,7 +7818,7 @@
       },
       "each": {
         "changes": "Kuanzia sasa kila makala inaenda kwa {all, select, true {kila mtu kwenye uchujaji, {each, plural, one {mtu #} other {watu #}} leo} other {{each, plural, one {mtu #} other {watu #}}}}{changed, plural, =0 {} one {. Makala # ambayo bado iko wazi {more, select, true {inapata {diff, plural, =1 {mtu mmoja zaidi} other {hadi watu # zaidi}}} other {inahitaji kura chache zaidi}}} other {. Makala # ambazo bado ziko wazi {more, select, true {zinapata {diff, plural, =1 {mtu mmoja zaidi} other {hadi watu # zaidi}}} other {zinahitaji kura chache zaidi}}}}. Kura zilizokwisha kupigwa zinabaki zilivyo",
-        "stillAll": "Kila makala bado inaenda kwa {each, plural, one {mtu #} other {watu #}} leo. Yeyote atakayeongezwa baadaye anajiunga na kila makala ambayo bado iko wazi",
+        "stillAll": "Kila makala bado inaenda kwa kila mtu kwenye uchujaji, {each, plural, one {mtu #} other {watu #}} leo. Yeyote atakayeongezwa baadaye anajiunga na kila makala ambayo bado iko wazi",
         "stillShare": "Kila makala bado inaenda kwa {each, plural, one {mtu #} other {watu #}}. Yeyote atakayeongezwa baadaye anachukua mgao sawa wa makala zilizo wazi, si kila moja"
       },
       "blind": {
@@ -7828,13 +7828,13 @@
       "criteria": {
         "modelsAnswerNew": "Modeli zinajibu {count, plural, one {kigezo kipya} other {vigezo vipya}} kwenye makala zilizo wazi ambazo zimesoma",
         "votesStand": "Kura za watu zinabaki zilivyo, kwa kuwa zilipigwa kabla ya {count, plural, one {kigezo hiki} other {vigezo hivi}}",
-        "modelsStop": "Modeli zinaacha kujibu {name}. Kura zilizokwisha kupigwa zinabaki kama zilivyopigwa",
-        "noLongerAsked": "{name} hakiulizwi tena. Kura zilizokwisha kupigwa zinabaki kama zilivyopigwa",
-        "becomesMust": "{name} kinakuwa sharti la lazima. Kuanzia sasa hapana juu yake inaelekeza kwenye Tenga. Kura za watu kwenye makala ambazo bado ziko wazi zinabaki, na zinawekwa alama ya kupigwa upya",
-        "becomesNice": "{name} kinakuwa cha hiari. Kuanzia sasa hapana juu yake haielekezi tena kwenye Tenga. Kura zilizokwisha kupigwa zinabaki kama zilivyopigwa",
+        "modelsStop": "Modeli zinaacha kujibu {name}. Kura zilizokwisha kupigwa zinabaki zilivyo",
+        "noLongerAsked": "{name} hakiulizwi tena. Kura zilizokwisha kupigwa zinabaki zilivyo",
+        "becomesMust": "{name} kinakuwa sharti la lazima. Kuanzia sasa hapana juu yake inaelekeza kwenye Tenga. Kura za watu kwenye makala ambazo bado ziko wazi zinabaki, na zinahamia Piga kura tena",
+        "becomesNice": "{name} kinakuwa cha hiari. Kuanzia sasa hapana juu yake haielekezi tena kwenye Tenga. Kura zilizokwisha kupigwa zinabaki zilivyo",
         "writeQuestion": "Andika swali la kigezo kabla ya kuhifadhi",
         "modelsReworded": "Modeli zinajibu {name} kilichoandikwa upya kwenye makala zinazosoma kuanzia sasa",
-        "reviewersReworded": "Wakaguzi wanajibu {name} kilichoandikwa upya kuanzia sasa. Kura zilizokwisha kupigwa zinabaki kama zilivyopigwa",
+        "reviewersReworded": "Wakaguzi wanajibu {name} kilichoandikwa upya kuanzia sasa. Kura zilizokwisha kupigwa zinabaki zilivyo",
         "guidance": "{models, select, true {Wakaguzi na modeli wanasoma} other {Wakaguzi wanasoma}} {name} pamoja na mwongozo wake {fresh, select, true {mpya } other {}}kuanzia sasa. Majibu yaliyokwisha kutolewa yanabaki",
         "guidanceRemoved": "Mwongozo unaondolewa kwenye {name}. Majibu yaliyokwisha kutolewa yanabaki",
         "termsMarked": "Wakaguzi wanaona maneno yaliyowekwa alama kwa {name} kwenye kila muhtasari kuanzia sasa",
@@ -7862,7 +7862,7 @@
         "prune": "Makala zilizotengwa zinaondolewa kwenye mkusanyiko zilikotoka",
         "keep": "Makala zilizotengwa zinabaki kwenye mkusanyiko zilikotoka"
       },
-      "withCredits": "{text}, kwa hadi krediti {credits}{each, select, true { kila moja} other {}}",
+      "withCredits": "{text}, kwa hadi {credits, plural, one {krediti #} other {krediti #}}{each, select, true { kila moja} other {}}",
       "creditsChip": "{credits}{each, select, true { kila moja} other {}}",
       "moved": "{count, plural, one {Makala # imehamishwa} other {Makala # zimehamishwa}} kutoka {from} kwenda {to}",
       "noChange": "Hakuna matokeo ya makala yanayobadilika",
@@ -7905,7 +7905,7 @@
           "name": "jina",
           "question": "swali la utafiti",
           "papers": "vyanzo",
-          "newPapers": "jinsi unavyotafuta makala mpya",
+          "newPapers": "jinsi unavyokagua makala mpya",
           "criteria": "vigezo",
           "reviewers": "wakaguzi",
           "decided": "jinsi makala inavyoamuliwa",
@@ -7948,7 +7948,7 @@
         "ris": "RIS inaingia kwenye EndNote au Mendeley",
         "csv": "CSV inafunguka kwenye Excel au Google Sheets",
         "columns": "Nguzo kwa kila kigezo",
-        "ids": "Kila makala kwa kitambulisho chake na DOI",
+        "ids": "Kila makala kwa kitambulisho chake cha Openscholar na DOI",
         "svg": "SVG inafunguka kwenye Inkscape au Illustrator",
         "png": "PNG inaingia kwenye Word au Google Docs",
         "keeping": "Kwa uchambuzi na kwa kuhifadhi"
@@ -8077,7 +8077,7 @@
         "upload": "Pakia",
         "collection": "Maktaba",
         "screening": "Uchujaji",
-        "evidenceLibrary": "Jumuiya",
+        "evidenceLibrary": "Evidence Community",
         "zotero": "Zotero",
         "dois": "DOI"
       },
@@ -8108,7 +8108,7 @@
         "renamedCriteria": "{count, plural, =1 {Umebadilisha jina la {names}} =2 {Umebadilisha majina ya {names}} other {Umebadilisha majina ya vigezo #}}",
         "scoring": "Umebadilisha upimaji",
         "addedReviewers": "{count, plural, =1 {Umeongeza {names}} =2 {Umeongeza {names}} other {Umeongeza wakaguzi #}}",
-        "removedReviewers": "{count, plural, =1 {Umeondoa {names}} =2 {Umeondoa {names}} other {Umeondoa wakaguzi #}}",
+        "removedReviewers": "{count, plural, =1 {Umewaondoa {names}} =2 {Umewaondoa {names}} other {Umewaondoa wakaguzi #}}",
         "rule": "Umebadilisha jinsi makala inavyoamuliwa",
         "destination": "Umebadilisha makala zilizojumuishwa zinakoenda",
         "collectionRenamed": "Umebadilisha jina la mkusanyiko wa uchujaji kuwa {name}",
@@ -8135,10 +8135,10 @@
       "block": {
         "emptyCriterion": "Andika swali kwa kigezo kilicho tupu",
         "needsCriterion": "{many, select, true {Ongeza kigezo kwa ajili ya modeli} other {Ongeza kigezo kwa ajili ya modeli}}",
-        "overPapers": "{personal, select, true {{count, plural, one {Mpango wako unachuja makala # kwa wakati mmoja} other {Mpango wako unachuja hadi makala # kwa wakati mmoja}}} other {{count, plural, one {Mpango wa {workspace} unachuja makala # kwa wakati mmoja} other {Mpango wa {workspace} unachuja hadi makala # kwa wakati mmoja}}}}",
+        "overPapers": "{personal, select, true {{count, plural, one {Mpango wako unachuja makala # katika uchujaji mmoja} other {Mpango wako unachuja hadi makala # katika uchujaji mmoja}}} other {{count, plural, one {Mpango wa {workspace} unachuja makala # katika uchujaji mmoja} other {Mpango wa {workspace} unachuja hadi makala # katika uchujaji mmoja}}}}",
         "overModels": "{count, plural, one {Uchujaji unaendesha modeli #} other {Uchujaji unaendesha hadi modeli #}}",
         "orphaned": "{many, select, true {{count, plural, one {Makala # ni PDF tu, ambayo modeli hizi haziwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hizi haziwezi kusoma. Ongeza mtu}}} other {{count, plural, one {Makala # ni PDF tu, ambayo modeli hii haiwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hii haiwezi kusoma. Ongeza mtu}}}}",
-        "creditsShort": "Zimepungua krediti {credits}",
+        "creditsShort": "{credits, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
         "reading": "Inasoma makala",
         "addPapers": "Ongeza makala ili uanze",
         "addReviewer": "Ongeza mkaguzi ili uanze"
@@ -8173,8 +8173,8 @@
         "keepPrivate": "Weka mkusanyiko mpya kuwa wa faragha",
         "aCollection": "Mkusanyiko",
         "yourLibrary": "Maktaba yako",
-        "aCommunity": "Jumuiya",
-        "readingCommunity": "Inasoma mikusanyiko ya jumuiya",
+        "aCommunity": "Evidence Community",
+        "readingCommunity": "Inasoma mikusanyiko ya Evidence Community",
         "prune": "Ondoa makala zilizotengwa kutoka {name}",
         "excludedLeave": "Makala zilizotengwa zinaondoka",
         "othersStay": "Makala zilizo kwenye Labda au zenye mgongano zinabaki"
@@ -8194,7 +8194,7 @@
         "invited": "{count, plural, other {# wamealikwa}}",
         "nobody": "Bado hakuna mtu",
         "decided": "{you, select, true {{rule}, na wewe unaamua migongano} other {{rule}, na {name} anaamua migongano}}",
-        "withAdvice": "{decided}, kura za AI zikiwa ushauri"
+        "withAdvice": "{decided}, kura za modeli zikiwa ushauri"
       },
       "filledFrom": "Imejazwa kutoka <b>{name}</b>",
       "openIt": "Ifungue",
@@ -8213,7 +8213,7 @@
       },
       "papers": {
         "upToSources": "{count, plural, other {Hadi vyanzo #}}",
-        "helpFrom": "Ongeza kila mahali makala zinapotoka, kama utafutaji, mikusanyiko, jumuiya, Zotero, faili au DOI. Makala iliyopatikana kwenye vyanzo viwili inachujwa mara moja.",
+        "helpFrom": "Ongeza kila mahali makala zinapotoka, kama utafutaji, mikusanyiko, Evidence Communities, Zotero, faili au DOI. Makala iliyopatikana kwenye vyanzo viwili inachujwa mara moja.",
         "helpRead": "Uchujaji unasoma kichwa na muhtasari. Rekodi ambayo faharasa ya Openscholar inaijua inachukua vyote viwili kutoka hapo. Makala inayokuja na PDF yake na haina muhtasari inasomwa kutoka PDF.",
         "helpLeft": "Makala isiyo na muhtasari wala PDF, rekodi isiyo na kichwa, DOI isiyopatikana na faili isiyofunguka haviwezi kuchujwa. Kila kimoja kinaachwa na kuorodheshwa kwenye safu ya chanzo chake pamoja na sababu.",
         "stillReading": "Bado inasoma",
@@ -8229,7 +8229,7 @@
         "removedOnSave": "Inaondolewa utakapohifadhi",
         "atStart": "{count, plural, other {# mwanzoni}}",
         "allOfIt": "Chote",
-        "all": "{count, plural, one {Rekodi moja pekee} other {Rekodi zote #}}",
+        "all": "{count, plural, one {Makala moja pekee} other {Makala zote #}}",
         "inSource": "{count, plural, other {# kwenye chanzo}}",
         "readAsPdf": "{count, plural, one {# inasomwa kutoka PDF yake} other {# zinasomwa kutoka PDF zake}}",
         "duplicates": "{count, plural, one {rudio # limeunganishwa} other {marudio # yameunganishwa}}",
@@ -8237,7 +8237,7 @@
         "checkedEvery": "{every, select, day {Kinakaguliwa kila siku} week {Kinakaguliwa kila wiki} other {Kinakaguliwa kila mwezi}}",
         "couldntBeRead": "Haikuweza kusomwa",
         "stoppedAfter": "{read, plural, other {Usomaji ulisimama kwenye # kati ya {total}}}",
-        "notSaved": "Openscholar ilipata hitilafu ikisoma chanzo hiki.",
+        "notSaved": "Chanzo hiki hakikuweza kusomwa.",
         "readAgain": "Jaribu tena",
         "loadingList": "Inapakia orodha",
         "keep": "Weka",
@@ -8248,7 +8248,7 @@
         "everyDeep": "Kila makala ndani yake na ndani ya mikusanyiko iliyo chini yake.",
         "everyOne": "{count, plural, one {Makala moja iliyomo.} other {Makala zote # zilizomo.}}",
         "zoteroOrder": "Zilizoongezwa Zotero mapema zaidi kwanza",
-        "handoffGone": "Kile ambacho jumuiya ilikabidhi hakiwezi kusomwa tena. Chagua rekodi zake tena chini ya Jumuiya.",
+        "handoffGone": "Rekodi zilizochaguliwa katika Evidence Community hii haziwezi kupakiwa tena. Zichague tena chini ya Evidence Community.",
         "addFrom": "Ongeza makala kutoka",
         "findSource": "Tafuta chanzo",
         "noneByName": "Hakuna chenye jina hilo.",
@@ -8271,8 +8271,8 @@
         "title": "Uchujaji endelevu",
         "factFixed": "Faili zilizopakiwa na DOI zilizobandikwa hazipati makala mpya kamwe",
         "factEmail": "Wakaguzi wanaarifiwa kwa barua pepe",
-        "factCharge": "Modeli zinatoza kwa kila makala mpya",
-        "help": "Openscholar hukagua vyanzo vya uchujaji huu, yaani utafutaji, mikusanyiko, jumuiya, maktaba za Zotero na uchujaji mwingine, kutafuta makala mpya kwa ratiba unayochagua. Makala mpya pekee ndizo zinazoongezwa na kwenda kwa wakaguzi.",
+        "factCharge": "Modeli zinagharimu krediti kwa kila makala mpya",
+        "help": "Openscholar hukagua vyanzo vya uchujaji huu, yaani utafutaji, mikusanyiko, Evidence Communities, maktaba za Zotero na uchujaji mwingine, kutafuta makala mpya kwa ratiba unayochagua. Makala mpya pekee ndizo zinazoongezwa na kwenda kwa wakaguzi.",
         "check": "Tafuta makala mpya",
         "off": "Imezimwa",
         "checksAll": "{count, plural, one {Inakagua chanzo} other {Inakagua vyanzo vyote #}}",
@@ -8280,16 +8280,16 @@
         "nextCheck": "Ukaguzi unaofuata {day}",
         "firstCheck": "Ukaguzi wa kwanza {day}",
         "firstOnSave": "Ukaguzi wa kwanza mara tu hii itakapohifadhiwa",
-        "perNew": "{pdf, select, true {Krediti {credits} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {Krediti {credits} kwa kila makala mpya}}",
-        "noneGrow": "Hakuna kati ya vyanzo hivi kinachopata makala mpya. Ongeza utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
-        "addToCheck": "Ongeza utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
+        "perNew": "{pdf, select, true {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya}}",
+        "noneGrow": "Hakuna kati ya vyanzo hivi kinachopata makala mpya. Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
+        "addToCheck": "Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
         "lastSpent": "{spent} kwa {count, plural, one {makala # ya mwisho} other {makala # za mwisho}}"
       },
       "criteria": {
         "helpTitle": "Lazima na hiari",
         "factPeople": "Watu wanapiga kura moja kwa moja",
         "factModels": "Majibu yanaamua kura za modeli",
-        "help": "Andika kila kigezo kama swali la ndiyo au hapana. Modeli inajibu kila kimoja ndiyo, hapana au haieleweki. Hapana kwenye kigezo cha lazima inaifanya modeli ipige kura ya kutenga, na haieleweki inaifanya ipige kura ya labda. Kigezo cha hiari hakifanyi modeli ipige kura ya kutenga kamwe, lakini mtu bado anaweza kukitaja kama sababu yake. Mwongozo chini ya swali unasema kinachohesabika. Mkaguzi anaufungua kwa \"Mwongozo\" chini ya swali kwenye Chuja, na modeli inausoma pamoja na swali. Maneno unayowekea alama kwa kigezo yanawekewa alama kwenye kila muhtasari mtu anapopiga kura.",
+        "help": "Andika kila kigezo kama swali la ndiyo au hapana. Modeli inajibu kila kimoja ndiyo, hapana au haieleweki. Hapana kwenye kigezo cha lazima inaifanya modeli ipige kura Tenga, na haieleweki inaifanya ipige kura Labda. Kigezo cha hiari hakifanyi modeli ipige kura Tenga kamwe, lakini mtu bado anaweza kukitaja kama sababu yake. Mwongozo chini ya swali unasema kinachohesabika. Mkaguzi anaufungua kwa \"Mwongozo\" chini ya swali kwenye Chuja, na modeli inausoma pamoja na swali. Maneno unayowekea alama kwa kigezo yanawekewa alama kwenye kila muhtasari mtu anapopiga kura.",
         "import": "{searches, plural, one {{count, plural, one {Ongeza swali # kutoka utafutaji wako} other {Ongeza maswali # kutoka utafutaji wako}}} other {{count, plural, one {Ongeza swali # kutoka tafutaji zako} other {Ongeza maswali # kutoka tafutaji zako}}}}",
         "copyFrom": "Nakili kutoka uchujaji",
         "copyAdds": "Inaongeza vigezo vya uchujaji huo na pointi zake kwenye hivi",
@@ -8335,14 +8335,14 @@
         "starsRange": "pointi, nyota moja hadi tano"
       },
       "reviewers": {
-        "factPeople": "Watu ni bure",
+        "factPeople": "Watu hawagharimu krediti",
         "factModels": "Modeli zinagharimu krediti",
-        "help": "Kila mkaguzi anapiga kura jumuisha, labda au tenga kwenye makala anazopata. Mtu anasoma kichwa na muhtasari na kupiga kura. Modeli inajibu kila kigezo kwenye kila makala inayosoma, na majibu yake yanaunda kura yake.",
-        "aiModel": "Modeli ya AI",
-        "aiModelAt": "Modeli ya AI kwa kiwango {effort}",
+        "help": "Kila mkaguzi anapiga kura Jumuisha, Labda au Tenga kwenye makala anazopata. Mtu anasoma kichwa na muhtasari na kupiga kura. Modeli inajibu kila kigezo kwenye kila makala inayosoma, na majibu yake yanaunda kura yake.",
+        "aiModel": "Modeli",
+        "aiModelAt": "Modeli kwa kiwango {effort}",
         "votesKeep": "{count, plural, one {kura # inaendelea kuhesabiwa} other {kura # zinaendelea kuhesabiwa}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Haiwezi kusoma PDF, kwa hivyo makala # haipati kura kutoka kwake} other {Haiwezi kusoma PDF, kwa hivyo makala # hazipati kura kutoka kwake}}} other {{count, plural, one {Haiwezi kusoma PDF ndefu zaidi, kwa hivyo makala # haipati kura kutoka kwake} other {Haiwezi kusoma PDF ndefu zaidi, kwa hivyo makala # hazipati kura kutoka kwake}}}}",
-        "creditsFor": "Krediti {credits} kwa {count, plural, one {makala #} other {makala #}}",
+        "creditsFor": "{credits, plural, one {Krediti #} other {Krediti #}} kwa {count, plural, one {makala #} other {makala #}}",
         "allRead": "Zote zimesomwa",
         "none": "Bado hakuna wakaguzi",
         "addPerson": "Ongeza mtu",
@@ -8356,8 +8356,8 @@
         "help": "Makala inaamuliwa kura zake zikikubaliana kama kanuni inavyotaka. Zisipokubaliana, ina mgongano, na mtu mmoja anauamua.",
         "each": "Watu kwenye kila makala",
         "factModels": "Modeli zinasoma kila makala iliyo wazi",
-        "factEveryone": "Kila mtu inajumuisha yeyote atakayejiunga baadaye",
-        "eachHelp": "Kila modeli inasoma kila makala iliyo wazi inapojiunga. Hiki kinaweka watu wangapi wanapigia kura kila moja. Makala zinagawanywa ili kila mtu asome idadi inayokaribiana. Idadi iliyowekwa inabaki ileile timu ikikua. Kila mtu inamaanisha kila mtu kwenye uchujaji, sasa na baadaye.",
+        "factEveryone": "Kila mtu inajumuisha watu watakaojiunga baadaye",
+        "eachHelp": "Kila modeli inasoma kila makala iliyo wazi inapojiunga. Hiki kinaweka watu wangapi wanapigia kura kila moja. Makala zinagawanywa ili kila mtu asome idadi inayokaribiana. Idadi iliyowekwa inabaki ileile watu wanapojiunga. Kila mtu inamaanisha kila mtu kwenye uchujaji, sasa na baadaye.",
         "everyone": "Kila mtu",
         "onePerson": "Mtu mmoja, kwa kuwa kura ya kwanza ndiyo inayoamua",
         "modelVotes": "Kura za modeli",
@@ -8375,7 +8375,7 @@
         "ruleMeans": "<b>{label}.</b> {means}",
         "settledBy": "Migongano inaamuliwa na",
         "conflictsTitle": "Migongano",
-        "conflictsHelp": "Mtu huyu anaona kila kura kwenye makala, na uamuzi wake ndio matokeo yake.",
+        "conflictsHelp": "Mtu huyu anaona kila kura kwenye makala, na anachochagua ndicho matokeo yake.",
         "noConflicts": "Hakuna migongano ya kuamua chini ya kanuni hii",
         "whoSettles": "Nani anaamua mgongano",
         "seeVotes": "Wakaguzi wanaona kura nyingine",
@@ -8387,14 +8387,14 @@
         "addReviewer": "Ongeza mkaguzi ili uone jinsi makala inavyoamuliwa.",
         "modelSettles": "Kura ya modeli inaamua tu makala ambazo hakuna mtu aliyepewa. Kwenye nyingine, kura ya mtu wa kwanza ndiyo inayoamua."
       },
-      "goesHelp": "Makala ambazo matokeo yake ni Imejumuishwa zinaongezwa kwenye mkusanyiko unaouchagua, kwenye maktaba yako au kwenye jumuiya, pamoja na nyota kutoka Upimaji. Hakuna mahali inazibakiza kwenye uchujaji tu.",
+      "goesHelp": "Makala ambazo matokeo yake ni Imejumuishwa zinaongezwa kwenye mkusanyiko unaouchagua, kwenye maktaba yako au kwenye Evidence Community, pamoja na nyota kutoka Upimaji. Hakuna mahali inazibakiza kwenye uchujaji tu.",
       "summaryLabel": "Muhtasari",
       "changes": {
         "title": "Mabadiliko",
         "helpTitle": "Kubadilisha uchujaji unaoendelea",
         "factVotes": "Kura zilizokwisha kupigwa zinabaki",
         "factRemoved": "Wakaguzi walioondolewa wanabaki kwenye kumbukumbu",
-        "help": "Unaweza kubadilisha chochote hapa wakati uchujaji unaendelea na baada ya kukamilika. Hakuna kinachohifadhiwa hadi uchague Hifadhi mabadiliko, na sehemu hii inaonyesha kwanza kuhifadhi kutafanya nini.",
+        "help": "Unaweza kubadilisha chochote hapa wakati uchujaji unaendelea na baada ya kukamilika. Hakuna kinachohifadhiwa hadi uchague Hifadhi mabadiliko. Sehemu ya Kuhifadhi kunafanya nini inaorodhesha athari kwanza.",
         "savedNow": "Imehifadhiwa sasa hivi",
         "activity": "Shughuli",
         "willDo": "Kuhifadhi kunafanya nini",
@@ -8414,25 +8414,25 @@
       "cost": {
         "title": "Gharama",
         "helpTitle": "Modeli na krediti",
-        "factPeople": "Watu ni bure",
+        "factPeople": "Watu hawagharimu krediti",
         "factAtOnce": "{count, plural, one {makala # kwa wakati mmoja} other {makala # kwa wakati mmoja}}",
         "help": "Gharama ya kila modeli ni krediti zake kwa makala moja mara makala za kuchuja. Makala iliyokuja na PDF yake na isiyo na muhtasari inasomwa kutoka PDF, kila ukurasa wake, na inagharimu kwa ukurasa. {atOnce, select, none {} other {Mpango wa nafasi kazi unaruhusu modeli kusoma makala {atOnce} kwa wakati mmoja, kwa hivyo uchujaji ulioanzishwa wakati modeli za mwingine zinasoma unasubiri zamu yake. }}Watu wanaweza kupiga kura tangu mwanzo.",
         "helpLiving": "Uchujaji endelevu pia unalipia kila makala mpya ambayo ukaguzi unapata.",
         "people": "Watu",
         "free": "Bure",
-        "credits": "Krediti {credits}",
+        "credits": "{credits, plural, one {Krediti #} other {Krediti #}}",
         "noPapers": "Bado hakuna makala",
         "pdfsRead": "{count, plural, one {Makala # inasomwa kutoka PDF yake} other {Makala # zinasomwa kutoka PDF zake}}, {pages, plural, one {ukurasa #} other {kurasa #}} kwa jumla{capped, select, true {. Zinagharimu hadi krediti {credits} kati ya hizi.} other {.}}",
-        "pdfsUnpriced": "Makala mpya inayokuja kama PDF inagharimu zaidi ya inavyohesabiwa hapa, kwa kila ukurasa. Gharama inaonekana baada ya uchujaji kusoma vyanzo vipya.",
+        "pdfsUnpriced": "Makala mpya inayokuja kama PDF yake inagharimu zaidi, kwa kila ukurasa. Gharama yake inaonekana baada ya uchujaji kusoma vyanzo vipya.",
         "firstReading": "{count, plural, one {Usomaji wa kwanza wa PDF #, ulilipwa ilipoongezwa} other {Usomaji wa kwanza wa PDF #, ulilipwa zilipoongezwa}}",
-        "upTo": "Hadi krediti {credits}",
+        "upTo": "Hadi {credits, plural, one {krediti #} other {krediti #}}",
         "answering": "{count, plural, one {Kujibu kigezo kipya kwenye makala zilizokwisha kusomwa} other {Kujibu vigezo vipya kwenye makala zilizokwisha kusomwa}}",
-        "rereading": "Kusoma tena makala ambazo hili linazifungua",
+        "rereading": "Kusoma makala ambazo badiliko hili linazifungua tena",
         "atMost": "{still, select, true {{soFar, select, true {Kilichobaki kulipa hadi sasa, kwa kiwango cha juu} other {Kilichobaki kulipa, kwa kiwango cha juu}}} other {{soFar, select, true {Jumla hadi sasa, kwa kiwango cha juu} other {Jumla, kwa kiwango cha juu}}}}",
         "resumed": "Kilichobaki kulipa kikiendelezwa",
         "still": "Kilichobaki kulipa",
         "nothing": "Hakuna",
-        "overWallet": "Krediti {credits} zaidi ya ilizonazo nafasi kazi",
+        "overWallet": "{credits, plural, one {Krediti #} other {Krediti #}} zaidi ya ilizonazo nafasi kazi",
         "walletShare": "{share} ya krediti za nafasi kazi",
         "shareOf": "{under, select, true {Chini ya {share} ya} other {{share} ya}}",
         "inWorkspace": "{own, select, true {{credits} zinapatikana} other {{credits} kwenye {workspace}}}",
@@ -8441,7 +8441,7 @@
       },
       "bar": {
         "toScreen": "<n></n> <m>{soFar, select, true {{count, plural, one {makala ya kuchuja hadi sasa} other {makala za kuchuja hadi sasa}}} other {{count, plural, one {makala ya kuchuja} other {makala za kuchuja}}}}</m>",
-        "cost": "<m>{still, select, true {{soFar, select, true {Kilichobaki kulipa hadi sasa, kwa kiwango cha juu} other {Kilichobaki kulipa, kwa kiwango cha juu}}} other {{soFar, select, true {Jumla hadi sasa, kwa kiwango cha juu} other {Jumla, kwa kiwango cha juu}}}}</m> <b>krediti {credits}</b>",
+        "cost": "<m>{still, select, true {{soFar, select, true {Kilichobaki kulipa hadi sasa, kwa kiwango cha juu} other {Kilichobaki kulipa, kwa kiwango cha juu}}} other {{soFar, select, true {Jumla hadi sasa, kwa kiwango cha juu} other {Jumla, kwa kiwango cha juu}}}}</m> <b>{credits, plural, one {krediti #} other {krediti #}}</b>",
         "peopleOnly": "{handed, select, true {Watu pekee, hakuna cha ziada kulipa} other {Watu pekee, hakuna krediti}}",
         "addCredits": "Ongeza krediti",
         "start": "Anza uchujaji",
@@ -8456,8 +8456,8 @@
         "title": "Uchujaji mpya",
         "helpTitle": "Uchujaji",
         "factRead": "Kichwa na muhtasari, au PDF ya makala",
-        "factWho": "Watu na modeli za AI",
-        "help": "Wakaguzi wako wanapiga kura jumuisha, labda au tenga kwenye kichwa na muhtasari wa kila makala. Makala isiyo na muhtasari iliyokuja na PDF yake inapigiwa kura kutoka PDF. Kanuni unayochagua inageuza kura kuwa matokeo, na makala ambayo kura zinatofautiana juu yake inaenda kwa mtu mmoja."
+        "factWho": "Watu na modeli",
+        "help": "Wakaguzi wako wanapiga kura Jumuisha, Labda au Tenga kwenye kichwa na muhtasari wa kila makala. Makala isiyo na muhtasari iliyokuja na PDF yake inapigiwa kura kutoka PDF. Kanuni unayochagua inageuza kura kuwa matokeo, na makala ambayo kura zinatofautiana juu yake inaenda kwa mtu mmoja."
       }
     },
     "frame": {
@@ -8493,9 +8493,9 @@
         "add": "{you, select, true {Jiongeze kwenye kichujio} other {Mwongeze {name} kwenye kichujio}}"
       },
       "rule": {
-        "advice": "Kura za AI ni ushauri",
+        "advice": "Kura za modeli ni ushauri",
         "title": "Jinsi makala inavyoamuliwa",
-        "eachPaper": "{who, select, both {{people, plural, one {mtu #} other {watu #}} na {models, plural, one {modeli # ya AI} other {modeli # za AI}}} people {{people, plural, one {mtu #} other {watu #}}} other {{models, plural, one {modeli # ya AI} other {modeli # za AI}}}} kwa kila makala",
+        "eachPaper": "{who, select, both {{people, plural, one {mtu #} other {watu #}} na {models, plural, one {modeli #} other {modeli #}}} people {{people, plural, one {mtu #} other {watu #}}} other {{models, plural, one {modeli #} other {modeli #}}}} kwa kila makala",
         "noReviewer": "Bado hakuna mkaguzi",
         "hiddenMine": "Kura zimefichwa kwenye orodha yako ya Kufanya",
         "hiddenTheirs": "Kura zimefichwa kwenye orodha ya Kufanya ya wakaguzi",
@@ -8503,9 +8503,9 @@
         "visibleFinished": "Kura zinaonekana sasa kwa kuwa umekamilika",
         "conflictsGoTo": "Migongano inaenda kwa {who}",
         "checks": "{every, select, day {Inatafuta makala mpya kila siku} week {Inatafuta makala mpya kila wiki} other {Inatafuta makala mpya kila mwezi}}",
-        "chips": "Vipande hivi vinaonyesha nani anapigia kura kila makala, nini kinaiamua, na nani anaona kura nyingine.",
+        "chips": "Nani anapigia kura kila makala, nini kinaiamua, na nani anaona kura nyingine.",
         "conflictOpen": "{you, select, true {Makala yenye mgongano inabaki wazi hadi uiamue.} other {Makala yenye mgongano inabaki wazi hadi {name} aiamue.}}",
-        "living": "Uchujaji endelevu hukagua vyanzo vyake kwa ratiba kutafuta makala mpya na kuchuja zilizo mpya. Faili zilizopakiwa na orodha zilizobandikwa hazipati makala mpya kamwe.",
+        "living": "Uchujaji endelevu hukagua vyanzo vyake kwa ratiba kutafuta makala mpya na kuchuja zilizo mpya. Faili zilizopakiwa na DOI zilizobandikwa hazipati makala mpya kamwe.",
         "livingChip": "{every, select, day {Endelevu<more>, makala mpya kila siku</more>} week {Endelevu<more>, makala mpya kila wiki</more>} other {Endelevu<more>, makala mpya kila mwezi</more>}}"
       },
       "role": {
@@ -8598,8 +8598,8 @@
         "kept": "{me, select, true {Kura zako zinaendelea kuhesabiwa.} other {Kura zake zinaendelea kuhesabiwa.}}"
       },
       "credits": {
-        "inWorkspace": "Krediti {credits} kwenye nafasi kazi sasa",
-        "payFor": "{some, select, true {Krediti {credits} zinalipia takriban {paid, number} kati ya {papers, plural, one {makala # ambayo modeli inasoma} other {makala # ambazo modeli inasoma}}. Unasimama hapo hadi krediti ziongezwe.} other {Krediti {credits} hazilipii hata moja kati ya {papers, plural, one {makala # ambayo modeli inasoma} other {makala # ambazo modeli inasoma}}. Unasimama hapo hadi krediti ziongezwe.}}"
+        "inWorkspace": "{credits, plural, one {Krediti #} other {Krediti #}} kwenye nafasi kazi sasa",
+        "payFor": "{some, select, true {{credits, plural, one {Krediti # inalipia} other {Krediti # zinalipia}} takriban {paid, number} kati ya {papers, plural, one {makala # ambayo modeli inasoma} other {makala # ambazo modeli inasoma}}. Unasimama hapo hadi krediti ziongezwe.} other {{credits, plural, one {Krediti # hailipii} other {Krediti # hazilipii}} hata moja kati ya {papers, plural, one {makala # ambayo modeli inasoma} other {makala # ambazo modeli inasoma}}. Unasimama hapo hadi krediti ziongezwe.}}"
       },
       "activitySheet": {
         "says": "Kila badiliko kwenye uchujaji huu, la karibuni kwanza",
@@ -8667,10 +8667,10 @@
       "firstUse": {
         "noneHere": "Bado hakuna uchujaji kwenye nafasi kazi hii",
         "title": "Amua makala zipi zinafaa kwenye mapitio yako",
-        "text": "Leta makala kutoka utafutaji, mikusanyiko au faili zako mwenyewe, weka vigezo vyako, na uzichuje mwenyewe, pamoja na wenzako, kwa modeli za AI, au kwa kuchanganya njia hizo tatu."
+        "text": "Leta makala kutoka utafutaji, mikusanyiko au faili zako mwenyewe, weka vigezo vyako, na uzichuje mwenyewe, pamoja na wenzako au kwa modeli za AI."
       },
       "legend": {
-        "label": "Rangi za upau zinamaanisha nini",
+        "label": "Kila sehemu ya upau inamaanisha nini",
         "settled": "Zimeamuliwa",
         "notYet": "Bado"
       },
@@ -8721,7 +8721,7 @@
       },
       "discussion": {
         "title": "Majadiliano",
-        "about": "{models, select, true {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki kwenye orodha yake ya Uchujaji hadi ajibu. Modeli haiwezi kuulizwa. Bonyeza alama yake mojawapo kwenye jedwali kuona kifungu ilichosoma.} other {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki kwenye orodha yake ya Uchujaji hadi ajibu.}}",
+        "about": "{models, select, true {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu. Modeli haiwezi kuulizwa. Bonyeza alama yake mojawapo kwenye jedwali kuona kifungu ilichosoma.} other {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu.}}",
         "blind": "Uchujaji huu unamficha mkaguzi kilichoandikwa kuhusu makala pale tu makala bado inasubiri kura yake mwenyewe.",
         "shut": "Wakaguzi hujadili makala hapa. Majadiliano yanabaki yamefichwa ili yasiathiri kura yako.",
         "notSent": "Haukutumwa. Jaribu tena.",
@@ -8732,7 +8732,7 @@
         "whoFor": "Ni kwa ajili ya nani",
         "to": "Kwa",
         "everyone": "Kila mtu",
-        "forOne": "Ni kwa {name} ajibu. Kila mtu anayeweza kuona kura za makala hii anausoma, na unabaki kwenye orodha ya Uchujaji ya {name} hadi wakati huo.",
+        "forOne": "Ni kwa {name} ajibu. Kila mtu anayeweza kuona kura za makala hii anausoma, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wa Uchujaji wa {name} hadi ajibu.",
         "forAll": "Kila mtu anayeweza kuona kura za makala hii anausoma. Chagua jina ili kumuuliza mtu mmoja swali.",
         "answerPlaceholder": "Mjibu {name}",
         "askPlaceholder": "Muulize {name} swali",
@@ -8748,7 +8748,7 @@
         "onItsWay": "PDF iko njiani",
         "cantShow": "PDF hii haiwezi kuonyeshwa hapa. Ifungue kwenye kichupo kipya."
       },
-      "perPaper": "krediti {credits} kwa kila makala",
+      "perPaper": "{credits, plural, one {krediti #} other {krediti #}} kwa kila makala",
       "pickerCost": "Krediti kwa kila makala"
     },
     "overview": {
@@ -8788,7 +8788,7 @@
         "move": "Hamisha makala",
         "agreement": "Makubaliano",
         "helpTitle": "Jinsi makala zinavyogawanywa",
-        "eachOf": "{each, number} kati ya {people, plural, other {watu #}} wanapigia kura kila makala",
+        "eachOf": "{each, plural, one {# kati ya {people, plural, other {watu #}} anapigia} other {# kati ya {people, plural, other {watu #}} wanapigia}} kura kila makala",
         "everyPerson": "Kila mtu anapigia kura kila makala",
         "modelsRead": "Modeli zinasoma kila makala iliyo wazi",
         "sharing": "{share, select, true {Kila mtu anapigia kura sehemu ya makala.} other {Kila mtu anapigia kura kila makala.}}{models, select, true { Kila modeli inasoma makala ambazo bado ziko wazi, na mpya zinapoongezwa. Inaruka makala iliyoamuliwa kabla haijajiunga.} other {}}",
@@ -8805,7 +8805,7 @@
         "models": "Modeli",
         "takenOff": "Ameondolewa",
         "invited": "Wamealikwa",
-        "thrownOut": "Kura zimetupwa",
+        "thrownOut": "Kura zimeacha kuhesabiwa",
         "stillCount": "{count, plural, one {kura # bado inahesabiwa} other {kura # bado zinahesabiwa}}",
         "castNone": "Hajapiga kura",
         "nobody": "{change, select, true {Bado hakuna anayepigia kura makala hizi. Ongeza mtu au modeli kutoka Watu, juu ya ukurasa.} other {Bado hakuna anayepigia kura makala hizi.}}"
@@ -8828,7 +8828,7 @@
       },
       "row": {
         "reading": "Inasoma",
-        "creditsSpent": "Krediti {credits} zimetumika",
+        "creditsSpent": "{credits, plural, one {Krediti # imetumika} other {Krediti # zimetumika}}",
         "done": "Amemaliza",
         "reminded": "Amekumbushwa {ago}",
         "activeNow": "Yuko hai sasa",
@@ -8846,12 +8846,12 @@
         "noPeople": "Hakuna watu wa kulinganisha nao",
         "nothingYet": "Bado hakuna cha kulinganisha",
         "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted>",
-        "missedOf": "Ilitenga {missed, number} kati ya {included, number} zilizojumuishwa",
+        "missedOf": "Ilipiga kura Tenga kwa {missed, number} kati ya {included, number} zilizojumuishwa",
         "ofPairs": "kati ya {count, plural, one {jozi # ya kura} other {jozi # za kura}}",
         "more": "Zaidi",
         "moreFor": "Zaidi kwa {name}",
         "seeVotes": "{mine, select, true {Ona kura zako kwenye Makala} other {Ona kura zake kwenye Makala}}",
-        "creditsShort": "Zimepungua krediti {credits}",
+        "creditsShort": "{credits, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
         "remind": "Tuma ukumbusho",
         "moveAway": "Hamishia makala kwa mtu mwingine",
         "takeOff": "{mine, select, true {Ondoka kwenye uchujaji huu} other {Mwondoe kwenye uchujaji huu}}"
@@ -8918,12 +8918,12 @@
       },
       "checks": {
         "title": "Ukaguzi wa makala mpya",
-        "shut": "{change, select, true {Ukaguzi unatafuta kwenye utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine makala ambazo uchujaji huu bado hauna. Faili iliyopakiwa au orodha iliyobandikwa ina kile ilichokuwa nacho, kwa hivyo hakuna cha kukagua. Ongeza utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine kama chanzo ili upate makala mpya.} other {Ukaguzi unatafuta kwenye utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine makala ambazo uchujaji huu bado hauna. Faili iliyopakiwa au orodha iliyobandikwa ina kile ilichokuwa nacho, kwa hivyo hakuna cha kukagua. Hakuna kinachokaguliwa hadi utafutaji, mkusanyiko, jumuiya, maktaba ya Zotero au uchujaji mwingine uongezwe kama chanzo.}}",
+        "shut": "{change, select, true {Ukaguzi unatafuta makala ambazo uchujaji huu bado hauna katika utafutaji, mikusanyiko, Evidence Communities, maktaba za Zotero na uchujaji mwingine wake. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe. Ongeza mojawapo ya vyanzo hivyo ili upate makala mpya.} other {Ukaguzi unatafuta makala ambazo uchujaji huu bado hauna katika utafutaji, mikusanyiko, Evidence Communities, maktaba za Zotero na uchujaji mwingine wake. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe. Hakuna kinachokaguliwa hadi mojawapo ya vyanzo hivyo kiongezwe.}}",
         "helpTitle": "Kutafuta makala mpya",
         "next": "Ukaguzi unaofuata {day}",
         "onlyAsked": "Ukiomba tu",
-        "skips": "{count, plural, one {Inaruka chanzo # kisichobadilika} other {Inaruka vyanzo # visivyobadilika}}",
-        "means": "Ukaguzi unaendesha tena utafutaji wa kila chanzo na kuongeza makala ambazo uchujaji huu bado hauna. Faili zilizopakiwa na orodha zilizobandikwa hazibadiliki kamwe, kwa hivyo ukaguzi unaziruka.",
+        "skips": "{count, plural, one {Inaruka chanzo # kisichobadilika kamwe} other {Inaruka vyanzo # visivyobadilika kamwe}}",
+        "means": "Ukaguzi unasoma tena kila chanzo na kuongeza makala ambazo uchujaji huu bado hauna. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe, kwa hivyo ukaguzi unaziruka.",
         "checkNow": "Kagua sasa",
         "every": "{every, select, day {Inakagua kila siku} week {Inakagua kila wiki} other {Inakagua kila mwezi}}",
         "onlyWhenAsked": "Inakagua ukiomba tu",
@@ -8970,7 +8970,7 @@
         "title-desc": "Kichwa, Z hadi A",
         "result": "Matokeo",
         "newest": "Zilizochapishwa, mpya kwanza",
-        "split": "Kutokubaliana zaidi",
+        "split": "Kura zilizogawanyika zaidi",
         "points": "Pointi nyingi zaidi",
         "shut": "Uchujaji huu unaficha kura za wakaguzi wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua"
       },
@@ -8989,7 +8989,7 @@
         "anyVote": "Kura yoyote",
         "noVote": "Hakuna kura",
         "settled": "Aliamua matokeo",
-        "decisions": "Maamuzi",
+        "decisions": "Zilizoamuliwa",
         "added": "Imeongezwa",
         "anyTime": "Wakati wowote",
         "atStart": "Mwanzoni",
@@ -9087,7 +9087,7 @@
       },
       "why": {
         "nobodyCanVote": "Bado hakuna mkaguzi anayeweza kuipigia kura",
-        "waitingOnYou": "Inakusubiri wewe",
+        "waitingOnYou": "Inasubiri kura yako",
         "waitingOn": "Inasubiri",
         "noVoteFrom": "Hakuna kura kutoka kwa"
       },
@@ -9121,8 +9121,8 @@
         "overrideTitle": "Kubadilisha matokeo",
         "votesKept": "Kura zinabaki",
         "canReopen": "Inaweza kufunguliwa tena",
-        "overrideSays": "Uamuzi wako unachukua nafasi ya matokeo yaliyotolewa na kura. Kura zinabaki kwenye kumbukumbu. Fungua tena inaondoa uamuzi wako, na kura zinaamua matokeo tena.",
-        "yetToVote": "{who, select, you {Bado hujapiga kura. Uamuzi wako unaamua makala bila kura hiyo, na kuiondoa kwenye orodha yako.} one {{names} bado hajapiga kura. Uamuzi wako unaamua makala bila kura hiyo, na kuiondoa kwenye orodha yake.} withYou {{names} bado hamjapiga kura. Uamuzi wako unaamua makala bila kura hizo, na kuiondoa kwenye orodha zenu.} other {{names} bado hawajapiga kura. Uamuzi wako unaamua makala bila kura hizo, na kuiondoa kwenye orodha zao.}}",
+        "overrideSays": "Unachochagua kinachukua nafasi ya matokeo yaliyotolewa na kura. Kura zinabaki kwenye kumbukumbu. Fungua tena inaondoa ulichochagua, na kura zinaamua matokeo tena.",
+        "yetToVote": "{who, select, you {Bado hujapiga kura. Unachochagua kinaamua makala bila kura hiyo, na kuiondoa kwenye orodha yako.} one {{names} bado hajapiga kura. Unachochagua kinaamua makala bila kura hiyo, na kuiondoa kwenye orodha yake.} withYou {{names} bado hamjapiga kura. Unachochagua kinaamua makala bila kura hizo, na kuiondoa kwenye orodha zenu.} other {{names} bado hawajapiga kura. Unachochagua kinaamua makala bila kura hizo, na kuiondoa kwenye orodha zao.}}",
         "cancel": "Ghairi",
         "afterYouVote": "Baada ya kupiga kura"
       }
@@ -9166,8 +9166,8 @@
         "join": "Wewe si mkaguzi wa uchujaji huu. Jiunge kama mkaguzi ili upige kura."
       },
       "votesShut": "Kura za wengine zinabaki zimefichwa ili zisiathiri kura yako.",
-      "creditsShort": "Zimepungua krediti {short}",
-      "retry": "{papers, plural, one {Jaribu makala tena kwa krediti {cost}} other {Jaribu makala zote # tena kwa krediti {cost}}}",
+      "creditsShort": "{short, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
+      "retry": "{papers, plural, one {Jaribu makala tena kwa {cost, plural, one {krediti #} other {krediti #}}} other {Jaribu makala zote # tena kwa {cost, plural, one {krediti #} other {krediti #}}}}",
       "votesBy": "{you, select, true {Kura zako} other {Kura za {name}}}",
       "openPapers": {
         "conflict": "{count, number} zenye mgongano",
@@ -9226,7 +9226,7 @@
       "yourVote": "Kura yako",
       "result": "Matokeo",
       "answersDiffer": "Majibu yanatofautiana",
-      "nextAfter": "{settling, select, true {Makala inayofuata baada ya kila uamuzi} other {Makala inayofuata baada ya kila kura}}",
+      "nextAfter": "{settling, select, true {Makala inayofuata baada ya kila unayoiamua} other {Makala inayofuata baada ya kila kura}}",
       "settleConflicts": "{settle, select, true {Amua {count, plural, one {mgongano #} other {migongano #}}} other {Ona {count, plural, one {mgongano #} other {migongano #}}}}",
       "screenPapers": "Chuja {count, plural, one {makala #} other {makala #}}",
       "queue": {
@@ -9270,13 +9270,13 @@
         "exclude": "Tenga, kisha sema kwa nini",
         "next": "Makala inayofuata, bila kura",
         "previous": "Makala iliyotangulia",
-        "undo": "{settling, select, true {Tendua uamuzi wa mwisho} other {Tendua kura ya mwisho}}",
+        "undo": "{settling, select, true {Tendua ulichoamua mwisho} other {Tendua kura ya mwisho}}",
         "queue": "Onyesha au ficha foleni",
         "keys": "Onyesha njia hizi za mkato"
       },
       "votes": {
         "title": "Kura za kila mtu",
-        "titleAdvice": "Kura na ushauri wa AI",
+        "titleAdvice": "Kura na ushauri wa modeli",
         "forSettler": "{you, select, true {Kwa ajili yako kuamua} other {Kwa ajili ya {name} kuamua}}",
         "waitingFrom": "kutoka kwa {names}",
         "more": "{count, plural, other {# zaidi}}",
@@ -9288,7 +9288,7 @@
         "pointsWhy": "Majibu yako yanaelekeza kwenye <b>{points}</b>. Ulijibu {answer, select, no {Hapana} other {Haieleweki}} kwa {many, select, true {vigezo {numbers}, ambavyo ni masharti ya lazima} other {kigezo {numbers}, sharti la lazima}}. Kura yako bado haijapigwa.",
         "allMet": "Majibu yako yanaelekeza kwenye <b>{points}</b>, kwa kuwa kila sharti la lazima limetimizwa. Kura yako bado haijapigwa.",
         "againstLine": "Ulipigia {voted}. Majibu yako yanaelekeza kwenye <b>{points}</b>.",
-        "pointsLine": "Majibu yako yanaelekeza kwenye <b>{points}</b>. Bado haijapigwa."
+        "pointsLine": "Majibu yako yanaelekeza kwenye <b>{points}</b>. Kura yako bado haijapigwa."
       },
       "paper": {
         "label": "Makala",
@@ -9326,8 +9326,8 @@
         "withNote": "Imehifadhiwa na dokezo",
         "nowInConflicts": "Sasa iko kwenye Migongano",
         "more": "Zaidi kwa makala hii",
-        "dragRight": "Buruta makala kulia ili kujumuisha",
-        "dragLeft": "Iburute kushoto ili kutenga",
+        "dragRight": "Buruta makala kulia kwa Jumuisha",
+        "dragLeft": "Iburute kushoto kwa Tenga",
         "undo": "Tendua",
         "alsoFailed": "{count, plural, other {na # zaidi}}",
         "votedDifferently": "{count, plural, other {# walipiga kura tofauti}}"
@@ -9447,7 +9447,7 @@
         "aboutFiles": "Faili ya marejeleo ni kile ambacho hifadhidata au programu ya marejeleo inahamisha. Kila rekodi yake yenye kichwa na muhtasari ni makala.",
         "aboutPdfs": "PDF inasomwa mara tu inapoongezwa, kupata kichwa chake na DOI yake. Pale faharasa ya Openscholar ina DOI hiyo, makala inaonyeshwa na kichwa na muhtasari wa faharasa. Vinginevyo makala ni PDF yenyewe. Mtu anayeichuja anasoma faili, na vivyo hivyo kila modeli ya AI inayosoma PDF, kila ukurasa wake. Modeli inayosoma maandishi tu, au isiyoweza kupokea PDF ndefu hivyo, haipati kura kwenye makala hiyo. Nakala iliyoskaniwa inasomwa kwa njia hiyohiyo. Faili isiyofunguka inaachwa.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, au faili ya maandishi yenye DOI, idadi yoyote kwa wakati mmoja",
-        "pdfCost": "Modeli inasoma kurasa za kwanza za kila PDF kupata kichwa na DOI. Hiyo inagharimu hadi krediti {credits} kwa kila PDF, zinazolipwa inapoongezwa",
+        "pdfCost": "Modeli inasoma kurasa za kwanza za kila PDF kupata kichwa na DOI. Hiyo inagharimu hadi {credits, plural, one {krediti #} other {krediti #}} kwa kila PDF, zinazolipwa inapoongezwa",
         "filesLabel": "Faili za kupakia",
         "choose": "Chagua faili",
         "sent": "{sent, number} kati ya {total, number} zimetumwa",
@@ -9483,10 +9483,10 @@
         "loading": "Inapakia Zotero",
         "loadingCollections": "Inapakia mikusanyiko",
         "notConnected": "Zotero haijaunganishwa",
-        "connectWhy": "Iunganishe ili uchague kutoka maktaba yako na vikundi ulivyomo.",
+        "connectWhy": "Iunganishe ili uchague kutoka maktaba yako ya Zotero na vikundi vya Zotero.",
         "connect": "Unganisha Zotero",
         "withSubCollections": "Pamoja na mikusanyiko yake midogo",
-        "aboutUnder": "Takriban {count, number} pamoja na kilicho chini yake",
+        "aboutUnder": "Takriban {count, number} pamoja na mikusanyiko yake midogo",
         "library": "Maktaba ya Zotero",
         "findGroup": "Tafuta kikundi",
         "yours": "Yako",
@@ -9503,7 +9503,7 @@
         "subAbout": "Zotero inahesabu vipengee vilivyowekwa moja kwa moja kwenye mkusanyiko tu, na hesabu hapa pia. Hiki kikiwashwa, mkusanyiko unaongezwa pamoja na makala za kila mkusanyiko ulio chini yake. Kwa pamoja zina takriban jumla ya hesabu za Zotero kwa kila mmoja, na idadi inakuwa sahihi uchujaji ukishazisoma.",
         "readingCount": "Inasoma mikusanyiko, {read, number} kati ya {total, number}",
         "reading": "Inasoma mikusanyiko",
-        "failed": "Zotero haikuweza kusomwa. Fungua maktaba tena.",
+        "failed": "Zotero haikuweza kusomwa. Fungua maktaba ya Zotero tena.",
         "everyPaper": "Kila makala kwenye {library}",
         "group": "Kikundi cha Zotero",
         "own": "Maktaba yako ya Zotero",
@@ -9568,7 +9568,7 @@
         "rows": "{count, plural, one {safu #} other {safu #}}",
         "readings": "{count, plural, one {usomaji #} other {usomaji #}}",
         "changes": "{count, plural, one {badiliko #} other {mabadiliko #}}",
-        "credits": "krediti {count}"
+        "credits": "{count, plural, one {krediti #} other {krediti #}}"
       },
       "numberWord": "{n, select, 1 {Mmoja} 2 {Wawili} 3 {Watatu} 4 {Wanne} 5 {Watano} 6 {Sita} 7 {Saba} 8 {Wanane} 9 {Tisa} 10 {Kumi} other {{n}}}",
       "quoted": "“{text}”",

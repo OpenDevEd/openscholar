@@ -312,7 +312,7 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
         </p>
         <p className="text-xs text-muted-foreground">{t("upload.kinds")}</p>
         {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. Its line is held while the price is read. */}
-        {lookCredits === null || lookCredits === 0 ? null : <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", lookCredits === undefined && "invisible")}><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.credits(lookCredits ?? 0) })}</p>}
+        {lookCredits === null || lookCredits === 0 ? null : <p className={cn("flex items-center gap-1.5 text-xs text-muted-foreground", lookCredits === undefined && "invisible")}><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.creditsOf(lookCredits ?? 0) })}</p>}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
         <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>

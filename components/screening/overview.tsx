@@ -521,7 +521,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
           {reviewer.kind === "model" ? (
             <p className={cn("flex min-w-0 items-center gap-1 text-xs tabular-nums", reading && held?.stop ? "ink-warning" : "text-muted-foreground")}>
               {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
-              <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.credits(open.spent(reviewer)) })}</span>
+              <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.creditsOf(open.spent(reviewer)) })}</span>
             </p>
           ) : (
             <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.t("person.invited") : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
@@ -550,7 +550,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
               <p>{t("row.unreadSays", { count: unread })}</p>
               <Unread open={open} model={reviewer} />
-              {open.canChange ? <RetryRead papers={unread} cost={words.credits(retry.cost)} short={retry.short ? words.credits(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} variant="default" size="sm" className="shrink-0" /> : null}
+              {open.canChange ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -605,7 +605,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem>
-              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.credits(retry.short) })}</span> : null}</DropdownMenuItem> : null}
+              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && left ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
               ) : null}
