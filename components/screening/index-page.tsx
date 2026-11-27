@@ -36,7 +36,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
 import { inOrder, RESULTS } from "./data";
 import { searchHistory } from "./address";
-import { newHref, overviewHref, papersHref, reviewerHref, screenHref } from "./links";
+import { askedHref, newHref, overviewHref, papersHref, reviewerHref, screenHref } from "./links";
 import { draftOf, useKept } from "./drafts";
 import { OVERS, ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
 import { Faces, FilterMenu, Help, LinkChip, StateChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
@@ -104,7 +104,9 @@ export function ScreeningsIndex() {
   // Under the default order what waits for the person leads the first page, and the pages after it never repeat one.
   const pinned = sort === "you" && show !== "finished" && listed.page === 1 ? needs.filter((row) => show === "all" || !row.finishedAt) : [];
   const paged = show === "you" ? [] : listed.items.filter((row) => !(sort === "you" && show !== "finished" && waiting.has(row.id)));
-  const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? shared.filter((row) => !waiting.has(row.id) && (show === "all" || (show === "finished") === Boolean(row.finishedAt))) : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
+  // Screenings shared from outside its workspace come on the first page, on top of its own: the pager counts them there.
+  const sharedShown = shared.filter((row) => !waiting.has(row.id) && (show === "all" || (show === "finished") === Boolean(row.finishedAt)));
+  const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? sharedShown : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
@@ -276,7 +278,7 @@ export function ScreeningsIndex() {
                             {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{t("forYouToScreen", { count: forYou })}</LinkChip> : null}
                             {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{t("conflictsToSettle", { count: conflicts })}</LinkChip> : null}
                             {/* It opens the paper the question is about, where it is answered. */}
-                            {asked ? <LinkChip href={row.isReviewer ? screenHref(id, { paper: askedFirst }) : papersHref(id, { paper: askedFirst })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{t("questionsForYou", { count: asked })}</LinkChip> : null}
+                            {asked && askedFirst ? <LinkChip href={askedHref(id, askedFirst, row.askedWhere)} tone="primary" icon={MessagesSquare} className="relative shrink-0">{t("questionsForYou", { count: asked })}</LinkChip> : null}
                             {/* What its models are doing shows beside your work. */}
                             {models === "reading" ? <LinkChip href={overviewHref(id)} className="relative shrink-0"><span className="flex items-center gap-1.5"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</span></LinkChip>
                               : models === "waiting" ? (ahead ? <LinkChip href={overviewHref(ahead.id)} icon={MODELS_SAY.waiting.icon} className="relative shrink-0">{tp.rich("modelsSay.waiting.says", { name: ahead.name, link: (chunks) => chunks })}</LinkChip> : null)
@@ -309,8 +311,8 @@ export function ScreeningsIndex() {
                 </ul>
                 )}
                 </AutoHeight>
-                {/* The total is the tabs' own count, the screenings shared from outside with it. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so no total is said there. */}
-                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, ...(searched || runBy.by || !counts || sort === "you" ? {} : ((total: number) => ({ total, pageCount: Math.max(1, Math.ceil(total / PAGE)) }))(show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all)) }} /> : null}
+                {/* The total is the tabs' own count, with the screenings shared from outside, which the first page shows on top of its own; the pages are its own screenings'. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so no total is said there. */}
+                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset + (listed.page > 1 ? sharedShown.length : 0), shown: listed.items.length + (listed.page === 1 ? sharedShown.length : 0), ...(searched || runBy.by || !counts || !tally || sort === "you" ? {} : { total: show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all, pageCount: Math.max(1, Math.ceil((show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished) / PAGE)) }) }} /> : null}
               </>
             )}
             </AutoHeight>
@@ -326,7 +328,7 @@ export function ScreeningsIndex() {
 
 /** A group's labelled row before its first screening on the page, under the default order. */
 /** The screenings that wait for the person in another workspace. This list holds this workspace's own, so each of those is a link to where it is. */
-function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number }> }) {
+function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number; askedFirst?: string; askedWhere?: "conflicts" | "screen" | "papers" }> }) {
   const t = useTranslations("screening.list");
   const words = useWords();
   if (!rows.length) return null;
@@ -345,7 +347,7 @@ function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: strin
             <span className="ms-auto flex flex-wrap items-center gap-1.5">
               {row.forYou ? <LinkChip elsewhere href={there(screenHref(row.id))} tone="primary" icon={ListChecks} className="shrink-0">{t("forYouToScreen", { count: row.forYou })}</LinkChip> : null}
               {row.conflicts ? <LinkChip elsewhere href={there(screenHref(row.id, { queue: "conflicts" }))} tone="info" icon={GitCompare} className="shrink-0">{t("conflictsToSettle", { count: row.conflicts })}</LinkChip> : null}
-              {row.asked ? <LinkChip elsewhere href={there(overviewHref(row.id))} tone="primary" icon={MessagesSquare} className="shrink-0">{t("questionsForYou", { count: row.asked })}</LinkChip> : null}
+              {row.asked ? <LinkChip elsewhere href={there(row.askedFirst ? askedHref(row.id, row.askedFirst, row.askedWhere) : overviewHref(row.id))} tone="primary" icon={MessagesSquare} className="shrink-0">{t("questionsForYou", { count: row.asked })}</LinkChip> : null}
             </span>
           </li>
         );

@@ -8293,10 +8293,10 @@
         "lastSpent": "About {spent, plural, one {# credit} other {# credits}} to read the {count, plural, one {# paper} other {# papers}} the last check added"
       },
       "criteria": {
-        "wordsHint": "Highlighted in each abstract while people vote",
-        "wordsLabel": "Words to mark",
-        "shortNameHint": "Names it in columns, filters and reasons",
-        "guidanceHint": "What counts and what doesn't, read by reviewers and models",
+        "wordsHint": "Highlighted in each abstract while people vote, up to {count} words",
+        "wordsLabel": "Marked words",
+        "shortNameHint": "Shown in columns, filters and reasons, up to {count} characters",
+        "guidanceHint": "{models, select, true {What counts and what doesn't, read by reviewers and models} other {What counts and what doesn't, read by reviewers}}",
         "guidanceLabel": "Guidance",
         "helpTitle": "Must-have and nice-to-have",
         "factPeople": "People vote directly",
@@ -8315,6 +8315,8 @@
         "shortNameOf": "Short name of criterion {n}",
         "criterion": "Criterion {n}",
         "questionPlaceholder": "Write a yes-or-no question",
+        "repeated": "That question is already a criterion",
+        "full": "A screening has up to {count} criteria",
         "guidanceFor": "Guidance for criterion {n}",
         "guidancePlaceholder": "Such as \"Primary schools only, not universities\"",
         "wordsFor": "Words to mark for criterion {n}",
@@ -8490,6 +8492,7 @@
       "reopen": "Reopen",
       "resumeModels": "Resume models",
       "checkNew": "Check for new papers",
+      "checkReopens": "Check, and reopen if new papers come",
       "addCredits": "Add credits",
       "markFinished": "Mark as finished",
       "leaveScreening": "Leave this screening",
@@ -8537,7 +8540,7 @@
         "nothing": "The last check found no new papers",
         "counting": "<done></done> of {of, number}",
         "modelPrice": "{name}, {price}",
-        "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. The votes it has cast stay, and it carries on from where it stopped once you add credits.} other {A model stops when the workspace can't pay for its next paper. The votes it has cast stay, and it carries on from where it stopped once {workspace} adds credits.}}",
+        "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. The votes it has cast stay. Add credits, then resume the models, and they carry on from where they stopped.} other {A model stops when the workspace can't pay for its next paper. The votes it has cast stay. The models carry on from where they stopped once a member of {workspace} adds credits and resumes them.}}",
         "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, one {# paper} other {# papers}}",
         "finishedOn": "Finished on {day}",
         "finishedAgo": "Finished {ago}",
@@ -8656,7 +8659,8 @@
         "title": "Stop receiving emails from this screening?",
         "says": "You won't get emails about new papers to vote on, conflicts to settle or reminders. Other people's emails don't change. You can start them again from the screening's menu.",
         "confirm": "Stop receiving emails",
-        "cancel": "Keep receiving"
+        "cancel": "Keep receiving",
+        "keepOff": "Keep them off"
       }
     },
     "list": {
@@ -8730,6 +8734,7 @@
       "addPerson": "Add a person",
       "findPerson": "Find a person, or type an email",
       "nobodyByName": "Nobody in this workspace by that name. Type an email address to invite someone.",
+      "alreadyOn": "They are already on this screening",
       "nobodyElse": "Nobody else in this workspace to add. Type an email address to invite someone.",
       "invite": "Invite",
       "onAlready": "{effort, select, true {{name} is on it already at that effort} other {{name} is on it already}}",
@@ -8951,6 +8956,7 @@
         "skips": "{count, plural, one {Skips # source that never changes} other {Skips # sources that never change}}",
         "means": "A check reads each source again and adds the papers this screening doesn't have yet. Uploaded files and pasted DOIs never change, so checks skip them.",
         "checkNow": "Check now",
+        "checkReopens": "Check, and reopen if new papers come",
         "every": "{every, select, day {Checks every day} week {Checks every week} other {Checks every month}}",
         "onlyWhenAsked": "Checks only when asked",
         "schedule": "Check on a schedule",

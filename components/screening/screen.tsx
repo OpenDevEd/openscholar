@@ -16,7 +16,7 @@ import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform 
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { searchHistory, useOpenInAddress } from "./address";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, BookOpen, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -47,8 +47,8 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
-import { papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { askedHref, papersHref, screenHref, settingsHref } from "./links";
+import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -267,7 +267,7 @@ function Screen({ open }: { open: Open }) {
 
   const [advance, setAdvance] = useState(true);
   // The paper a vote last opened, and when. A press on it within a double-click's half second is the same press again (Safari counts each tap of a double tap as one click), not a vote on a paper nobody has read. The vote buttons also ignore a click counted twice, a double-click at whatever speed the system allows.
-  // A vote that turns the page opens a paper not known yet: then any paper but the one voted on counts as that paper.
+  // A vote that turns the page opens a paper not known yet: for that moment no press counts, on the paper voted on or the one that comes.
   const advanced = useRef<{ paper: string; at: number; pageTurned?: boolean } | null>(null);
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
@@ -393,7 +393,7 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).catch(failed);
   };
   const press = (decision: Decision) => {
-    if (!paper || !mayDecide || (advanced.current && Date.now() - advanced.current.at < 500 && (advanced.current.pageTurned ? advanced.current.paper !== paper.id : advanced.current.paper === paper.id))) return;
+    if (!paper || !mayDecide || (advanced.current && Date.now() - advanced.current.at < 500 && (advanced.current.pageTurned || advanced.current.paper === paper.id))) return;
     // Excluding asks why, unless your own answers or a note already say (lib/screening/rules.ts `givenReason`).
     const reason = decision === "exclude" ? givenReason(criteria, { ...mine?.answers, ...answers[paper.id] }, notes[noteKey(paper.id)] ?? savedNote(paper), resolving) : undefined;
     // On a phone the reasons are a sheet, a step of its own: the paper under it is named first, so Back from the sheet, or from the paper after it, comes back to this one.
@@ -503,7 +503,9 @@ function Screen({ open }: { open: Open }) {
   // How long what is left will take to screen, at the person's own pace: a usual 45 seconds a paper to start with, moved towards their own by each vote, so the figure never lurches after two quick ones.
   const pace = Math.max(8, (45 * 3 + paced.sum) / (3 + paced.n));
   const minutes = Math.round((left * pace) / 60);
-  const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? t("bar.underMinute") : minutes < 90 ? t("bar.minutes", { minutes }) : t("bar.hours", { hours: Math.round(minutes / 60) })) : null;
+  // A count that is only a floor (Vote again past 500) gives no time: the bar says where the paper is instead.
+  const floor = queue === "again" && open.flaggedMore;
+  const timeLeft = mayDecide && queue !== "done" && !floor && left > 0 ? (minutes < 1 ? t("bar.underMinute") : minutes < 90 ? t("bar.minutes", { minutes }) : t("bar.hours", { hours: Math.round(minutes / 60) })) : null;
   // Dragging the paper casts a vote only where a vote is still to cast, on a screen that is touched.
   const swipeable = tablet && answering && mayDecide && !mine && Boolean(paper) && writing !== paper?.id;
   const hasNote = Boolean(paper && (notes[noteKey(paper.id)] ?? savedNote(paper)).trim());
@@ -574,8 +576,8 @@ function Screen({ open }: { open: Open }) {
     <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className={SEARCH_PILL} />
   );
 
-  // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is. A reviewer gets it here, with their own vote on it, in whichever queue it is for them; whoever only settles conflicts reads it in Papers, as the paper may be no conflict.
-  const askedChip = open.asked && open.askedFirst ? <LinkChip href={open.isReviewer ? screenHref(id, { paper: open.askedFirst }) : papersHref(id, { paper: open.askedFirst })} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
+  // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is. It opens where the question is answered (./links.ts `askedHref`).
+  const askedChip = open.asked && open.askedFirst ? <LinkChip href={askedHref(id, open.askedFirst, open.askedWhere)} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
   // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list where it has no column.
   const queueFilters = (className: string) => (
     <>
@@ -614,7 +616,8 @@ function Screen({ open }: { open: Open }) {
   // One the counts say is empty says so at once.
   // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked. Just after a vote here the counts lag it, so the list itself is waited for.
   // Only a pending vote that moves a count (a first vote, a conflict settled) makes the counts lag; changing a vote moves none.
-  const known = !searched && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
+  // A choice of votes in Done that holds none says so in the list, never as "nothing voted yet".
+  const known = !searched && !narrowed && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -631,7 +634,8 @@ function Screen({ open }: { open: Open }) {
       </div>
     );
   }
-  if (reading || (switching && known) || (!paper && !narrowed && !opening)) {
+  // A queue read on past pages of papers no longer in it (a source taken out) is not empty while more is still to read: it says so, with Read further, below.
+  if (reading || (switching && known) || (!paper && !narrowed && !opening && !listed.canNext)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -874,7 +878,7 @@ function Screen({ open }: { open: Open }) {
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
                   aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? t("criteria.answered", { answered: criteria.filter((criterion) => given[criterion.key] !== undefined).length, count: criteria.length }) : words.count("criteria", criteria.length)}</span> : undefined}
                   help={
-                    <Help title={answering ? t("criteria.yours") : t("criteria.title")} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>{t("criteria.mustHaveFact")}</HelpFact><HelpFact icon={CircleHelp}>{t("criteria.guidanceFact")}</HelpFact><HelpFact icon={Highlighter}>{t("criteria.markedFact")}</HelpFact><HelpFact>{t.rich("criteria.showsFact", { mark: (chunk) => <mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</HelpFact></>}>
+                    <Help title={answering ? t("criteria.yours") : t("criteria.title")} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>{t("criteria.mustHaveFact")}</HelpFact><HelpFact icon={BookOpen}>{t("criteria.guidanceFact")}</HelpFact><HelpFact icon={Highlighter}>{t("criteria.markedFact")}</HelpFact><HelpFact>{t.rich("criteria.showsFact", { mark: (chunk) => <mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</HelpFact></>}>
                       {answering ? t("criteria.helpAnswering") : t("criteria.helpReading")}
                     </Help>
                   }
@@ -902,7 +906,7 @@ function Screen({ open }: { open: Open }) {
                               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 ps-6.5">
                                 {criterion.note ? (
                                   <button type="button" aria-expanded={guided} onClick={() => setKept({ guides: guided ? guides.filter((one) => one !== guideKey) : [...guides, guideKey] })} className={cn(AID, guided ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                    <CircleHelp aria-hidden className="size-3.5" />{t("criteria.guidance")}<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", guided && "rotate-180")} />
+                                    <BookOpen aria-hidden className="size-3.5" />{t("criteria.guidance")}<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", guided && "rotate-180")} />
                                   </button>
                                 ) : null}
                                 {marked ? (
@@ -982,7 +986,7 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" && kept ? t("bar.notInList") : queue === "done" || !mayDecide ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" && kept ? t("bar.notInList") : queue === "done" || !mayDecide || floor ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
@@ -1221,18 +1225,6 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
     >
       {title}
     </ListEmpty>
-  );
-}
-
-/** A sentence of the abstract, with the criteria's words marked, the picked criterion's standing out, and the whole of it marked where it is the sentence a model named. */
-function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; quoted: boolean; terms: string[]; /** The words of the criterion being looked at. */ lit: string[] }) {
-  const strong = lit.map((term) => term.toLowerCase());
-  const pattern = termsPattern(terms);
-  const parts = pattern ? text.split(pattern) : [text];
-  return (
-    <span data-sentence={at} className={cn("scroll-my-6 rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
-      {parts.map((part, i) => (i % 2 ? <mark key={i} className={cn("rounded-sm text-foreground transition-colors duration-200", strong.some((term) => part.toLowerCase().startsWith(term)) ? "bg-warning/40" : "bg-primary/15")}>{part}</mark> : part))}{" "}
-    </span>
   );
 }
 

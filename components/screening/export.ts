@@ -377,9 +377,9 @@ export function methodsOf(out: Taken) {
   const [kept, open] = [totalIn(out), openIn(out)];
   const { left, bare, merged } = removedOf(screening.sources);
   // Sources that failed before they gave any record: what they hold isn't among the records counted. One that failed a later check has its records counted, and the sentence on later searches says that search was incomplete.
-  const unreadNow = screening.sources.filter((source) => source.read?.state === "failed" && !source.read.removedAt && taken(source) + leftOf(source) === 0);
+  const unreadNow = screening.sources.filter((source) => source.read?.state === "failed" && taken(source) + leftOf(source) === 0);
   // Sources that gave some records and then failed: what they gave is counted, the rest isn't.
-  const partlyRead = screening.sources.filter((source) => source.read?.state === "failed" && !source.read.removedAt && taken(source) + leftOf(source) > 0);
+  const partlyRead = screening.sources.filter((source) => source.read?.state === "failed" && taken(source) + leftOf(source) > 0);
   const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   // The people per record the rule asks for, counting invitations still waiting, as every page counts them.

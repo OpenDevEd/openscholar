@@ -27,7 +27,7 @@ import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
-import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, termsPattern, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { useWords, type Words } from "./words";
@@ -269,7 +269,8 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
         const shape = cn("flex ring-2 ring-card", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5");
         const face = <ReviewerMark reviewer={reviewer} you={reviewer.id === me} className={mark} />;
         const link = links[i];
-        if (!link) return <span key={reviewer.id} className={shape}>{face}</span>;
+        // A face with nothing to open still says whose it is, as the faces beside it do.
+        if (!link) return linkOf ? <TooltipHint key={reviewer.id} label={reviewer.id === me ? words.t("you") : reviewer.name}><span tabIndex={0} aria-label={reviewer.id === me ? words.t("you") : reviewer.name} className={cn(shape, "outline-none focus-visible:ring-ring/60")}>{face}</span></TooltipHint> : <span key={reviewer.id} className={shape}>{face}</span>;
         return (
           <TooltipHint key={reviewer.id} label={link.says}>
             <NextLink href={link.href} aria-label={link.says} aria-current={link.on ? "true" : undefined} className={cn("relative outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none", shape, narrowed && (link.on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"))}>
@@ -915,5 +916,17 @@ export function ReasonNoteField({ value, onChange, className }: { value: string;
       aria-label={t("exclude.whyLabel")}
       className={cn("max-h-24 min-h-8 resize-none py-1.5 text-sm max-lg:min-h-14", className)}
     />
+  );
+}
+
+/** A sentence of the abstract, with the criteria's words marked, the picked criterion's standing out, and the whole of it marked where it is the sentence a model named. */
+export function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; quoted: boolean; terms: string[]; /** The words of the criterion being looked at. */ lit: string[] }) {
+  const strong = lit.map((term) => term.toLowerCase());
+  const pattern = termsPattern(terms);
+  const parts = pattern ? text.split(pattern) : [text];
+  return (
+    <span data-sentence={at} className={cn("scroll-my-6 rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
+      {parts.map((part, i) => (i % 2 ? <mark key={i} className={cn("rounded-sm text-foreground transition-colors duration-200", strong.some((term) => part.toLowerCase().startsWith(term)) ? "bg-warning/40" : "bg-primary/15")}>{part}</mark> : part))}{" "}
+    </span>
   );
 }

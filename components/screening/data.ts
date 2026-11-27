@@ -101,7 +101,7 @@ export const refOf = (set: SourceSet) =>
   : set.kind === "saved" ? "saved"
   : undefined;
 /** How a source's reading stands on the server, once the screening exists: what was read of it, taken, merged with another source's and left out. */
-export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; /** Those by length (lib/pricing/estimate.ts `Pdfs`). */ fileSpread?: Record<string, { papers: number; pages: number; most?: number }>; checkedAt?: number; removedAt?: number ; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
+export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; failure?: string; read: number; taken: number; duplicates: number; left: number; /** Of the ones left out, how many for having no abstract. */ bare: number; /** Of the ones taken, how many are screened as their own PDF, and the pages those have. */ filed: number; filePages: number; /** Those by length (lib/pricing/estimate.ts `Pdfs`). */ fileSpread?: Record<string, { papers: number; pages: number; most?: number }>; checkedAt?: number; /** Its reading stopped at the most papers the workspace's plan gives one screening. */ capped?: boolean };
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
 export type Source = {
   id: string;
@@ -150,7 +150,7 @@ export type LeftOut = { name: string; why: string };
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 /** Sources whose papers can come with no abstract and their PDF, which a model is sent whole and charges for by the page. */
-export const bringsPdfs = (sources: Source[]) => sources.some((source) => (source.kind === "zotero" || source.kind === "pdf") && source.read?.removedAt === undefined);
+export const bringsPdfs = (sources: Source[]) => sources.some((source) => (source.kind === "zotero" || source.kind === "pdf"));
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
 /** What a source held when it was added, before any check found more. */
 export const baseTotal = (source: Source) => source.total - grown(source);
@@ -377,7 +377,7 @@ export const DAY = 86_400_000;
 export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after", models: "vote" });
 export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), stars: defaultStars(criteria.length) });
 /** The sources a check looks in again. */
-export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind) && !source.read?.removedAt);
+export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind));
 
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

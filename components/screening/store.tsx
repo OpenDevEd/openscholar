@@ -16,6 +16,8 @@ import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCr
 import { modelsProgress, twinsNamed, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
+import { showStyledToast } from "@/components/ui/sonner";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 import { useWords, type Words } from "./words";
 
@@ -127,7 +129,7 @@ function toSource(source: View["sources"][number], noQuery: string): Source {
     duplicates: source.duplicates,
     set: source.set as Source["set"],
     ...(refOf(source.set as NonNullable<Source["set"]>) ? { ref: refOf(source.set as NonNullable<Source["set"]>) } : {}),
-    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, filed: source.filed, filePages: source.filePages, ...(source.fileSpread ? { fileSpread: source.fileSpread } : {}), ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }), ...(source.removedAt === undefined ? {} : { removedAt: source.removedAt }) },
+    read: { state: source.state, ...(source.failure ? { failure: source.failure } : {}), read: source.read, taken: source.taken, duplicates: source.duplicates, left: source.left, bare: source.bare, filed: source.filed, filePages: source.filePages, ...(source.fileSpread ? { fileSpread: source.fileSpread } : {}), ...(source.capped ? { capped: true } : {}), ...(source.checkedAt === undefined ? {} : { checkedAt: source.checkedAt }) },
     addedAt: source.addedAt,
   };
 }
@@ -177,6 +179,9 @@ export function useOpenScreening(id: string) {
   const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), id ? { jobId } : "skip")).data;
   const words = useWords();
   const noQuery = useTranslations("common")("noQuery");
+  // What the frame's own buttons start (pause, resume, reopen, join) says so when the server refuses it, wherever it is pressed: a refusal is never a click that seems to do nothing.
+  const didntWork = useTranslations("screening.frame")("failed");
+  const told = (run: Promise<unknown>) => run.then(() => undefined, (error: unknown) => { showStyledToast("error", getErrorMessage(error, didntWork)); });
   const screening = useMemo(() => (view ? toScreening(view, { ...words, noQuery }) : null), [view, words, noQuery]);
   // The same screening with its reviewers named as a file names them: a file's words are English whoever takes it out (./export.ts).
   const filed = useMemo(() => (view ? toScreening(view, FILE_NAMES) : null), [view]);
@@ -231,6 +236,7 @@ export function useOpenScreening(id: string) {
     asked: view.asked,
     /** The first paper a question waits on, which "your questions" opens. */
     askedFirst: view.askedFirst,
+    askedWhere: view.askedWhere,
     /** The last check of its sources, whatever it found. */
     lastCheck: view.lastCheck ?? null,
     /** Votes of theirs that ask for a new one, since a criterion became a must-have. */
@@ -257,16 +263,16 @@ export function useOpenScreening(id: string) {
     vote: (paperId: Id<"screeningResults">, ballot: Ballot | null) => vote({ jobId, paperId, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
     voteMany: (paperIds: Id<"screeningResults">[], ballot: Ballot) => voteMany({ jobId, paperIds, decision: ballot.decision, ...(ballot.reason ? { reason: ballot.reason } : {}), ...(ballot.note ? { note: ballot.note } : {}) }),
     resolve: (paperId: Id<"screeningResults">, decision: Decision | null, note?: string, reason?: string) => resolve({ jobId, paperId, decision, ...(note ? { note } : {}), ...(reason ? { reason } : {}) }),
-    pause: () => pause({ jobId }),
-    resume: () => resume({ jobId }),
+    pause: () => told(pause({ jobId })),
+    resume: () => told(resume({ jobId })),
     finish: () => finish({ jobId }),
-    reopen: () => reopen({ jobId }),
+    reopen: () => told(reopen({ jobId })),
     rename: (name: string) => rename({ jobId, name }),
     remove: () => remove({ jobId }),
     /** Looks in its sources again now, whoever asks: the papers they gained since the last look join the queue. */
     check: () => check({ jobId }),
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
-    join: () => join({ jobId }),
+    join: () => told(join({ jobId })),
     /** Whether the screening emails the person looking, and their own switch for it. */
     emails: view.emails,
     setEmails: (on: boolean) => setEmails({ jobId, on }),

@@ -10,7 +10,7 @@ import { stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { personName } from "../lib/people";
@@ -275,15 +275,19 @@ export const guestChanged = internalMutation({
   handler: async (ctx, { item, userId }) => {
     const jobId = ctx.db.normalizeId("screeningJobs", item);
     const job = jobId ? await ctx.db.get("screeningJobs", jobId) : null;
-    if (!job || job.shape !== 2) return null;
-    const [grant, person] = await Promise.all([grantOf(ctx, job._id, userId), ctx.db.get("users", userId)]);
-    if (person && (await actorIn(ctx, person, job.workspaceId))) return null;
-    const reviewer = (await reviewersOf(ctx, job._id)).find((one) => one.kind === "person" && one.userId === userId);
-    if (grant?.role === "editor" && job.finishedAt === undefined) await addPerson(ctx, job, userId, grant.grantedBy);
-    else if (grant?.role !== "editor" && reviewer) await takeOff(ctx, job, reviewer, false);
+    if (job?.shape === 2) await placeGuest(ctx, job, userId);
     return null;
   },
 });
+
+/** Puts a guest on a screening as a reviewer, or takes them off, as their place as its guest says. A finished screening takes no one on: reopening it asks again for each guest (./screenings.ts `reopen`). */
+async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">) {
+  const [grant, person] = await Promise.all([grantOf(ctx, job._id, userId), ctx.db.get("users", userId)]);
+  if (person && (await actorIn(ctx, person, job.workspaceId))) return;
+  const reviewer = (await reviewersOf(ctx, job._id)).find((one) => one.kind === "person" && one.userId === userId);
+  if (grant?.role === "editor" && job.finishedAt === undefined) await addPerson(ctx, job, userId, grant.grantedBy);
+  else if (grant?.role !== "editor" && reviewer) await takeOff(ctx, job, reviewer, false);
+}
 
 /**
  * Moves papers one person hasn't voted on yet to another person on the same screening, the ones furthest down their
@@ -298,12 +302,8 @@ export const move = workspaceMutation({
     if (!giver || !taker || giver.jobId !== jobId || taker.jobId !== jobId || !dealable(giver) || !dealable(taker) || from === to) throw createError("VALIDATION_ERROR", "Pick two people who are on this screening.");
     const most = Math.min(Math.max(0, Math.floor(papers)), MOVE_MAX);
     // From the far end of their queue, passing the ones the other person is on already.
-    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_LOOKED);
     let moved = 0;
-    for (const vote of waiting) {
-      if (moved >= most) break;
-      const others = await votesOf(ctx, vote.resultId);
-      if (others.some((one) => one.reviewerId === to)) continue;
+    for (const vote of await freeToMove(ctx, from, to, most)) {
       await ctx.db.patch("screeningVotes", vote._id, { reviewerId: to });
       // It goes back to them only where nobody else is left to take it.
       const paper = await ctx.db.get("screeningResults", vote.resultId);
@@ -315,13 +315,28 @@ export const move = workspaceMutation({
     return { moved };
   },
 });
-/** The most papers one call moves between two people, and how far down a queue it looks for them. */
+/** The most papers one call moves between two people, the places of a queue looked through at a time for them, and how many such stretches it looks through. */
 const MOVE_MAX = 200;
 const MOVE_LOOKED = 400;
+const MOVE_STRETCHES = 4;
+
+/** The waiting votes of one person that another isn't on, from the far end of the first one's queue: up to `most`, a stretch of places at a time, so papers past a stretch the other person all has are still found. */
+async function freeToMove(ctx: Pick<QueryCtx, "db">, from: Id<"screeningReviewers">, to: Id<"screeningReviewers">, most: number) {
+  const found: Doc<"screeningVotes">[] = [];
+  let below: number | undefined;
+  for (let stretch = 0; stretch < MOVE_STRETCHES && found.length < most; stretch++) {
+    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => (below === undefined ? q.eq("reviewerId", from).eq("status", "waiting") : q.eq("reviewerId", from).eq("status", "waiting").lt("place", below))).order("desc").take(MOVE_LOOKED);
+    // One indexed look for the other person on each paper: a large team's votes are never all read.
+    for (const vote of waiting) if (found.length < most && !(await ctx.db.query("screeningVotes").withIndex("by_result_and_reviewer", (q) => q.eq("resultId", vote.resultId).eq("reviewerId", to)).first())) found.push(vote);
+    if (waiting.length < MOVE_LOOKED) break;
+    below = waiting.at(-1)!.place;
+  }
+  return found;
+}
 
 /**
  * Counts the papers one person on a screening hasn't voted on yet that another person on it doesn't have: what can
- * be moved from the first to the second, counted up to 200, among as many of their papers as a move looks through.
+ * be moved from the first to the second, counted up to 200, as a move finds them.
  */
 export const movable = workspaceQuery({
   args: { jobId: v.id("screeningJobs"), from: v.id("screeningReviewers"), to: v.id("screeningReviewers") },
@@ -330,11 +345,8 @@ export const movable = workspaceQuery({
     await requireMember(ctx, actor, jobId);
     const [giver, taker] = await Promise.all([ctx.db.get("screeningReviewers", from), ctx.db.get("screeningReviewers", to)]);
     if (giver?.jobId !== jobId || taker?.jobId !== jobId) return 0;
-    // The far end of the first person's queue, each paper looked at for the second person's place on it.
-    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_LOOKED);
-    const free = await Promise.all(waiting.map(async (vote) => !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === to)));
-    // As far down the queue as a move looks, and no more than a move takes: the count is what the move does.
-    return Math.min(free.filter(Boolean).length, MOVE_MAX);
+    // Found as the move finds them: the count is what the move does.
+    return (await freeToMove(ctx, from, to, MOVE_MAX)).length;
   },
 });
 

@@ -46,7 +46,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -393,7 +393,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           value={from}
           onChange={(next) => go({ source: next === "all" ? null : next })}
           className={trigger}
-          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.filter((source) => !source.read?.removedAt || source.id === from).map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, count: keptOf(source) }; })]}
+          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, count: keptOf(source) }; })]}
         />
       ) : null}
       {/* Any number of reviewers: with several, the table shows the papers all of them voted on. The menu stays open while they are picked. */}
@@ -612,10 +612,12 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                         <button type="button" aria-expanded={isOpen} onClick={() => (isOpen ? close() : show(one.id))} className="block min-w-0 flex-1 space-y-2 text-start outline-none focus-visible:underline">
                           <span dir="auto" className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{bylineOf(one)}</span>
-                          <span className="flex items-center gap-1">
-                            {/* The marks stand without names here: your own is ringed, as your face is where faces stand without names. */}
-                            {castOf(screening, one).map(({ reviewer: r, vote, failed, hidden }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settledOf(one).final)} hidden={hidden} who={r.id === open.me ? words.t("you") : r.name} className={r.id === open.me ? "ring-2 ring-primary/70 ring-offset-1 ring-offset-card" : undefined} />)}
-                            <ResultChip result={one.result} className="ms-auto" />
+                          <span className="flex items-start gap-2">
+                            {/* The marks stand without names here: your own is ringed, as your face is where faces stand without names. A large team's wrap onto a second line, and the result keeps its place at the end of the first. */}
+                            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+                              {castOf(screening, one).map(({ reviewer: r, vote, failed, hidden }) => <VoteMark key={r.id} vote={vote} failed={failed} settled={Boolean(settledOf(one).final)} hidden={hidden} who={r.id === open.me ? words.t("you") : r.name} className={r.id === open.me ? "ring-2 ring-primary/70 ring-offset-1 ring-offset-card" : undefined} />)}
+                            </span>
+                            <ResultChip result={one.result} className="shrink-0" />
                           </span>
                         </button>
                       </li>
@@ -978,6 +980,8 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
   const quotedCriterion = shown && quoting ? screening.criteria.find((c) => c.key === shown.criterion) : undefined;
   const shut = votesShutOf(visible, cast);
   const blind = blindOf(screening, open.invited);
+  // The words the criteria mark, as Screen marks them: the drawer is a place people vote too.
+  const terms = open.screening.criteria.flatMap((criterion) => criterion.terms);
   // The sentence marked in the abstract: the one a model named for the answer of its that is open.
   const quoted = quotedCriterion && quoting?.reviewer.kind === "model" ? (quoting.vote?.passages?.[quotedCriterion.key] ?? -1) : -1;
   const sentences = sentencesOf(paper.abstract);
@@ -1048,7 +1052,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PdfRoom pages={1} shape={paper.pdf.shape}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PdfRoom pages={1} shape={paper.pdf.shape}><PaperPdf id={open.screening.id} paper={paper} terms={terms} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quoted === i} terms={terms} lit={[]} />)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

@@ -299,6 +299,8 @@ export const withdraw = internalMutation({
         continue;
       }
       await ctx.db.patch("screeningResults", paper._id, { withdrawn: true, doneAt: ctx.db.vars.commitTs });
+      // A paper out of the screening asks nobody for a new vote: Vote again counts only papers still in it.
+      for (const vote of await votesOf(ctx, paper._id)) if (vote.flagged) await ctx.db.patch("screeningVotes", vote._id, { flagged: undefined });
     }
     if (page.page.length) await bookkeepLater(ctx);
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: page.continueCursor });

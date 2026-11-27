@@ -37,8 +37,9 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   const [near, setNear] = useState(false);
   const [text, setText] = useState("");
   const workspaceId = useWorkspace();
-  // The workspace's members whose name or email holds what was typed.
-  const read = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), exclude, paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
+  // The workspace's members whose name or email holds what was typed. An address is looked up among everyone, those already on it too, so someone on it is never invited a second time.
+  const read = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), ...(email ? {} : { exclude }), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
   // While the next letter's people are read, the last ones found stay, dimmed: the list never empties into placeholders under the typing.
   const [last, setLast] = useState(read);
   if (read !== undefined && read !== last) setLast(read);
@@ -46,9 +47,10 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   const stale = read === undefined && last !== undefined;
   // Rows found for what was typed before stay to look at, never to pick: Enter waits for the people the typing finds.
   const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
-  const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
-  // Someone typed as an address who is a member is added as that member, never invited.
-  const member = email ? left.find((person) => person.email.toLowerCase() === email) : undefined;
+  // Someone typed as an address who is a member is added as that member, never invited. One already on it, or invited to it, is said to be.
+  const known = email ? found?.page.find((person) => person.email.toLowerCase() === email) : undefined;
+  const member = known && !exclude.includes(known.id) ? known : undefined;
+  const already = email !== null && ((known !== undefined && !member) || exclude.includes(`invite:${email}`));
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
@@ -89,7 +91,8 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
                 ))}
               </CommandGroup>
             ) : null}
-            {email && !member ? (
+            {already ? <p className="px-3 py-2 text-sm text-muted-foreground">{t("alreadyOn")}</p> : null}
+            {email && !member && !already ? (
               <CommandGroup heading={t("invite")}>
                 <CommandItem value={email} disabled={stale} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
@@ -130,7 +133,7 @@ export function AddModel({ taken, pdfs, onPick, children }: { /** The models on 
 }
 
 /** Asks before a change to a running screening, saying first what it will do. A change that can't be taken back, such as a deletion, is `destructive`: its button is red. */
-export function ConfirmChange({ open, title, confirm, cancel, disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children?: ReactNode }) {
+export function ConfirmChange({ open, title, confirm, cancel, disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". Null where the dialog only tells, and its one button closes it. */ cancel?: string | null; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -141,7 +144,7 @@ export function ConfirmChange({ open, title, confirm, cancel, disabled = false, 
         </DialogHeader>
         {children ? <div className="space-y-3">{children}</div> : null}
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>{cancel ?? t("confirm.cancel")}</Button>
+          {cancel === null ? null : <Button variant="ghost" onClick={onClose}>{cancel ?? t("confirm.cancel")}</Button>}
           <Button variant={variant} disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
         </DialogFooter>
       </DialogContent>
