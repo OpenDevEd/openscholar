@@ -443,7 +443,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   });
   // What the last save did, shown under Changes until the next edit.
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
-  // Asking before unsaved changes are thrown away: a step in the history, as any dialog over the page is, so Back closes it (./address.ts). The list it shows is kept as it was asked about, so it doesn't empty while it closes.
+  // Asking before unsaved changes are thrown away: a step in the history, as any dialog over the page is, so Back closes it (./address.ts). It lists the changes there are, and is open only while there are some: Forward to it after a discard opens nothing. What it last listed is kept only for its closing, so the list doesn't empty while it fades.
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
   const [asksDiscard, setAsksDiscard] = useOpenInAddress("discard", DISCARD_OPEN);
   const [busy, setBusy] = useState(false);
@@ -896,7 +896,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -1703,9 +1703,9 @@ export function ScreeningForm({ id }: { id?: string }) {
           </div>
         </ActionBar>
       ) : null}
-      <ConfirmChange open={asksDiscard !== null && (discarding ?? edits).length > 0} title={t("bar.discardTitle", { count: (discarding ?? edits).length })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setAsksDiscard(null)} onConfirm={discard}>
+      <ConfirmChange open={asksDiscard !== null && edits.length > 0} title={t("bar.discardTitle", { count: (edits.length ? edits : (discarding ?? [])).length })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setAsksDiscard(null)} onConfirm={discard}>
         <ul className="space-y-1.5">
-          {(discarding ?? edits).map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
+          {(edits.length ? edits : (discarding ?? [])).map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
         </ul>
       </ConfirmChange>
     </>

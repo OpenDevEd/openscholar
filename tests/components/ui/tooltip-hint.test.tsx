@@ -33,6 +33,20 @@ describe("<TooltipHint onlyWhenClipped>", () => {
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent("A long paper title");
   });
+
+  it("shows a label the control holds and doesn't draw at this width", async () => {
+    render(
+      <TooltipHint label="Keyboard shortcuts" onlyWhenClipped>
+        <button type="button">
+          <span style={{ display: "none" }}>Keyboard shortcuts</span>
+        </button>
+      </TooltipHint>,
+    );
+
+    await userEvent.hover(screen.getByRole("button"));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Keyboard shortcuts");
+  });
 });
 
 describe("<TooltipHint> on focus", () => {

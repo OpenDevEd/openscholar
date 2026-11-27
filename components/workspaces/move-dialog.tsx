@@ -59,7 +59,7 @@ export type MoveEffects = (to: { name: string; kind: "personal" | "organization"
  * link); `onMoved` hears the move done, before the page goes to where the item went. `effects` is
  * what else the move changes for this item, said once a workspace is picked.
  */
-export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; effects?: MoveEffects }) {
+export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; /** Goes to the item where it went, where the page it was on knows better than a replace: its own pages left out of the way back. */ lead?: (href: string) => void; effects?: MoveEffects }) {
   const page = useWorkspace();
   // Read here, while the dialog is shut, so it opens knowing whether the item can move. The same read inside shares it.
   useProtectedQuery(api.workspaces.move.held, inWorkspace(item.from ?? page, { kind: item.kind, id: item.id }));
@@ -74,7 +74,7 @@ export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onO
   );
 }
 
-function Move({ close, kind, id, name, from: itemWorkspace, onMoved, effects }: { close: () => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; effects?: MoveEffects }) {
+function Move({ close, kind, id, name, from: itemWorkspace, onMoved, lead, effects }: { close: () => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void; lead?: (href: string) => void; effects?: MoveEffects }) {
   const t = useTranslations("workspaces.move");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -113,7 +113,8 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved, effects }: 
       panelPlace.set((place) => withThread(withThread(place, workspaceKey(window.location.pathname), null), slug ?? "", id));
       router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
       // The item's page in the workspace it went to takes the place of the page it left, where it is no longer: Back never returns there.
-    } else router.replace(workspaceHref(slug, PAGE[kind](id)));
+    } else if (lead) lead(workspaceHref(slug, PAGE[kind](id)));
+    else router.replace(workspaceHref(slug, PAGE[kind](id)));
     close();
   };
 

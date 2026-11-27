@@ -18,6 +18,7 @@
     "download": "Transferir"
   },
   "common": {
+    "showingStartEndOnly": "A mostrar {label} {start}-{end}",
     "search": "Pesquisar",
     "searchPapers": "Pesquisar artigos",
     "home": "Início",

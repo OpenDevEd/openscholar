@@ -91,18 +91,14 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
     );
   }
 
-  // Whether the checks part shows (./Checks): a source that gains papers, or a living screening.
-  const checked = growing(open.screening).length > 0 || Boolean(open.screening.living);
   return (
     <div className="@container/overview space-y-8 p-4 sm:p-6">
       <Progress open={open} onExport={onExport} />
       {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. The reviewers' table takes the page's width, with room for its columns. Under it the small facts stack beside the checks, two halves of a like height, and how far the reviewers agree takes a row of its own where there is a figure to show: no column stands empty beside a tall one. */}
       <Reviewers open={open} figures={read.figures} now={read.now} />
-      {/* A screening with no checks to show (no source that gains papers, not living) gives the facts the row, side by side: no half stands empty. */}
-      <div className={cn("grid grid-cols-1 items-start gap-8", checked && "@4xl/overview:grid-cols-2")}>
-        <div className="min-w-0"><Facts open={open} across={!checked} /></div>
-        <div className="min-w-0 empty:hidden"><Checks open={open} figures={read.figures} /></div>
-      </div>
+      {/* The small facts side by side in a row of their own, and the checks under them across the page: blocks of unlike heights never stand beside each other, so no column stands empty. */}
+      <Facts open={open} />
+      <Checks open={open} figures={read.figures} />
       <Agreement open={open} figures={read.figures} />
       <Flow open={open} figures={read.figures} onExport={onExport} />
     </div>
@@ -215,7 +211,8 @@ function Yours({ open }: { open: Open }) {
   const workspaceId = usePageWorkspace();
   // Where a paper waits for more votes than one: how many of the papers you voted on still wait for someone else's. The link to them shows only where there are some, so it never opens an empty list.
   const asked = Boolean(open.counts.waiting && !open.screening.finishedAt && splitsIn(open.screening, 0, open.invited));
-  const stillWaiting = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, asked ? { jobId: open.screening.id, reviewer: open.me } : "skip")).data?.waiting ?? 0;
+  const yourCounts = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, asked ? { jobId: open.screening.id, reviewer: open.me } : "skip")).data;
+  const stillWaiting = yourCounts?.waiting ?? 0;
   const { screening } = open;
   const t = useTranslations("screening.overview");
   const mine = screening.reviewers.find((one) => one.id === open.me)?.tally;
@@ -236,6 +233,8 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
+      {/* Its line is held while the count is read, so nothing under it moves when it comes. */}
+      {asked && yourCounts === undefined ? <span aria-hidden className="invisible">{t("yours.stillWaitCount", { count: 0 })}</span> : null}
       {asked && stillWaiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground animate-in fade-in")}>{t("yours.stillWaitCount", { count: stillWaiting })}</NextLink> : null}
     </div>
   );
@@ -613,9 +612,9 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         {agrees !== null && reviewer.kind === "model" && included ? <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">{t("row.ofPairs", { count: compared })}</p> : null}
         {reviewer.kind === "model" && included ? (
           missed ? (
-            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block whitespace-nowrap text-xs tabular-nums ink-destructive")}>{t("row.missedOf", { missed, included })}</NextLink>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block text-xs tabular-nums ink-destructive")}>{t("row.missedOf", { missed, included })}</NextLink>
           ) : (
-            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{t("row.missedOf", { missed: 0, included })}</p>
+            <p className="text-xs tabular-nums text-muted-foreground">{t("row.missedOf", { missed: 0, included })}</p>
           )
         ) : agrees !== null ? (
           <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">{t("row.ofPairs", { count: compared })}</p>
@@ -753,7 +752,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
           <ScrollArea axis="x" shades className={cn(LIST, "@max-2xl/overview:hidden")}>
           <div className="p-4">
-            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
+            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, max-content) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
                 <NextLink key={reviewer.id} href={papersHref(screening.id, { reviewer: reviewer.id })} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
@@ -810,7 +809,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
 // ── Facts ────────────────────────────────────────────────────────────────────────────────────────
 
 /** The facts about the screening, as wells beside the reviewers: who started it, where its included papers go, what its models cost, and its checks for new papers. */
-function Facts({ open, across = false }: { open: Open; /** The row is theirs alone: the three stand side by side rather than one under another. */ across?: boolean }) {
+function Facts({ open }: { open: Open }) {
   const { screening, counts } = open;
   const t = useTranslations("screening.overview");
   const tl = useTranslations("screening.list");
@@ -831,8 +830,9 @@ function Facts({ open, across = false }: { open: Open; /** The row is theirs alo
   const to = screening.destination;
   const collection = to.kind === "none" ? null : (words.collectionName(screening) || t("included.aCollection"));
   return (
-    <div className={across ? "grid grid-cols-1 items-start gap-6 @4xl/overview:grid-cols-3" : "space-y-6"}>
-      <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
+    <div className="grid grid-cols-1 items-start gap-6 @4xl/overview:grid-cols-3">
+      {/* Who started it has no heading of its own: in the row its card lines up with the cards under the others' headings (Section's heading, 2rem, and its gap). */}
+      <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm @4xl/overview:mt-11">
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
         <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? words.t("someone") }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">{t("facts.startedIt", { ago: words.ago(screening.createdAt) })}</span>

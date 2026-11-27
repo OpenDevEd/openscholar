@@ -352,17 +352,18 @@ function Screen({ open }: { open: Open }) {
     else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(refused);
     // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
     const fromSheet = tablet && reasonSheet !== null;
-    setReasonFor(null);
-    setWriting(null);
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
     // The next one down that still waits, or failing that the first that does: a paper skipped earlier comes round again once the end is reached.
     const next = advance && queue !== "done" ? (items.find((one, index) => index > at && waits(one)) ?? items.find(waits)) : undefined;
+    // Staying on the paper, the sheet steps back to it rather than leaving two entries of it.
+    setReasonFor(null, { inPlace: !(fromSheet && !next) });
+    setWriting(null);
     if (next) {
       advanced.current = { paper: next.id, at: Date.now() };
       openIt(next, { inPlace: fromSheet });
     }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
-    else if (!picked) void setPlace({ paper: paper.id }, { history: "replace" });
+    else if (!picked && !fromSheet) void setPlace({ paper: paper.id }, { history: "replace" });
   };
   const answerIt = (criterion: string, answer: Answer, keep = false) => {
     if (!paper) return;
@@ -381,6 +382,8 @@ function Screen({ open }: { open: Open }) {
     // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
     const written = (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim();
     if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER_REASON);
+    // On a phone the reasons are a sheet, a step of its own: the paper under it is named first, so Back from the sheet, or from the paper after it, comes back to this one.
+    else if (decision === "exclude" && !failed && tablet && !picked) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setReasonFor(paper.id));
     else if (decision === "exclude" && !failed) setReasonFor(paper.id);
     else decideOn(decision, failed);
   };
@@ -1296,14 +1299,14 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
         const earlier = Boolean(criterion.changedAt && cast.some((one) => one.vote?.answers[criterion.key] && one.vote.at < criterion.changedAt!));
         return (
           <div key={criterion.key} className="contents">
-            {/* On a phone "Answers differ" goes under the criterion, so the name keeps the column's width. */}
-            <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs max-sm:flex-wrap">
+            {/* In a narrow table (a phone, the Papers drawer with many reviewers) "Answers differ" goes under the criterion, so the name keeps the column's width. */}
+            <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs @max-md/votes:flex-wrap">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
-              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:grow max-sm:basis-0 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
+              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 @max-md/votes:grow @max-md/votes:basis-0 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {earlier ? <TooltipHint label={t("matrix.earlierWording")}><History role="img" aria-label={t("matrix.earlierWording")} className="size-3.5 shrink-0 text-muted-foreground" /></TooltipHint> : null}
-              {split ? <span aria-hidden className="sm:hidden max-sm:basis-full" /> : null}
+              {split ? <span aria-hidden className="@md/votes:hidden @max-md/votes:basis-full" /> : null}
               {split ? (
-                <button type="button" aria-label={t("matrix.differFor", { criterion: criterion.short })} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0 max-sm:ms-[1.125rem]")}>{t("answersDiffer")}<ChevronDown aria-hidden className="size-3" /></button>
+                <button type="button" aria-label={t("matrix.differFor", { criterion: criterion.short })} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0 @max-md/votes:ms-[1.125rem]")}>{t("answersDiffer")}<ChevronDown aria-hidden className="size-3" /></button>
               ) : null}
             </span>
             {cast.map(({ reviewer, hidden: kept }, i) => {

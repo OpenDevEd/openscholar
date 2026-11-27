@@ -76,19 +76,31 @@ export const searchHistory = (was: string, next: string) => ({ history: Boolean(
 
 /**
  * Leaves pages that are gone for good (a form already sent, a screening deleted) out of the way back: steps back past
- * every entry at or under `path`, then goes on with `next` (a push), so Back from where it leads returns to the page
- * before them. Where the browser can't say how far back that is, `next` takes this entry's place instead.
+ * every entry at or under `path`, then goes on with `next`, so Back from where it leads returns to the page before
+ * them and Forward has nothing left to reopen. `lands` says whether an entry is already the page `next` opens: a
+ * push to the address showing is only a replace, which would leave the entries after it, so it steps one further.
+ * Where the browser can't say how far back that is, or the entries before were another document's, `next` takes
+ * this entry's place instead.
  */
-export function leaveBehind(path: string, next: (how: "push" | "replace") => void) {
-  const list = navigation();
+export function leaveBehind(path: string, next: (how: "push" | "replace") => void, lands: (url: URL) => boolean = () => false) {
+  const list = navigation() as (Navigation & { currentEntry: Entry & { sameDocument?: boolean } }) | undefined;
   const current = list?.currentEntry;
-  const under = (url: string | null) => url !== null && (new URL(url).pathname === path || new URL(url).pathname.startsWith(`${path}/`));
+  const at = (url: string | null) => (url ? new URL(url) : null);
+  const under = (url: URL | null) => url !== null && (url.pathname === path || url.pathname.startsWith(`${path}/`));
   if (!list || !current) return next("replace");
-  const entries = list.entries();
-  let at = current.index;
-  while (at > 0 && under(entries[at - 1]?.url ?? null)) at--;
-  if (at === 0) return next("replace");
-  const steps = current.index - at + 1;
+  const entries = list.entries() as Array<Entry & { sameDocument?: boolean }>;
+  let first = current.index;
+  while (first > 0 && under(at(entries[first - 1]?.url ?? null))) first--;
+  // The tab began on these pages: back to its first entry, which then takes the next page's place.
+  if (first === 0) {
+    if (current.index === 0) return next("replace");
+    window.addEventListener("popstate", () => next("replace"), { once: true });
+    return window.history.go(-current.index);
+  }
+  let landing = first - 1;
+  if (lands(at(entries[landing]!.url)!) && landing > 0) landing--;
+  // Entries from before a reload belong to another document: going back to them loads a page, and nothing follows.
+  if (entries[landing]!.sameDocument === false) return next("replace");
   window.addEventListener("popstate", () => next("push"), { once: true });
-  window.history.go(-steps);
+  window.history.go(landing - current.index);
 }

@@ -18,6 +18,7 @@
     "download": "Laai af"
   },
   "common": {
+    "showingStartEndOnly": "Wys {label} {start}-{end}",
     "search": "Soek",
     "searchPapers": "Soek artikels",
     "home": "Tuis",

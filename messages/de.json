@@ -18,6 +18,7 @@
     "download": "Herunterladen"
   },
   "common": {
+    "showingStartEndOnly": "{label} {start}–{end} angezeigt",
     "search": "Suchen",
     "searchPapers": "Artikel suchen",
     "home": "Start",

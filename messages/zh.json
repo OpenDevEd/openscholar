@@ -18,6 +18,7 @@
     "download": "下载"
   },
   "common": {
+    "showingStartEndOnly": "显示 {label} {start}-{end}",
     "search": "搜索",
     "searchPapers": "搜索论文",
     "home": "首页",

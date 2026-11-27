@@ -152,7 +152,7 @@ function isClipped(element: HTMLElement | null) {
       node.scrollWidth > node.clientWidth ||
       node.scrollHeight > node.clientHeight ||
       // Words the trigger holds and doesn't draw at this width, such as a label shown only on wide screens.
-      (node.getClientRects().length === 0 && Boolean(node.textContent?.trim()))
+      (getComputedStyle(node).display === "none" && Boolean(node.textContent?.trim()))
   )
 }
 

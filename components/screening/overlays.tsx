@@ -6,7 +6,8 @@
 // and do the same.
 
 import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
-import { innerStep, useOpenInAddress } from "./address";
+import { innerStep, leaveBehind, useOpenInAddress } from "./address";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -98,6 +99,8 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
  */
 export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDeleted?: () => void } = {}) {
   const t = useTranslations("screening.frame");
+  // The router as it is, for an address already in the workspace it names (a screening moved to another).
+  const nextRouter = useRouter();
   const words = useWords();
   const [over, setOver] = useOpenInAddress("over", OVERS, { inner: ["tab", "whose", "group", "row", "who", "change"] });
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
@@ -172,6 +175,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         open={over === "move"}
         // Moved, it leads to the workspace it went to: the dialog's own close, a step back, would cancel that.
         onMoved={() => { going.current = true; }}
+        // From one of its own pages, every page of it in the workspace it left is out of the way back.
+        lead={(href) => (/\/screening\/[^/]+/.test(window.location.pathname) ? leaveBehind(window.location.pathname.replace(/\/(screen|papers|settings)$/, ""), (how) => nextRouter[how](href)) : nextRouter.replace(href))}
         onOpenChange={(next) => !next && !going.current && close()}
         kind="screening"
         id={id}

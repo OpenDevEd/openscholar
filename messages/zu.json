@@ -18,6 +18,7 @@
     "download": "Landa"
   },
   "common": {
+    "showingStartEndOnly": "Kubonisa {label} {start}-{end}",
     "search": "Sesha",
     "searchPapers": "Sesha amaphepha",
     "home": "Ekhaya",

@@ -18,6 +18,7 @@
     "download": "Télécharger"
   },
   "common": {
+    "showingStartEndOnly": "Affichage des {label} {start}-{end}",
     "search": "Rechercher",
     "searchPapers": "Rechercher des articles",
     "home": "Accueil",

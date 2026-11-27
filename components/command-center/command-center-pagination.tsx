@@ -37,11 +37,10 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
   const steps = "steps" in props ? props.steps : undefined;
   const { totalPages = 1, itemsPerPage = 1, onPageChange = () => {}, totalItems: counted = 0 }: Partial<NumberedPages> = "steps" in props ? {} : props;
   const tc = useTranslations("common");
-  const atLeast = (shown: number) => (steps?.canNext ? `${shown}+` : shown);
   const startItem = steps ? steps.offset + 1 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = steps ? steps.offset + steps.shown : Math.min(currentPage * itemsPerPage, counted);
   // A kept count can lag the rows it counts by a moment; it never reads lower than the rows shown.
-  const totalItems = steps ? (steps.total === undefined ? atLeast(endItem) : Math.max(steps.total, endItem)) : counted;
+  const totalItems = steps?.total === undefined ? counted : Math.max(steps.total, endItem);
   const pageCount = steps?.pageCount;
 
   // Generate page numbers to display
@@ -88,7 +87,8 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
     <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 pt-6", props.className)}>
       {/* Info text */}
       <p className="text-xs tabular-nums text-muted-foreground">
-        {tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
+        {/* A total not counted is left unsaid, never written as "50+": the range shown is what is known. */}
+        {steps && steps.total === undefined ? tc("showingStartEndOnly", { start: startItem, end: endItem, label: itemLabel }) : tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
       </p>
 
       {/* Pagination controls */}
@@ -106,7 +106,8 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
 
         {steps ? (
           <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
-            {currentPage} / {pageCount === undefined ? atLeast(currentPage) : Math.max(currentPage, pageCount)}
+            {/* With no count of pages, the page it is on stands alone: "1 / 1+" says nothing a person can use. */}
+            {pageCount === undefined ? currentPage : `${currentPage} / ${Math.max(currentPage, pageCount)}`}
           </span>
         ) : getPageNumbers().map((page, index) =>
           page === "ellipsis" ? (
