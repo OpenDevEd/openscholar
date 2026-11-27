@@ -9184,6 +9184,7 @@
         "join": "You aren't a reviewer on this screening. Join as a reviewer to vote."
       },
       "votesShut": "The other votes stay out of sight so they can't sway yours.",
+      "peopleVotesShut": "The other people's votes stay out of sight so they can't sway yours. The models' advice shows.",
       "creditsShort": "{short, plural, one {# credit short} other {# credits short}}",
       "retry": "{papers, plural, one {Try the paper again for {cost, plural, one {# credit} other {# credits}}} other {Try all # papers again for {cost, plural, one {# credit} other {# credits}}}}",
       "votesBy": "{you, select, true {Your votes} other {Votes by {name}}}",

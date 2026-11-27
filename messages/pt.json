@@ -9185,6 +9185,7 @@
         "join": "Não é revisor desta triagem. Junte-se como revisor para votar."
       },
       "votesShut": "Os outros votos ficam ocultos para não influenciarem o seu.",
+      "peopleVotesShut": "Os votos das outras pessoas ficam ocultos para não influenciarem o seu. O conselho dos modelos aparece.",
       "creditsShort": "{short, plural, one {Falta # crédito} other {Faltam # créditos}}",
       "retry": "{papers, plural, one {Tentar de novo o artigo por {cost, plural, one {# crédito} other {# créditos}}} other {Tentar de novo os # artigos por {cost, plural, one {# crédito} other {# créditos}}}}",
       "votesBy": "{you, select, true {Os seus votos} other {Votos de {name}}}",

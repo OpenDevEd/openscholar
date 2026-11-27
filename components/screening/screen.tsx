@@ -39,7 +39,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, modelsAdvise, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
+import { advisory, decide, modelsAdvise, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -454,7 +454,7 @@ function Screen({ open }: { open: Open }) {
   const sayWhy = Boolean(failing) || criteria.filter((criterion) => criterion.must).every((criterion) => given[criterion.key] === "yes");
   const beyondCriteria = mine?.decision === "exclude" && Boolean(mine.reason) && !criteria.some((criterion) => criterion.key === mine.reason);
   const against = mine && pointsTo && sayWhy && !beyondCriteria && pointsTo.decision !== mine.decision && (pointsTo.decision === "exclude" || mine.decision === "exclude");
-  const quoting = paper && shown && visible ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
+  const quoting = paper && shown ? cast.find((one) => one.reviewer.id === shown.reviewer && one.vote) : undefined;
   const quotedCriterion = quoting ? criteria.find((c) => c.key === shown!.criterion) : undefined;
   // The sentence marked in the abstract: the one a model named for the answer of its that is open.
   const quotedSentence = quotedCriterion && quoting?.reviewer.kind === "model" ? (quoting.vote?.passages?.[quotedCriterion.key] ?? -1) : -1;
@@ -577,7 +577,7 @@ function Screen({ open }: { open: Open }) {
             // Offered while new papers wait, and kept while it is the order chosen: voting on the last new paper must not rename the order to another.
             ...(open.latest?.mine || order === "fresh" ? [{ value: "fresh" as typeof order, label: t("filter.fresh"), icon: <RefreshCw /> }] : []),
             { value: "lean" as typeof order, label: t("filter.lean"), icon: <ModelsIcon />, // To do holds only papers you have yet to vote on, so on a screening that hides votes this order never opens there: the reason says what this screening does, in words that need no setting's name, and promises no vote that would open it.
-            ...(blind ? { shut: t("filter.leanShut") } : {}) },
+            ...(blind && !advisory(screening.rule) ? { shut: t("filter.leanShut") } : {}) },
           ]}
         />
       ) : null}
@@ -645,6 +645,8 @@ function Screen({ open }: { open: Open }) {
     reach("data-votes");
   };
   // Everyone's votes on the open paper. It is drawn in one of two places: under the paper from a laptop's width, and after your answers under it, where one column has to put the questions before the others' votes.
+  // A vote kept from you until you vote: the models' advice shows before it, so only the people's can be.
+  const votesKept = !visible && cast.some((one) => one.hidden);
   const everyonesVotes = paper ? (
                     <Section
                       // As advice the models' votes settle nothing on a paper a person has: the heading says so on this paper's votes, never on a paper only models voted on.
@@ -652,7 +654,7 @@ function Screen({ open }: { open: Open }) {
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
-                          <ShutChip by="vote" />
+                          votesKept ? <ShutChip by="vote" /> : null
                         ) : state ? (
                           <>
                             <span className="text-xs text-muted-foreground">{t("result")}</span>
@@ -674,7 +676,7 @@ function Screen({ open }: { open: Open }) {
                           criteria={criteria}
                           cast={cast}
                           me={open.me}
-                          hidden={!visible}
+                          hidden={!visible && !cast.some((one) => one.vote)}
                           settled={Boolean(state?.final)}
                           shown={shown}
                           onShow={setShown}
@@ -682,7 +684,7 @@ function Screen({ open }: { open: Open }) {
                         />
                       </div>
                       </ScrollArea>
-                      {visible ? null : <ShutNote by="vote">{VOTES_SHUT(pieces)}</ShutNote>}
+                      {votesKept ? <ShutNote by="vote">{VOTES_SHUT(pieces, cast)}</ShutNote> : null}
                     </Section>
   ) : null;
 

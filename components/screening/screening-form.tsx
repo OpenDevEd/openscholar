@@ -753,7 +753,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
-      const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).map((one) => one.email.toLowerCase()));
+      const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left) && !(one.email && waiting.has(one.email.toLowerCase())));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
       const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));

@@ -9184,6 +9184,7 @@
         "join": "あなたはこのスクリーニングのレビュアーではありません。投票するには、レビュアーとして参加してください。"
       },
       "votesShut": "ほかの人の投票はあなたの投票に影響しないよう非表示になっています。",
+      "peopleVotesShut": "ほかの人の投票はあなたの投票に影響しないよう非表示になっています。モデルの助言は表示されます。",
       "creditsShort": "{short, plural, other {# クレジット不足}}",
       "retry": "{papers, plural, other {論文 # 件を {cost, plural, other {# クレジット}}でもう一度試す}}",
       "votesBy": "{you, select, true {あなたの投票} other {{name} の投票}}",

@@ -31,7 +31,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
+import { inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Pending, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, screenHref, settingsHref } from "./links";
@@ -95,7 +95,7 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Array<{ email: string }> = []) {
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Pending[] = []) {
   const [{ each }, models] = [readersOf(screening, pending), modelsOf(screening).length];
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),

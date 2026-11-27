@@ -9185,6 +9185,7 @@
         "join": "Jy is nie ’n beoordelaar op hierdie siftering nie. Sluit as beoordelaar aan om te stem."
       },
       "votesShut": "Die ander stemme bly uit sig sodat hulle joune nie kan beïnvloed nie.",
+      "peopleVotesShut": "Die ander mense se stemme bly uit sig sodat hulle joune nie kan beïnvloed nie. Die modelle se advies wys.",
       "creditsShort": "{short, plural, one {# krediet kort} other {# krediete kort}}",
       "retry": "{papers, plural, one {Probeer die artikel weer vir {cost, plural, one {# krediet} other {# krediete}}} other {Probeer al # artikels weer vir {cost, plural, one {# krediet} other {# krediete}}}}",
       "votesBy": "{you, select, true {Jou stemme} other {Stemme deur {name}}}",

@@ -6,7 +6,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { Screening } from "./data";
+import type { Reviewer, Screening } from "./data";
 
 type Kept = {
   /** Unsaved settings by where they are made: a screening's ID, or `new:<the screening it copies>`. */
@@ -19,6 +19,8 @@ type Kept = {
   guides: string[];
   /** Each person's pace on Screen: the seconds between their votes, added up, and how many gaps that is. */
   paced: Record<string, { sum: number; n: number }>;
+  /** Who was last picked to be added, and asked about: Forward or a reload over the question asks about them again. */
+  adding?: Reviewer;
 };
 type Store = Kept & {
   /** Changes a draft, or drops it when `change` gives nothing back. */

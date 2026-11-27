@@ -9184,6 +9184,7 @@
         "join": "Vous n'êtes pas évaluateur de ce criblage. Rejoignez-le comme évaluateur pour voter."
       },
       "votesShut": "Les autres votes restent masqués pour ne pas influencer le vôtre.",
+      "peopleVotesShut": "Les votes des autres personnes restent masqués pour ne pas influencer le vôtre. L'avis des modèles s'affiche.",
       "creditsShort": "{short, plural, one {Il manque # crédit} other {Il manque # crédits}}",
       "retry": "{papers, plural, one {Relancer l'article pour {cost, plural, one {# crédit} other {# crédits}}} other {Relancer les # articles pour {cost, plural, one {# crédit} other {# crédits}}}}",
       "votesBy": "{you, select, true {Vos votes} other {Votes de {name}}}",

@@ -17,15 +17,15 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
-import { isFinal, modelsProgress, nameHas, twinsNamed } from "../../lib/screening/rules";
+import { advisory, isFinal, modelsProgress, nameHas, twinsNamed } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
+import { invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { INVITED_SHOWN, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -172,7 +172,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   ]);
   const members = new Map<Id<"users">, boolean>();
   const keeps = keepsVotes(job, reviewer, progress?.reviewers);
-  const viewed = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id)));
+  const viewed = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id && !(row.kind === "model" && advisory(job.rule!)))));
   // One model put on it at two efforts is two reviewers: each then says its effort, so a filter, a row or a vote names the one it means.
   const reviewers = twinsNamed(viewed, (model) => model.modelId);
   const settled = { ...NO_RESULTS, ...progress?.counts };
@@ -467,7 +467,8 @@ export const getAction = defineUserQuery({
       ...(guest ? { guest } : {}),
       flagged,
       guests: await countOf(ctx, itemGuestsOf(jobId)),
-      ...(member ? { invited: (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(INVITED_SHOWN)).flatMap((one) => (one.role === "editor" ? [{ email: one.email, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) }] : [])) } : {}),
+      // The invitations still waiting, which papers wait for as for anyone: a guest is told how many, and never whose address.
+      invited: (await invitationsTo(ctx, jobId)).map((one) => (member ? { email: one.email, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) } : {})),
       ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
       ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !paper.withdrawn && !isFinal(paper.result)).length, mine: theirs } } : {}),
     };

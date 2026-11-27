@@ -122,3 +122,24 @@ it("keeps from a reviewer only what could give a vote away: a paper nobody else 
   // More papers from a source move none of the papers the screening has.
   expect(await moves({ ranges: [{ sourceId, first: 1, last: 10 }] })).toEqual([]);
 });
+
+it("shows a model's vote before the person votes where the models only advise, and keeps the people's", async () => {
+  const made = await team(["ann", "ben"]);
+  const { workspaceId } = made;
+  const seen = async (models: "vote" | "advice") => {
+    const { jobId, papers } = await started(made, ["ann", "ben"], 1, { rule: { each: 2, settle: "all", blind: "after", models } });
+    const paperId = papers[0]!._id;
+    const modelId = await made.t.run(async (ctx) => {
+      const reviewerId = await ctx.db.insert("screeningReviewers", { jobId, kind: "model", addedAt: 1, addedBy: made.ids.ann!, dealt: 1 });
+      await ctx.db.insert("screeningVotes", { jobId, resultId: paperId, reviewerId, place: 0, status: "cast", decision: "exclude", reason: "other", at: 1 });
+      return reviewerId;
+    });
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId, decision: "include" });
+    await settleAll(made.t);
+    const paper = (await made.as.ben!.query(api.screening.paperViews.paper, { workspaceId, jobId, paperId }))!;
+    const of = (id: string) => paper.cast.find((one) => one.reviewer === id)!;
+    return { sees: paper.sees, model: of(modelId).vote?.decision ?? (of(modelId).hidden ? "hidden" : null), ann: of(made.ids.ann!).vote?.decision ?? (of(made.ids.ann!).hidden ? "hidden" : null) };
+  };
+  expect(await seen("advice")).toEqual({ sees: false, model: "exclude", ann: "hidden" });
+  expect(await seen("vote")).toEqual({ sees: false, model: "hidden", ann: "hidden" });
+});

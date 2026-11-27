@@ -381,7 +381,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
                 <span role="cell">{t("reviewers.invited")} <span className="font-normal tabular-nums text-muted-foreground">{open.invited.length}</span></span>
               </div>
-              {open.invited.map((one) => (
+              {open.invited.flatMap((one) => (one.email ? [{ email: one.email }] : [])).map((one) => (
                 <div key={one.email} role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   {/* The address and what waiting means stack under each other on a phone, so the address keeps the row's width. */}
                   <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">

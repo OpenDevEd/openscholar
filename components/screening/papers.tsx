@@ -52,7 +52,7 @@ import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
 import { searchHistory, useOpenInAddress } from "./address";
-import { decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
+import { advisory, decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
@@ -516,7 +516,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       </div>
 
       {/* A filter by how someone else voted can't count the votes hidden from the person looking: it says how many it leaves out, as the Overview and the files do. */}
-      {open.keepsVotes && who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
+      {open.keepsVotes && who && who !== open.me && !(advisory(screening.rule) && screening.reviewers.some((one) => one.id === who && one.kind === "model")) && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
       {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
@@ -942,8 +942,10 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const cast = youFirst(castOf(screening, paper), open.me);
   const mine = voteOn(paper, open.me);
   const isMine = cast.some((one) => one.reviewer.id === open.me);
-  const quotedCriterion = shown && visible ? screening.criteria.find((c) => c.key === shown.criterion) : undefined;
-  const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
+  const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer && one.vote) : undefined;
+  const quotedCriterion = shown && quoting ? screening.criteria.find((c) => c.key === shown.criterion) : undefined;
+  // A vote kept from you until you vote: the models' advice shows before it, so only the people's can be.
+  const kept = !visible && cast.some((one) => one.hidden);
   // The sentence marked in the abstract: the one a model named for the answer of its that is open.
   const quoted = quotedCriterion && quoting?.reviewer.kind === "model" ? (quoting.vote?.passages?.[quotedCriterion.key] ?? -1) : -1;
   const sentences = sentencesOf(paper.abstract);
@@ -1041,9 +1043,9 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       ) : null}
 
       {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
-      <Section title={t("panel.everyonesVotes")} help={<VotesHelp blind={screening.rule.blind === "after"} side="left" />} aside={visible ? undefined : <ShutChip by="vote" />}>
-          <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={visible && quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
-        {visible ? null : <ShutNote by="vote">{VOTES_SHUT(pieces)}</ShutNote>}
+      <Section title={t("panel.everyonesVotes")} help={<VotesHelp blind={screening.rule.blind === "after"} side="left" />} aside={kept ? <ShutChip by="vote" /> : undefined}>
+          <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible && !cast.some((one) => one.vote)} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
+        {kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, cast)}</ShutNote> : null}
         {visible ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {

@@ -184,7 +184,8 @@ export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(
 };
 
 /** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
-export const VOTES_SHUT = (t: T) => t("votesShut");
+/** Why the others' votes are out of sight. Where the models' advice shows, it is the people's votes that are. */
+export const VOTES_SHUT = (t: T, cast: Array<{ vote?: unknown }>) => t(cast.some((one) => one.vote) ? "peopleVotesShut" : "votesShut");
 
 /**
  * Sends a model back to the papers it couldn't read: the one control for it, wherever a failed read shows, with the

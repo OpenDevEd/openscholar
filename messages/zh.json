@@ -9184,6 +9184,7 @@
         "join": "你不是此筛选的审核人。以审核人身份加入即可投票。"
       },
       "votesShut": "其他人的投票不予显示，以免影响你的判断。",
+      "peopleVotesShut": "其他人的投票不予显示，以免影响你的判断。模型的建议会显示。",
       "creditsShort": "{short, plural, other {还差 # 积分}}",
       "retry": "{papers, plural, other {重试 # 篇论文，需 {cost, plural, other {# 积分}}}}",
       "votesBy": "{you, select, true {你的投票} other {{name} 的投票}}",

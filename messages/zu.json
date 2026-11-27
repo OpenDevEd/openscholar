@@ -9184,6 +9184,7 @@
         "join": "Awusiye umbuyekezi kulokhu kuskrini. Joyina njengombuyekezi ukuze uvote."
       },
       "votesShut": "Amanye amavoti ahlala engabonakali ukuze angalithonyi elakho.",
+      "peopleVotesShut": "Amavoti abanye abantu ahlala engabonakali ukuze angalithonyi elakho. Iseluleko samamodeli siyabonakala.",
       "creditsShort": "{short, plural, one {Kusilele # ikhredithi} other {Kusilele # amakhredithi}}",
       "retry": "{papers, plural, one {Zama iphepha futhi {cost, plural, one {nge-# ikhredithi} other {ngamakhredithi angu-#}}} other {Zama wonke amaphepha angu-# futhi {cost, plural, one {nge-# ikhredithi} other {ngamakhredithi angu-#}}}}",
       "votesBy": "{you, select, true {Amavoti akho} other {Amavoti ka-{name}}}",

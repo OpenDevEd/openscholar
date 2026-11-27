@@ -24,7 +24,8 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { growing, modelsOf, peopleOf, withTwins, withoutReviewer, type Reviewer, type Screening } from "./data";
+import { growing, modelKey, modelsOf, peopleOf, withTwins, withoutReviewer, type Reviewer, type Screening } from "./data";
+import { useKept } from "./drafts";
 import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialogs";
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
@@ -115,8 +116,11 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
   const going = useRef(false);
   // Who a confirmation is about, and the change, are in the address with it: Forward or a reload asks about the same reviewer again.
   const [about, setAbout] = useQueryStates({ who: parseAsString, change: parseAsStringLiteral(CHANGES) }, { history: "push", scroll: false });
+  // Someone being added is kept with the tab as they were picked, since no list on the page holds them.
+  const kept = useKept((store) => store.adding);
+  const keep = useKept((store) => store.set);
   // One confirmation at a time: whatever was asked before (and left by Back) is cleared first.
-  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean, change: (typeof CHANGES)[number]) => { setAdding(null); setLeaving(null); setDemoting(null); set(reviewer); setFromPeople(people); void setAbout({ who: reviewer.id, change }); setOver("confirm"); };
+  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean, change: (typeof CHANGES)[number]) => { setAdding(null); setLeaving(null); setDemoting(null); set(reviewer); if (change === "add") keep({ adding: reviewer }); setFromPeople(people); void setAbout({ who: reviewer.id, change }); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
@@ -143,16 +147,19 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
     return under ? new URL(under).searchParams.get("over") === "people" : fromPeople;
   };
   const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (peopleUnder()) window.history.back(); else close(); };
-  // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
-  // Someone on the screening is found again by the id the address names. Someone being added comes from People's list, and without it People opens, where they were picked.
+  // Reached again by Forward or a reload, a confirmation asks about whoever the address names: someone on the screening by their id, someone being added as they were picked. One no longer to be asked about (added since, or taken off) is People, where it was asked.
   const named = (change: (typeof CHANGES)[number]) => (about.change === change && about.who ? (screening.reviewers.find((one) => one.id === about.who && !one.left) ?? null) : null);
+  const onIt = (reviewer: Reviewer) => (reviewer.email ? state.invited.some((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase()) : screening.reviewers.some((one) => !one.left && (reviewer.model ? one.model !== undefined && modelKey(one.model) === modelKey(reviewer.model) : one.id === reviewer.id)));
+  const addingNow = adding ?? (about.change === "add" && kept?.id === about.who && !onIt(kept) ? kept : null);
   const leavingNow = leaving ?? named("off");
   const demotingNow = demoting ?? named("viewer");
-  const confirming = over === "confirm" && Boolean(adding || leavingNow || demotingNow);
+  const confirming = over === "confirm" && Boolean(addingNow || leavingNow || demotingNow);
   const unsettled = state.counts.conflict + state.counts.waiting;
   const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = words.collectionName(screening);
-  const confirmAdd = (reviewer: Reviewer) =>
+  // Once added, they are no longer asked about: Forward over the question opens People.
+  const confirmAdd = (reviewer: Reviewer) => addOf(reviewer).then((done) => { keep({ adding: undefined }); return done; });
+  const addOf = (reviewer: Reviewer) =>
     reviewer.model ? add({ jobId: id, model: { model: reviewer.model.id, ...(reviewer.model.effort ? { effort: reviewer.model.effort } : {}) } }) : reviewer.email ? sharing.invite(reviewer.email) : reviewer.guest ? sharing.give(reviewer.id as Id<"users">) : add({ jobId: id, personId: reviewer.id as Id<"users"> });
 
   const overlays = (
@@ -223,7 +230,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
           ]}
         />
       </ConfirmChange>
-      <AddReviewer open={state} reviewer={confirming ? adding : null} onConfirm={confirmAdd} onClose={answered} />
+      <AddReviewer open={state} reviewer={confirming ? addingNow : null} onConfirm={confirmAdd} onClose={answered} />
       {/* Keyed by who it is about, so a choice made for someone else (Stop counting votes) never carries over. */}
       <TakeOff key={`off:${leavingNow?.id ?? ""}`} open={state} reviewer={confirming ? leavingNow : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
       <TakeOff key={`viewer:${demotingNow?.id ?? ""}`} open={state} reviewer={confirming ? demotingNow : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />

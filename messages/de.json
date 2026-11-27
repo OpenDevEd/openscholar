@@ -9185,6 +9185,7 @@
         "join": "Sie sind kein Reviewer dieses Screenings. Treten Sie als Reviewer bei, um abzustimmen."
       },
       "votesShut": "Die anderen Stimmen bleiben verborgen, damit sie Ihre nicht beeinflussen.",
+      "peopleVotesShut": "Die Stimmen der anderen Personen bleiben verborgen, damit sie Ihre nicht beeinflussen. Der Rat der Modelle wird angezeigt.",
       "creditsShort": "{short, plural, one {# Credit zu wenig} other {# Credits zu wenig}}",
       "retry": "{papers, plural, one {Artikel für {cost, plural, one {# Credit} other {# Credits}} erneut versuchen} other {Alle # Artikel für {cost, plural, one {# Credit} other {# Credits}} erneut versuchen}}",
       "votesBy": "{you, select, true {Ihre Stimmen} other {Stimmen von {name}}}",

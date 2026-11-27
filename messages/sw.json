@@ -9185,6 +9185,7 @@
         "join": "Wewe si mkaguzi wa uchujaji huu. Jiunge kama mkaguzi ili upige kura."
       },
       "votesShut": "Kura za wengine zinabaki zimefichwa ili zisiathiri kura yako.",
+      "peopleVotesShut": "Kura za watu wengine zinabaki zimefichwa ili zisiathiri kura yako. Ushauri wa modeli unaonekana.",
       "creditsShort": "{short, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
       "retry": "{papers, plural, one {Jaribu makala tena kwa {cost, plural, one {krediti #} other {krediti #}}} other {Jaribu makala zote # tena kwa {cost, plural, one {krediti #} other {krediti #}}}}",
       "votesBy": "{you, select, true {Kura zako} other {Kura za {name}}}",
