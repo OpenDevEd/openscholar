@@ -229,8 +229,8 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
       ]
     )
 
-    // One press, priced as the work is checked against the balance: its task's model, at the price of one helper call.
-    const credits = apiKeyMode === 'credits' ? figures.data?.[defaultTask]?.helper : undefined
+    // What one press usually costs on its task's model, said on its button. The balance is still checked against the most a press can cost.
+    const credits = apiKeyMode === 'credits' ? figures.data?.[defaultTask]?.usual : undefined
     return useMemo(
       () => ({ execute, isLoading, error, isConfigured, isReady, credits }),
       [execute, isLoading, error, isConfigured, isReady, credits]

@@ -12,7 +12,7 @@ import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
  * translating one). The browser checks their balance against these before it asks for work
  * (lib/ai/client/hook-factory.ts), as the server holds them. Null when signed out.
  */
-const figures = v.object({ helper: v.number(), paper: v.number() });
+const figures = v.object({ helper: v.number(), paper: v.number(), usual: v.number() });
 
 export const mine = query({
   // The page's workspace, whose preset an organization's work runs on (#651); none, the person's own.
@@ -24,9 +24,9 @@ export const mine = query({
     const each = await Promise.all(
       AI_TASKS.map(async (task) => {
         const pricing = await taskPricing(ctx, working, task);
-        return [task, { helper: estimateCredits(pricing, CALL_TOKENS.helper), paper: estimateCredits(pricing, CALL_TOKENS.paper) }] as const;
+        return [task, { helper: estimateCredits(pricing, CALL_TOKENS.helper), paper: estimateCredits(pricing, CALL_TOKENS.paper), usual: estimateCredits(pricing, CALL_TOKENS.helperUsual) }] as const;
       }),
     );
-    return Object.fromEntries(each) as Record<AiTask, { helper: number; paper: number }>;
+    return Object.fromEntries(each) as Record<AiTask, { helper: number; paper: number; usual: number }>;
   },
 });
