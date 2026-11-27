@@ -984,7 +984,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     const wasOpen = deciding === kind;
     const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); if (wasOpen) setDeciding(kind); notSaved(t, error); };
     // What was written is what is saved once the server has it: the field then shows the saved note, so the next change keeps it too.
-    const done = () => { setSent(null); setNotes(({ [kind]: _sent, ...rest }) => rest); };
+    // A note changed again while the vote was being saved is kept: only the one sent gives way to the saved note.
+    const done = () => { setSent(null); setNotes(({ [kind]: now, ...rest }) => (now === undefined || now === typed ? rest : { ...rest, [kind]: now })); };
     const failed = (error: unknown) => { setSent(null); refused(error); };
     if (kind === "vote") {
       setSent({ paper: paper.id, decision, reason });

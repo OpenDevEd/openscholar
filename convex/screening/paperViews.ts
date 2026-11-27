@@ -104,25 +104,33 @@ const byJob = { jobId: v.id("screeningJobs") };
 /** Papers one page holds at most, and rows a page looks through for the ones its filters keep. */
 const PAGE_MAX = 100;
 const FILTER_ROWS = 1_500;
-/** Papers a page of a search looks through for the ones its filters keep, from where the page before stopped; a search finds 1,024 at most. */
-const SEARCH_SCAN = 300;
-const SEARCH_MOST = 1_024;
+/** A search page's cursor: the search's batch and how far into it the page got. One from before this shape starts over. */
+const readCursor = (cursor: string | null): [string | null, number] => {
+  try {
+    const read: unknown = cursor ? JSON.parse(cursor) : null;
+    return Array.isArray(read) && (read[0] === null || typeof read[0] === "string") && typeof read[1] === "number" ? [read[0], read[1]] : [null, 0];
+  } catch {
+    return [null, 0];
+  }
+};
+/** Papers a page of a search reads at once to find the ones its filters keep. */
+const SEARCH_SCAN = 200;
 
 /**
  * A page of papers found by their words, kept to what `keep` says, so a page is never cut before its filters are
- * applied: a search can't be paged after a filter, so the page reads the best matches up to where it is and on, and its
- * cursor is how far down them it got.
+ * applied. It reads the search a batch at a time, by the search's own cursor; its cursor is that batch's and how far
+ * into it the page got, so the next page goes on from the same paper and the search runs past any number of matches.
  */
-async function searchPage<Row>(read: (count: number) => Promise<Paper[]>, cursor: string | null, numItems: number, keep: (paper: Paper) => Promise<Row | null>) {
-  const from = Number(cursor) || 0;
-  const limit = Math.min(SEARCH_MOST, from + SEARCH_SCAN);
-  const found = (await read(limit)).slice(from);
-  const kept = await Promise.all(found.map(keep));
+async function searchPage<Row>(read: (options: { cursor: string | null; numItems: number }) => Promise<{ page: Paper[]; isDone: boolean; continueCursor: string }>, cursor: string | null, numItems: number, keep: (paper: Paper) => Promise<Row | null>) {
+  const [batch, skip] = readCursor(cursor);
+  const found = await read({ cursor: batch, numItems: SEARCH_SCAN });
+  const kept = await Promise.all(found.page.slice(skip).map(keep));
   const page: Row[] = [];
   let at = 0;
   for (; at < kept.length && page.length < numItems; at++) if (kept[at] !== null) page.push(kept[at]!);
-  const isDone = at === kept.length && (from + found.length < limit || limit === SEARCH_MOST);
-  return { page, isDone, continueCursor: String(from + at) };
+  // The batch read to its end: the next page starts the search's next batch.
+  if (at === kept.length) return { page, isDone: found.isDone, continueCursor: JSON.stringify([found.continueCursor, 0]) };
+  return { page, isDone: false, continueCursor: JSON.stringify([batch, skip + at]) };
 }
 
 export const paperAction = defineUserQuery({
@@ -228,7 +236,7 @@ export const queueAction = defineUserQuery({
       // Found by its words, best match first, then kept to the queue.
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
       const inQueue = (row: PaperView) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted));
-      return await searchPage((count) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).take(count), paginationOpts.cursor, options.numItems, async (paper) => {
+      return await searchPage((page) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(page), paginationOpts.cursor, options.numItems, async (paper) => {
         // A paper whose source was taken out is in no queue, found by its words or not.
         if (paper.withdrawn || !holdsAll(paper, needle)) return null;
         const [row] = await views(ctx, looking, [paper]);
@@ -314,7 +322,7 @@ export const listAction = defineUserQuery({
         if (!on) return false;
         return voted === "none" ? !on.vote && !on.hidden && !on.failed : voted === "failed" ? on.failed === true : voted ? on.vote?.decision === voted : on.vote !== undefined || on.hidden === true;
       };
-      return await searchPage((count) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).take(count), paginationOpts.cursor, options.numItems, async (paper) => {
+      return await searchPage((page) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(page), paginationOpts.cursor, options.numItems, async (paper) => {
         if (!keeps(paper) || !holdsAll(paper, needle) || (settler && paper.resolved?.by !== settler)) return null;
         const [row] = await withVotes([paper]);
         return row && theirs(row) ? row : null;
