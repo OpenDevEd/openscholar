@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
     "asRole": "身份：{role}",
     "memberCan": "成员可以用组织共享的所有内容进行搜索、保存、筛查和提取。",
-    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。"
+    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。",
+    "badge": {
+      "screen": "{count, plural, other {# 个筛选需要你}}",
+      "screenWhy": "待筛选的论文、待裁定的分歧或向你提出的问题",
+      "publish": "{count, plural, other {# 份报告可以上线}}",
+      "publishWhy": "{count, plural, other {激活后即上线}}"
+    }
   },
   "models": {
     "changeInSettings": "在 AI 设置中更改"
@@ -8128,6 +8134,7 @@
       "block": {
         "emptyCriterion": "为空白标准写一个问题",
         "needsCriterion": "{many, select, true {为模型添加一条标准} other {为模型添加一条标准}}",
+        "needsMust": "{many, select, true {为模型将一项标准设为必需} other {为模型将一项标准设为必需}}",
         "overPapers": "{personal, select, true {{count, plural, other {你的套餐每个筛选最多可筛 # 篇论文}}} other {{count, plural, other {{workspace} 的套餐每个筛选最多可筛 # 篇论文}}}}",
         "overModels": "{count, plural, other {一个筛选最多运行 # 个模型}}",
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
@@ -9203,6 +9210,7 @@
         "lock": "锁图标表示该处投票已隐藏。"
       },
       "anotherReason": "其他原因…",
+      "noReason": "无理由",
       "paperFacts": {
         "from": "来自 {name}",
         "added": "{ago}添加",
@@ -9585,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "与另一篇论文重复",
-        "other": "其他原因"
+        "other": "其他原因",
+        "unstated": "未说明理由"
       },
       "excludeAsk": {
         "must": "{many, select, true {这些论文不满足哪条必要条件？} other {它不满足哪条必要条件？}}",

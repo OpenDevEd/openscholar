@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Esto no es una dirección de correo: {values}. Corrígela o quítala para crear la organización.} other {Estas no son direcciones de correo: {values}. Corrígelas o quítalas para crear la organización.}}",
     "asRole": "como {role}",
     "memberCan": "Los miembros buscan, guardan, criban y extraen con todo lo que comparte la organización.",
-    "adminCan": "Los administradores pueden hacer lo mismo y además invitar y quitar personas y gestionar los ajustes y el gasto."
+    "adminCan": "Los administradores pueden hacer lo mismo y además invitar y quitar personas y gestionar los ajustes y el gasto.",
+    "badge": {
+      "screen": "{count, plural, one {# cribado le necesita} other {# cribados le necesitan}}",
+      "screenWhy": "Artículos que cribar, conflictos que resolver o preguntas para usted",
+      "publish": "{count, plural, one {# informe está listo para publicarse} other {# informes están listos para publicarse}}",
+      "publishWhy": "{count, plural, one {Se publica cuando usted lo active} other {Se publican cuando usted los active}}"
+    }
   },
   "models": {
     "changeInSettings": "Cambiar en los ajustes de IA"
@@ -8129,6 +8135,7 @@
       "block": {
         "emptyCriterion": "Escriba una pregunta para el criterio vacío",
         "needsCriterion": "{many, select, true {Añada un criterio para los modelos} other {Añada un criterio para el modelo}}",
+        "needsMust": "{many, select, true {Haga imprescindible un criterio para los modelos} other {Haga imprescindible un criterio para el modelo}}",
         "overPapers": "{personal, select, true {{count, plural, one {Su plan criba # artículo en un mismo cribado} other {Su plan criba hasta # artículos en un mismo cribado}}} other {{count, plural, one {El plan de {workspace} criba # artículo en un mismo cribado} other {El plan de {workspace} criba hasta # artículos en un mismo cribado}}}}",
         "overModels": "{count, plural, one {Un cribado usa # modelo} other {Un cribado usa hasta # modelos}}",
         "orphaned": "{many, select, true {{count, plural, one {# artículo es solo un PDF, que estos modelos no pueden leer. Añada una persona} other {# artículos son solo un PDF, que estos modelos no pueden leer. Añada una persona}}} other {{count, plural, one {# artículo es solo un PDF, que este modelo no puede leer. Añada una persona} other {# artículos son solo un PDF, que este modelo no puede leer. Añada una persona}}}}",
@@ -9204,6 +9211,7 @@
         "lock": "Un candado marca dónde hay un voto oculto."
       },
       "anotherReason": "Otro motivo…",
+      "noReason": "Sin motivo",
       "paperFacts": {
         "from": "De {name}",
         "added": "Añadido {ago}",
@@ -9586,7 +9594,8 @@
       },
       "otherReason": {
         "duplicate": "Duplicado de otro artículo",
-        "other": "Otro motivo"
+        "other": "Otro motivo",
+        "unstated": "Sin motivo indicado"
       },
       "excludeAsk": {
         "must": "{many, select, true {¿Qué requisito no cumplen estos artículos?} other {¿Qué requisito no cumple?}}",

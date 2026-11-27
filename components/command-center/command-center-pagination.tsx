@@ -42,6 +42,7 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
   const endItem = steps ? steps.offset + steps.shown : Math.min(currentPage * itemsPerPage, counted);
   // A kept count can lag the rows it counts by a moment; it never reads lower than the rows shown.
   const totalItems = steps ? (steps.total === undefined ? atLeast(endItem) : Math.max(steps.total, endItem)) : counted;
+  const pageCount = steps?.pageCount;
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -105,7 +106,7 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
 
         {steps ? (
           <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
-            {currentPage} / {steps.pageCount === undefined ? atLeast(currentPage) : Math.max(currentPage, steps.pageCount)}
+            {currentPage} / {pageCount === undefined ? atLeast(currentPage) : Math.max(currentPage, pageCount)}
           </span>
         ) : getPageNumbers().map((page, index) =>
           page === "ellipsis" ? (

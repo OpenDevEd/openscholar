@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",
     "memberCan": "Lede soek, stoor, sif en onttrek met alles wat die organisasie deel.",
-    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur."
+    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur.",
+    "badge": {
+      "screen": "{count, plural, one {# sifting het jou nodig} other {# siftings het jou nodig}}",
+      "screenWhy": "Artikels om te sif, konflikte om te besleg of vrae aan jou",
+      "publish": "{count, plural, one {# verslag is gereed om te publiseer} other {# verslae is gereed om te publiseer}}",
+      "publishWhy": "{count, plural, one {Dit word gepubliseer sodra jy dit aktiveer} other {Hulle word gepubliseer sodra jy hulle aktiveer}}"
+    }
   },
   "models": {
     "changeInSettings": "Verander in KI-instellings"
@@ -8129,6 +8135,7 @@
       "block": {
         "emptyCriterion": "Skryf ’n vraag vir die leë kriterium",
         "needsCriterion": "{many, select, true {Voeg ’n kriterium vir die modelle by} other {Voeg ’n kriterium vir die model by}}",
+        "needsMust": "{many, select, true {Maak ’n maatstaf ’n moet vir die modelle} other {Maak ’n maatstaf ’n moet vir die model}}",
         "overPapers": "{personal, select, true {{count, plural, one {Jou plan sif # artikel in een siftering} other {Jou plan sif tot # artikels in een siftering}}} other {{count, plural, one {{workspace} se plan sif # artikel in een siftering} other {{workspace} se plan sif tot # artikels in een siftering}}}}",
         "overModels": "{count, plural, one {’n Siftering gebruik # model} other {’n Siftering gebruik tot # modelle}}",
         "orphaned": "{many, select, true {{count, plural, one {# artikel is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by}}} other {{count, plural, one {# artikel is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by}}}}",
@@ -9204,6 +9211,7 @@
         "lock": "’n Slot staan waar ’n stem versteek is."
       },
       "anotherReason": "’n Ander rede…",
+      "noReason": "Geen rede nie",
       "paperFacts": {
         "from": "Uit {name}",
         "added": "{ago} bygevoeg",
@@ -9586,7 +9594,8 @@
       },
       "otherReason": {
         "duplicate": "’n Duplikaat van ’n ander artikel",
-        "other": "’n Ander rede"
+        "other": "’n Ander rede",
+        "unstated": "Geen rede gegee nie"
       },
       "excludeAsk": {
         "must": "{many, select, true {Aan watter vereiste voldoen hierdie artikels nie?} other {Aan watter vereiste voldoen dit nie?}}",

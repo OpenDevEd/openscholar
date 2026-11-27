@@ -293,7 +293,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
                       label={<QueryText query={search.query} />}
                       detail={
                         <FadeRow as="span" scrolls className="block">
-                          <FilterChips filters={{ ...search, field: undefined, sortBy: undefined }} size="compact" singleLine />
+                          <FilterChips filters={search} size="compact" singleLine />
                         </FadeRow>
                       }
                       count={<Chip>{ts("paperCount", { count: search.count ?? 0 })}</Chip>}

@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",
     "memberCan": "Amalungu ayasesha, alondoloze, ahlunge futhi akhiphe ngakho konke inhlangano ekwabelanayo.",
-    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali."
+    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali.",
+    "badge": {
+      "screen": "{count, plural, one {Ukuhlunga okungu-# kuyakudinga} other {Ukuhlunga okungu-# kuyakudinga}}",
+      "screenWhy": "Amaphepha okuhlunga, ukungqubuzana okuxazululwayo noma imibuzo obuzwe yona",
+      "publish": "{count, plural, one {Umbiko ongu-# usulungele ukushicilelwa} other {Imibiko engu-# isilungele ukushicilelwa}}",
+      "publishWhy": "{count, plural, one {Ushicilelwa uma uwuvula} other {Ishicilelwa uma uyivula}}"
+    }
   },
   "models": {
     "changeInSettings": "Shintsha ezilungiselelweni ze-AI"
@@ -8128,6 +8134,7 @@
       "block": {
         "emptyCriterion": "Bhala umbuzo wombandela ongenalutho",
         "needsCriterion": "{many, select, true {Engeza umbandela wamamodeli} other {Engeza umbandela wemodeli}}",
+        "needsMust": "{many, select, true {Yenza umbandela owodwa ube yimpoqo kumamodeli} other {Yenza umbandela owodwa ube yimpoqo kumodeli}}",
         "overPapers": "{personal, select, true {{count, plural, one {Uhlelo lwakho luskrina # iphepha ekuskrinini okukodwa} other {Uhlelo lwakho luskrina amaphepha afika ku-# ekuskrinini okukodwa}}} other {{count, plural, one {Uhlelo lwe-{workspace} luskrina # iphepha ekuskrinini okukodwa} other {Uhlelo lwe-{workspace} luskrina amaphepha afika ku-# ekuskrinini okukodwa}}}}",
         "overModels": "{count, plural, one {Ukuskrini kusebenzisa # imodeli} other {Ukuskrini kusebenzisa amamodeli afika ku-#}}",
         "orphaned": "{many, select, true {{count, plural, one {# iphepha liyi-PDF kuphela, la mamodeli angakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, la mamodeli angakwazi ukuwafunda. Engeza umuntu}}} other {{count, plural, one {# iphepha liyi-PDF kuphela, le modeli engakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, le modeli engakwazi ukuwafunda. Engeza umuntu}}}}",
@@ -9203,6 +9210,7 @@
         "lock": "Ingidi ime lapho ivoti lifihliwe khona."
       },
       "anotherReason": "Esinye isizathu…",
+      "noReason": "Asikho isizathu",
       "paperFacts": {
         "from": "Kusuka ku-{name}",
         "added": "Kungezwe {ago}",
@@ -9585,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "Ikhophi yelinye iphepha",
-        "other": "Esinye isizathu"
+        "other": "Esinye isizathu",
+        "unstated": "Asikho isizathu esinikeziwe"
       },
       "excludeAsk": {
         "must": "{many, select, true {Yiyiphi imfuneko la maphepha ahluleka kuyo?} other {Yiyiphi imfuneko elihluleka kuyo?}}",

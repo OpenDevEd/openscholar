@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
     "asRole": "as {role}",
     "memberCan": "Members search, save, screen and extract with everything the organization shares.",
-    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending."
+    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending.",
+    "badge": {
+      "screen": "{count, plural, one {# screening needs you} other {# screenings need you}}",
+      "screenWhy": "Papers to screen, conflicts to settle or questions put to you",
+      "publish": "{count, plural, one {# report is ready to go live} other {# reports are ready to go live}}",
+      "publishWhy": "{count, plural, one {It goes live once you activate it} other {They go live once you activate them}}"
+    }
   },
   "models": {
     "changeInSettings": "Change in AI settings"
@@ -8128,6 +8134,7 @@
       "block": {
         "emptyCriterion": "Write a question for the empty criterion",
         "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
+        "needsMust": "{many, select, true {Make a criterion a must-have for the models} other {Make a criterion a must-have for the model}}",
         "overPapers": "{personal, select, true {{count, plural, one {Your plan screens # paper in one screening} other {Your plan screens up to # papers in one screening}}} other {{count, plural, one {The plan of {workspace} screens # paper in one screening} other {The plan of {workspace} screens up to # papers in one screening}}}}",
         "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
@@ -9203,6 +9210,7 @@
         "lock": "A lock stands where a vote is hidden."
       },
       "anotherReason": "Another reason…",
+      "noReason": "No reason",
       "paperFacts": {
         "from": "From {name}",
         "added": "Added {ago}",
@@ -9585,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "A duplicate of another paper",
-        "other": "Another reason"
+        "other": "Another reason",
+        "unstated": "No reason given"
       },
       "excludeAsk": {
         "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",

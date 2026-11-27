@@ -54,7 +54,8 @@ const MODELS_A_SCREENING = 5;
 export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
 
 /** A model votes by answering the criteria: with none it would include every paper it reads. People vote without them. */
-export const NEEDS_CRITERIA = "A model votes by answering the criteria. Add a criterion, or take the models off.";
+/** A model votes Exclude only on a must-have it finds unmet: with no must-have it would include every paper. */
+export const NEEDS_CRITERIA = "A model excludes a paper only for a must-have it fails. Make at least one criterion a must-have, or take the models off.";
 
 /** Criteria as a screening keeps them, from what a form sent: checked, trimmed, each with a key that never changes. People alone can screen with none. */
 export function criteriaFrom(sent: Infer<typeof criterionInput>[], kept: Criterion[] = [], now = Date.now()): Criterion[] {
@@ -237,7 +238,7 @@ export const open = internalMutation({
     if (people.length + models.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
     const now = Date.now();
     const criteria = criteriaFrom(sent, [], now);
-    if (!criteria.length && models.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
+    if (!criteria.some((criterion) => criterion.must) && models.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
     const stars = starsFrom(sentStars, criteria.length);
     const kept = ruleFrom(rule);
     // People vote as members of the workspace. Someone from outside is invited from the screening's People panel.

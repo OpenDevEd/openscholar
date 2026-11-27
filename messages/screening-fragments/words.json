@@ -75,7 +75,8 @@
   },
   "otherReason": {
     "duplicate": "A duplicate of another paper",
-    "other": "Another reason"
+    "other": "Another reason",
+    "unstated": "No reason given"
   },
   "excludeAsk": {
     "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",

@@ -52,12 +52,14 @@ const ROW = 57;
 export type Added = { ref: string; name: string; detail: string; total: number; set: SourceSet; filters?: string[] };
 type Offer = Pick<Added, "name" | "detail" | "total" | "filters">;
 
-export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
+export function OfferRow({ offer, label, icon: Icon, chips, trail, added, onAdd, onOpen, count = true }: {
   offer: Offer;
+  /** Its name as it is drawn, where that is more than the text: a search's query with its terms marked, or "No query". */
+  label?: ReactNode;
   icon: AppIcon;
   /** What else tells this row from the others, after its detail. */
   chips?: ReactNode;
-  /** Where it sits, as steps that lead back up, in place of its detail. */
+  /** What goes under its name in place of its detail: where it sits, as steps that lead back up, or a search's filters. */
   trail?: ReactNode;
   added: boolean;
   onAdd: () => void;
@@ -78,11 +80,11 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
           <span className="flex h-5 shrink-0 items-center"><Icon className="size-4 text-muted-foreground" /></span>
           {onOpen ? (
             <button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-1 rounded text-start text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
-              <span className={name}>{offer.name}</span>
+              <span className={name}>{label ?? offer.name}</span>
               <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           ) : (
-            <p className={cn("min-w-0 text-sm font-medium", name)}>{offer.name}</p>
+            <p className={cn("min-w-0 text-sm font-medium", name)}>{label ?? offer.name}</p>
           )}
         </div>
         {trail ? (
@@ -399,7 +401,7 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
         })}
       </ul>
       )}
-      {rows.hasPages || total > FILES_PAGE ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? first : rows.items.length, total }} /> : null}
+      {rows.hasPages || total > FILES_PAGE ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? first : rows.items.length, total, pageCount: Math.max(1, Math.ceil(total / FILES_PAGE)) }} /> : null}
     </div>
   );
 }
@@ -655,7 +657,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
         </div>
       </div>
-      {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
+      {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside, pageCount: Math.max(1, Math.ceil(here.inside / PAGE)) }) }} /> : null}
       </AutoHeight>
     </div>
   );

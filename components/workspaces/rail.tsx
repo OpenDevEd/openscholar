@@ -255,7 +255,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
               {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
               {/* Publish (plans/publish-reports), drawn from the first frame when it showed last time; switched on since, it opens its place. */}
               <AnimatePresence initial={false}>
-                {publishes && signedIn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: t("publish"), active: is("/publish"), badge: toActivate || undefined })}</Opening> : null}
+                {publishes && signedIn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: t("publish"), active: is("/publish"), badge: toActivate || undefined, badgeSays: { title: t("badge.publish", { count: toActivate }), detail: t("badge.publishWhy", { count: toActivate }) } })}</Opening> : null}
               </AnimatePresence>
               {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
               {item({
@@ -275,6 +275,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 running: screening?.reading ? { done: screening.reading.done, total: screening.reading.total, what: tc("screening"), percent: Math.floor((screening.reading.done / screening.reading.total) * 100) } : undefined,
                 // How many screenings wait for the person, in whichever workspace: the list says where.
                 badge: screening?.waiting || undefined,
+                badgeSays: { title: t("badge.screen", { count: screening?.waiting ?? 0 }), detail: t("badge.screenWhy") },
               })}
               {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
               <AnimatePresence initial={false}>
@@ -511,6 +512,7 @@ function RailItem({
   onClick,
   running,
   badge,
+  badgeSays,
   tooltip,
 }: {
   href: string;
@@ -521,6 +523,8 @@ function RailItem({
   /** A job running here: the ring fills, and the label becomes its progress, a percent when one is given. */
   running?: { done: number; total: number; what: string; percent?: number };
   badge?: number;
+  /** What the count is for, said on hover: what waits, and what the person does about it. */
+  badgeSays?: { title: string; detail: string };
   tooltip?: React.ReactNode;
 }) {
   const t = useTranslations("workspaces");
@@ -548,7 +552,8 @@ function RailItem({
       </span>
     </Link>
   );
-  if (!running && !tooltip) return link;
+  const says = badge ? badgeSays : undefined;
+  if (!running && !tooltip && !says) return link;
   return (
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>{link}</TooltipTrigger>
@@ -557,9 +562,19 @@ function RailItem({
           {tooltip}
         </TooltipContent>
       ) : (
-        <TooltipContent side="right" className="flex items-center gap-2">
-          <span className="font-medium">{running!.what}</span>
-          <span className="tabular-nums opacity-70">{t("doneOf", { done: running!.done, total: running!.total })}</span>
+        <TooltipContent side="right" className="flex max-w-64 flex-col items-start gap-0.5 py-2">
+          {running ? (
+            <span className="flex items-center gap-2">
+              <span className="font-medium">{running.what}</span>
+              <span className="tabular-nums opacity-70">{t("doneOf", { done: running.done, total: running.total })}</span>
+            </span>
+          ) : null}
+          {says ? (
+            <>
+              <span className="font-medium tabular-nums">{says.title}</span>
+              <span className="opacity-70">{says.detail}</span>
+            </>
+          ) : null}
         </TooltipContent>
       )}
     </Tooltip>

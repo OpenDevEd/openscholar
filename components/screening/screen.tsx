@@ -260,20 +260,25 @@ function Screen({ open }: { open: Open }) {
   const lastPaper = last ? (last.paper.id === paper?.id ? paper : (lastRead ?? last.paper)) : undefined;
   // No vote is cast, and no conflict settled, in a finished screening: the buttons give way to a line that says so.
   const finished = Boolean(screening.finishedAt);
-  const mayDecide = !finished && (resolving ? open.canResolve : open.isReviewer);
+  // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
+  const [arrivedQueue, setArrivedQueue] = useState(queue);
+  if (arrived && arrivedQueue !== queue) setArrivedQueue(queue);
+  const switching = arrivedQueue !== queue && !picked;
+  // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
+  const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
   const answering = !resolving && open.isReviewer;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
-  // What a paper can be excluded for, in two groups: the must-have it fails, or another reason. Each has its key: a must-have its own number, as far as the digits go, and another reason its first letter.
-  const reasonGroups = words.excludeGroups(criteria);
+  // What a paper can be excluded for: no reason, which Enter gives, a duplicate, or another reason, which is written in the note. Each has its key.
+  const reasonGroups = words.excludeGroups();
   const reasons = reasonGroups.flatMap((group) => group.list);
 
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
     const note = notes[paper.id]?.trim() || (resolving ? undefined : mine?.note);
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
-    if (decision === "exclude" && reason === OTHER && !notes[paper.id]?.trim()) {
+    if (decision === "exclude" && reason === OTHER && !note) {
       setReasonFor(null);
       return setWriting(paper.id);
     }
@@ -312,10 +317,11 @@ function Screen({ open }: { open: Open }) {
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide) return;
-    // Excluding asks which criterion failed, unless your own answers already say.
+    // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
     const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...answers[paper.id] }, criteria).reason : undefined;
-    // Settling a conflict with a reason already written: that is the reason, and nothing more is asked.
-    if (decision === "exclude" && resolving && notes[paper.id]?.trim()) decideOn("exclude", OTHER);
+    // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
+    const written = (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim();
+    if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER);
     else if (decision === "exclude" && !failed) setReasonFor(paper.id);
     else decideOn(decision, failed);
   };
@@ -385,7 +391,8 @@ function Screen({ open }: { open: Open }) {
   const bring = (criterion: Criterion) => {
     if (!tablet) requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>(`[data-criterion="${CSS.escape(criterion.key)}"]`)].find((one) => one.getClientRects().length)?.scrollIntoView({ block: "nearest" }));
   };
-  const pointsTo = Object.keys(given).length ? decide(given, criteria) : null;
+  // Answers point to a vote only through a must-have: with none, every answer is a nice-to-have, and no answer says Include or Exclude.
+  const pointsTo = Object.keys(given).length && criteria.some((criterion) => criterion.must) ? decide(given, criteria) : null;
   const failing = pointsTo?.reason ? criteria.find((criterion) => criterion.key === pointsTo.reason) : criteria.find((criterion) => criterion.must && given[criterion.key] === "unclear");
   // The vote your answers lead to, once they say why: a must-have answered No or Unclear, or every must-have met. Its button is outlined only then, with the line that explains it.
   const pointed = !mine && pointsTo && (failing || (pointsTo.decision === "include" && criteria.filter((criterion) => criterion.must).every((criterion) => given[criterion.key] === "yes"))) ? pointsTo.decision : null;
@@ -519,6 +526,8 @@ function Screen({ open }: { open: Open }) {
   );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
+  // One the counts say is empty says so at once.
+  const known = queue !== "done" && !narrowed && !picked && left === 0;
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -535,7 +544,7 @@ function Screen({ open }: { open: Open }) {
       </div>
     );
   }
-  if (reading || (!paper && !narrowed && !opening)) {
+  if (reading || (switching && known) || (!paper && !narrowed && !opening)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -645,7 +654,7 @@ function Screen({ open }: { open: Open }) {
 
   return (
     <>
-      <div className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE)}>
+      <div aria-busy={switching || undefined} className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE, "*:not-first:transition-opacity", switching && "*:not-first:pointer-events-none *:not-first:opacity-60")}>
         {/* The queue's bar: its tabs and the way to its list, over the queue and the paper from a laptop's width. The button has one place and one look. From 1400px it hides the queue's pane and shows it again, and under that it opens the list over the page. */}
         {/* With no paper to show, the bar has the whole width, as there are no answers to sit beside. */}
         <div className={cn("flex flex-col gap-2 lg:col-start-1 lg:row-start-1 lg:flex-row lg:items-center lg:gap-3", QUEUE_BAR, paper ? "min-[87.5rem]:col-end-3" : "lg:-col-end-1 lg:border-e-0")}>
@@ -939,10 +948,11 @@ function Screen({ open }: { open: Open }) {
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
-                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                  {/* Escape goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
+                  <Input autoFocus onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}</Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}</Button>
+                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
+                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
                   </div>
                 </form>
               ) : (
@@ -994,6 +1004,8 @@ function Screen({ open }: { open: Open }) {
                             // After a reason the next paper opens: the keyboard stays with the page, not on Exclude.
                             onCloseAutoFocus={(event) => event.preventDefault()}
                             onKeyDown={(event) => {
+                              // Enter on a reason that has the focus picks that reason, as the menu does. Anywhere else it is no reason.
+                              if (event.key === "Enter" && (event.target as HTMLElement).closest("[role=menuitem]")) return;
                               const reason = reasons.find((one) => one.hotkey && one.hotkey.toLowerCase() === event.key.toLowerCase());
                               if (!reason || event.metaKey || event.ctrlKey || event.altKey) return;
                               event.preventDefault();
@@ -1007,7 +1019,7 @@ function Screen({ open }: { open: Open }) {
                                 {group.list.map((reason) => (
                                   <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
                                     <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} /></span>
-                                    {reason.hotkey ? <Kbd>{reason.hotkey}</Kbd> : null}
+                                    {reason.hotkey ? <Kbd>{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
                                   </DropdownMenuItem>
                                 ))}
                               </div>

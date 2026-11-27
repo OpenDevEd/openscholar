@@ -103,6 +103,26 @@ describe("a paper settled on its votes", () => {
     expect(await made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", one.papers[0]!._id)).collect()).map(({ status, lean }) => ({ status, lean })))).toEqual([{ status: "waiting", lean: 0 }]);
   });
 
+  it("takes an exclusion with no reason, and counts it as no reason given, not as another reason", async () => {
+    const made = await team(["ann"]);
+    const { jobId, papers } = await started(made, ["ann"], 1, { rule: { each: 1, settle: "one", blind: "after" } });
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId: papers[0]!._id, decision: "exclude" });
+    await settleAll(made.t);
+    const settled = await standingOf(made.t, jobId);
+    expect(settled.papers[0]).toMatchObject({ result: "exclude", reason: "unstated" });
+    expect(settled.reasons).toEqual({ unstated: 1 });
+
+    // Two exclusions with no reason and one for a duplicate: most gave none, so it is counted as none.
+    const three = await team(["cat", "dan", "eve"]);
+    const shared = await started(three, ["cat", "dan", "eve"], 1, { rule: { each: 3, settle: "all", blind: "after" } });
+    const exclude = (name: string, reason?: string) => three.as[name]!.mutation(api.screening.voting.vote, { workspaceId: three.workspaceId, jobId: shared.jobId, paperId: shared.papers[0]!._id, decision: "exclude", ...(reason ? { reason } : {}) });
+    await exclude("cat");
+    await exclude("dan");
+    await exclude("eve", "duplicate");
+    await settleAll(three.t);
+    expect((await standingOf(three.t, shared.jobId)).papers[0]).toMatchObject({ result: "exclude", reason: "unstated" });
+  });
+
   it("refuses a vote from someone who isn't one of its reviewers, and any vote once it is finished", async () => {
     const made = await team(["ann", "ben", "cat"]);
     const { jobId, papers } = await started(made, ["ann", "ben"], 1);

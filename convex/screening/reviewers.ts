@@ -148,7 +148,7 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
  */
 export async function addModel(ctx: MutationCtx, job: Doc<"screeningJobs">, model: { model: string; effort?: Reviewer["effort"] }, by: Id<"users">) {
   const picked = await modelFor(ctx, model.model);
-  if (!job.criteria?.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
+  if (!job.criteria?.some((criterion) => criterion.must)) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
   const reviewers = await reviewersOf(ctx, job._id);
   const old = reviewers.find((one) => one.kind === "model" && one.modelId === picked._id && one.effort === model.effort);
   if (old && old.left === undefined) return picked;

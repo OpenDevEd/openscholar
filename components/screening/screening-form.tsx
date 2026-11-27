@@ -25,6 +25,8 @@ import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { FadeRow } from "@/components/ui/fade-row";
+import { FilterChips } from "@/components/ui/filter-display";
+import { QueryText } from "@/components/ui/query-text";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -92,7 +94,8 @@ const DESTINATION_PAGE = 6;
 type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[] };
 /** A list read a page at a time, as its pager needs it. */
 /** A saved search as something to add, with the questions its own page screens with. */
-const searchOffer = (search: SearchResult): Offer => ({ ref: `search:${search.id}`, name: search.query, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
+/** A saved search as a source to add. One run with no words, on its filters alone, is named "No query", as the History page names it. */
+const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `search:${search.id}`, name: search.query.trim() || noQuery, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
 /** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
 const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
 /** A criterion made from a question as it was written. */
@@ -315,6 +318,7 @@ function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: 
 
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
+  const tc = useTranslations("common");
   const crumb = useScreeningsCrumb();
   const pieces = useTranslations("screening.pieces");
   const list = useTranslations("screening.list");
@@ -357,9 +361,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     const start = blank(setup.me);
     // Screen all on a results page: the form starts on that search, with the questions its page screens with as criteria. Where the search was written from a question put to the assistant, that question is the screening's, and its name: the words a person asked say more than the query made from them.
     if (!copied && picked) {
-      const criteria = searchOffer(picked).questions?.map((question) => criterionFrom(question)) ?? [];
+      const criteria = searchOffer(picked, tc("noQuery")).questions?.map((question) => criterionFrom(question)) ?? [];
       const asked = picked.latestQuestion?.trim() ?? "";
-      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom(searchOffer(picked))], criteria, scoring: defaultScoring(criteria) };
+      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom(searchOffer(picked, tc("noQuery")))], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
@@ -558,7 +562,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
   const moves = saved && changing && known ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
-  const needsCriteria = models.length > 0 && draft.criteria.length === 0;
+  // A model excludes only for a must-have it finds unmet: with none it would include every paper.
+  const needsCriteria = models.length > 0 && !draft.criteria.some((criterion) => criterion.must);
   const lastCheck = open?.latest ?? null;
   // What its models have cost so far.
   const spentSoFar = saved ? saved.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0) : 0;
@@ -580,7 +585,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Papers that are only a PDF none of its reviewers can read: they would wait for a vote nobody casts.
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const lacking: Block | null = unasked ?? (needsCriteria ? { text: t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }) } : null);
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }) } : null);
   const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast: what a row's chips open.
   const votesOf = (reviewer: Reviewer) => reviewer.tally?.cast ?? 0;
@@ -753,9 +758,15 @@ export function ScreeningForm({ id }: { id?: string }) {
 
   // What each tab offers, a page at a time: the workspace's saved searches, its library and collections, and the included papers of its other screenings.
   const taken_ = (ref: string) => draft.sources.some((source) => source.ref === ref);
+  // A search reads as the History page shows it: its query with the terms marked, or "No query", and the filters it ran with.
+  const searchOf = new Map([...(picked ? [picked] : []), ...searches.items].map((search) => [`search:${search.id}`, search]));
+  const searchLook = (offer: Offer) => {
+    const search = searchOf.get(offer.ref);
+    return search ? { label: <QueryText query={search.query} />, trail: <FadeRow as="span" scrolls className="block min-w-0"><FilterChips filters={search} size="compact" singleLine /></FadeRow> } : {};
+  };
   const offered: { rows: Offer[]; pager?: Pager; loading: boolean } =
     kind === "search"
-      ? { rows: [...(picked && searches.page === 1 && !typed ? [searchOffer(picked)] : []), ...searches.items.filter((search) => search.id !== picked?.id).map(searchOffer)], pager: searches, loading: searches.isLoading }
+      ? { rows: [...(picked && searches.page === 1 && !typed ? [searchOffer(picked, tc("noQuery"))] : []), ...searches.items.filter((search) => search.id !== picked?.id).map((search) => searchOffer(search, tc("noQuery")))], pager: searches, loading: searches.isLoading }
       : kind === "collection"
         ? { rows: [...(collections.page === 1 ? [{ ref: "saved", name: t("offer.allSaved"), detail: t("offer.library"), total: savedCount ?? 0, set: { kind: "saved" as const } }] : []), ...collections.items.map((one) => ({ ref: `collection:${one._id}`, name: one.name, detail: "", total: one.itemCount, set: { kind: "collection" as const, collectionId: one._id } }))], pager: collections, loading: collections.isLoading || savedCount === undefined }
         : { rows: withIncluded.items.filter((one) => one.id !== id).map((one) => ({ ref: `screening:${one.id}`, name: words.includedIn(one.name), detail: one.finishedAt ? t("offer.finished") : t("offer.running"), total: one.counts.include, set: { kind: "screening" as const, jobId: one.id } })), pager: withIncluded, loading: withIncluded.isLoading };
@@ -1107,10 +1118,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                       <AutoHeight>
                       <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
                         {offered.loading && !offered.rows.length ? <ListRowsSkeleton rows={OFFER_PAGE} height={57} label={t("papers.loadingList")} /> : null}
-                        {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
+                        {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} {...searchLook(offer)} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
                       </div>
-                      {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length }} /> : null}
+                      {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length, ...(kind === "search" ? { total: searches.total, pageCount: searches.pageCount } : {}) }} /> : null}
                       </AutoHeight>
                     </div>
                     )}

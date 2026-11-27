@@ -81,6 +81,7 @@
     "lock": "A lock stands where a vote is hidden."
   },
   "anotherReason": "Another reason…",
+  "noReason": "No reason",
   "paperFacts": {
     "from": "From {name}",
     "added": "Added {ago}",

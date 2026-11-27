@@ -50,6 +50,10 @@ export const shortOf = (text: string) => {
 
 /** Why a paper is excluded when no criterion is the reason. */
 export const OTHER_REASONS = ["duplicate", "other"] as const;
+/** An exclusion nobody gave a reason for: a title and abstract can be excluded with none. It is counted under its own name, never as "another reason". */
+export const NO_REASON = "unstated";
+/** Every reason that is not a criterion, as a page or a file names it. */
+export const NAMED_REASONS = [...OTHER_REASONS, NO_REASON] as const;
 
 /** A reviewer's decision, from their answers: a must-have criterion answered no excludes, an unclear one leaves it open. */
 export function decide(answers: Record<string, Answer>, criteria: Pick<Criterion, "key" | "must">[]): { decision: Decision; reason?: string } {

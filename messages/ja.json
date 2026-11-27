@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
     "asRole": "{role}として",
     "memberCan": "メンバーは、組織で共有されているものすべてを使って検索・保存・スクリーニング・抽出ができます。",
-    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。"
+    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。",
+    "badge": {
+      "screen": "{count, plural, other {#件のスクリーニングがあなたを待っています}}",
+      "screenWhy": "スクリーニングする論文、判断する対立、またはあなたへの質問",
+      "publish": "{count, plural, other {#件のレポートを公開できます}}",
+      "publishWhy": "{count, plural, other {有効にすると公開されます}}"
+    }
   },
   "models": {
     "changeInSettings": "AI 設定で変更"
@@ -8128,6 +8134,7 @@
       "block": {
         "emptyCriterion": "空の基準に質問を書いてください",
         "needsCriterion": "{many, select, true {モデル用に基準を追加してください} other {モデル用に基準を追加してください}}",
+        "needsMust": "{many, select, true {モデルのために基準を1つ必須にしてください} other {モデルのために基準を1つ必須にしてください}}",
         "overPapers": "{personal, select, true {{count, plural, other {プランで 1 つのスクリーニングに含められる論文は最大 # 件です}}} other {{count, plural, other {{workspace} のプランで 1 つのスクリーニングに含められる論文は最大 # 件です}}}}",
         "overModels": "{count, plural, other {1 つのスクリーニングで使えるモデルは最大 # 個です}}",
         "orphaned": "{many, select, true {{count, plural, other {論文 # 件は PDF しかなく、これらのモデルでは読めません。人を追加してください}}} other {{count, plural, other {論文 # 件は PDF しかなく、このモデルでは読めません。人を追加してください}}}}",
@@ -9203,6 +9210,7 @@
         "lock": "投票が非表示の箇所には鍵が表示されます。"
       },
       "anotherReason": "その他の理由…",
+      "noReason": "理由なし",
       "paperFacts": {
         "from": "取得元: {name}",
         "added": "{ago}に追加",
@@ -9585,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "別の論文と重複",
-        "other": "その他の理由"
+        "other": "その他の理由",
+        "unstated": "理由なし"
       },
       "excludeAsk": {
         "must": "{many, select, true {これらの論文はどの必須基準を満たしていませんか？} other {どの必須基準を満たしていませんか？}}",

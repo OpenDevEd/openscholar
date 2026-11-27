@@ -22,7 +22,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, NO_REASON, settle, type Answer } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
@@ -702,7 +702,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
-  if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const question = asked ? questionOf(reason, criteria, "label") : undefined;
   return (
@@ -713,12 +713,12 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
   );
 }
 
-/** The reasons to exclude as rows to press, in their two groups: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. */
+/** The reasons to exclude as rows to press: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. The same three as the menu on Screen. */
 export function ReasonRows({ criteria, many = false, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; onPick: (reason: string) => void }) {
   const words = useWords();
   return (
     <>
-      {words.excludeGroups(criteria, many).map((group) => (
+      {words.excludeGroups(many).map((group) => (
         <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
           <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
           {group.list.map((reason) => (

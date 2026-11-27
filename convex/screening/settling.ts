@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { cellOf, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
+import { cellOf, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
@@ -173,12 +173,13 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     for (const vote of votes) if (vote.status === "waiting" && byId.get(vote.reviewerId)?.kind === "person" && (vote.lean ?? 0) !== lean) await ctx.db.patch("screeningVotes", vote._id, { lean });
     const given = cast.flatMap((one) => (one.status === "cast" && one.decision ? [one.decision] : []));
     const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
-    const reason = now === "exclude" ? (reasonOf(cast, paper.resolved?.reason) ?? "other") : undefined;
+    // An exclusion cast with no reason counts as no reason given, among the others and when it settles a conflict: it never takes another vote's reason.
+    const reason = now === "exclude" ? (paper.resolved?.decision === "exclude" ? (paper.resolved.reason ?? NO_REASON) : (reasonOf(cast.map((one) => (one.status === "cast" && one.decision === "exclude" && !one.reason ? { ...one, reason: NO_REASON } : one))) ?? NO_REASON)) : undefined;
     const { points, stars } = scoreOf(job.criteria ?? [], job.stars ?? [], cast);
     if (now === "conflict" && was !== "conflict") conflicts = true;
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);
     if (now !== "waiting") counts[now]++;
-    if (was === "exclude") reasons[paper.reason ?? "other"] = (reasons[paper.reason ?? "other"] ?? 1) - 1;
+    if (was === "exclude") reasons[paper.reason ?? NO_REASON] = (reasons[paper.reason ?? NO_REASON] ?? 1) - 1;
     if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
     const patch = paper.withdrawn ? { result: undefined, outcome: undefined, qualified: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], qualified: now === "include", reason, score: points, stars, split, reopen: undefined, out: undefined, ...(paper.kept && carried === undefined ? { kept: undefined } : {}), ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);

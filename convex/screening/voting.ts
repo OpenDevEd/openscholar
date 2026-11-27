@@ -8,7 +8,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { workspaceMutation } from "../lib/userActions";
-import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
+import { NAMED_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, personRow, votesOf } from "./dealing";
@@ -26,7 +26,7 @@ const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">) => ctx.db.pat
 
 /** A reason to exclude is one of the screening's criteria, or one of the others. */
 function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
-  if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(OTHER_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
+  if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
 const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()) };
@@ -36,7 +36,6 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
-  if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (decision === null) {
@@ -108,7 +107,6 @@ export const resolve = workspaceMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to settle a paper.");
     await paperOf(ctx, jobId, paperId);
     requireReason(job, reason);
-    if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
     await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim().slice(0, SCREENING_TEXT.voteNote) } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
     await stamp(ctx, paperId);
     await bookkeepLater(ctx);
