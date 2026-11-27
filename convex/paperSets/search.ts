@@ -131,12 +131,18 @@ export type Work = {
   openscholar_id?: string;
 };
 
+/**
+ * A search result as a screening reads it: with the record our index knows it by. Our index can hold two records of one
+ * OpenAlex work, such as a preprint and the paper: each is a record of its own, so the second is counted as a duplicate
+ * merged and not taken for the first read again (convex/screening/gathering.ts `fill`). Nothing else takes the record:
+ * a library item or a screen-all result has no place for it.
+ */
+export const recordOf = (work: Work): SearchPaper => ({ ...toPaper(work), ...(work.openscholar_id ? { record: work.openscholar_id } : {}) });
+
 export function toPaper(work: Work): SearchPaper {
   const authors = onceEach(work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
     paper: toPaperKey(work.id)!,
-    // Our index can hold two records of one OpenAlex work, such as a preprint and the paper: each is a record of its own, so the second is counted as a duplicate merged and not taken for the first read again (convex/screening/gathering.ts `fill`).
-    ...(work.openscholar_id ? { record: work.openscholar_id } : {}),
     title: work.title ?? work.display_name ?? "",
     ...(work.abstract_inverted_index ? { abstract: abstractFromIndex(work.abstract_inverted_index) } : {}),
     ...(authors.length ? { authors } : {}),
@@ -185,6 +191,8 @@ export async function searchPapers(
   { searchId, first, last }: { searchId: string; first: number; last: number },
   snapshot?: SearchSnapshot,
   run: { resume?: string; goesOn: boolean } = { goesOn: false },
+  /** A screening's reading: each paper with its record, and a work's second records apart (`twins`). */
+  records = false,
 ): Promise<{ papers: SearchPaper[]; twins: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string; taken: number }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
@@ -195,12 +203,12 @@ export async function searchPapers(
   const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId));
   // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice. A second
   // record our index holds of one work comes back apart (`twins`), for a screening to count as a duplicate merged.
-  const [ids, records] = [new Set<string>(), new Set<string>()];
+  const [ids, seen] = [new Set<string>(), new Set<string>()];
   const [papers, twins]: SearchPaper[][] = [[], []];
-  for (const paper of works.map(toPaper)) {
+  for (const paper of works.map(records ? recordOf : toPaper)) {
     if (!ids.has(paper.paper)) { ids.add(paper.paper); papers.push(paper); }
-    else if (paper.record && !records.has(paper.record)) twins.push(paper);
-    if (paper.record) records.add(paper.record);
+    else if (paper.record && !seen.has(paper.record)) twins.push(paper);
+    if (paper.record) seen.add(paper.record);
   }
   return { papers: await keptByRating(ctx, reader.userId, papers, rating), twins: await keptByRating(ctx, reader.userId, twins, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
 }

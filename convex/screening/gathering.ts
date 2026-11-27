@@ -213,7 +213,7 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   if (set.kind === "search") {
     // Numbered pages when the search's order has them as far as the source goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
     const paged = source.snapshot !== undefined && numbered(source.snapshot.request, last);
-    const { papers, twins, ended, resume, taken } = await searchPapers(ctx, reader, { searchId: set.searchId, first: from, last: to }, source.snapshot, paged ? { goesOn: false } : { resume: source.resume, goesOn: true });
+    const { papers, twins, ended, resume, taken } = await searchPapers(ctx, reader, { searchId: set.searchId, first: from, last: to }, source.snapshot, paged ? { goesOn: false } : { resume: source.resume, goesOn: true }, true);
     const read = paged ? to - from + 1 : taken;
     // A second record of a work comes after its first, which it is then merged into, or left out beside.
     return void (await give([...papers, ...twins], read, ended || from + read > last, resume));
