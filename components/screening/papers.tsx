@@ -44,7 +44,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { blindOf, type Blind, invitedOn, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
 import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
@@ -850,8 +850,8 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   if (state.result === "waiting") {
     const missing = awaitedOn(open.screening, paper).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
     // Someone invited who hasn't joined holds a place the rule waits for, with no face to show yet.
-    const invited = invitedOn(open.screening, paper, open.invited);
-    const invitedSays = invited ? <span className="shrink-0">{words.t("invitedWaiting", { count: invited })}</span> : null;
+    const invited = invitedSaid(words, open.screening, paper, open.invited);
+    const invitedSays = invited ? <span className="min-w-0 truncate">{invited}</span> : null;
     if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited ? <>{open.screening.finishedAt ? t("why.noVoteFrom") : t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
     const mine = missing[0]!.id === open.me;
     return (

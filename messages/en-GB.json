@@ -8357,6 +8357,7 @@
         "addModel": "Add a model"
       },
       "decided": {
+        "seeingAdvice": "The models' advice shows before a vote",
         "seeingNothing": "Every vote shows with one person on each paper",
         "votesAgree": "Votes agree",
         "settled": "Settled",

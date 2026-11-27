@@ -221,6 +221,12 @@ export const invitedOn = (screening: Pick<Screening, "reviewers" | "rule">, pape
   const { invited, each } = readersOf(screening, pending);
   return invited ? Math.max(0, Math.min(invited, each - castOf(screening, paper).filter((one) => one.reviewer.kind === "person").length)) : 0;
 };
+/** Who a paper waits for among those invited, as a page says it: their addresses where it waits for every one of them and the person looking may see them, else how many. */
+export const invitedSaid = (words: { t: (key: "invitedWaiting", values: { count: number }) => string; listed: (items: string[]) => string }, screening: Pick<Screening, "reviewers" | "rule">, paper: Pick<Paper, "cast">, pending: Pending[] = []) => {
+  const count = invitedOn(screening, paper, pending);
+  const addresses = pending.flatMap((one) => one.email ?? []);
+  return !count ? null : addresses.length === count && addresses.length === pending.length ? words.listed(addresses) : words.t("invitedWaiting", { count });
+};
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
 /** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */

@@ -8358,6 +8358,7 @@
         "addModel": "Añadir un modelo"
       },
       "decided": {
+        "seeingAdvice": "El consejo de los modelos se ve antes de votar",
         "seeingNothing": "Con una persona en cada artículo, todos los votos se ven",
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",

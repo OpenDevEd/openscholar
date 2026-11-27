@@ -8357,6 +8357,7 @@
         "addModel": "モデルを追加"
       },
       "decided": {
+        "seeingAdvice": "モデルの助言は投票前に表示されます",
         "seeingNothing": "各論文の担当が 1 人なので、投票はすべて見えます",
         "votesAgree": "投票が一致",
         "settled": "結果が確定",
