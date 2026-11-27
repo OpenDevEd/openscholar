@@ -8,7 +8,8 @@ import dynamic from "next/dynamic";
 // reviewers said to each other about them. From a laptop's width the page fits the window and each of
 // the three scrolls on its own. Under that the page scrolls.
 
-import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
@@ -519,6 +520,21 @@ function Screen({ open }: { open: Open }) {
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
   const reading = listed.isLoading;
+  // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
+  if (reading && (queue === "done" || left > 0 || narrowed)) {
+    return (
+      <div role="status" aria-label={t("queue.loading")} className={cn("grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, folded ? FOLDED : WIDE)}>
+        {open.isReviewer ? <div className={cn("lg:col-start-1 lg:row-start-1 min-[87.5rem]:col-end-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
+        <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:block min-[87.5rem]:overflow-hidden", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
+          <div className="w-[19rem] 2xl:w-[22rem]">
+            <div className="p-3"><SkeletonBar className="h-8 w-full rounded-full" /></div>
+            <ListRowsSkeleton rows={Math.min(left || QUEUE_PAGE, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
+          </div>
+        </div>
+        <PaperSkeleton className="lg:col-start-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
+      </div>
+    );
+  }
   if (reading || (!paper && !narrowed && !opening)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
@@ -679,7 +695,7 @@ function Screen({ open }: { open: Open }) {
         </div>
 
         {!paper && opening ? (
-          <div className="flex flex-col justify-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2"><ListLoading label={t("queue.loadingPaper")} /></div>
+          <PaperSkeleton label={t("queue.loadingPaper")} className="lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
         ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
             <p className="text-sm font-medium">{t("queue.noMatch")}</p>
@@ -1257,7 +1273,20 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
           <AnswerMark answer={answer} label={criterion.short} />
         </span>
       </div>
-      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">{paper.abstract?.trim() ? t("evidence.noSentence") : t("evidence.noSentencePdf")}</p>}
+      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : null}
+    </div>
+  );
+}
+
+/** A paper while it is read, where it will be: its title, who wrote it, and the first lines of its abstract. */
+function PaperSkeleton({ label, className }: { label?: string; className?: string }) {
+  return (
+    <div role={label ? "status" : undefined} aria-label={label} className={cn("max-w-[46rem] space-y-4 p-5 sm:p-8", className)}>
+      <div className="space-y-2.5"><SkeletonBar className="h-5 w-4/5" /><SkeletonBar className="h-5 w-3/5" /></div>
+      <SkeletonBar className="h-2.5 w-2/5" />
+      <div className="space-y-2.5 pt-2">
+        {["w-full", "w-full", "w-11/12", "w-full", "w-4/5", "w-full", "w-2/3"].map((width, at) => <SkeletonBar key={at} className={width} />)}
+      </div>
     </div>
   );
 }

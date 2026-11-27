@@ -22,7 +22,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, settle, type Answer } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
@@ -604,15 +604,10 @@ export function CriterionText({ text, must }: { text: string; must: boolean }) {
  */
 export function RuleExamples({ rule, people, models }: { rule: Rule; people: number; models: number }) {
   const t = useTranslations("screening.pieces");
-  const votes = Math.max(1, models + (rule.each === "all" ? people : Math.min(Number(rule.each), people)));
-  const row = (decisions: Array<Decision | null>): Result => {
-    const cast = decisions.flatMap((d) => d ?? []);
-    if (rule.settle === "one") return cast[0] ?? "waiting";
-    if (cast.length < decisions.length) return "waiting";
-    const top = (["include", "maybe", "exclude"] as const).map((d) => ({ d, n: cast.filter((c) => c === d).length })).sort((a, b) => b.n - a.n)[0]!;
-    if (rule.settle === "all") return top.n === cast.length ? top.d : "conflict";
-    return top.n * 2 > cast.length ? top.d : "conflict";
-  };
+  const each = rule.each === "all" ? people : Math.min(Number(rule.each), people);
+  const votes = Math.max(1, models + each);
+  // The people's votes first, then the models': settled by the rule itself, as a real paper is.
+  const row = (decisions: Array<Decision | null>): Result => settle(rule.settle, decisions.map((decision, at) => ({ kind: at < each ? ("person" as const) : ("model" as const), ...(decision ? { status: "cast" as const, decision, at } : { status: "waiting" as const }) })), rule.models);
   const fill = (first: Decision, rest: Decision) => Array.from({ length: votes }, (_, i) => (i === 0 ? first : rest));
   const examples: Array<Array<Decision | null>> = [
     fill("include", "include"),

@@ -8,7 +8,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
-import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -76,6 +77,9 @@ if (typeof window !== "undefined" && "navigation" in window) {
   });
 }
 
+/** The names of the screenings a list showed, kept as one of its rows is pressed: the screening opens under its name while the rest of it is read. */
+export const listedNames = new Map<string, string>();
+
 /** What the frame gives the page inside it: the screening as the person sees it, and the ways to open what opens over it. */
 const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void } | null>(null);
 export function useWorkspace() {
@@ -90,12 +94,14 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean) {
-  const [{ each }, models] = [readersOf(screening), modelsOf(screening).length];
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Array<{ email: string }> = []) {
+  const [{ each }, models] = [readersOf(screening, pending), modelsOf(screening).length];
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
     when: words.t(`settle.says.${screening.rule.settle}`),
+    // As advice, the models' votes settle nothing on a paper a person has: said beside the rule, where it changes what the rule means.
+    advice: screening.rule.models === "advice" && screening.rule.settle !== "one" && each > 0 && models > 0 ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
     // Once it is finished nobody has a vote left to cast, and every vote shows (lib/screening/rules.ts `seesVotes`).
     see: screening.rule.blind === "after" && !screening.finishedAt ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : screening.finishedAt && screening.rule.blind === "after" ? t("rule.visibleFinished") : t("rule.visible"),
@@ -166,12 +172,67 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     };
   }, [found, view]);
 
-  // While it is read the frame holds its place: the bar with the list's name, and the room a screening's pages take.
+  // The pages, on a line of their own, each as wide as its share: the card stops short of the width the rule beside them would need.
+  // While the screening is read they stand where they will be: the count of its papers holds a digit's room, and Settings is there, as it is for its members.
+  const pages = (
+    <Segmented
+      label={t("tabs.label")}
+      value={view}
+      fill="labels"
+      // On a phone the labels go without their icons and the four stay on one line. Where large counts or an unsaved mark make that line longer than the screen, it scrolls sideways.
+      className="@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden"
+      options={[
+        { id: "overview", label: t("tabs.overview"), icon: BarChart3, href: overviewHref(id) },
+        { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open?.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
+        { id: "papers", label: t("tabs.papers"), icon: Table2, href: papersHref(id), detail: open ? <span className="tabular-nums text-muted-foreground">{words.num(open.total)}</span> : <span aria-hidden className="invisible tabular-nums">0</span> },
+        // Only someone who may change it has its settings.
+        ...(!open || open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">{t("tabs.unsaved")}</StateChip> : undefined }] : []),
+      ]}
+    />
+  );
+  // The strip under the bar, the same while it is read: the pages on the first line, with what the models are doing, and how a paper is decided on the second.
+  // On Screen from a laptop's width the window's height goes to the paper: the rule shares the pages' line, where its chips scroll sideways.
+  const stripOf = (rule: ReactNode, passing?: ReactNode) => (
+    <>
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{passing}{view === "screen" ? <div className="min-w-0 max-lg:hidden">{rule}</div> : null}</div>
+      {view === "settings" ? null : <div className={cn("flex items-center px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden lg:hidden")}><div className="min-w-0">{rule}</div></div>}
+    </>
+  );
+
+  // While it is read the frame holds its place: the name the list showed, or a line where it will be, the strip of pages, and lines where the page will be.
   if (read === undefined) {
+    const name = listedNames.get(id);
     return (
-      <PageWrapper>
-        <LibraryPageShell wide icon={ListChecks} title={t("screening")} trail={[crumb]}>
-          <ListLoading label={t("loading")} />
+      <PageWrapper className={view === "screen" ? "lg:[&>footer]:hidden" : undefined}>
+        <LibraryPageShell
+          wide
+          fill={view === "screen"}
+          icon={ListChecks}
+          title={name ?? ""}
+          titleAside={name ? undefined : <SkeletonBar className="h-4 w-48" />}
+          trail={[crumb]}
+          actions={
+            <>
+              <Button variant="outline" size="sm" disabled className="max-xl:hidden"><History />{t("activity")}</Button>
+              <Button variant="outline" size="sm" disabled className="max-xl:hidden"><Download />{t("export")}</Button>
+              <Button variant="outline" size="sm" disabled className="max-sm:hidden @max-3xl:px-2"><Users /><span className={BAR_LABEL}>{t("people")}</span></Button>
+              <Button variant="ghost" size="icon" disabled className="size-8 shrink-0 text-muted-foreground" aria-label={t("more")}><MoreHorizontal /></Button>
+            </>
+          }
+          stickyIntro
+          intro={
+            <div className="@container/strip">
+              {stripOf(
+                <div aria-hidden className="flex items-center gap-2">
+                  <SkeletonBar className="h-4 w-32 max-sm:hidden" />
+                  {["w-36", "w-44", "w-40"].map((width) => <SkeletonBar key={width} className={cn("h-6 rounded-full", width)} />)}
+                </div>,
+              )}
+              {view === "settings" || view === "screen" ? null : <div aria-hidden className="flex items-center gap-1 px-4 pb-3 sm:hidden">{[0, 1, 2].map((at) => <SkeletonBar key={at} className="size-7 rounded-full" />)}</div>}
+            </div>
+          }
+        >
+          <ListRowsSkeleton rows={6} height={64} icon={false} label={t("loading")} />
         </LibraryPageShell>
       </PageWrapper>
     );
@@ -187,7 +248,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   }
 
   const { screening } = open;
-  const facts = ruleFacts({ words, t }, screening, open.isReviewer);
+  const facts = ruleFacts({ words, t }, screening, open.isReviewer, open.invited);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.total;
   const workspace = screening.workspace;
@@ -203,23 +264,6 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const resume = () => void open.resume();
   const reopen = () => void open.reopen();
 
-  // The pages. Beside the rule they are a compact group; where the card is too narrow for both they take a line of their own, each as wide as its share.
-  const pages = (fill: boolean) => (
-    <Segmented
-      label={t("tabs.label")}
-      value={view}
-      fill={fill ? "labels" : false}
-      // On a phone the labels go without their icons and the four stay on one line. Where large counts or an unsaved mark make that line longer than the screen, it scrolls sideways.
-      className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
-      options={[
-        { id: "overview", label: t("tabs.overview"), icon: BarChart3, href: overviewHref(id) },
-        { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
-        { id: "papers", label: t("tabs.papers"), icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{words.num(total)}</span> },
-        // Only someone who may change it has its settings.
-        ...(open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">{t("tabs.unsaved")}</StateChip> : undefined }] : []),
-      ]}
-    />
-  );
 
   // The screening's menu. It also holds what the bar has no room for: the activity and the export below a wide window, and sharing on a phone, where the bar keeps the title and this menu.
   const more = (
@@ -276,7 +320,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
       <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
         {/* Its name shows where the line has room for it: on a line of its own from a tablet up, and beside the pages in a wide window. */}
-        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only @[76rem]/strip:sr-only @[92rem]/strip:not-sr-only">{t("rule.title")}</span>
+        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only">{t("rule.title")}</span>
         <Help
           title={t("rule.title")}
           facts={
@@ -298,6 +342,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <FadeRow scrolls scrollbar="none" className="flex items-center gap-2 max-sm:flex-wrap">
         <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
         <Chip icon={Check}>{facts.when}</Chip>
+        {facts.advice ? <Chip icon={AiIcon}>{facts.advice}</Chip> : null}
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
         {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}
@@ -360,15 +405,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             stickyIntro
             intro={
               <div ref={strip} className="@container/strip">
-                {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
-                <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6 @[76rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages(true)}</FadeRow>{passing}</div>
-                {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
-                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[76rem]/strip:hidden", view === "screen" && "max-sm:hidden lg:@max-[76rem]/strip:hidden")}>
-                  <div className="shrink-0 @max-[76rem]/strip:hidden">{pages(false)}</div>
-                  {/* It keeps its width: the rule beside it gives way, which cuts its chips where it must. */}
-                  <div className="flex shrink-0 @max-[76rem]/strip:hidden">{passing}</div>
-                  {view === "settings" ? null : <div className="min-w-0 @[76rem]/strip:ms-auto">{rule}</div>}
-                </div>
+                {stripOf(rule, passing)}
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
                 {/* The row is for what asks something of the person: it slides in and out, and changes only when the screening's state does. What passes by itself is the chip in the tabs' row. */}
                 <AutoHeight>

@@ -18,7 +18,7 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
-import { nextResolver, readersFor, takesOver } from "../../lib/screening/rules";
+import { isFinal, nextResolver, readersFor, takesOver } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
@@ -99,7 +99,8 @@ export const join = internalMutation({
     await bookkeepLater(ctx);
     // A paper in conflict gains a reviewer only where everyone reads every paper.
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: page.continueCursor, result });
-    else if (result === "waiting" && everyone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: null, result: "conflict" });
+    // Under "everyone agrees" a split stays one whoever joins: its resolver keeps it.
+    else if (result === "waiting" && everyone && job.rule.settle !== "all") await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: null, result: "conflict" });
     return null;
   },
 });
@@ -188,7 +189,7 @@ export const enlist = internalMutation({
     if (result === "conflict" && made) await bookkeepLater(ctx);
     const next = result === "conflict" && made ? null : page.continueCursor;
     if (!page.isDone || (result === "conflict" && made)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId, reviewerId, cursor: next, result });
-    else if (result === "waiting") await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId, reviewerId, cursor: null, result: "conflict" });
+    else if (result === "waiting" && job.rule?.settle !== "all") await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId, reviewerId, cursor: null, result: "conflict" });
     return null;
   },
 });
@@ -379,7 +380,8 @@ export const reread = internalMutation({
     for (const vote of failed) {
       const paper = await ctx.db.get("screeningResults", vote.resultId);
       if (!paper) continue;
-      await ctx.db.patch("screeningVotes", vote._id, { ...modelRow(job, paper, reviewer), error: undefined });
+      // A paper its other votes settled meanwhile keeps its result, as one settled before a model joins does (`enlist`): the model lets go of it, and it isn't paid for again. A closed place would be one the rule still waits for.
+      await ctx.db.patch("screeningVotes", vote._id, isFinal(paper.result) ? { status: "discarded", error: undefined } : { ...modelRow(job, paper, reviewer), error: undefined });
       await stamp(ctx, vote.resultId);
     }
     if (failed.length) {

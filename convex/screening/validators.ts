@@ -218,12 +218,16 @@ export const criterionValidator = v.object({
 });
 export const criteriaValidator = capped(v.array(criterionValidator), MAX_QUESTIONS);
 
+/** How a model's vote counts on a paper a person has (lib/screening/rules.ts `settle`). */
+export const modelVotesValidator = v.union(v.literal("vote"), v.literal("advice"));
+
 /** How papers are shared out and settled (lib/screening/rules.ts). */
 export const ruleValidator = v.object({
   each: v.union(v.number(), v.literal("all")),
   settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")),
   resolver: v.id("users"),
   blind: v.union(v.literal("after"), v.literal("always")),
+  models: v.optional(modelVotesValidator),
 });
 
 export const everyValidator = v.union(v.literal("day"), v.literal("week"), v.literal("month"));

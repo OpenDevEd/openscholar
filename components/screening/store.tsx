@@ -22,11 +22,15 @@ import { useWords, type Words } from "./words";
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
 
-/** What a model costs for one paper, in credits: its price for the tokens that call takes at most, as the real estimate works it out. */
-export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion"> & { effort?: string }) {
-  return screeningPaperCredits(pricingOf(model), model.effort);
+/**
+ * What a model costs for one paper, in credits: its price for the tokens that call takes at most, as the real estimate
+ * works it out. A model left at its own effort is priced at that effort, so picking it, which names that effort, changes
+ * nothing, and a lower effort never costs more than the default.
+ */
+export function paperCredits(model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion"> & { effort?: string; defaultEffort?: string }) {
+  return screeningPaperCredits(pricingOf(model), model.effort ?? model.defaultEffort);
 }
-type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "longPrompt" | "inputs" | "contextLength"> & { effort?: string };
+type Priced = Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion" | "longPrompt" | "inputs" | "contextLength"> & { effort?: string; defaultEffort?: string };
 /** The papers of a screening that are screened as their own PDF, by length (lib/pricing/estimate.ts `Pdfs`). */
 export function pdfsOf(sources: Source[]): Pdfs {
   const spread: NonNullable<Pdfs["spread"]> = {};
@@ -72,7 +76,7 @@ export function readingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 /** The part of that which is the papers read as their PDFs. */
 export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
   const filed = longestPdfs(pdfsGiven(model, pdfs), ahead);
-  return filed.papers ? screeningPdfsCredits(pricingOf(model), filed, model.effort) : 0;
+  return filed.papers ? screeningPdfsCredits(pricingOf(model), filed, model.effort ?? model.defaultEffort) : 0;
 }
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
@@ -146,7 +150,7 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">)
     sources: view.sources.filter((source) => source.removedAt === undefined).map(toSource),
     criteria,
     reviewers: toReviewers(view.reviewers, words),
-    rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind },
+    rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind, models: view.modelVotes },
     scoring: { points: Object.fromEntries(view.criteria.map((criterion) => [criterion.key, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), stars: view.stars ?? [] },
     destination: { kind: view.destination.kind, name: view.destination.name ?? "", ...(view.destination.collectionId ? { collection: view.destination.collectionId } : {}), ...(view.destination.libraryId ? { community: { libraryId: view.destination.libraryId, collection: view.destination.libraryCollection ?? "", private: true, requestId: "" } } : {}), prune: view.destination.prune },
     workspace: toWorkspace(view.workspace),

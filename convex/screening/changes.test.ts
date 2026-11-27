@@ -70,6 +70,8 @@ async function audit(t: T, jobId: Id<"screeningJobs">) {
         continue;
       }
       for (const vote of people) if (vote.status === "waiting" && byId.get(vote.reviewerId)?.left !== undefined) problems.push(`${paper.title}: waits for ${names.get(vote.reviewerId)}, who left`);
+      // A split under "everyone agrees" can't become agreement: it keeps the places it had, and its resolver settles it.
+      if (result === "conflict" && rule.settle === "all") continue;
       // An open paper has the places its rule asks for: its votes, and the people still to vote up to the rule's number.
       const cast = places.filter((vote) => vote.status === "cast");
       const free = active.filter((one) => !cast.some((vote) => vote.reviewerId === one._id)).length;

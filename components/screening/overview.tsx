@@ -4,6 +4,8 @@
 // to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
 // section asks for.
 
+import { AutoHeight } from "@/components/ui/auto-height";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
@@ -221,8 +223,8 @@ function Yours({ open }: { open: Open }) {
           ) : null;
         })}
       </span>
-      {/* The papers of theirs that still wait for someone else, where any paper still waits. */}
-      {open.counts.waiting && !screening.finishedAt ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
+      {open.counts.waiting && !screening.finishedAt && screening.rule.settle !== "one" && (readersOf(screening, open.invited).each > 1 || (modelsOf(screening).length > 0 && screening.rule.models !== "advice")) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -297,7 +299,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const stillVoting = takers.filter((row) => row.left > 0);
   // Said where there is more than one person: for one alone, their own row says it.
   const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? t("reviewers.everyoneDone", daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))) : null;
-  const { people: readers, each } = readersOf(screening);
+  const { people: readers, each } = readersOf(screening, open.invited);
   const people = readers.length;
   // Where every person reads every paper, everyone already has the papers there are to move.
   const givers = open.canChange && !screening.finishedAt && each < people ? takers.filter((row) => row.left > 0) : [];
@@ -695,7 +697,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
         </span>
       }
     >
-      {overall === null ? (
+      {/* The figures arrive after the page: until they do a block holds the note's room, and the frame slides to what comes. */}
+      <AutoHeight>
+      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : overall === null ? (
         // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
         kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{t("agreement.none")}</EmptyNote>
       ) : (
@@ -762,6 +766,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           </ul>
         </div>
       )}
+      </AutoHeight>
     </Section>
   );
 }
@@ -795,7 +800,8 @@ function Facts({ open }: { open: Open }) {
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
         <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? words.t("someone") }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">{t("facts.startedIt", { ago: words.ago(screening.createdAt) })}</span>
-        <WorkspaceTag size="sm" workspace={lookOf(workspace)} />
+        {/* Its workspace is named where it is someone else's or an organization: your own needs no name. */}
+        {screening.workspace.kind === "personal" && open.canChange ? null : <WorkspaceTag size="sm" workspace={lookOf(workspace)} />}
       </Panel>
 
       <Section
@@ -842,7 +848,7 @@ function Facts({ open }: { open: Open }) {
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
-                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name })}</LinkChip>}
+                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name, own: String(screening.workspace.kind === "personal" && open.canChange) })}</LinkChip>}
                 <Chip>{words.count("models", models.length)}</Chip>
                 {/* The total counts what a model spent before it was taken off: said, so it adds up with the rows above. */}
                 {offSpent >= 1 ? <Chip>{t("credits.takenOff", { credits: words.credits(offSpent) })}</Chip> : null}
@@ -901,7 +907,10 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
           {screening.living ? (
-            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every, day: words.day(screening.living.next) })}</Chip>
+            <>
+            <Chip icon={RefreshCw}>{screening.finishedAt ? t("checks.finished", { every: screening.living.every }) : t("checks.every", { every: screening.living.every })}</Chip>
+            {screening.finishedAt ? null : <Chip>{t("checks.next", { day: words.day(screening.living.next) })}</Chip>}
+            </>
           ) : (
             <>
               <Chip>{t("checks.onlyWhenAsked")}</Chip>
@@ -996,7 +1005,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   // Its excluded papers by the reason, the most common first.
   const reasons = Object.entries(figures?.reasons ?? {}).sort((x, y) => y[1] - x[1]);
   const neutral = "bg-foreground/25";
-  const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[] }> = [
+  // `loading`: rows the figures bring, held as placeholders until they come.
+  const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[]; loading?: number }> = [
     { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
     {
       title: t("flow.removed"),
@@ -1024,6 +1034,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       total: counts.include,
       tone: "include",
       href: papersHref(id, { result: "include" }),
+      // Each source with an included paper is a row: until the figures say which, every source holds one.
+      ...(figures === undefined && counts.include ? { loading: screening.sources.length } : {}),
       rows: screening.sources.flatMap((source) => {
         const value = figures?.included[source.id] ?? 0;
         return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar, tone: "include" as const }] : [];
@@ -1041,6 +1053,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
       }
       aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />{t("flow.download")}</Button>}
     >
+      {/* The excluded papers by reason arrive with the figures, after the page: the boxes slide to their height. */}
+      <AutoHeight>
       <div className="grid grid-cols-1 divide-y divide-border-subtle rounded-2xl border border-border-subtle @3xl/overview:grid-cols-4 @3xl/overview:divide-x @3xl/overview:divide-y-0">
         {steps.map((step, i) => (
           <div key={step.title} className="relative min-w-0 space-y-3 p-4">
@@ -1056,8 +1070,11 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
                 <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", step.tone && step.total ? TONE[RESULT_STYLE[step.tone].tone].ink : undefined)}><AnimatedNumber value={step.total} /></p>
               </div>
             )}
-            {step.rows.length ? null : <p className="text-xs text-muted-foreground">{t("flow.none")}</p>}
+            {step.rows.length || step.loading ? null : <p className="text-xs text-muted-foreground">{t("flow.none")}</p>}
             <ul className="-mx-2 space-y-0.5">
+              {Array.from({ length: step.loading ?? 0 }, (_, at) => (
+                <li key={at} aria-hidden className="space-y-1 px-2 py-1.5"><SkeletonBar className="my-0.5 w-2/3" /><SkeletonBar className="h-1 w-full" /></li>
+              ))}
               {step.rows.map((row) => {
                 const inner = (
                   <>
@@ -1078,6 +1095,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
           </div>
         ))}
       </div>
+      </AutoHeight>
     </Section>
   );
 }

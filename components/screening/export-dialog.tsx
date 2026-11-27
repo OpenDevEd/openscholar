@@ -4,16 +4,19 @@
 // methods section, and the whole record.
 
 import { copyText } from "@/components/copy-text";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpFact } from "@/components/ui/help";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { showStyledToast } from "@/components/ui/sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
@@ -34,6 +37,9 @@ const GROUP_FILE: Record<Group, string> = { include: "included", maybe: "maybe",
 
 /** The columns of the votes file, as the sample of it shows them. */
 const VOTE_COLUMNS = ["paper", "reviewer", "vote", "reason", "note", "result", "voted"] as const;
+
+/** The paragraph on the Methods tab, which a refused copy selects for copying by hand. */
+const METHODS_ID = "screening-methods-paragraph";
 
 /** The four things a review's report needs from its screening: the included papers, every vote, the flow of papers, and a paragraph for the methods section. */
 export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boolean; onClose: () => void; state: Open; tab: ExportTab; onTab: (tab: ExportTab) => void }) {
@@ -217,6 +223,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 <div className="space-y-3">
                   {/* The list keeps its rows' room while they are read: how many there are is known before they are. */}
                   <ul className={LIST} style={{ minHeight: Math.min(included, 8) * 57 }}>
+                    {first.isLoading ? <li><ListRowsSkeleton rows={Math.min(included, 8)} height={56} icon={false} label={t("papers.loading")} /></li> : null}
                     {first.items.map((paper) => (
                       <li key={paper.id}>
                         <NextLink href={papersHref(id, { paper: paper.id })} onClick={onClose} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
@@ -248,6 +255,10 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                       <tr>{VOTE_COLUMNS.map((column) => <th key={column} scope="col" className="whitespace-nowrap px-3 py-2 text-start font-medium">{t(`votes.column.${column}`)}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
+                      {/* Until the first votes are read, a row for each of the three papers the file's first rows show. */}
+                      {voted.isLoading ? Array.from({ length: Math.min(3, votes) }, (_, at) => (
+                        <tr key={at} aria-hidden className="h-10">{VOTE_COLUMNS.map((column) => <td key={column} className="px-3"><SkeletonBar className={column === "paper" ? "w-3/5" : "w-12"} /></td>)}</tr>
+                      )) : null}
                       {sample.map((row) => (
                         <tr key={`${row.paper.id}:${row.reviewer.id}`}>
                           <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
@@ -266,7 +277,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ScrollArea>
                 {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
                 <p className="text-xs text-muted-foreground">
-                  {sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
+                  {/* How many the table shows is said once they are read: until then its room is held. */}
+                  {voted.isLoading ? (votes > 3 ? <span className="invisible">{`${t("votes.shown", { shown: words.num(3), votes })} `}</span> : "") : sample.length < votes ? `${t("votes.shown", { shown: words.num(sample.length), votes })} ` : ""}
                   {blind && state.toDo ? `${t("votes.hiddenRows")} ` : ""}
                   {yet + none + failed ? t("votes.emptyRows", { count: yet + none + failed, why: words.listed([...(yet ? [screening.finishedAt ? t("votes.emptyWhy.finished") : t("votes.emptyWhy.yet")] : []), ...(none ? [t("votes.emptyWhy.none")] : []), ...(failed ? [t("votes.emptyWhy.failed")] : [])]) }) : ""}
                 </p>
@@ -303,13 +315,13 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 </ul>
               </div>
             ) : (
-              <p dir="ltr" lang="en" className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
+              <p id={METHODS_ID} dir="ltr" lang="en" className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
             )}
           </Section>
         </div>
         </ScrollArea>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
-          <p className="me-auto min-w-0 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
+          <p className="min-w-48 flex-1 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
           {(tab === "papers"
             ? [
                 { key: `papers-csv:${group}`, format: "CSV", run: async () => save(fileName(out, GROUP_FILE[group], "csv", Date.now()), "text/csv", papersCsv(out, await every(papersOf(group)))), off: !included },
@@ -325,11 +337,18 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   ]
                 : tab === "record"
                   ? [{ key: "json", format: "JSON", run: async () => { if (!workspaceId) throw new Error(t("notLoaded")); save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2)); }, off: false }]
-                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select") }), off: false }]
+                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), off: false }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}
-              {!button.format ? (done.includes(button.key) ? t("copied") : t("copy")) : done.includes(button.key) ? t.rich("downloaded", { format: button.format, sr: (chunks) => <span className="sr-only">{chunks}</span> }) : t.rich("download", { format: button.format, wide: (chunks) => <span className="max-sm:sr-only">{chunks}</span> })}
+              {/* The label before and after hold one width, the wider one's: the buttons beside it never move when it changes. */}
+              <span className="grid">
+                {[false, true].map((after) => {
+                  const wide = (chunks: ReactNode) => <span className="max-sm:sr-only">{chunks}</span>;
+                  const label = !button.format ? t(after ? "copied" : "copy") : t.rich(after ? "downloaded" : "download", { format: button.format, wide });
+                  return <span key={String(after)} aria-hidden={after !== done.includes(button.key)} className={cn("col-start-1 row-start-1", after !== done.includes(button.key) && "invisible")}>{label}</span>;
+                })}
+              </span>
             </Button>
           ))}
         </div>

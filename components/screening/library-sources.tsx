@@ -17,7 +17,8 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
-import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { faceOf } from "@/components/workspaces/run-by";
 import { EASE } from "@/components/settings/model-map";
@@ -162,7 +163,7 @@ export function LibrarySelect({ libraries, value, onChange, totalOf }: { librari
   const format = useFormatter();
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={t("library")} className="h-9 w-full min-w-0 sm:w-64">
+      <SelectTrigger aria-label={t("library")} size="sm" className="w-full min-w-0 rounded-full px-3.5 text-xs sm:w-64">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -263,9 +264,10 @@ export function LibrarySources({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {library ? <LibrarySelect libraries={libraries} value={library.libraryId} onChange={pick} totalOf={totalOf} /> : null}
+        {/* Before the libraries the person reads are known, the picker's place is held. */}
+        {library ? <LibrarySelect libraries={libraries} value={library.libraryId} onChange={pick} totalOf={totalOf} /> : state.librariesKnown ? null : <SkeletonBar className="h-8 w-full shrink-0 rounded-full sm:w-64" />}
         <div className="relative min-w-[min(14rem,100%)] flex-1">
-          <Link2 aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Link2 aria-hidden className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={address}
             onChange={(e) => {
@@ -287,9 +289,9 @@ export function LibrarySources({
             placeholder={t("address")}
             aria-label={t("address")}
             aria-invalid={pasteProblem ? true : undefined}
-            className="h-9 ps-9 pe-9"
+            className="h-8 rounded-full bg-card ps-8 pe-8 text-sm"
           />
-          {resolving ? <Spinner className="absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /> : null}
+          {resolving ? <Spinner className="absolute end-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /> : null}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -303,7 +305,7 @@ export function LibrarySources({
         ) : null}
       </AnimatePresence>
 
-      {library ? (
+      {library || !state.librariesKnown ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
             <Pills
@@ -325,16 +327,16 @@ export function LibrarySources({
                 }}
                 placeholder={t("find")}
                 aria-label={t("find")}
-                className="h-9 ps-8"
+                className="h-8 rounded-full bg-card ps-8 text-sm"
               />
             </div>
           </div>
 
-          {/* A full page's height while there are pages, so the pager stays put on a short last page; its rows slide in over the spinner when the library answers after the tab opened. */}
+          {/* A full page's height while there are pages, so the pager stays put on a short last page; its rows take the place of the placeholder rows when the library answers after the tab opened. */}
           <AutoHeight>
           <div style={pages > 1 ? { minHeight: PAGE * ROW + 1 } : undefined}>
-            {!state.loaded ? (
-              <div className={LIST}><ListLoading compact label={tc("loading")} /></div>
+            {!state.loaded || !library ? (
+              <ListRowsSkeleton rows={PAGE} height={ROW} label={tc("loading")} className={LIST} />
             ) : read?.problem && !(filter === "all" && here.length) ? (
               <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{t(read.problem === "outdated" ? "outdated" : "unread", { library: library.name })}</p>
             ) : shown.length === 0 ? (

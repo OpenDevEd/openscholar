@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import {
   usePaginatedQuery,
-  useQuery,
   type PaginatedQueryArgs,
   type PaginatedQueryItem,
   type PaginatedQueryReference,
@@ -11,6 +10,8 @@ import {
 } from "convex/react";
 import type { FunctionReference } from "convex/server";
 import { usePaginatedQuery as useStreamPaginatedQuery } from "convex-helpers/react";
+// Cached: a query a page reads stays live for a while after the page is left (components/providers/convex-provider.tsx).
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   useAuthReadiness,
   type AuthReadinessPhase,

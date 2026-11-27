@@ -168,7 +168,7 @@ export function removedOf(sources: Source[]) {
 }
 
 /** The rule as the pages hold it: the shared one (lib/screening/rules.ts), with how many people read each paper as the text a control holds. */
-export type Rule = Omit<SharedRule, "each"> & { each: `${number}` | "all" };
+export type Rule = Omit<SharedRule, "each" | "models"> & { each: `${number}` | "all"; models: NonNullable<SharedRule["models"]> };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
@@ -273,11 +273,19 @@ export type Screening = {
 export const personIn = (screening: Pick<Screening, "reviewers" | "people">, id: string): Person | undefined => screening.people[id] ?? screening.reviewers.find((one) => one.id === id && one.kind === "person");
 
 export const activeReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((reviewer) => !reviewer.left);
-/** The people who read a screening's papers, and how many of them each paper goes to. Someone invited by email is dealt no paper until they join, so they are not counted. */
-export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
+/**
+ * The people who read a screening's papers, and how many people each paper waits for. Someone invited by email is dealt
+ * no paper until they join, so they are not among `people`, but the rule waits for them (lib/screening/project.ts), so
+ * they count toward `each`.
+ */
+export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pending: Array<{ email: string }> = []) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
-  return { people, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length) };
+  const invited = invitedOf(screening, pending);
+  return { people, invited, each: readersFor(screening.rule.each === "all" ? "all" : Number(screening.rule.each), people.length + invited) };
 };
+/** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */
+export const invitedOf = (screening: Pick<Screening, "reviewers">, pending: Array<{ email: string }> = []) =>
+  new Set([...screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).map((reviewer) => reviewer.email!.toLowerCase()), ...pending.map((one) => one.email.toLowerCase())]).size;
 /**
  * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever the server gives
  * them to, by the same rule (lib/screening/rules.ts `nextResolver`).
@@ -308,7 +316,7 @@ export const count = <T,>(list: T[], test: (item: T) => boolean) => list.reduce(
 
 export const DAY = 86_400_000;
 /** The rule a new screening starts with, for whoever starts it. */
-export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after" });
+export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after", models: "vote" });
 export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), stars: defaultStars(criteria.length) });
 /** The sources a check looks in again. */
 export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind) && !source.read?.removedAt);

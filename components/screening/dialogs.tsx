@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { EmailAvatar, ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { showStyledToast } from "@/components/ui/sonner";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -184,6 +185,9 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   ];
   const loading = (addAs === "reviewer" && members === undefined) || outside.status === "LoadingFirstPage";
   const more = [guests, invited].find((list) => list.status === "CanLoadMore");
+  // Until its guests and invitations are read, a row stands for each one the screening counts (`guests` holds both), less the guests already listed as its reviewers: the rows take their place without the dialog growing.
+  const reading = may && (guests.status === "LoadingFirstPage" || invited.status === "LoadingFirstPage");
+  const awaited = reading ? Math.min(PAGE, Math.max(0, state.guests - people.filter((one) => one.guest).length)) : 0;
   const limit = room?.limit ?? null;
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -285,6 +289,8 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               onRole: (role: Role) => void setRole({ kind: "screening", id, guest: { email: invitation.email }, role: GUEST_ROLE[role] }).catch(failed),
               onRemove: () => void unshare({ kind: "screening", id, guest: { email: invitation.email } }).catch(failed),
             })),
+            // A role none of the roles is draws nothing beside the row.
+            ...Array.from({ length: awaited }, (_, at) => ({ key: `awaited:${at}`, avatar: <SkeletonBar className="size-9 rounded-full" />, name: "", detail: <SkeletonBar className="mt-1 w-28" />, role: "" as Role })),
           ]}
           foot={
             may ? (

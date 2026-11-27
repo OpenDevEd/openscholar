@@ -61,6 +61,7 @@ describe("a paper settled on its votes", () => {
 
   it("is settled by the first vote where the rule says so, and waits again when that vote is taken back", async () => {
     const made = await team(["ann", "ben"]);
+    // Asked for two people on each paper, it is given one: a second would read it for nothing.
     const { jobId, papers } = await started(made, ["ann", "ben"], 1, { rule: { each: 2, settle: "one", blind: "after" } });
     const vote = voter(made, jobId);
     await vote("ben", papers[0]!._id, "maybe");
@@ -70,7 +71,9 @@ describe("a paper settled on its votes", () => {
     await vote("ben", papers[0]!._id, null);
     await settleAll(made.t);
     const back = await standingOf(made.t, jobId);
-    expect(back.papers[0]).toMatchObject({ result: "waiting", on: { ann: "waiting", ben: "waiting" } });
+    // Ben voted on Ann's paper: taking the vote back leaves it with her alone.
+    expect(back.papers[0]).toMatchObject({ result: "waiting" });
+    expect(back.papers[0]!.on).toEqual({ ann: "waiting" });
     expect(back.counts).toEqual({ include: 0, maybe: 0, exclude: 0, conflict: 0 });
     expect(back.reviewers.ben).toMatchObject({ cast: 0, maybe: 0 });
   });

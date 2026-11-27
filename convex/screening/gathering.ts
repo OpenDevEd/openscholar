@@ -52,6 +52,8 @@ const FILL_PLACES = 2_000;
 const PDFS_WAIT_MS = 3_000;
 /** How much of why a source couldn't be read is kept. */
 const FAILURE_SHOWN = 600;
+/** How often one fill is tried before its source is left as failed. */
+const FILL_TRIES = 5;
 
 /** What makes two records one paper where their sources name them differently: the DOI, then the title with the year. */
 export const doiKeyOf = (doi: string | undefined | null) => normalDoi(doi) ?? undefined;
@@ -100,12 +102,12 @@ export const begin = internalMutation({
   },
 });
 
-/** A source that couldn't be read is left as failed, with why in words for the person, and the check goes on to the next. */
+/** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. */
 export const fail = internalMutation({
-  args: { sourceId: v.id("screeningSources"), reason: v.string() },
+  args: { sourceId: v.id("screeningSources"), reason: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, { sourceId, reason }) => {
-    await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason.slice(0, FAILURE_SHOWN) });
+    await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason?.slice(0, FAILURE_SHOWN) });
     return null;
   },
 });
@@ -133,7 +135,7 @@ export const gather = internalAction({
         }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
-        await ctx.runMutation(internal.screening.gathering.fail, { sourceId: source.sourceId, reason: readConvexErrorData(error)?.message ?? "Its papers couldn't be read." });
+        await ctx.runMutation(internal.screening.gathering.fail, { sourceId: source.sourceId, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
       }
     }
   },
@@ -164,7 +166,12 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     for (let at = 0; at === 0 || at < ready.length; at += each) {
       const last = at + each >= ready.length;
       const goesOn = last ? resume : source.resume;
-      await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) });
+      const args = { checkId, sourceId, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
+      // A fill writes the reviewers' counts that voting and settling write too: one that loses to them every time Convex tries it is tried again here, with the papers it already has.
+      for (let tries = 1; ; tries++) {
+        try { await ctx.runMutation(internal.screening.gathering.fill, args); break; }
+        catch (error) { if (readConvexErrorData(error) || tries >= FILL_TRIES) throw error; await new Promise((wait) => setTimeout(wait, 500 * 2 ** tries)); }
+      }
     }
   };
   const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;

@@ -80,6 +80,8 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
     standsTo: (person: { guest?: boolean } | undefined) => (person?.guest ? t("person.guest") : t("person.member")),
     /** One model on a screening at two efforts: each says its effort (lib/screening/rules.ts `twinsNamed`), in the words the model picker has for it. */
     modelAtEffort: (name: string, level: string) => t("modelAtEffort", { name, effort: effort(level).toLocaleLowerCase() }),
+    /** A model's effort as the model picker names it, in a word. */
+    effortOf: (level: string) => effort(level),
     /** What tells one model on a screening at two efforts from its twin, in a word: its effort. Null for any other reviewer. */
     twinEffort: (reviewer: { name: string; model?: { name: string; effort?: string } }) => (reviewer.model?.effort && reviewer.name !== reviewer.model.name ? effort(reviewer.model.effort) : null),
     /** A person by the name the server gives them: one whose account is gone is said in the reader's language. */

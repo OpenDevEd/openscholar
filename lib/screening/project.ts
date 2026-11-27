@@ -8,8 +8,8 @@ import { decide, fillPlaces, isFinal, readersFor, settle, takesOver, type Answer
 /** A reviewer's place on a paper. `reviewer` is whatever names them wherever this runs: a row's ID, or a name for someone not on the screening yet. */
 export type Place = { reviewer: string; kind: "person" | "model"; status: Ballot["status"]; decision?: Decision; reason?: string; at?: number; answers?: Record<string, Answer> };
 
-/** Who papers go to: the people they are dealt to, in the order they joined, and the models that read. */
-export type Team = { people: string[]; models: string[] };
+/** Who papers go to: the people they are dealt to, in the order they joined, and the models that read. `invited`: people asked by email who haven't answered yet, whom the rule waits for as for anyone on it. */
+export type Team = { people: string[]; models: string[]; invited?: number };
 
 export type PaperState = {
   id: string;
@@ -38,9 +38,9 @@ export type Projected = {
 
 /** A place as the rule reads it. A model's decision follows its answers under the criteria as they are; a person's is the one they gave. */
 export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">[]): Ballot & { decision?: Decision } {
-  if (place.status !== "cast") return { status: place.status };
+  if (place.status !== "cast") return { status: place.status, kind: place.kind };
   const voted = place.kind === "model" && place.answers ? decide(place.answers, criteria) : { decision: place.decision, reason: place.reason };
-  return { status: "cast", decision: voted.decision, reason: voted.reason, at: place.at, answers: place.answers };
+  return { status: "cast", decision: voted.decision, reason: voted.reason, at: place.at, answers: place.answers, kind: place.kind };
 }
 
 /**
@@ -54,20 +54,30 @@ export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">
  * with the votes it had and none of its open places is given those places before its votes are counted: the votes of
  * some of its reviewers are not the whole paper's.
  */
-export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle">, criteria: Pick<Criterion, "key" | "must">[], { models, refill = false }: { models: boolean; refill?: boolean }): Projected {
-  const on = (list: Place[]) => settle(rule.settle, list.map((place) => ballotOf(place, criteria)));
+export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle" | "models">, criteria: Pick<Criterion, "key" | "must">[], { models, refill = false }: { models: boolean; refill?: boolean }): Projected {
+  // A paper isn't settled on fewer people than its rule asks for, counting whoever is invited and hasn't answered: "everyone agrees" with two people means both, and a model alone doesn't settle papers its people haven't joined to read yet. Under "first vote decides" one person is enough. A split nobody can mend stays one.
+  const wanted = Math.min(rule.settle === "one" ? 1 : Infinity, readersFor(rule.each, team.people.length + (team.invited ?? 0)));
+  const short = (list: Place[]) => list.filter((place) => place.kind === "person" && place.status !== "discarded").length < wanted;
+  const on = (list: Place[]) => {
+    const result = settle(rule.settle, list.map((place) => ballotOf(place, criteria)), rule.models);
+    return (isFinal(result) || (result === "conflict" && rule.settle === "most")) && short(list) ? "waiting" : result;
+  };
   const off = places.filter((place) => place.kind === "model" && place.status === "waiting" && !team.models.includes(place.reviewer));
   const stay = off.length ? places.filter((place) => !off.includes(place)) : places;
   if (paper.held) return { result: paper.result, places: stay, made: [], gone: off, reopened: [], closed: [] };
   let now: Result = paper.resolved ?? on(stay);
   let list = stay;
   const [made, gone, reopened]: Place[][] = [[], off, []];
-  if (!isFinal(now) || (refill && !paper.resolved)) {
+  // Under "everyone agrees" a split can't become agreement: nobody new is given the paper, and its resolver keeps it.
+  const splitForGood = now === "conflict" && rule.settle === "all";
+  if (!splitForGood && (!isFinal(now) || (refill && !paper.resolved))) {
     const persons = list.filter((place) => place.kind === "person" && place.status !== "discarded");
     const open = persons.filter((place) => place.status === "waiting" || place.status === "closed");
     // A place whose holder has left the screening is free again.
     const kept = open.filter((place) => team.people.includes(place.reviewer));
     reopened.push(...kept.filter((place) => place.status === "closed"));
+    // A model's place closed when a person's vote settled the paper first (below) is open again with it.
+    reopened.push(...list.filter((place) => place.kind === "model" && place.status === "closed" && team.models.includes(place.reviewer)));
     // Whoever voted counts toward the rule's number, though they have since left. The places still free are for the people who haven't.
     const cast = persons.filter((place) => place.status === "cast");
     const free = Math.max(0, Math.min(team.people.length - cast.filter((place) => team.people.includes(place.reviewer)).length, readersFor(rule.each, Infinity) - cast.length));
@@ -81,8 +91,8 @@ export function project(paper: PaperState, places: Place[], team: Team, rule: Pi
       now = on(list);
     }
   }
-  // Settled: the places nobody voted from are closed, and their people's queues let go of the paper.
-  const closed = isFinal(now) ? list.filter((place) => place.status === "waiting" && place.kind === "person") : [];
+  // Settled: the places nobody voted from are closed, and their people's queues let go of the paper. Under "first vote decides" a model that hasn't read it yet doesn't either: its vote would count for nothing, and be paid for.
+  const closed = isFinal(now) ? list.filter((place) => place.status === "waiting" && (place.kind === "person" || rule.settle === "one")) : [];
   return { result: now, places: list.map((place) => (closed.includes(place) ? { ...place, status: "closed" as const } : place)), made, gone, reopened, closed };
 }
 

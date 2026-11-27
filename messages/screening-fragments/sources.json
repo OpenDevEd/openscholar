@@ -7,7 +7,7 @@
   "remove": "Remove {name}",
   "dismiss": "Dismiss",
   "columns": {
-    "needNaming": "Its columns need naming",
+    "needNaming": "Columns not named yet",
     "pickEach": "Pick the column that holds each part. Under it is what the first of its {count, plural, one {# row} other {# rows}} has there.",
     "label": {
       "title": "Title",
@@ -22,7 +22,7 @@
     "untitledLeftOut": "{count, plural, one {# row} other {# rows}} without a title left out",
     "noAbstract": "{count, number} without an abstract",
     "addRecords": "{count, plural, one {Add # record} other {Add # records}}",
-    "addItsRecords": "Add its records"
+    "addItsRecords": "Add the records"
   },
   "upload": {
     "notSent": "The file couldn't be sent. Try again.",
@@ -30,11 +30,11 @@
     "referenceFile": "Reference file",
     "onePdf": "A PDF",
     "uploadedPdfs": "{count, plural, one {# uploaded PDF} other {# uploaded PDFs}}",
-    "refused": "<file>{name}</file>: {why}",
+    "refused": "<file>{name}</file> wasn't added. {why}",
     "why": {
       "notReadable": "Not a kind of file a screening reads",
       "twice": "Already a source",
-      "tooBig": "Over {mb, number} MB: split it and add each part",
+      "tooBig": "Over {mb, number} MB. Split it and add each part",
       "noTable": "No table of references in it",
       "noReferences": "No references in it",
       "unread": "It couldn't be read",
@@ -47,9 +47,9 @@
     "fileLimit": "Reference files up to {mb, number} MB",
     "pdfLimit": "PDFs up to {mb, number} MB each",
     "aboutFiles": "A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.",
-    "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
+    "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF itself. A person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
     "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, or a text file of DOIs, any number at once",
-    "pdfCost": "A model reads each PDF's first pages for its title and DOI: up to {credits} credits a PDF, paid as it is added",
+    "pdfCost": "A model reads each PDF's first pages for its title and DOI. That costs up to {credits} credits a PDF, paid as it is added",
     "filesLabel": "Files to upload",
     "choose": "Choose files",
     "sent": "{sent, number} of {total, number} sent",
@@ -61,7 +61,8 @@
     "knownNoAbstract": "In the index, no abstract",
     "fileWithPages": "Read as its PDF, {count, plural, one {# page} other {# pages}}",
     "list": "The PDFs of this source",
-    "pager": "PDFs"
+    "pager": "PDFs",
+    "loading": "Loading the PDFs"
   },
   "dois": {
     "fromFile": "DOIs in a file",
@@ -82,6 +83,7 @@
   "zotero": {
     "myLibrary": "My library",
     "loading": "Loading Zotero",
+    "loadingCollections": "Loading the collections",
     "notConnected": "Zotero isn't connected",
     "connectWhy": "Connect it to pick from your library and the groups you are in.",
     "connect": "Connect Zotero",
@@ -100,9 +102,9 @@
     "includeSub": "Include sub-collections",
     "subHelpTitle": "Sub-collections",
     "subTakenOnce": "A paper filed in two of them is taken once",
-    "subAbout": "Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it: what they hold together is about what Zotero counts in each, added up, and exact once the screening has read them.",
-    "readingCount": "Reading its collections, {read, number} of {total, number}",
-    "reading": "Reading its collections",
+    "subAbout": "Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it. Together they hold about what Zotero counts in each, added up, and the number is exact once the screening has read them.",
+    "readingCount": "Reading the collections, {read, number} of {total, number}",
+    "reading": "Reading the collections",
     "failed": "Zotero couldn't be read. Open the library again.",
     "everyPaper": "Every paper in {library}",
     "group": "Zotero group",

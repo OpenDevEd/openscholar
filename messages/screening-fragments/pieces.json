@@ -2,11 +2,26 @@
   "required": "Required",
   "starsOf": "{count} of {of} stars",
   "modelsSay": {
-    "checking": { "says": "Checking for new papers", "row": "Waiting for the check" },
-    "gathering": { "says": "Getting its papers", "row": "Waiting for the papers to arrive" },
-    "paused": { "says": "Models paused", "row": "Paused" },
-    "credits": { "says": "Out of credits", "row": "Out of credits" },
-    "waiting": { "says": "Models start after <link>{name}</link>", "row": "Waiting its turn" }
+    "checking": {
+      "says": "Checking for new papers",
+      "row": "Waiting for the check"
+    },
+    "gathering": {
+      "says": "Getting its papers",
+      "row": "Waiting for the papers to arrive"
+    },
+    "paused": {
+      "says": "Models paused",
+      "row": "Paused"
+    },
+    "credits": {
+      "says": "Out of credits",
+      "row": "Out of credits"
+    },
+    "waiting": {
+      "says": "Models start after <link>{name}</link>",
+      "row": "Waiting its turn"
+    }
   },
   "modelsReading": "Models reading",
   "about": "About {title}",
@@ -17,7 +32,7 @@
     "sources": "No source gains papers"
   },
   "notReviewer": {
-    "shared": "This screening is shared with you to read. Its reviewers vote.",
+    "shared": "This screening is shared with you to read. Only its reviewers vote.",
     "finished": "You aren't one of its reviewers, and the screening is finished.",
     "join": "You aren't one of its reviewers. Join as a reviewer to vote on its papers."
   },
@@ -29,17 +44,17 @@
     "conflict": "{count, number} in conflict",
     "waiting": "{count, number} waiting for votes"
   },
-  "filterLabel": "{name}: {choice}",
+  "filterLabel": "{name}, {choice}",
   "tag": {
     "ai": "AI",
     "takenOff": "Taken off"
   },
   "voteMark": {
-    "failed": "{who}: couldn't read the paper",
-    "hidden": "{who}: voted, hidden until you vote",
-    "none": "{who}: no vote",
-    "yet": "{who}: no vote yet",
-    "cast": "{who}: {decision}"
+    "failed": "{who} couldn't read the paper",
+    "hidden": "{who} voted. The vote is hidden until you vote",
+    "none": "{who} has no vote",
+    "yet": "{who} hasn't voted yet",
+    "cast": "{who} voted {decision}"
   },
   "votedHidden": "Voted, hidden until you vote",
   "reasonSign": {
@@ -54,7 +69,7 @@
     "no": "No",
     "unclear": "Unclear"
   },
-  "answerMark": "{label}: {answer}",
+  "answerMark": "{label}, {answer}",
   "votesHelp": {
     "title": "Reading the votes",
     "anAnswer": "An answer",
@@ -62,7 +77,7 @@
     "answersDiffer": "Answers differ",
     "answeredDifferently": "Reviewers answered it differently",
     "opensAnswer": "Opens what is behind the answer",
-    "body": "Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer's vote and note. Press an answer for what is behind it: the passage a model read, or a person's vote and note. A model that couldn't read a paper has no say in it.",
+    "body": "Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer's vote and note. Press an answer for what is behind it, which is the passage a model read or a person's vote and note. A model that couldn't read a paper has no say in it.",
     "lock": "A lock stands where a vote is hidden."
   },
   "anotherReason": "Another reason…",

@@ -25,7 +25,7 @@ import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
 import { destination } from "./mutations";
 import { NO_RESULTS } from "./settling";
-import { everyValidator, libraryDestinationValidator, MAX_TERMS, prunable, saveToValidator, SCREENING_TEXT, SOURCE_FACTS, sourceSetValidator } from "./validators";
+import { everyValidator, libraryDestinationValidator, MAX_TERMS, modelVotesValidator, prunable, saveToValidator, SCREENING_TEXT, SOURCE_FACTS, sourceSetValidator } from "./validators";
 
 /** A criterion as a form sends it: one with no key is new, and what it leaves out takes its usual value. */
 export const criterionInput = v.object({
@@ -37,7 +37,7 @@ export const criterionInput = v.object({
   terms: v.optional(v.array(v.string())),
   points: v.optional(v.object({ yes: v.number(), no: v.number(), unclear: v.number() })),
 });
-export const ruleInput = v.object({ each: v.union(v.number(), v.literal("all")), settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")), resolver: v.optional(v.id("users")), blind: v.union(v.literal("after"), v.literal("always")) });
+export const ruleInput = v.object({ each: v.union(v.number(), v.literal("all")), settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")), resolver: v.optional(v.id("users")), blind: v.union(v.literal("after"), v.literal("always")), models: v.optional(modelVotesValidator) });
 export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), facts: v.optional(v.array(v.string())), first: v.optional(v.number()), last: v.optional(v.number()) });
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
@@ -233,7 +233,8 @@ export const open = internalMutation({
     const criteria = criteriaFrom(sent, [], now);
     if (!criteria.length && models.length) throw createError("VALIDATION_ERROR", NEEDS_CRITERIA);
     const stars = starsFrom(sentStars, criteria.length);
-    const each = rule.each === "all" ? ("all" as const) : Math.floor(rule.each);
+    // The first vote settles a paper, so it goes to one person: a second would read it for nothing.
+    const each = rule.settle === "one" ? 1 : rule.each === "all" ? ("all" as const) : Math.floor(rule.each);
     if (each !== "all" && (each < 0 || each > MAX_REVIEWERS)) throw createError("VALIDATION_ERROR", "Pick how many people read each paper.");
     // People vote as members of the workspace. Someone from outside is invited from the screening's People panel.
     const members = await Promise.all(people.map((id) => ctx.db.get("users", id)));
@@ -252,7 +253,7 @@ export const open = internalMutation({
       ...(question?.trim() ? { question: question.trim() } : {}),
       criteria,
       stars,
-      rule: { each, settle: rule.settle, resolver, blind: rule.blind },
+      rule: { each, settle: rule.settle, resolver, blind: rule.blind, ...(rule.models === "advice" ? { models: "advice" as const } : {}) },
       ...(living ? { living: { every: living, next: now + EVERY_MS[living] } } : {}),
       ...legacyOf(criteria, stars),
       ...(later ? { newCollection: later } : await destination(ctx, writer, saveTo)),

@@ -5,6 +5,7 @@
 // reviewer, taking one off and making one a viewer. Both places open these same ones, so they say
 // and do the same.
 
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -35,7 +36,7 @@ import { useWords } from "./words";
 /** This part's messages, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
-export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete" | "leave";
+export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete" | "leave" | "stopEmails";
 
 /**
  * The screening's menu: the same items under the same names wherever it opens, over the open screening and in its row
@@ -55,7 +56,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       <DropdownMenuItem className={bar ? "sm:hidden" : undefined} onSelect={() => show("people")}><Users />{t("people")}</DropdownMenuItem>
       {/* Its emails go to its reviewers and to whoever settles its conflicts: each of them turns their own off here, and on again. */}
       {live && (open.isReviewer || open.canResolve) ? (
-        <DropdownMenuItem onSelect={() => void open.setEmails(!open.emails).then(() => toast(open.emails ? t("menu.emailsOff") : t("menu.emailsOn"))).catch(failed(t))}>
+        <DropdownMenuItem onSelect={() => (open.emails ? show("stopEmails") : void open.setEmails(true).then(() => toast(t("menu.emailsOn"))).catch(failed(t)))}>
           {open.emails ? <><BellOff />{t("menu.stopEmails")}</> : <><Mail />{t("menu.emailAgain")}</>}
         </DropdownMenuItem>
       ) : null}
@@ -90,6 +91,8 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const t = useTranslations("screening.frame");
   const words = useWords();
   const [over, setOver] = useState<Over | null>(start);
+  // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
+  const [emailsLink, setEmailsLink] = useQueryState("emails");
   const [exportTab, setExportTab] = useState<ExportTab>("papers");
   // A reviewer about to be added, one about to be taken off and one about to be made a viewer: each says what it does before it happens.
   const [adding, setAdding] = useState<Reviewer | null>(null);
@@ -147,6 +150,16 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
           );
         }}
       />
+      <ConfirmChange
+        open={over === "stopEmails" || (emailsLink === "off" && state.emails && (state.isReviewer || state.canResolve))}
+        title={t("stopEmails.title")}
+        confirm={t("stopEmails.confirm")}
+        cancel={t("stopEmails.cancel")}
+        onClose={() => { close(); void setEmailsLink(null); }}
+        onConfirm={() => void state.setEmails(false).then(() => { close(); void setEmailsLink(null); toast(t("menu.emailsOff")); }).catch(failed(t))}
+      >
+        <p className="text-sm text-muted-foreground">{t("stopEmails.says")}</p>
+      </ConfirmChange>
       <ConfirmChange open={over === "finish"} title={t("finish.title")} confirm={t("markFinished")} onClose={close} onConfirm={() => void state.finish().catch(failed(t))}>
         <EffectList
           lines={[

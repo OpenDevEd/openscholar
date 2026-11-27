@@ -12,6 +12,7 @@ vi.mock("@clerk/nextjs", () => ({
   useAuth: () => auth.clerk,
 }));
 vi.mock("convex/react-clerk", () => ({ ConvexProviderWithClerk: ({ children }: PropsWithChildren) => children }));
+vi.mock("convex-helpers/react/cache/provider", () => ({ ConvexQueryCacheProvider: ({ children }: PropsWithChildren) => children }));
 vi.mock("convex/react", () => ({
   ConvexReactClient: class {},
   useConvexAuth: () => auth.convex,

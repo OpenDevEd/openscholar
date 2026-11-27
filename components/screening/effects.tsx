@@ -73,14 +73,6 @@ export const criterionName = ({ words, t }: EffectsSay, criterion: Pick<Criterio
 };
 
 
-/** A part of a page a link landed on: a tint that fades into its own surface over a second. Nothing under reduced motion. */
-export function landOn(target: HTMLElement | null) {
-  if (!target?.matches("section") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const colour = `color-mix(in oklab, ${getComputedStyle(document.documentElement).getPropertyValue("--primary")} 10%, transparent)`;
-  // One keyframe: it fades to the section's own colours.
-  target.animate([{ backgroundColor: colour, boxShadow: `0 0 0 0.75rem ${colour}`, borderRadius: "0.75rem" }], { duration: 1200, delay: 300, easing: "ease-out", fill: "backwards" });
-}
-
 /**
  * A link to a part of the same page. It scrolls there and writes the part into the address in place,
  * so it adds no step to the history: Back still goes to the page before. `find` is what to bring
@@ -103,7 +95,6 @@ export function JumpLink({ to, find, block = "start", onClick, ...link }: Omit<C
         if (target !== part) target.focus({ preventScroll: true });
         // The browser's history is the outside system: the address names the part, and the entry stays the one the page has.
         window.history.replaceState(window.history.state, "", `#${to}`);
-        landOn(part);
       }}
     />
   );
@@ -165,7 +156,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   }
   if (joining.length && wasIds.size) {
     lines.push({ text: t("votesStay"), section: "reviewers" });
-    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one") lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
+    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one" && after.rule.models !== "advice") lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;
@@ -203,6 +194,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
     // The same number today, and another rule for whoever joins later.
     lines.push({ text: after.rule.each === "all" ? t("each.stillAll", { each: eachOf(after) }) : t("each.stillShare", { each: eachOf(after) }), section: "decided" });
   }
+  if ((before.rule.models !== after.rule.models) && modelsOf(after).length && after.rule.settle !== "one") lines.push({ text: after.rule.models === "advice" ? t("modelVotes.advice") : t("modelVotes.vote"), section: "decided" });
   if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? t("blind.never") : t("blind.untilVoted"), section: "decided" });
 
   const had = new Set(before.criteria.map((criterion) => criterion.key));

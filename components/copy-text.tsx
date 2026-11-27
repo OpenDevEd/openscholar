@@ -8,10 +8,11 @@ let last: string | number | undefined;
 
 /**
  * Copies text to the clipboard and says so. Where the browser refuses, or has no clipboard to write to (an insecure
- * page, an old browser), it says that, and shows the text to select and copy by hand, for long enough to. Returns
- * whether it copied.
+ * page, an old browser), it says that, and shows the text to select and copy by hand, for long enough to. Where the
+ * text is on the page already (`shown`), as in a dialog the toast can't be reached from, that is selected instead.
+ * Returns whether it copied.
  */
-export async function copyText(text: string, words: { copied: string; failed: string; select: string }) {
+export async function copyText(text: string, words: { copied: string; failed: string; select: string; selected?: string }, shown?: HTMLElement | null) {
   let copied = true;
   try {
     await navigator.clipboard.writeText(text);
@@ -19,13 +20,19 @@ export async function copyText(text: string, words: { copied: string; failed: st
     copied = false;
   }
   if (last !== undefined) toast.dismiss(last);
+  if (!copied && shown) {
+    window.getSelection()?.selectAllChildren(shown);
+    last = toast.error(words.failed, { description: words.selected ?? words.select, duration: 8_000 });
+    return false;
+  }
   last = copied
     ? toast.success(words.copied)
     : toast.error(words.failed, {
         description: (
           <>
             {words.select}
-            <span className="mt-1 block select-all font-mono text-xs [overflow-wrap:anywhere]">{text}</span>
+            {/* A box of its own: clicking in it selects its text, and select-all stays inside it. */}
+            <textarea readOnly value={text} rows={4} onFocus={(event) => event.currentTarget.select()} className="mt-1.5 block w-full resize-none rounded-md border border-border-subtle bg-background p-1.5 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50" />
           </>
         ),
         duration: 20_000,

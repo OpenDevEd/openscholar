@@ -30,18 +30,19 @@
       "waiting": "{count, plural, one {# paper} other {# papers}} waiting for votes",
       "mine": "{count, plural, one {# paper} other {# papers}} you voted Include"
     },
-    "help": "The papers of one result, or every paper. BibTeX and RIS carry each paper's id here, title, authors, year, journal, DOI and abstract, for a reference manager. The CSV adds where each came from, where it stands, why it was excluded, who settled it, how its reviewers voted and its points: what its reviewers' answers add up to under this screening's scoring, which ranks included papers and decides nothing.",
+    "help": "The papers of one result, or every paper. BibTeX and RIS carry each paper's id here, title, authors, year, journal, DOI and abstract, for a reference manager. The CSV adds where each paper came from, where it stands, why it was excluded, who settled it, how its reviewers voted, and its points. Points are what the reviewers' answers add up to under this screening's scoring. They rank included papers and decide nothing.",
     "which": "Which papers",
     "every": "Every paper",
     "allOfThem": "All of them",
     "votedInclude": "You voted Include",
     "yourOwn": "Your own",
     "seeAll": "See all {count} in Papers",
+    "loading": "Loading papers",
     "noneMine": "You haven't voted Include on a paper yet."
   },
   "votes": {
     "title": "{votes, plural, one {# vote} other {# votes}} by {voters, plural, one {# reviewer} other {# reviewers}}",
-    "help": "One row for each paper a reviewer was given: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
+    "help": "One row for each paper a reviewer was given, with their vote, its reason and note, the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn't read the paper. A model isn't given a paper that is only a PDF it can't read, and a reviewer added later isn't given papers settled before they joined.",
     "leftOut": "Any vote the others cast on the {count, plural, one {# paper} other {# papers}} you have yet to vote on is left out, so it can't sway yours.",
     "whose": "Whose votes",
     "everyone": "Everyone",
@@ -58,7 +59,7 @@
     "none": "None",
     "shown": "These are {shown} of the {votes, plural, one {# vote} other {# votes}} cast.",
     "hiddenRows": "The file has a row for each vote hidden from you, without the vote.",
-    "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show: {why}.",
+    "emptyRows": "The file also has {count, plural, one {# row} other {# rows}} with no vote to show, for {why}.",
     "emptyWhy": {
       "yet": "reviewers who have yet to vote",
       "finished": "reviewers who had not voted when the screening was marked finished",
@@ -70,19 +71,19 @@
   "flow": {
     "title": "PRISMA 2020 flow diagram",
     "help": "The counts fill PRISMA 2020's identification and screening boxes, taken from this screening as it stands now.",
-    "alt": "PRISMA diagram: {boxes}"
+    "alt": "PRISMA diagram showing {boxes}"
   },
   "record": {
     "title": "The whole record",
-    "help": "One JSON file of the whole screening: its papers, votes, criteria, reviewers, sources, discussion and changes, with a guide to every column. A model's answers come with the passages it named. What the screening cost is left out.",
+    "help": "One JSON file of the whole screening, with its papers, votes, criteria, reviewers, sources, discussion and changes, and a guide to every column. A model's answers come with the passages it named. What the screening cost is left out.",
     "part": {
       "papers": {
         "name": "Papers",
-        "what": "Each with its DOI, its abstract, where it came from and where it stands"
+        "what": "Each paper with its DOI, abstract, source and where it stands"
       },
       "votes": {
         "name": "Votes",
-        "what": "{hidden, select, true {Each with its reason, its note, its answers, and the sentence a model named. The ones hidden from you are listed without them} other {Each with its reason, its note, its answers, and the sentence a model named}}"
+        "what": "{hidden, select, true {Each vote with its reason, note and answers, and the sentence a model named. Votes hidden from you are listed without these} other {Each vote with its reason, note and answers, and the sentence a model named}}"
       },
       "withoutVote": {
         "name": "Without a vote",
@@ -106,7 +107,7 @@
       },
       "changes": {
         "name": "Changes",
-        "what": "The activity log: what was changed, by whom and when"
+        "what": "The activity log of what was changed, by whom and when"
       },
       "columns": {
         "name": "Columns",
@@ -126,13 +127,14 @@
     "methods": "Written from the screening as it stands now. Copy it when it describes the results you want to report."
   },
   "download": "<wide>Download </wide>{format}",
-  "downloaded": "{format}<sr> downloaded</sr>",
+  "downloaded": "<wide>Downloaded </wide>{format}",
   "copy": "Copy",
   "copied": "Copied",
   "copyToast": {
     "copied": "Copied the methods paragraph",
     "failed": "Your browser didn't let the page copy",
-    "select": "Select the paragraph and copy it:"
+    "select": "Select the paragraph and copy it.",
+    "selected": "The paragraph is selected. Copy it with your keyboard."
   },
   "notLoaded": "The workspace hasn't loaded yet. Try again in a moment.",
   "notMade": "The file couldn't be made. Try again."
