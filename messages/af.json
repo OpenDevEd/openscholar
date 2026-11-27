@@ -8146,7 +8146,6 @@
         "orphaned": "{many, select, true {{count, plural, one {# artikel is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by}}} other {{count, plural, one {# artikel is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by}}}}",
         "creditsShort": "{credits, plural, one {# krediet kort} other {# krediete kort}}",
         "reading": "Lees die artikels",
-        "addPapers": "Voeg artikels by om te begin",
         "addReviewer": "Voeg ’n beoordelaar by om te begin"
       },
       "unread": "{count, plural, other {# kon nie gelees word nie}}",
@@ -8787,7 +8786,7 @@
       "empty": {
         "arriving": "Die artikels is op pad",
         "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit die bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit die bronne aankom.}}",
-        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {Hierdie siftering het geen bron om artikels uit te neem nie.}}",
+        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {Dit wag vir artikels. Voeg ’n bron by, en sy artikels gaan na die beoordelaars.}}",
         "toSources": "{sources, select, true {Sien die bronne} other {Voeg ’n bron by}}"
       },
       "progress": {

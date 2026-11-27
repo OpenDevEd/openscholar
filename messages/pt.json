@@ -8146,7 +8146,6 @@
         "orphaned": "{many, select, true {{count, plural, one {# artigo é só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa} other {# artigos são só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa}}} other {{count, plural, one {# artigo é só um PDF, que este modelo não consegue ler. Adicione uma pessoa} other {# artigos são só um PDF, que este modelo não consegue ler. Adicione uma pessoa}}}}",
         "creditsShort": "{credits, plural, one {Falta # crédito} other {Faltam # créditos}}",
         "reading": "A ler os artigos",
-        "addPapers": "Adicione artigos para iniciar",
         "addReviewer": "Adicione um revisor para iniciar"
       },
       "unread": "{count, plural, one {# não pôde ser lido} other {# não puderam ser lidos}}",
@@ -8787,7 +8786,7 @@
       "empty": {
         "arriving": "Os artigos estão a caminho",
         "arrivingSays": "{reviewer, select, true {Aparecem aqui à medida que chegam das fontes. Pode começar a triagem assim que chegarem os primeiros.} other {Aparecem aqui à medida que chegam das fontes.}}",
-        "noPaper": "{sources, select, true {As fontes não tinham nenhum artigo que possa ser triado.} other {Esta triagem não tem nenhuma fonte de onde obter artigos.}}",
+        "noPaper": "{sources, select, true {As fontes não tinham nenhum artigo que possa ser triado.} other {Espera por artigos. Adicione uma fonte e os artigos dela vão para os revisores.}}",
         "toSources": "{sources, select, true {Ver as fontes} other {Adicionar uma fonte}}"
       },
       "progress": {

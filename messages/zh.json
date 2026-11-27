@@ -8145,7 +8145,6 @@
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
         "creditsShort": "{credits, plural, other {还差 # 积分}}",
         "reading": "正在读取论文",
-        "addPapers": "添加论文后开始",
         "addReviewer": "添加审核人后开始"
       },
       "unread": "{count, plural, other {# 篇无法读取}}",
@@ -8786,7 +8785,7 @@
       "empty": {
         "arriving": "论文正在路上",
         "arrivingSays": "{reviewer, select, true {论文从来源到达后会显示在这里。第一批到达后你就可以开始筛选。} other {论文从来源到达后会显示在这里。}}",
-        "noPaper": "{sources, select, true {来源中没有可筛选的论文。} other {此筛选没有可获取论文的来源。}}",
+        "noPaper": "{sources, select, true {来源中没有可筛选的论文。} other {它在等待论文。添加一个来源后，其论文会分给审核人。}}",
         "toSources": "{sources, select, true {查看来源} other {添加来源}}"
       },
       "progress": {

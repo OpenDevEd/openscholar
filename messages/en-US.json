@@ -8145,7 +8145,6 @@
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
         "creditsShort": "{credits, plural, one {# credit short} other {# credits short}}",
         "reading": "Reading the papers",
-        "addPapers": "Add papers to start",
         "addReviewer": "Add a reviewer to start"
       },
       "unread": "{count, plural, other {# couldn't be read}}",
@@ -8786,7 +8785,7 @@
       "empty": {
         "arriving": "Papers are on their way",
         "arrivingSays": "{reviewer, select, true {They show here as they arrive from the sources. You can start screening as soon as the first are in.} other {They show here as they arrive from the sources.}}",
-        "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {This screening has no source to take papers from.}}",
+        "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {It waits for papers. Add a source, and its papers go to the reviewers.}}",
         "toSources": "{sources, select, true {See the sources} other {Add a source}}"
       },
       "progress": {
