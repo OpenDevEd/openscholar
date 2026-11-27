@@ -19,7 +19,7 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
-import { isFinal, nextResolver, readersFor, takesOver } from "../../lib/screening/rules";
+import { isFinal, nextResolver, readersFor } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
@@ -64,19 +64,22 @@ export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, use
 }
 
 /**
- * Gives someone who joined their share of the open papers, a step at a time. On a paper that waits for votes they
- * take over one of the places nobody voted from, as often as leaves everyone an even share. Every paper that may be
- * short of people, or that everyone reads, is stamped for the worker, which fills the places still free.
+ * Gives someone who joined their share of the open papers, a step at a time. On the papers that wait for votes they
+ * take over the places nobody voted from in turn: one in as many as there were people before them, counted across
+ * every step (`owed`), so even a few waiting papers are shared evenly, the first going to them. Every paper that may
+ * be short of people, or that everyone reads, is stamped for the worker, which fills the places still free.
  */
 export const join = internalMutation({
-  args: { jobId: v.id("screeningJobs"), reviewerId: v.id("screeningReviewers"), before: v.number(), cursor: v.union(v.string(), v.null()), result: v.union(v.literal("waiting"), v.literal("conflict")) },
+  args: { jobId: v.id("screeningJobs"), reviewerId: v.id("screeningReviewers"), before: v.number(), cursor: v.union(v.string(), v.null()), result: v.union(v.literal("waiting"), v.literal("conflict")), /** Places owed to them so far, in shares of `before + 1`, and how many they took: carried from step to step. */ owed: v.optional(v.number()), took: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx, { jobId, reviewerId, before, cursor, result }) => {
+  handler: async (ctx, { jobId, reviewerId, before, cursor, result, owed: owedBefore, took: tookBefore }) => {
     const [job, reviewer] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningReviewers", reviewerId)]);
     if (!job?.rule || !reviewer || reviewer.left !== undefined) return null;
     const everyone = job.rule.each === "all";
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: STEP });
     const dealt = new Map<Id<"screeningReviewers">, number>();
+    // The first waiting place is theirs: starting one short of a whole share gives them the first, then every `before + 1`th.
+    let [owed, took] = [owedBefore ?? before, tookBefore ?? 0];
     const people = new Map((await reviewersOf(ctx, jobId)).map((one) => [one._id, one]));
     for (const paper of page.page) {
       const votes = await votesOf(ctx, paper._id);
@@ -90,8 +93,12 @@ export const join = internalMutation({
       }
       if (mine) continue;
       const waiting = persons.filter((vote) => vote.status === "waiting");
-      // By their account, which names them before their row exists: a change's preview takes the same places (lib/screening/project.ts `withJoined`).
-      const place = !everyone && result === "waiting" ? takesOver(paper._id, reviewer.userId ?? reviewerId, before, waiting.length) : null;
+      // Each place nobody voted from adds a share of one in `before + 1`; a whole one is a place they take, from each earlier holder in turn. A change's preview estimates the same share (lib/screening/project.ts `withJoined`).
+      let place: number | null = null;
+      if (!everyone && result === "waiting" && waiting.length) {
+        owed += waiting.length;
+        if (owed >= before + 1) { owed -= before + 1; place = took % waiting.length; took++; }
+      }
       if (place !== null) {
         const taken = waiting[place]!;
         await ctx.db.patch("screeningVotes", taken._id, { reviewerId });
@@ -104,7 +111,7 @@ export const join = internalMutation({
     await countDealt(ctx, dealt);
     await bookkeepLater(ctx);
     // A paper in conflict gains a reviewer only where everyone reads every paper.
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: page.continueCursor, result });
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: page.continueCursor, result, owed, took });
     // Under "everyone agrees" a split stays one whoever joins: its resolver keeps it.
     else if (result === "waiting" && everyone && job.rule.settle !== "all") await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId, reviewerId, before, cursor: null, result: "conflict" });
     return null;

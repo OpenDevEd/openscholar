@@ -185,9 +185,9 @@ export function fillPlaces<Person extends { id: string }>(people: Person[], on: 
 }
 
 /**
- * Whether someone who joins takes over a place on a paper, and which: one place in as many as there were people
- * before them, so they end with an even share and nobody else's papers move for any other reason. `waiting` is how
- * many places on the paper nobody has voted from.
+ * Whether someone who joins takes over a place on a paper, and which, as a change's preview estimates it: one place in
+ * as many as there were people before them, so they end with about an even share and nobody else's papers move for any
+ * other reason. `waiting` is how many places on the paper nobody has voted from.
  */
 export function takesOver(paper: string, person: string, before: number, waiting: number): number | null {
   const claim = hash(`${paper}:${person}`) % (before + 1);

@@ -302,6 +302,25 @@ describe("what a change takes out", () => {
     expect(await later()).toMatchObject({ later: 1, added: 1 });
   });
 
+  it("gives someone who joins their even share of the papers still waiting, however few", async () => {
+    for (const [waiting, theirs] of [[1, 1], [2, 1], [3, 2], [5, 3]] as const) {
+      const made = await team(["ann", "ben"]);
+      const { workspaceId } = made;
+      // One person on each paper, Ann alone: every paper is hers, and she votes on all but `waiting` of them.
+      const { jobId, papers } = await started(made, ["ann"], 6, { rule: { each: 1, settle: "all", blind: "after" } });
+      await run(made.t);
+      const vote = voter(made, jobId);
+      for (const one of papers.slice(waiting)) await vote("ann", one._id, "include");
+      await run(made.t);
+      await made.as.ann!.mutation(api.screening.reviewers.add, { workspaceId, jobId, personId: made.ids.ben! });
+      await run(made.t);
+      // Ben takes the first waiting paper and every second one after it: never none by chance.
+      const held = await standingOf(made.t, jobId);
+      expect([waiting, held.reviewers.ben?.dealt]).toEqual([waiting, theirs]);
+      expect([waiting, held.reviewers.ann?.dealt]).toEqual([waiting, 6 - theirs]);
+    }
+  });
+
   it("emails a colleague put on a screening, with the papers that wait for them or with none", async () => {
     const made = await team(["ann", "ben", "cat"]);
     const { workspaceId } = made;
