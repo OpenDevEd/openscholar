@@ -36,7 +36,6 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
-  if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (decision === null) {
@@ -108,7 +107,6 @@ export const resolve = workspaceMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to settle a paper.");
     await paperOf(ctx, jobId, paperId);
     requireReason(job, reason);
-    if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
     await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim().slice(0, SCREENING_TEXT.voteNote) } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
     await stamp(ctx, paperId);
     await bookkeepLater(ctx);

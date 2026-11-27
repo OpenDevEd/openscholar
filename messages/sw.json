@@ -8135,6 +8135,7 @@
       "block": {
         "emptyCriterion": "Andika swali kwa kigezo kilicho tupu",
         "needsCriterion": "{many, select, true {Ongeza kigezo kwa ajili ya modeli} other {Ongeza kigezo kwa ajili ya modeli}}",
+        "needsMust": "{many, select, true {Fanya kigezo kimoja kiwe cha lazima kwa miundo} other {Fanya kigezo kimoja kiwe cha lazima kwa muundo}}",
         "overPapers": "{personal, select, true {{count, plural, one {Mpango wako unachuja makala # katika uchujaji mmoja} other {Mpango wako unachuja hadi makala # katika uchujaji mmoja}}} other {{count, plural, one {Mpango wa {workspace} unachuja makala # katika uchujaji mmoja} other {Mpango wa {workspace} unachuja hadi makala # katika uchujaji mmoja}}}}",
         "overModels": "{count, plural, one {Uchujaji unaendesha modeli #} other {Uchujaji unaendesha hadi modeli #}}",
         "orphaned": "{many, select, true {{count, plural, one {Makala # ni PDF tu, ambayo modeli hizi haziwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hizi haziwezi kusoma. Ongeza mtu}}} other {{count, plural, one {Makala # ni PDF tu, ambayo modeli hii haiwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hii haiwezi kusoma. Ongeza mtu}}}}",
@@ -9592,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "Rudio la makala nyingine",
-        "other": "Sababu nyingine"
+        "other": "Sababu nyingine",
+        "unstated": "Hakuna sababu iliyotolewa"
       },
       "excludeAsk": {
         "must": "{many, select, true {Makala hizi zinashindwa sharti lipi la lazima?} other {Inashindwa sharti lipi la lazima?}}",

@@ -8134,6 +8134,7 @@
       "block": {
         "emptyCriterion": "Écrivez une question pour le critère vide",
         "needsCriterion": "{many, select, true {Ajoutez un critère pour les modèles} other {Ajoutez un critère pour le modèle}}",
+        "needsMust": "{many, select, true {Rendez un critère obligatoire pour les modèles} other {Rendez un critère obligatoire pour le modèle}}",
         "overPapers": "{personal, select, true {{count, plural, one {Votre forfait crible # article dans un même criblage} other {Votre forfait crible jusqu'à # articles dans un même criblage}}} other {{count, plural, one {Le forfait de {workspace} crible # article dans un même criblage} other {Le forfait de {workspace} crible jusqu'à # articles dans un même criblage}}}}",
         "overModels": "{count, plural, one {Un criblage utilise # modèle} other {Un criblage utilise jusqu'à # modèles}}",
         "orphaned": "{many, select, true {{count, plural, one {# article n'est qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne}}} other {{count, plural, one {# article n'est qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne}}}}",
@@ -9591,7 +9592,8 @@
       },
       "otherReason": {
         "duplicate": "Doublon d'un autre article",
-        "other": "Une autre raison"
+        "other": "Une autre raison",
+        "unstated": "Aucun motif indiqué"
       },
       "excludeAsk": {
         "must": "{many, select, true {Quel critère indispensable ces articles ne remplissent-ils pas ?} other {Quel critère indispensable ne remplit-il pas ?}}",

@@ -6,7 +6,7 @@
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
 import { useFormatter, useTranslations } from "next-intl";
-import { OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
+import { NAMED_REASONS, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed } from "./data";
 
 /** A criterion as far as its name goes. */
@@ -40,7 +40,7 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
   const listed = (names: string[]) => format.list(names, { type: "conjunction" });
   /** What someone wrote, quoted: a note with a vote, a paper's title in a line of text. One form everywhere. */
   const quoted = (text: string) => t("quoted", { text });
-  const otherReason = (key: string) => (OTHER_REASONS as readonly string[]).includes(key) ? t(`otherReason.${key as (typeof OTHER_REASONS)[number]}`) : undefined;
+  const otherReason = (key: string) => (NAMED_REASONS as readonly string[]).includes(key) ? t(`otherReason.${key as (typeof NAMED_REASONS)[number]}`) : undefined;
   /** A criterion by its key, as a line names it (./data.ts `criterionLabel`). */
   const labelOf = (key: string, criteria: Named[]) => { const criterion = criteria.find((one) => one.key === key); return criterion && criterionLabel(criterion); };
   /** A reason in words: the criterion as a line names it, or one of the others. */

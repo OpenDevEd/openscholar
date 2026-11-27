@@ -8134,6 +8134,7 @@
       "block": {
         "emptyCriterion": "为空白标准写一个问题",
         "needsCriterion": "{many, select, true {为模型添加一条标准} other {为模型添加一条标准}}",
+        "needsMust": "{many, select, true {为模型将一项标准设为必需} other {为模型将一项标准设为必需}}",
         "overPapers": "{personal, select, true {{count, plural, other {你的套餐每个筛选最多可筛 # 篇论文}}} other {{count, plural, other {{workspace} 的套餐每个筛选最多可筛 # 篇论文}}}}",
         "overModels": "{count, plural, other {一个筛选最多运行 # 个模型}}",
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
@@ -9591,7 +9592,8 @@
       },
       "otherReason": {
         "duplicate": "与另一篇论文重复",
-        "other": "其他原因"
+        "other": "其他原因",
+        "unstated": "未说明理由"
       },
       "excludeAsk": {
         "must": "{many, select, true {这些论文不满足哪条必要条件？} other {它不满足哪条必要条件？}}",

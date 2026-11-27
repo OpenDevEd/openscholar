@@ -8134,6 +8134,7 @@
       "block": {
         "emptyCriterion": "Bhala umbuzo wombandela ongenalutho",
         "needsCriterion": "{many, select, true {Engeza umbandela wamamodeli} other {Engeza umbandela wemodeli}}",
+        "needsMust": "{many, select, true {Yenza umbandela owodwa ube yimpoqo kumamodeli} other {Yenza umbandela owodwa ube yimpoqo kumodeli}}",
         "overPapers": "{personal, select, true {{count, plural, one {Uhlelo lwakho luskrina # iphepha ekuskrinini okukodwa} other {Uhlelo lwakho luskrina amaphepha afika ku-# ekuskrinini okukodwa}}} other {{count, plural, one {Uhlelo lwe-{workspace} luskrina # iphepha ekuskrinini okukodwa} other {Uhlelo lwe-{workspace} luskrina amaphepha afika ku-# ekuskrinini okukodwa}}}}",
         "overModels": "{count, plural, one {Ukuskrini kusebenzisa # imodeli} other {Ukuskrini kusebenzisa amamodeli afika ku-#}}",
         "orphaned": "{many, select, true {{count, plural, one {# iphepha liyi-PDF kuphela, la mamodeli angakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, la mamodeli angakwazi ukuwafunda. Engeza umuntu}}} other {{count, plural, one {# iphepha liyi-PDF kuphela, le modeli engakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, le modeli engakwazi ukuwafunda. Engeza umuntu}}}}",
@@ -9591,7 +9592,8 @@
       },
       "otherReason": {
         "duplicate": "Ikhophi yelinye iphepha",
-        "other": "Esinye isizathu"
+        "other": "Esinye isizathu",
+        "unstated": "Asikho isizathu esinikeziwe"
       },
       "excludeAsk": {
         "must": "{many, select, true {Yiyiphi imfuneko la maphepha ahluleka kuyo?} other {Yiyiphi imfuneko elihluleka kuyo?}}",

@@ -8134,6 +8134,7 @@
       "block": {
         "emptyCriterion": "Write a question for the empty criterion",
         "needsCriterion": "{many, select, true {Add a criterion for the models} other {Add a criterion for the model}}",
+        "needsMust": "{many, select, true {Make a criterion a must-have for the models} other {Make a criterion a must-have for the model}}",
         "overPapers": "{personal, select, true {{count, plural, one {Your plan screens # paper in one screening} other {Your plan screens up to # papers in one screening}}} other {{count, plural, one {The plan of {workspace} screens # paper in one screening} other {The plan of {workspace} screens up to # papers in one screening}}}}",
         "overModels": "{count, plural, one {A screening runs # model} other {A screening runs up to # models}}",
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
@@ -9591,7 +9592,8 @@
       },
       "otherReason": {
         "duplicate": "A duplicate of another paper",
-        "other": "Another reason"
+        "other": "Another reason",
+        "unstated": "No reason given"
       },
       "excludeAsk": {
         "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",

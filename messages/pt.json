@@ -8135,6 +8135,7 @@
       "block": {
         "emptyCriterion": "Escreva uma pergunta para o critério vazio",
         "needsCriterion": "{many, select, true {Adicione um critério para os modelos} other {Adicione um critério para o modelo}}",
+        "needsMust": "{many, select, true {Torne um critério obrigatório para os modelos} other {Torne um critério obrigatório para o modelo}}",
         "overPapers": "{personal, select, true {{count, plural, one {O seu plano faz a triagem de # artigo numa triagem} other {O seu plano faz a triagem de até # artigos numa triagem}}} other {{count, plural, one {O plano de {workspace} faz a triagem de # artigo numa triagem} other {O plano de {workspace} faz a triagem de até # artigos numa triagem}}}}",
         "overModels": "{count, plural, one {Uma triagem usa # modelo} other {Uma triagem usa até # modelos}}",
         "orphaned": "{many, select, true {{count, plural, one {# artigo é só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa} other {# artigos são só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa}}} other {{count, plural, one {# artigo é só um PDF, que este modelo não consegue ler. Adicione uma pessoa} other {# artigos são só um PDF, que este modelo não consegue ler. Adicione uma pessoa}}}}",
@@ -9592,7 +9593,8 @@
       },
       "otherReason": {
         "duplicate": "Duplicado de outro artigo",
-        "other": "Outro motivo"
+        "other": "Outro motivo",
+        "unstated": "Sem motivo indicado"
       },
       "excludeAsk": {
         "must": "{many, select, true {Que critério obrigatório falham estes artigos?} other {Que critério obrigatório falha este artigo?}}",

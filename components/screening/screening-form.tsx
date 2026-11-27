@@ -562,7 +562,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
   const moves = saved && changing && known ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
-  const needsCriteria = models.length > 0 && draft.criteria.length === 0;
+  // A model excludes only for a must-have it finds unmet: with none it would include every paper.
+  const needsCriteria = models.length > 0 && !draft.criteria.some((criterion) => criterion.must);
   const lastCheck = open?.latest ?? null;
   // What its models have cost so far.
   const spentSoFar = saved ? saved.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0) : 0;
@@ -584,7 +585,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Papers that are only a PDF none of its reviewers can read: they would wait for a vote nobody casts.
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const lacking: Block | null = unasked ?? (needsCriteria ? { text: t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }) } : null);
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }) } : null);
   const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast: what a row's chips open.
   const votesOf = (reviewer: Reviewer) => reviewer.tally?.cast ?? 0;
