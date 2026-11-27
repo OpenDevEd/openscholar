@@ -335,9 +335,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   const settleAll = async (decision: Decision, why?: { reason: string; note?: string }) => {
     const settling = conflictsPicked;
+    // The selection goes at once, so its buttons can't settle the same papers again while these saves run; the ones the server refuses come back picked, to try again.
+    setPicked([]);
     const { saved, refused } = await each(settling, (one) => open.resolve(one.id, decision, why?.note, why?.reason));
-    // The ones the server refused stay picked, to try again.
-    setPicked(settling.filter((one) => !saved.includes(one)));
+    if (refused) setPicked(settling.filter((one) => !saved.includes(one)));
     if (refused) notSaved(t, refused);
     if (saved.length) toast(t("settledToast", { count: saved.length, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.resolve(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
   };
