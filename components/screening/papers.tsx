@@ -852,7 +852,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     // Someone invited who hasn't joined holds a place the rule waits for, with no face to show yet.
     const invited = invitedOn(open.screening, paper, open.invited);
     const invitedSays = invited ? <span className="shrink-0">{words.t("invitedWaiting", { count: invited })}</span> : null;
-    if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited ? <>{t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
+    if (!missing.length) return <span className="flex items-center gap-2 text-xs text-muted-foreground">{invited ? <>{open.screening.finishedAt ? t("why.noVoteFrom") : t("why.waitingOn")}{invitedSays}</> : t("why.nobodyCanVote")}</span>;
     const mine = missing[0]!.id === open.me;
     return (
       <span className="flex items-center gap-2 text-xs text-muted-foreground">

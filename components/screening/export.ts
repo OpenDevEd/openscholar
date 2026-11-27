@@ -388,6 +388,8 @@ export function methodsOf(out: Taken) {
   const pair = pairOn ? pairOf(figures, pairOn[0].id, pairOn[1].id) : null;
   // Every pair of reviewers who voted on a record in common: kappa where it has a value, and how many pairs voted the same way every time, where it has none. Pairs who shared no record are no pair here.
   const met = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return pair ? [pair] : []; }));
+  // Whether a pair with a kappa has a model in it: the sentence names the models' pairs only where they count.
+  const modelPaired = reviewers.some((a, i) => reviewers.slice(i + 1).some((b) => (a.kind === "model" || b.kind === "model") && (pairOf(figures, a.id, b.id)?.kappa ?? null) !== null));
   const kappas = met.flatMap((pair) => (pair.kappa === null ? [] : [pair.kappa])).sort((a, b) => a - b);
   const alike = met.length - kappas.length;
   const names = people.map((person) => person.name);
@@ -457,7 +459,7 @@ export function methodsOf(out: Taken) {
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began. Votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began${changedParts.length ? ` (${listed(changedParts)})` : ""}. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${pairOn![0].name} and ${pairOn![1].name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (${pair.kappa === null ? "Cohen's kappa could not be estimated, as both gave the same decision every time" : `Cohen's kappa ${pair.kappa.toFixed(2)}`}).` : "",
-    kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value${everyModel.length ? ", the AI models' pairs among them" : ""}, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${alike ? `; ${alike === 1 ? "one other pair" : `${alike} other pairs`} gave the same decision on every record they shared, so kappa has no value for ${alike === 1 ? "it" : "them"}` : ""}.` : "",
+    kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value${modelPaired ? ", the AI models' pairs among them" : ""}, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${alike ? `; ${alike === 1 ? "one other pair" : `${alike} other pairs`} gave the same decision on every record they shared, so kappa has no value for ${alike === 1 ? "it" : "them"}` : ""}.` : "",
     `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
   ].filter(Boolean).join(" ");
 }
