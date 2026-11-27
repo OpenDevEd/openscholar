@@ -107,8 +107,7 @@
     "title": "Delete {name}?",
     "goes": "The votes and settings are deleted with it",
     "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
-    "final": "This can't be undone",
-    "shut": "Only {name} or an admin of this workspace can delete this screening."
+    "final": "This can't be undone"
   },
   "leave": {
     "title": "Leave this screening?",

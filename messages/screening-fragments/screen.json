@@ -151,7 +151,8 @@
     "noVotes": "You haven't voted on a paper yet",
     "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
     "join": "Join as a reviewer",
-    "allPapers": "See all the papers"
+    "allPapers": "See all the papers",
+    "noneCanSplit": "Each paper here is settled by one vote, so none waits to be settled"
   },
   "matrix": {
     "nameYou": "{name}, you",

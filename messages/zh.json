@@ -8385,7 +8385,8 @@
         "always": "随时",
         "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
         "addReviewer": "添加审核人即可查看论文如何定案。",
-        "modelSettles": "模型的投票只会让没有分配给任何人的论文定案。其他论文由第一位人员的投票决定。"
+        "modelSettles": "模型的投票只会让没有分配给任何人的论文定案。其他论文由第一位人员的投票决定。",
+        "oneVoteEach": "每篇论文由一票决定，因此没有需要裁定的分歧"
       },
       "goesHelp": "结果为入选的论文会添加到你在文库或 Evidence Community 中选择的合集，并带有评分得出的星级。选择“不保存”则只留在筛选中。",
       "summaryLabel": "摘要",
@@ -8569,8 +8570,7 @@
         "title": "删除 {name}？",
         "goes": "投票和设置会一并删除",
         "saved": "{count, plural, other {已保存到 {collection} 的 # 篇论文会留在那里}}",
-        "final": "此操作无法撤销",
-        "shut": "只有 {name} 或此工作区的管理员可以删除这次筛选。"
+        "final": "此操作无法撤销"
       },
       "leave": {
         "title": "退出此筛选？",
@@ -8913,7 +8913,7 @@
         "onceRead": "读完所有论文时共 {credits}",
         "failed": "{count, plural, other {# 次读取失败}}",
         "arriving": "论文仍在到达",
-        "allRead": "所有论文均已读取",
+        "allRead": "模型已没有要读的内容",
         "leftIn": "{own, select, true {剩余 {credits}} other {{workspace} 剩余 {credits}}}",
         "takenOff": "已移出的模型用了 {credits}",
         "nothingToPay": "无需付费"
@@ -9095,9 +9095,7 @@
       },
       "pointsOf": "{points, number} / {max, plural, other {# 分}}",
       "note": {
-        "neededForOther": "填写其他原因",
         "label": "备注",
-        "writeReason": "在备注中写明原因",
         "forOthers": "写给其他人的备注（可选）",
         "forRecord": "供记录的备注（可选）"
       },
@@ -9377,7 +9375,8 @@
         "noVotes": "你还没有对任何论文投票",
         "seeVotes": "{count, plural, =1 {查看你的投票} other {查看你的 # 次投票}}",
         "join": "以审核人身份加入",
-        "allPapers": "查看所有论文"
+        "allPapers": "查看所有论文",
+        "noneCanSplit": "这里每篇论文由一票决定，因此没有论文等待裁定"
       },
       "matrix": {
         "nameYou": "{name}（你）",
@@ -9620,7 +9619,7 @@
         },
         "means": {
           "all": "分配到这篇论文的每位审核人都投票且投法全部相同时，论文即定案。只要有分歧就是冲突。",
-          "most": "分配到这篇论文的每位审核人都投票且超过半数投法相同时，论文即定案。没有这样的多数就是冲突。",
+          "most": "当分配到该论文的每位审阅者都已投票，且超过半数投法相同时，论文即被决定。在模型票计入的情况下，该多数中至少要有一个人。没有这样的多数即为分歧。",
           "one": "论文由第一票定案，因此不会出现冲突。如果论文分配给了人员，由第一位人员的投票定案。模型的投票只会让没有分配给任何人的论文定案。"
         },
         "says": {

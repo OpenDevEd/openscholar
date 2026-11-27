@@ -8386,7 +8386,8 @@
         "always": "En cualquier momento",
         "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",
         "addReviewer": "Añada un revisor para ver cómo se resuelve un artículo.",
-        "modelSettles": "El voto de un modelo solo resuelve los artículos que no recibe ninguna persona. En los demás, decide el voto de la primera persona."
+        "modelSettles": "El voto de un modelo solo resuelve los artículos que no recibe ninguna persona. En los demás, decide el voto de la primera persona.",
+        "oneVoteEach": "Un voto decide cada artículo, así que no hay conflicto que resolver"
       },
       "goesHelp": "Los artículos cuyo resultado es Incluido se añaden a la colección que elija, en su biblioteca o en una Evidence Community, con las estrellas de Puntuación. Ningún sitio los deja solo en el cribado.",
       "summaryLabel": "Resumen del cribado",
@@ -8570,8 +8571,7 @@
         "title": "¿Eliminar {name}?",
         "goes": "Los votos y los ajustes se eliminan con él",
         "saved": "{count, plural, one {El # artículo guardado en {collection} se queda ahí} other {Los # artículos guardados en {collection} se quedan ahí}}",
-        "final": "No se puede deshacer",
-        "shut": "Solo {name} o un administrador de este espacio de trabajo puede eliminar este cribado."
+        "final": "No se puede deshacer"
       },
       "leave": {
         "title": "¿Salir de este cribado?",
@@ -8914,7 +8914,7 @@
         "onceRead": "{credits} cuando se lean todos los artículos",
         "failed": "{count, plural, one {# lectura fallida} other {# lecturas fallidas}}",
         "arriving": "Los artículos aún están llegando",
-        "allRead": "Todos los artículos están leídos",
+        "allRead": "No queda nada por leer para los modelos",
         "leftIn": "{own, select, true {Quedan {credits}} other {Quedan {credits} en {workspace}}}",
         "takenOff": "{credits} de modelos retirados",
         "nothingToPay": "Nada que pagar"
@@ -9096,9 +9096,7 @@
       },
       "pointsOf": "{points, number} de {max, plural, one {# punto} other {# puntos}}",
       "note": {
-        "neededForOther": "Escriba el otro motivo",
         "label": "Nota",
-        "writeReason": "Escriba el motivo en la nota",
         "forOthers": "Nota para los demás (opcional)",
         "forRecord": "Nota para que conste (opcional)"
       },
@@ -9378,7 +9376,8 @@
         "noVotes": "Todavía no ha votado ningún artículo",
         "seeVotes": "{count, plural, =1 {Ver su voto} other {Ver sus # votos}}",
         "join": "Unirse como revisor",
-        "allPapers": "Ver todos los artículos"
+        "allPapers": "Ver todos los artículos",
+        "noneCanSplit": "Cada artículo aquí se decide con un voto, así que ninguno espera una resolución"
       },
       "matrix": {
         "nameYou": "{name}, usted",
@@ -9621,7 +9620,7 @@
         },
         "means": {
           "all": "Un artículo queda resuelto cuando han votado todos los revisores asignados y todos votaron lo mismo. Cualquier división es un conflicto.",
-          "most": "Un artículo queda resuelto cuando han votado todos los revisores asignados y más de la mitad votó lo mismo. Sin esa mayoría, es un conflicto.",
+          "most": "Un artículo queda decidido cuando todos los revisores a los que se asignó han votado y más de la mitad votó igual. Donde cuentan los votos de los modelos, al menos una persona debe estar en esa mayoría. Sin esa mayoría hay un conflicto.",
           "one": "Un artículo queda resuelto con su primer voto, así que nunca hay conflicto. Si una persona recibe el artículo, lo resuelve el voto de la primera persona. El voto de un modelo solo resuelve un artículo que no tiene ninguna persona."
         },
         "says": {

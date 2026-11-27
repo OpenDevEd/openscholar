@@ -8386,7 +8386,8 @@
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu sehen, wie ein Artikel entschieden wird.",
-        "modelSettles": "Die Stimme eines Modells entscheidet nur die Artikel, die keine Person bekommt. Bei den anderen entscheidet die Stimme der ersten Person."
+        "modelSettles": "Die Stimme eines Modells entscheidet nur die Artikel, die keine Person bekommt. Bei den anderen entscheidet die Stimme der ersten Person.",
+        "oneVoteEach": "Eine Stimme entscheidet jeden Artikel, es gibt also keinen Konflikt zu klären"
       },
       "goesHelp": "Artikel mit dem Ergebnis Eingeschlossen werden der Sammlung hinzugefügt, die Sie wählen, in Ihrer Bibliothek oder in einer Evidence Community, mit den Sternen aus der Bewertung. Nirgends behält sie nur im Screening.",
       "summaryLabel": "Zusammenfassung",
@@ -8570,8 +8571,7 @@
         "title": "{name} löschen?",
         "goes": "Die Stimmen und Einstellungen werden mit gelöscht",
         "saved": "{count, plural, one {Der # in {collection} gespeicherte Artikel bleibt dort} other {Die # in {collection} gespeicherten Artikel bleiben dort}}",
-        "final": "Dies lässt sich nicht rückgängig machen",
-        "shut": "Nur {name} oder ein Admin dieses Arbeitsbereichs kann dieses Screening löschen."
+        "final": "Dies lässt sich nicht rückgängig machen"
       },
       "leave": {
         "title": "Dieses Screening verlassen?",
@@ -8914,7 +8914,7 @@
         "onceRead": "{credits}, sobald alle Artikel gelesen sind",
         "failed": "{count, plural, one {# Lesevorgang fehlgeschlagen} other {# Lesevorgänge fehlgeschlagen}}",
         "arriving": "Die Artikel kommen noch an",
-        "allRead": "Alle Artikel sind gelesen",
+        "allRead": "Für die Modelle bleibt nichts zu lesen",
         "leftIn": "{own, select, true {{credits} übrig} other {{credits} übrig in {workspace}}}",
         "takenOff": "{credits} durch entfernte Modelle",
         "nothingToPay": "Nichts zu bezahlen"
@@ -9096,9 +9096,7 @@
       },
       "pointsOf": "{points, number} von {max, plural, one {# Punkt} other {# Punkten}}",
       "note": {
-        "neededForOther": "Schreiben Sie den anderen Grund",
         "label": "Notiz",
-        "writeReason": "Schreiben Sie den Grund in die Notiz",
         "forOthers": "Notiz für die anderen (optional)",
         "forRecord": "Notiz fürs Protokoll (optional)"
       },
@@ -9378,7 +9376,8 @@
         "noVotes": "Sie haben noch über keinen Artikel abgestimmt",
         "seeVotes": "{count, plural, =1 {Ihre Stimme ansehen} other {Ihre # Stimmen ansehen}}",
         "join": "Als Reviewer beitreten",
-        "allPapers": "Alle Artikel ansehen"
+        "allPapers": "Alle Artikel ansehen",
+        "noneCanSplit": "Jeder Artikel hier wird durch eine Stimme entschieden, also wartet keiner auf eine Klärung"
       },
       "matrix": {
         "nameYou": "{name}, Sie",
@@ -9621,7 +9620,7 @@
         },
         "means": {
           "all": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und alle gleich gestimmt haben. Jede Abweichung ist ein Konflikt.",
-          "most": "Ein Artikel ist entschieden, sobald alle ihm zugewiesenen Reviewer abgestimmt haben und mehr als die Hälfte gleich gestimmt hat. Ohne eine solche Mehrheit ist es ein Konflikt.",
+          "most": "Ein Artikel ist entschieden, sobald jeder Reviewer, dem er zugeteilt ist, abgestimmt hat und mehr als die Hälfte gleich gestimmt hat. Wo die Stimmen der Modelle zählen, muss mindestens eine Person zu dieser Mehrheit gehören. Ohne eine solche Mehrheit ist es ein Konflikt.",
           "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt. Bekommt eine Person den Artikel, entscheidet ihn die Stimme der ersten Person. Die Stimme eines Modells entscheidet nur einen Artikel, den keine Person hat."
         },
         "says": {

@@ -38,15 +38,15 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { canConflict, decide, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, modelsOf, readersOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
+import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -265,7 +265,7 @@ function Screen({ open }: { open: Open }) {
   const switching = arrivedQueue !== queue && !picked;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
   const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
-  const answering = !resolving && open.isReviewer;
+  const answering = !resolving && open.isReviewer && !switching;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
@@ -275,7 +275,8 @@ function Screen({ open }: { open: Open }) {
 
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
-    const note = notes[paper.id]?.trim() || (resolving ? undefined : mine?.note);
+    // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note.
+    const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : (mine?.note ?? "")).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
       setReasonFor(null);
@@ -337,6 +338,8 @@ function Screen({ open }: { open: Open }) {
     (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.
+      if (switching) return;
       const key = event.key.toLowerCase();
       // Inside a group of choices the arrow keys move between the choices, as they do everywhere.
       if (key.startsWith("arrow") && target?.closest("[role=radiogroup]")) return;
@@ -369,7 +372,7 @@ function Screen({ open }: { open: Open }) {
       event.preventDefault();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers close over this render's state, and the listener is renewed with it
-    [at, items, history, answers, notes, advance, queue, mayDecide, lit, tablet, folded, paced],
+    [at, items, history, answers, notes, advance, queue, mayDecide, lit, tablet, folded, paced, switching],
   );
   useEffect(() => {
     window.addEventListener("keydown", onKey);
@@ -440,7 +443,7 @@ function Screen({ open }: { open: Open }) {
 
   // A vote cast before a criterion became a must-have asks for a new one: its queue shows while any does, and while it is the one open.
   // Conflicts is a queue only where a paper can be in conflict, or one is: with one vote on each paper there is none to settle.
-  const splits = canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length) || conflicts > 0 || queue === "conflicts";
+  const splits = splitsIn(screening, conflicts, open.invited) || queue === "conflicts";
   const queues = open.isReviewer ? (["todo", ...(open.flagged || queue === "again" ? (["again"] as const) : []), "done", ...(splits ? (["conflicts"] as const) : [])] as const) : (["conflicts"] as const);
   const tabs = (
     <Segmented
@@ -487,7 +490,7 @@ function Screen({ open }: { open: Open }) {
   };
   const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queue !== "done" && !narrowed ? { pageCount: Math.max(1, Math.ceil(left / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
   const findField = (className: string) => (
-    <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className="w-full" />
+    <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className={SEARCH_PILL} />
   );
 
   // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is.
@@ -1076,7 +1079,7 @@ function Screen({ open }: { open: Open }) {
               <SheetDescription className="sr-only">{t("exclude.pick")}</SheetDescription>
             </SheetHeader>
             <ScrollArea shades className="min-h-0 flex-1">
-              <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} onPick={(reason) => decideOn("exclude", reason)} /></div>
+              <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} titled={false} onPick={(reason) => decideOn("exclude", reason)} /></div>
             </ScrollArea>
           </SheetContent>
         </Sheet>
@@ -1094,7 +1097,7 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
   const [yours, voted, closed] = [tally?.dealt ?? 0, tally?.cast ?? 0, tally?.closed ?? 0];
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
     // Someone who doesn't vote reads the papers in conflict here: an empty page says there are none, then what they are to the screening.
-    ? [Eye, t("empty.noConflictPaper"), notReviewerSays(pieces, open.canChange, Boolean(open.screening.finishedAt))]
+    ? [Eye, splitsIn(open.screening, open.counts.conflict, open.invited) ? t("empty.noConflictPaper") : t("empty.noneCanSplit"), notReviewerSays(pieces, open.canChange, Boolean(open.screening.finishedAt))]
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]

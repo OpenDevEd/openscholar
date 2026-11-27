@@ -8385,7 +8385,8 @@
         "always": "À tout moment",
         "withVotes": "{count, plural, one {Avec # vote sur un article, par exemple} other {Avec # votes sur un article, par exemple}}",
         "addReviewer": "Ajoutez un évaluateur pour voir comment un article est tranché.",
-        "modelSettles": "Le vote d'un modèle ne tranche que les articles qui ne sont confiés à aucune personne. Pour les autres, c'est le vote de la première personne qui décide."
+        "modelSettles": "Le vote d'un modèle ne tranche que les articles qui ne sont confiés à aucune personne. Pour les autres, c'est le vote de la première personne qui décide.",
+        "oneVoteEach": "Un seul vote tranche chaque article, il n’y a donc pas de conflit à trancher"
       },
       "goesHelp": "Les articles dont le résultat est Inclus sont ajoutés à la collection que vous choisissez, dans votre bibliothèque ou dans une Evidence Community, avec les étoiles de Notation. Nulle part les garde uniquement dans le criblage.",
       "summaryLabel": "Récapitulatif",
@@ -8569,8 +8570,7 @@
         "title": "Supprimer {name} ?",
         "goes": "Les votes et les paramètres sont supprimés avec lui",
         "saved": "{count, plural, one {L'article enregistré dans {collection} y reste} other {Les # articles enregistrés dans {collection} y restent}}",
-        "final": "C'est irréversible",
-        "shut": "Uniquement {name} ou un administrateur de cet espace de travail peut supprimer ce criblage."
+        "final": "C'est irréversible"
       },
       "leave": {
         "title": "Quitter ce criblage ?",
@@ -8913,7 +8913,7 @@
         "onceRead": "{credits} une fois tous les articles lus",
         "failed": "{count, plural, one {# lecture a échoué} other {# lectures ont échoué}}",
         "arriving": "Les articles arrivent encore",
-        "allRead": "Tous les articles sont lus",
+        "allRead": "Il ne reste rien à lire pour les modèles",
         "leftIn": "{own, select, true {{credits} restants} other {{credits} restants dans {workspace}}}",
         "takenOff": "{credits} par des modèles retirés",
         "nothingToPay": "Rien à payer"
@@ -9095,9 +9095,7 @@
       },
       "pointsOf": "{points, number} sur {max, plural, one {# point} other {# points}}",
       "note": {
-        "neededForOther": "Écrivez l'autre raison",
         "label": "Remarque",
-        "writeReason": "Écrivez la raison dans la remarque",
         "forOthers": "Remarque pour les autres (facultative)",
         "forRecord": "Remarque pour mémoire (facultative)"
       },
@@ -9377,7 +9375,8 @@
         "noVotes": "Vous n'avez encore voté sur aucun article",
         "seeVotes": "{count, plural, =1 {Voir votre vote} other {Voir vos # votes}}",
         "join": "Rejoindre comme évaluateur",
-        "allPapers": "Voir tous les articles"
+        "allPapers": "Voir tous les articles",
+        "noneCanSplit": "Chaque article ici est tranché par un seul vote, aucun n’attend donc d’être tranché"
       },
       "matrix": {
         "nameYou": "{name}, vous",
@@ -9620,7 +9619,7 @@
         },
         "means": {
           "all": "Un article est tranché quand chaque évaluateur qui l'a reçu a voté et que tous ont voté de la même façon. Le moindre écart crée un désaccord.",
-          "most": "Un article est tranché quand chaque évaluateur qui l'a reçu a voté et que plus de la moitié ont voté de la même façon. Sans cette majorité, il est en désaccord.",
+          "most": "Un article est tranché dès que chaque relecteur à qui il est attribué a voté et que plus de la moitié ont voté de la même façon. Là où les votes des modèles comptent, au moins une personne doit faire partie de cette majorité. Sans une telle majorité, c’est un conflit.",
           "one": "Un article est tranché par le premier vote reçu, il n'y a donc jamais de désaccord. Quand un article est confié à une personne, c'est le vote de la première personne qui le tranche. Le vote d'un modèle ne tranche qu'un article qu'aucune personne n'a."
         },
         "says": {

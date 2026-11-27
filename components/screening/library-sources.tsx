@@ -6,6 +6,7 @@
 // collections are rows under it; and the address of any library OpenScholar runs, pasted beside the
 // picker, becomes a row of its own: a search, a collection, someone's collection or a record.
 
+import { SEARCH_PILL } from "./pieces";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
@@ -323,7 +324,7 @@ export function LibrarySources({
               }}
               placeholder={t("find")}
               aria-label={t("find")}
-              className="w-full"
+              className={SEARCH_PILL}
             />
           </div>
 

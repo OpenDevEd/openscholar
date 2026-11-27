@@ -160,7 +160,7 @@
     "onceRead": "{credits} once every paper is read",
     "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
     "arriving": "Papers are still arriving",
-    "allRead": "Every paper is read",
+    "allRead": "Nothing left for the models to read",
     "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
     "takenOff": "{credits} by models taken off",
     "nothingToPay": "Nothing to pay"

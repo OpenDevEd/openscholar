@@ -177,18 +177,33 @@ export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper
 }
 export const papersCsv = (out: Pick<Taken, "screening">, papers: Paper[]) => toCsv([PAPER_COLUMNS, ...paperRows(out, papers).map((row) => PAPER_COLUMNS.map((column) => row[column]))]);
 
+/** How a reference manager files a kind of work (OpenAlex's types, and a file's item types), and the field its venue goes in. Anything else is a journal article, as most screened records are. */
+const KINDS: Record<string, { ris: string; bib: string; venue: string }> = {
+  book: { ris: "BOOK", bib: "book", venue: "publisher" },
+  "book-chapter": { ris: "CHAP", bib: "incollection", venue: "booktitle" },
+  bookSection: { ris: "CHAP", bib: "incollection", venue: "booktitle" },
+  dissertation: { ris: "THES", bib: "phdthesis", venue: "school" },
+  thesis: { ris: "THES", bib: "phdthesis", venue: "school" },
+  report: { ris: "RPRT", bib: "techreport", venue: "institution" },
+  "proceedings-article": { ris: "CPAPER", bib: "inproceedings", venue: "booktitle" },
+  conferencePaper: { ris: "CPAPER", bib: "inproceedings", venue: "booktitle" },
+  preprint: { ris: "UNPB", bib: "unpublished", venue: "note" },
+  dataset: { ris: "DATA", bib: "misc", venue: "howpublished" },
+};
+const ARTICLE = { ris: "JOUR", bib: "article", venue: "journal" };
+const filedAs = (paper: Pick<Paper, "workType">) => (paper.workType ? (KINDS[paper.workType] ?? ARTICLE) : ARTICLE);
 /** The papers for a reference manager, each with its id in the screening, the identifier and the abstract it is filed by. */
 export const risOf = (papers: Paper[]) =>
   papers
     .map((paper) => {
       const doi = doiOf(paper);
       return [
-        "TY  - JOUR",
+        `TY  - ${filedAs(paper).ris}`,
         `ID  - ${paper.id}`,
         `TI  - ${paper.title}`,
         ...authorsOf(paper).map((author) => `AU  - ${author}`),
         ...(paper.year === undefined ? [] : [`PY  - ${paper.year}`]),
-        ...(paper.venue ? [`JO  - ${paper.venue}`] : []),
+        ...(paper.venue ? [`${filedAs(paper).ris === "JOUR" ? "JO" : "T2"}  - ${paper.venue}`] : []),
         ...(doi ? [`DO  - ${doi}`, `UR  - https://doi.org/${doi}`] : []),
         `AB  - ${paper.abstract}`,
         "ER  - ",
@@ -208,10 +223,10 @@ export const bibOf = (papers: Paper[]) => {
       const n = used.get(base) ?? 0;
       used.set(base, n + 1);
       const doi = doiOf(paper);
-      const words = [["title", paper.title], ["author", authorsOf(paper).join(" and ")], ...(paper.venue ? [["journal", paper.venue]] : []), ["abstract", paper.abstract]].map(([name, value]) => [name, bibText(value!)]);
+      const words = [["title", paper.title], ["author", authorsOf(paper).join(" and ")], ...(paper.venue ? [[filedAs(paper).venue, paper.venue]] : []), ["abstract", paper.abstract]].map(([name, value]) => [name, bibText(value!)]);
       // An identifier is written as it is: a DOI's own signs are not text.
       const fields = [...words.slice(0, 2), ...(paper.year === undefined ? [] : [["year", String(paper.year)]]), ...words.slice(2), ...(doi ? [["doi", doi]] : []), ["paperid", paper.id]];
-      return `@article{${base}${letters(n)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
+      return `@${filedAs(paper).bib}{${base}${letters(n)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
     })
     .join("\n\n");
 };
@@ -349,8 +364,6 @@ export function methodsOf(out: Taken) {
   const pair = people.length > 1 ? pairOf(figures, people[0]!.id, people[1]!.id) : null;
   const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const kappa = pairOf(figures, a.id, b.id)?.kappa; return kappa == null ? [] : [kappa]; })).sort((a, b) => a - b);
   const names = people.map((person) => person.name);
-  // Whose votes settle a record: as advice the models' do not, on a record a person has.
-  const deciders = modelsAdvise(screening.rule, each, models.length) ? "human reviewers" : "reviewers";
   // Who reads each record, said the way a methods section says it.
   const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${names[0]})` : people.length === 2 ? `Both human reviewers (${names.join(" and ")})` : `All ${people.length} human reviewers (${names.join(", ")})`) : `${numberWord(each)} of the ${people.length} human reviewers (${names.join(", ")})`;
   // The readings a model couldn't make: its record goes to whoever else votes on it, where there is anyone.
@@ -375,6 +388,8 @@ export function methodsOf(out: Taken) {
   const offPeople = screening.reviewers.filter((one) => one.kind === "person" && one.left !== undefined && one.discarded === undefined && (one.tally?.cast ?? 0) > 0);
   const offModels = screening.reviewers.filter((one) => one.kind === "model" && one.left !== undefined && one.discarded === undefined && (one.tally?.cast ?? 0) > 0);
   const everyModel = [...models, ...offModels];
+  // Whose votes settle a record: as advice the models' do not, on a record a person has.
+  const deciders = modelsAdvise(screening.rule, each, everyModel.length) ? "human reviewers" : "reviewers";
   // The people who joined after it began were given only what was still open then.
   const late = people.filter((person) => later(screening, person.addedAt));
   // Anyone else given fewer records than there are, whatever kept one from them: said with how many, so the claim is never wider than what they were given.
@@ -386,6 +401,8 @@ export function methodsOf(out: Taken) {
     return [
       ...(later(screening, model.addedAt) ? [`${model.name} was added after screening began and was given only the records still open then.`] : []),
       ...(missed ? [`${model.name} ${is} not given the ${plural(missed, "record", "records")} that came only as a PDF, which it can't read; ${missed === 1 ? "that record" : "those records"} ${one(missed)} ${othersLeft}.`] : []),
+      // A model doesn't read a record its people settled first (its vote would count for nothing): it says how many it did vote on.
+      ...((model.tally?.cast ?? 0) < kept - missed && (screening.rule.settle === "one" || modelsAdvise(screening.rule, each, everyModel.length)) ? [running ? `${model.name} has voted on ${num(model.tally?.cast ?? 0)} of the ${num(kept)} records so far, and reads none its people settle first.` : `${model.name} voted on ${num(model.tally?.cast ?? 0)} of the ${num(kept)} records; the people settled the others first.`] : []),
     ];
   });
   return [
@@ -397,11 +414,11 @@ export function methodsOf(out: Taken) {
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to ${short.length ? "the records" : `each record${late.length ? " still open when they joined" : ""}`}${screening.rule.blind === "after" ? `. A reviewer ${running ? "does" : "did"} not see the other votes on a record before casting their own` : ""}.${short.length ? ` ${short.map((person) => `${person.name} was given ${num(person.tally?.dealt ?? 0)} of the ${num(kept)}`).join(", and ")}.` : ""}${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}${offPeople.length ? ` ${listed(offPeople.map((person) => person.name))} ${offPeople.length === 1 ? "was" : "were"} taken off after screening began, and the votes they cast until then were kept.` : ""}` : offPeople.length ? `${listed(offPeople.map((person) => person.name))} ${offPeople.length === 1 ? "was a human reviewer" : "were human reviewers"} until taken off, and the votes cast until then were kept.` : "No human reviewer was assigned to the records.",
     everyModel.length ? `${everyModel.length === 1 ? "One AI model" : `${everyModel.length} AI models`} (${everyModel.map((m) => m.name).join(", ")}) ${running && !offModels.length ? (models.length === 1 ? "votes" : "vote") : running ? "have voted" : "voted"} on the records${people.length ? (modelsAdvise(screening.rule, each, everyModel.length) || screening.rule.settle === "one" ? ` as advice only (the human reviewers ${running ? "decide" : "decided"} each record they ${running ? "are" : "were"} given)` : ` as ${everyModel.length === 1 ? "an additional reviewer" : "additional reviewers"}`) : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} ${othersLeft}` : ""}.${offModels.length ? ` ${listed(offModels.map((m) => m.name))} ${offModels.length === 1 ? "was" : "were"} taken off after screening began, and ${offModels.length === 1 ? "its" : "their"} votes cast until then were kept.` : ""}${modelsShort.length ? ` ${modelsShort.join(" ")}` : ""}` : "No AI model took part.",
-    screening.rule.settle !== "one" && !canConflict(screening.rule, each, models.length) ? `Each record ${is} settled by the one ${modelsAdvise(screening.rule, each, models.length) ? "human " : ""}vote it ${running ? "is" : "was"} given.` : screening.rule.settle === "all" ? `A record ${is} settled once all of its ${deciders} ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "disagreement", "disagreements")} ${one(counts.conflict)} still to be settled` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its ${deciders} once all of them ${running ? "have" : "had"} voted, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "such record", "such records")} ${one(counts.conflict)} still to be settled` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it${models.length && people.length ? `; where a human reviewer ${running ? "is" : "was"} assigned a record, the first human vote ${running ? "settles" : "settled"} it` : ""}.`,
+    screening.rule.settle !== "one" && !counts.conflict && !changed && !offPeople.length && !canConflict(screening.rule, each, everyModel.length) ? `Each record ${is} settled by the one ${modelsAdvise(screening.rule, each, everyModel.length) ? "human " : ""}vote it ${running ? "is" : "was"} given.` : screening.rule.settle === "all" ? `A record ${is} settled once all of its ${deciders} ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "disagreement", "disagreements")} ${one(counts.conflict)} still to be settled` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its ${deciders} once all of them ${running ? "have" : "had"} voted${everyModel.length && people.length && !modelsAdvise(screening.rule, each, everyModel.length) ? `, provided at least one human reviewer ${running ? "is" : "was"} in that majority` : ""}, and records with no such majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "such record", "such records")} ${one(counts.conflict)} still to be settled` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it${models.length && people.length ? `; where a human reviewer ${running ? "is" : "was"} assigned a record, the first human vote ${running ? "settles" : "settled"} it` : ""}.`,
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began. Votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${names[0]} and ${names[1]} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (${pair.kappa === null ? "Cohen's kappa could not be estimated, as both gave the same decision every time" : `Cohen's kappa ${pair.kappa.toFixed(2)}`}).` : "",
-    kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
+    kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${kappas.length < (reviewers.length * (reviewers.length - 1)) / 2 ? "; for the other pairs every vote was the same, and kappa has no value" : ""}.` : "",
     `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
   ].filter(Boolean).join(" ");
 }
@@ -453,9 +470,9 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       const [yes, no, unclear] = scoring.points[criterion.key] ?? [0, 0, 0];
       return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
-    reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
+    reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: reviewer.model.effort ?? effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
     // Each source with the records it held and the screening didn't take, by name and with why, and the records it merged, each with the paper that stands for it (in `papers`, under the source that brought it first).
-    sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
+    sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, set: source.set ?? null, filters: source.filters ?? [], records_taken: source.scope === "range" ? { first: source.range[0], last: source.range[1] } : "all", last_checked_at: source.read?.checkedAt ? iso(source.read.checkedAt) : null, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
     papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

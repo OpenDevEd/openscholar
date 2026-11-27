@@ -8386,7 +8386,8 @@
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
         "addReviewer": "Voeg ’n beoordelaar by om te sien hoe ’n artikel beslis word.",
-        "modelSettles": "’n Model se stem beslis net die artikels wat geen persoon kry nie. Op die ander beslis die eerste persoon se stem."
+        "modelSettles": "’n Model se stem beslis net die artikels wat geen persoon kry nie. Op die ander beslis die eerste persoon se stem.",
+        "oneVoteEach": "Een stem besleg elke artikel, so daar is geen konflik om te besleg nie"
       },
       "goesHelp": "Artikels met die uitslag Ingesluit word by die versameling gevoeg wat jy kies, in jou biblioteek of in ’n Evidence Community, met die sterre uit Puntetelling. Nêrens hou hulle net in die siftering.",
       "summaryLabel": "Opsomming",
@@ -8570,8 +8571,7 @@
         "title": "Vee {name} uit?",
         "goes": "Die stemme en instellings word saam uitgevee",
         "saved": "{count, plural, one {Die # artikel wat in {collection} gestoor is, bly daar} other {Die # artikels wat in {collection} gestoor is, bly daar}}",
-        "final": "Dit kan nie ongedaan gemaak word nie",
-        "shut": "Net {name} of ’n admin van hierdie werkruimte kan hierdie siftering uitvee."
+        "final": "Dit kan nie ongedaan gemaak word nie"
       },
       "leave": {
         "title": "Verlaat hierdie siftering?",
@@ -8914,7 +8914,7 @@
         "onceRead": "{credits} sodra elke artikel gelees is",
         "failed": "{count, plural, one {# lesing het misluk} other {# lesings het misluk}}",
         "arriving": "Die artikels kom nog aan",
-        "allRead": "Elke artikel is gelees",
+        "allRead": "Niks bly oor vir die modelle om te lees nie",
         "leftIn": "{own, select, true {{credits} oor} other {{credits} oor in {workspace}}}",
         "takenOff": "{credits} deur modelle wat afgehaal is",
         "nothingToPay": "Niks om te betaal nie"
@@ -9096,9 +9096,7 @@
       },
       "pointsOf": "{points, number} van {max, plural, one {# punt} other {# punte}}",
       "note": {
-        "neededForOther": "Skryf die ander rede",
         "label": "Nota",
-        "writeReason": "Skryf die rede in die nota",
         "forOthers": "Nota vir die ander (opsioneel)",
         "forRecord": "Nota vir die rekord (opsioneel)"
       },
@@ -9378,7 +9376,8 @@
         "noVotes": "Jy het nog op geen artikel gestem nie",
         "seeVotes": "{count, plural, =1 {Sien jou stem} other {Sien jou # stemme}}",
         "join": "Sluit as beoordelaar aan",
-        "allPapers": "Sien al die artikels"
+        "allPapers": "Sien al die artikels",
+        "noneCanSplit": "Elke artikel hier word deur een stem besleg, so geeneen wag om besleg te word nie"
       },
       "matrix": {
         "nameYou": "{name}, jy",
@@ -9621,7 +9620,7 @@
         },
         "means": {
           "all": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en almal dieselfde gestem het. Enige verdeling is ’n konflik.",
-          "most": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en meer as die helfte dieselfde gestem het. Sonder so ’n meerderheid is dit ’n konflik.",
+          "most": "’n Artikel is besleg sodra elke beoordelaar aan wie dit gegee is gestem het en meer as die helfte dieselfde gestem het. Waar die modelle se stemme tel, moet minstens een persoon in daardie meerderheid wees. Sonder so ’n meerderheid is dit ’n konflik.",
           "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie. Waar ’n persoon die artikel kry, beslis die eerste persoon se stem dit. ’n Model se stem beslis net ’n artikel wat geen persoon het nie."
         },
         "says": {

@@ -8385,7 +8385,8 @@
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
         "addReviewer": "Add a reviewer to see how a paper is settled.",
-        "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides."
+        "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides.",
+        "oneVoteEach": "One vote settles each paper, so there is no conflict to settle"
       },
       "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in an Evidence Community, with the stars from Scoring. Nowhere keeps them in the screening only.",
       "summaryLabel": "Summary",
@@ -8569,8 +8570,7 @@
         "title": "Delete {name}?",
         "goes": "The votes and settings are deleted with it",
         "saved": "{count, plural, one {The # paper saved to {collection} stays there} other {The # papers saved to {collection} stay there}}",
-        "final": "This can't be undone",
-        "shut": "Only {name} or an admin of this workspace can delete this screening."
+        "final": "This can't be undone"
       },
       "leave": {
         "title": "Leave this screening?",
@@ -8913,7 +8913,7 @@
         "onceRead": "{credits} once every paper is read",
         "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
         "arriving": "Papers are still arriving",
-        "allRead": "Every paper is read",
+        "allRead": "Nothing left for the models to read",
         "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
         "takenOff": "{credits} by models taken off",
         "nothingToPay": "Nothing to pay"
@@ -9095,9 +9095,7 @@
       },
       "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
       "note": {
-        "neededForOther": "Write the other reason",
         "label": "Note",
-        "writeReason": "Write the reason in the note",
         "forOthers": "Note for the others (optional)",
         "forRecord": "Note for the record (optional)"
       },
@@ -9377,7 +9375,8 @@
         "noVotes": "You haven't voted on a paper yet",
         "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
         "join": "Join as a reviewer",
-        "allPapers": "See all the papers"
+        "allPapers": "See all the papers",
+        "noneCanSplit": "Each paper here is settled by one vote, so none waits to be settled"
       },
       "matrix": {
         "nameYou": "{name}, you",
@@ -9620,7 +9619,7 @@
         },
         "means": {
           "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
-          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. Where the models' votes count, at least one person has to be in that majority. With no such majority it is a conflict.",
           "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
         },
         "says": {

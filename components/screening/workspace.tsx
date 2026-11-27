@@ -4,7 +4,7 @@
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
-import { canConflict, modelsAdvise } from "@/lib/screening/rules";
+import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
@@ -31,7 +31,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { inOrder, readersOf, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
+import { inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, screenHref, settingsHref } from "./links";
@@ -317,7 +317,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   );
 
   // Whether a paper here can be in conflict: with one vote on each, nobody settles anything, and the help says nothing of it.
-  const splits = canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length);
+  const splits = splitsIn(screening, open.counts.conflict, open.invited);
   // How a paper is decided. From a tablet's width it is one line, and its chips scroll sideways where the line is too short for them. On a phone its name and the way to change it share a line, and the chips wrap under them at the card's whole width, so none is cut. In the settings the form itself says the same.
   const rule = (
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">

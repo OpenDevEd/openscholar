@@ -5,7 +5,7 @@
 // the papers behind them.
 
 import { EASE } from "@/components/settings/model-map";
-import { modelsAdvise } from "@/lib/screening/rules";
+import { canConflict, modelsAdvise } from "@/lib/screening/rules";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
@@ -139,7 +139,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   if (joining.length && wasIds.size) {
     lines.push({ text: t("votesStay"), section: "reviewers" });
     const models = joining.filter((reviewer) => reviewer.kind === "model").length;
-    if (models && after.rule.settle !== "one" && !modelsAdvise(after.rule, readersOf(after).each, models)) lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
+    if (models && canConflict(after.rule, readersOf(after).each, modelsOf(after).length)) lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;

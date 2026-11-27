@@ -313,7 +313,8 @@
     "always": "At any time",
     "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
     "addReviewer": "Add a reviewer to see how a paper is settled.",
-    "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides."
+    "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides.",
+    "oneVoteEach": "One vote settles each paper, so there is no conflict to settle"
   },
   "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in an Evidence Community, with the stars from Scoring. Nowhere keeps them in the screening only.",
   "summaryLabel": "Summary",

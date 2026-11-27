@@ -8386,7 +8386,8 @@
         "always": "Wakati wowote",
         "withVotes": "{count, plural, one {Na kura # kwenye makala, kwa mfano} other {Na kura # kwenye makala, kwa mfano}}",
         "addReviewer": "Ongeza mkaguzi ili uone jinsi makala inavyoamuliwa.",
-        "modelSettles": "Kura ya modeli inaamua tu makala ambazo hakuna mtu aliyepewa. Kwenye nyingine, kura ya mtu wa kwanza ndiyo inayoamua."
+        "modelSettles": "Kura ya modeli inaamua tu makala ambazo hakuna mtu aliyepewa. Kwenye nyingine, kura ya mtu wa kwanza ndiyo inayoamua.",
+        "oneVoteEach": "Kura moja huamua kila makala, kwa hiyo hakuna mgongano wa kutatua"
       },
       "goesHelp": "Makala ambazo matokeo yake ni Imejumuishwa zinaongezwa kwenye mkusanyiko unaouchagua, kwenye maktaba yako au kwenye Evidence Community, pamoja na nyota kutoka Upimaji. Hakuna mahali inazibakiza kwenye uchujaji tu.",
       "summaryLabel": "Muhtasari",
@@ -8570,8 +8571,7 @@
         "title": "Futa {name}?",
         "goes": "Kura na mipangilio inafutwa pamoja nao",
         "saved": "{count, plural, one {Makala # iliyohifadhiwa kwenye {collection} inabaki hapo} other {Makala # zilizohifadhiwa kwenye {collection} zinabaki hapo}}",
-        "final": "Hili haliwezi kutenduliwa",
-        "shut": "Ni {name} au msimamizi wa nafasi kazi hii pekee anayeweza kufuta uchujaji huu."
+        "final": "Hili haliwezi kutenduliwa"
       },
       "leave": {
         "title": "Ondoka kwenye uchujaji huu?",
@@ -8914,7 +8914,7 @@
         "onceRead": "{credits} kila makala ikishasomwa",
         "failed": "{count, plural, one {usomaji # umeshindwa} other {usomaji # umeshindwa}}",
         "arriving": "Makala bado zinafika",
-        "allRead": "Kila makala imesomwa",
+        "allRead": "Hakuna kilichobaki kwa miundo kusoma",
         "leftIn": "{own, select, true {{credits} zimebaki} other {{credits} zimebaki kwenye {workspace}}}",
         "takenOff": "{credits} za modeli zilizoondolewa",
         "nothingToPay": "Hakuna cha kulipa"
@@ -9096,9 +9096,7 @@
       },
       "pointsOf": "{points, number} kati ya {max, plural, one {pointi #} other {pointi #}}",
       "note": {
-        "neededForOther": "Andika sababu nyingine",
         "label": "Dokezo",
-        "writeReason": "Andika sababu kwenye dokezo",
         "forOthers": "Dokezo kwa wengine (si lazima)",
         "forRecord": "Dokezo la kumbukumbu (si lazima)"
       },
@@ -9378,7 +9376,8 @@
         "noVotes": "Bado hujapigia kura makala yoyote",
         "seeVotes": "{count, plural, =1 {Ona kura yako} other {Ona kura zako #}}",
         "join": "Jiunge kama mkaguzi",
-        "allPapers": "Ona makala zote"
+        "allPapers": "Ona makala zote",
+        "noneCanSplit": "Kila makala hapa huamuliwa kwa kura moja, kwa hiyo hakuna inayosubiri kutatuliwa"
       },
       "matrix": {
         "nameYou": "{name}, wewe",
@@ -9621,7 +9620,7 @@
         },
         "means": {
           "all": "Makala inaamuliwa pale kila mkaguzi aliyepewa amepiga kura na wote wamepiga kura moja. Tofauti yoyote ni mgongano.",
-          "most": "Makala inaamuliwa pale kila mkaguzi aliyepewa amepiga kura na zaidi ya nusu yao wamepiga kura moja. Bila wingi huo ni mgongano.",
+          "most": "Makala huamuliwa mara kila mkaguzi aliyepewa amepiga kura na zaidi ya nusu yao wamepiga kura sawa. Pale ambapo kura za miundo zinahesabiwa, angalau mtu mmoja lazima awe katika wingi huo. Bila wingi kama huo ni mgongano.",
           "one": "Makala inaamuliwa na kura yake ya kwanza, kwa hivyo hakuna mgongano kamwe. Pale mtu anapopewa makala, kura ya mtu wa kwanza ndiyo inayoiamua. Kura ya modeli inaamua tu makala ambayo hakuna mtu aliyepewa."
         },
         "says": {

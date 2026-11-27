@@ -8385,7 +8385,8 @@
         "always": "Noma nini",
         "withVotes": "{count, plural, one {Nevoti elilodwa elingu-# ephepheni, isibonelo} other {Namavoti angu-# ephepheni, isibonelo}}",
         "addReviewer": "Engeza umbuyekezi ukuze ubone ukuthi iphepha lixazululwa kanjani.",
-        "modelSettles": "Ivoti lemodeli lixazulula kuphela amaphepha okungekho muntu owanikiwe. Kwamanye, ivoti lomuntu wokuqala yilo elinqumayo."
+        "modelSettles": "Ivoti lemodeli lixazulula kuphela amaphepha okungekho muntu owanikiwe. Kwamanye, ivoti lomuntu wokuqala yilo elinqumayo.",
+        "oneVoteEach": "Ivoti elilodwa linquma iphepha ngalinye, ngakho akukho ukungqubuzana okuxazululwayo"
       },
       "goesHelp": "Amaphepha umphumela wawo onguthi Ifakiwe engezwa eqoqweni olikhethayo, emtapweni wakho wolwazi noma ku-Evidence Community, nezinkanyezi ezivela ku-Ukubala. U-Akukho ndawo uwagcina ekuskrinini kuphela.",
       "summaryLabel": "Isifinyezo",
@@ -8569,8 +8570,7 @@
         "title": "Susa i-{name}?",
         "goes": "Amavoti nezilungiselelo kususwa nakho",
         "saved": "{count, plural, one {Iphepha elingu-# eligcinwe ku-{collection} lihlala lapho} other {Amaphepha angu-# agcinwe ku-{collection} ahlala lapho}}",
-        "final": "Lokhu akukwazi ukuhlehliswa",
-        "shut": "Ngu-{name} kuphela noma umphathi walesi sikhala sokusebenzela ongasusa lokhu kuskrini."
+        "final": "Lokhu akukwazi ukuhlehliswa"
       },
       "leave": {
         "title": "Shiya lokhu kuskrini?",
@@ -8913,7 +8913,7 @@
         "onceRead": "{credits} uma onke amaphepha esefundiwe",
         "failed": "{count, plural, one {# ukufunda kwehlulekile} other {# ukufunda kwehlulekile}}",
         "arriving": "Amaphepha asafika",
-        "allRead": "Onke amaphepha afundiwe",
+        "allRead": "Akukho okusele ukuba amamodeli akufunde",
         "leftIn": "{own, select, true {{credits} kusele} other {{credits} kusele ku-{workspace}}}",
         "takenOff": "{credits} ngamamodeli asusiwe",
         "nothingToPay": "Akukho okukhokhwayo"
@@ -9095,9 +9095,7 @@
       },
       "pointsOf": "{points, number} kwa-{max, plural, one {# iphoyinti} other {# amaphoyinti}}",
       "note": {
-        "neededForOther": "Bhala esinye isizathu",
         "label": "Inothi",
-        "writeReason": "Bhala isizathu enothini",
         "forOthers": "Inothi labanye (uma uthanda)",
         "forRecord": "Inothi lerekhodi (uma uthanda)"
       },
@@ -9377,7 +9375,8 @@
         "noVotes": "Awukavoti kunoma yiliphi iphepha okwamanje",
         "seeVotes": "{count, plural, =1 {Bona ivoti lakho} other {Bona amavoti akho angu-#}}",
         "join": "Joyina njengombuyekezi",
-        "allPapers": "Bona wonke amaphepha"
+        "allPapers": "Bona wonke amaphepha",
+        "noneCanSplit": "Iphepha ngalinye lapha linqunywa ivoti elilodwa, ngakho alikho elilinde ukuxazululwa"
       },
       "matrix": {
         "nameYou": "{name}, wena",
@@ -9620,7 +9619,7 @@
         },
         "means": {
           "all": "Iphepha lixazululwa uma bonke ababuyekezi abalinikiwe sebevotile futhi bonke bavote ngendlela efanayo. Noma yikuphi ukwehlukana kungukungqubuzana.",
-          "most": "Iphepha lixazululwa uma bonke ababuyekezi abalinikiwe sebevotile futhi ngaphezu kwengxenye yabo bavote ngendlela efanayo. Uma lingekho iningi elinjalo kungukungqubuzana.",
+          "most": "Iphepha linqunywa uma bonke ababuyekezi abalinikiwe sebevotile futhi ngaphezu kwengxenye yabo bevote ngendlela efanayo. Lapho amavoti amamodeli ebalwa khona, okungenani umuntu oyedwa kufanele abe kuleyo ningi. Ngaphandle kwenani elinjalo kungukungqubuzana.",
           "one": "Iphepha lixazululwa yivoti lokuqala kulo, ngakho akukaze kube khona ukungqubuzana. Lapho umuntu enikwe iphepha, ivoti lomuntu wokuqala yilo elilixazululayo. Ivoti lemodeli lixazulula kuphela iphepha okungekho muntu onalo."
         },
         "says": {

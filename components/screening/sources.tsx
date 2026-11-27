@@ -40,7 +40,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useW
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { hash, type Source, type SourceSet } from "./data";
-import { Help, INLINE_LINK, StateChip } from "./pieces";
+import { Help, INLINE_LINK, StateChip, SEARCH_PILL } from "./pieces";
 import { useWords } from "./words";
 
 const PAGE = 5;
@@ -603,7 +603,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       </Popover>
       {/* The switch sits beside the search; where the row is narrow it moves under it whole. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <ListSearch box="min-w-[min(14rem,100%)] flex-1" value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="w-full" />
+        <ListSearch box="min-w-[min(14rem,100%)] flex-1" value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className={SEARCH_PILL} />
         <span className="flex shrink-0 items-center gap-1">
           <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} size="sm" checked={deep} onCheckedChange={setDeep} />{t("zotero.includeSub")}</label>
           <Help title={t("zotero.subHelpTitle")} facts={<HelpFact>{t("zotero.subTakenOnce")}</HelpFact>}>{t("zotero.subAbout")}</Help>

@@ -55,17 +55,17 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
-import { EVERY_MS, MAX_SOURCES, canConflict, modelsAdvise } from "@/lib/screening/rules";
+import { EVERY_MS, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
+import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -518,7 +518,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
-  const conflicts = canConflict(draft.rule, each, modelsOf(draft).length);
+  const conflicts = splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -856,7 +856,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : !conflicts ? words.t(`settle.label.${draft.rule.settle}`) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -1113,7 +1113,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="space-y-2">
                       {/* A search is found by its words and a screening by its name. The library's collections are few enough to page through. */}
                       {kind !== "collection" ? (
-                        <ListSearch value={find} onChange={(event) => setFind(event.target.value)} placeholder={t(`find.${kind as "search" | "screening"}`)} aria-label={t("papers.findSource")} className="w-full" />
+                        <ListSearch value={find} onChange={(event) => setFind(event.target.value)} placeholder={t(`find.${kind as "search" | "screening"}`)} aria-label={t("papers.findSource")} className={SEARCH_PILL} />
                       ) : null}
                       {/* While a list is read, and while it runs to more than a page, it keeps a page's height, so a short last page moves nothing under it. A list that turns out shorter slides to its own height. */}
                       <AutoHeight>
@@ -1414,7 +1414,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </RuleRow>
               <RuleRow name={t("decided.settledBy")} help={<Help title={t("decided.conflictsTitle")}>{t("decided.conflictsHelp")}</Help>}>
                 {!conflicts ? (
-                  <Chip icon={Check}>{t("decided.noConflicts")}</Chip>
+                  <Chip icon={Check}>{draft.rule.settle === "one" ? t("decided.noConflicts") : t("decided.oneVoteEach")}</Chip>
                 ) : joined.length ? (
                   <Select value={joined.some((person) => person.id === draft.rule.resolver) ? draft.rule.resolver : joined[0]!.id} onValueChange={(next) => set({ rule: { ...draft.rule, resolver: next } })}>
                     <SelectTrigger aria-label={t("decided.whoSettles")} className="h-8 w-56 rounded-full px-3.5 text-xs"><SelectValue /></SelectTrigger>

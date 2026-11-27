@@ -8386,7 +8386,8 @@
         "always": "A qualquer momento",
         "withVotes": "{count, plural, one {Com # voto num artigo, por exemplo} other {Com # votos num artigo, por exemplo}}",
         "addReviewer": "Adicione um revisor para ver como um artigo fica decidido.",
-        "modelSettles": "O voto de um modelo só decide os artigos que não são dados a nenhuma pessoa. Nos outros, decide o voto da primeira pessoa."
+        "modelSettles": "O voto de um modelo só decide os artigos que não são dados a nenhuma pessoa. Nos outros, decide o voto da primeira pessoa.",
+        "oneVoteEach": "Um voto decide cada artigo, por isso não há conflito para resolver"
       },
       "goesHelp": "Os artigos com resultado Incluído são adicionados à coleção que escolher, na sua biblioteca ou numa Evidence Community, com as estrelas da Pontuação. «Em nenhum lado» mantém-nos apenas na triagem.",
       "summaryLabel": "Síntese",
@@ -8570,8 +8571,7 @@
         "title": "Eliminar {name}?",
         "goes": "Os votos e as definições são eliminados com ela",
         "saved": "{count, plural, one {O # artigo guardado em {collection} fica lá} other {Os # artigos guardados em {collection} ficam lá}}",
-        "final": "Não é possível anular esta ação",
-        "shut": "Só {name} ou um administrador deste espaço de trabalho pode eliminar esta triagem."
+        "final": "Não é possível anular esta ação"
       },
       "leave": {
         "title": "Sair desta triagem?",
@@ -8914,7 +8914,7 @@
         "onceRead": "{credits} quando todos os artigos estiverem lidos",
         "failed": "{count, plural, one {# leitura falhou} other {# leituras falharam}}",
         "arriving": "Os artigos ainda estão a chegar",
-        "allRead": "Todos os artigos estão lidos",
+        "allRead": "Não resta nada para os modelos lerem",
         "leftIn": "{own, select, true {{credits} restantes} other {{credits} restantes em {workspace}}}",
         "takenOff": "{credits} de modelos retirados",
         "nothingToPay": "Nada a pagar"
@@ -9096,9 +9096,7 @@
       },
       "pointsOf": "{points, number} de {max, plural, one {# ponto} other {# pontos}}",
       "note": {
-        "neededForOther": "Escreva o outro motivo",
         "label": "Nota",
-        "writeReason": "Escreva o motivo na nota",
         "forOthers": "Nota para os outros (opcional)",
         "forRecord": "Nota para o registo (opcional)"
       },
@@ -9378,7 +9376,8 @@
         "noVotes": "Ainda não votou em nenhum artigo",
         "seeVotes": "{count, plural, =1 {Ver o seu voto} other {Ver os seus # votos}}",
         "join": "Juntar-se como revisor",
-        "allPapers": "Ver todos os artigos"
+        "allPapers": "Ver todos os artigos",
+        "noneCanSplit": "Cada artigo aqui é decidido por um voto, por isso nenhum espera resolução"
       },
       "matrix": {
         "nameYou": "{name}, você",
@@ -9621,7 +9620,7 @@
         },
         "means": {
           "all": "Um artigo fica decidido quando todos os revisores a quem foi atribuído votaram e todos votaram da mesma forma. Qualquer divergência é um conflito.",
-          "most": "Um artigo fica decidido quando todos os revisores a quem foi atribuído votaram e mais de metade votou da mesma forma. Sem essa maioria, é um conflito.",
+          "most": "Um artigo fica decidido quando todos os revisores a quem foi atribuído votaram e mais de metade votou da mesma forma. Onde os votos dos modelos contam, pelo menos uma pessoa tem de estar nessa maioria. Sem essa maioria é um conflito.",
           "one": "Um artigo fica decidido pelo primeiro voto, por isso nunca há conflito. Quando o artigo é dado a uma pessoa, decide-o o voto da primeira pessoa. O voto de um modelo só decide um artigo que nenhuma pessoa tem."
         },
         "says": {

@@ -414,6 +414,8 @@ export const paperViewValidator = v.object({
   authors: screeningAuthorsValidator,
   year: v.optional(v.number()),
   venue: v.optional(v.string()),
+  // What kind of work it is, as its source names it (OpenAlex's `type`, or a file's item type): a reference manager files a book or a thesis as one.
+  workType: v.optional(v.string()),
   cited: v.optional(v.number()),
   doi: v.optional(v.string()),
   abstract: v.string(),

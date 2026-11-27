@@ -73,6 +73,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
     authors: paper.authors,
     ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
     ...(paper.venue ? { venue: paper.venue } : {}),
+    ...(paper.workType ? { workType: paper.workType } : {}),
     ...(paper.citedByCount === undefined ? {} : { cited: paper.citedByCount }),
     ...(paper.doi ? { doi: paper.doi } : {}),
     abstract: paper.abstract ?? "",
