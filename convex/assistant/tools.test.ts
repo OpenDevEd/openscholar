@@ -908,6 +908,7 @@ describe("the assistant's tools", () => {
     expect(await steps()).toEqual([]);
   });
 
+  // A whole chat that asks, waits, then starts an extraction: about 13 seconds alone, and past the default 30 on a busy runner.
   it("ask before an action that spends credits, with the most it holds, and run it unasked once the person allows that much in the chat", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
@@ -1015,7 +1016,7 @@ describe("the assistant's tools", () => {
     expect(offered).not.toContain("extraction/mutations:startJob");
     expect(told(1, "extract")).toEqual({ error: expect.stringMatching(/^No action is named/) });
     expect(await jobs()).toHaveLength(2);
-  });
+  }, 90_000);
 
   it("keeps the screening actions from before screenings had reviewers out of reach: it reads screenings and starts, stops and changes none", async () => {
     const t = convexTest(schema);
