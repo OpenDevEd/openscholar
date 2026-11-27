@@ -7,12 +7,16 @@ import { copyText, dismissCopied } from "@/components/copy-text";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
+import { toast } from "sonner";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { innerStep } from "./address";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
-import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
+import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info, Mail } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpFact } from "@/components/ui/help";
@@ -24,7 +28,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
+import type { Id } from "@/convex/_generated/dataModel";
 import { blindOf, reasonCriteria, RESULTS, type Result, slug, bylineOf, questionOf, inOrder, nameOn, votingReviewers } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./pieces";
@@ -178,6 +183,23 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
     },
   }[tab];
 
+  // The files of the tab open, each built as a download builds it, so what is sent by email is what would be downloaded: what is hidden from the person is hidden in it.
+  type Made = { name: string; type: string; body: string };
+  const file = (key: string, format: string, make: () => Promise<Made>, off: boolean) => ({ key, format, make, run: async () => { const one = await make(); save(one.name, one.type, one.body); }, off });
+  const buttons: Array<{ key: string; format: string | undefined; run: () => void | boolean | Promise<void | boolean>; make?: () => Promise<Made>; off: boolean }> =
+    tab === "papers"
+      ? [
+          file(`papers-csv:${group}`, "CSV", async () => ({ name: fileName(out, GROUP_FILE[group], "csv", Date.now()), type: "text/csv", body: papersCsv(out, await every(papersOf(group))) }), !included),
+          file(`bib:${group}`, "BibTeX", async () => ({ name: fileName(out, GROUP_FILE[group], "bib", Date.now()), type: "application/x-bibtex", body: bibOf(await every(papersOf(group))) }), !included),
+          file(`ris:${group}`, "RIS", async () => ({ name: fileName(out, GROUP_FILE[group], "ris", Date.now()), type: "application/x-research-info-systems", body: risOf(await every(papersOf(group))) }), !included),
+        ]
+      : tab === "votes"
+        ? [file(`csv:${whose}`, "CSV", async () => ({ name: fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), type: "text/csv", body: votesCsv(state.filed, await every({}), whose === "all" ? undefined : whose) }), !total)]
+        : tab === "flow"
+          ? [file("svg", "SVG", async () => ({ name: fileName(out, "flow", "svg", Date.now()), type: "image/svg+xml", body: svg() }), !figures), { key: "png", format: "PNG", run: png, off: !figures }]
+          : tab === "record"
+            ? [file("json", "JSON", async () => { if (!workspaceId) throw new Error(t("notLoaded")); return { name: fileName(out, "record", "json", Date.now()), type: "application/json", body: JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2) }; }, false)]
+            : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), make: async () => ({ name: fileName(out, "methods", "txt", Date.now()), type: "text/plain", body: methods }), off: !figures }];
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       {/* Anchored at the top and as tall on every tab, so its tabs never move as they are switched. */}
@@ -341,23 +363,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         </ScrollArea>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
           <p className="min-w-48 flex-1 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
-          {(tab === "papers"
-            ? [
-                { key: `papers-csv:${group}`, format: "CSV", run: async () => save(fileName(out, GROUP_FILE[group], "csv", Date.now()), "text/csv", papersCsv(out, await every(papersOf(group)))), off: !included },
-                { key: `bib:${group}`, format: "BibTeX", run: async () => save(fileName(out, GROUP_FILE[group], "bib", Date.now()), "application/x-bibtex", bibOf(await every(papersOf(group)))), off: !included },
-                { key: `ris:${group}`, format: "RIS", run: async () => save(fileName(out, GROUP_FILE[group], "ris", Date.now()), "application/x-research-info-systems", risOf(await every(papersOf(group)))), off: !included },
-              ]
-            : tab === "votes"
-              ? [{ key: `csv:${whose}`, format: "CSV", run: async () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), "text/csv", votesCsv(state.filed, await every({}), whose === "all" ? undefined : whose)), off: !total }]
-              : tab === "flow"
-                ? [
-                    { key: "svg", format: "SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: !figures },
-                    { key: "png", format: "PNG", run: png, off: !figures },
-                  ]
-                : tab === "record"
-                  ? [{ key: "json", format: "JSON", run: async () => { if (!workspaceId) throw new Error(t("notLoaded")); save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2)); }, off: false }]
-                  : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), off: !figures }]
-          ).map((button, i, all) => (
+          {/* The files of this tab sent to a colleague, as they would be downloaded. */}
+          {buttons.some((button) => button.make && !button.off) ? <SendFiles jobId={id} files={buttons.flatMap((button) => (button.make && !button.off ? [button.make] : []))} /> : null}
+          {buttons.map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}
               {/* The label before and after hold one width, the wider one's: the buttons beside it never move when it changes. */}
@@ -376,3 +384,50 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   );
 }
 
+
+/**
+ * Sends the files of the tab open to an email address, with a note: built here as their download is and mailed as they
+ * are, with a link to the screening (convex/screening/sending.ts). Replies go to the sender.
+ */
+function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise<{ name: string; type: string; body: string }>> }) {
+  const t = useTranslations("screening.files");
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const sendFiles = useWorkspaceAction(api.screening.sending.sendFiles);
+  const send = async () => {
+    setBusy(true);
+    try {
+      const made = await Promise.all(files.map((make) => make()));
+      await sendFiles({ jobId: jobId as Id<"screeningJobs">, to: to.trim(), files: made, ...(note.trim() ? { note: note.trim() } : {}) });
+      toast(t("send.sent", { to: to.trim(), count: made.length }));
+      setOpen(false);
+      setNote("");
+    } catch (error) {
+      showStyledToast("error", getErrorMessage(error, t("send.failed")));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild><Button size="sm" variant="outline"><Mail />{t("send.open")}</Button></PopoverTrigger>
+      <PopoverContent side="top" align="end" className="w-80 space-y-3 p-3">
+        <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+          <p className="text-sm font-semibold">{t("send.title", { count: files.length })}</p>
+          <label className="block space-y-1">
+            <span className="text-xs font-medium">{t("send.to")}</span>
+            <Input type="email" required autoFocus value={to} onChange={(event) => setTo(event.target.value)} placeholder={t("send.toPlaceholder")} className="h-8 text-sm" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-medium">{t("send.note")}</span>
+            <Textarea rows={2} maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} className="min-h-14 resize-none text-sm" />
+          </label>
+          <p className="text-xs text-muted-foreground">{t("send.says")}</p>
+          <Button type="submit" size="sm" className="w-full" disabled={busy || !to.trim()}>{busy ? <Spinner className="size-4" /> : <Mail />}{t("send.send")}</Button>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}

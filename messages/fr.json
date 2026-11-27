@@ -7933,6 +7933,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Envoyer par e-mail",
+        "title": "{count, plural, one {Envoyer ce fichier} other {Envoyer ces # fichiers}}",
+        "to": "À",
+        "toPlaceholder": "collegue@example.org",
+        "note": "Un mot, si vous voulez",
+        "says": "Les fichiers sont tels que vous les téléchargeriez, sans ce qui vous est caché. Les réponses vous parviennent.",
+        "send": "Envoyer",
+        "sent": "{count, plural, one {Fichier envoyé à {to}} other {# fichiers envoyés à {to}}}",
+        "failed": "Les fichiers n’ont pas été envoyés"
+      },
       "title": "Exporter",
       "description": "Les articles, chaque vote, le diagramme PRISMA, un paragraphe de méthodes et le dossier complet",
       "tabsLabel": "Ce qu'il faut exporter",

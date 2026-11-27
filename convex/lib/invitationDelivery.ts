@@ -13,7 +13,7 @@ export function requireInvitationMail() {
 }
 
 /** Sends one message through the platform mail service. Replies go to `replyTo` when given, otherwise to the sender. */
-export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, replyTo, ...message}: {senderName: string; senderEmail?: string | null; replyTo?: string; to: string; subject: string; text: string; html: string}) {
+export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, replyTo, ...message}: {senderName: string; senderEmail?: string | null; replyTo?: string; to: string; subject: string; text: string; html: string; attachments?: Array<{filename: string; contentType: string; content: Buffer}>}) {
   const transport = nodemailer.createTransport({
     host: mail.host, port: mail.port, secure: mail.security === "tls",
     requireTLS: mail.security === "starttls", ignoreTLS: mail.security === "none",

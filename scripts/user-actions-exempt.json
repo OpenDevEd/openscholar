@@ -135,6 +135,7 @@
     "screening/held:uploadUrl": "Where the form sends a file a screening is to read. The assistant adds no files to a screening: it reads screenings.",
     "screening/held:keepDois": "The form keeps a pasted list of DOIs as a file before it is added. The assistant adds no sources to a screening.",
     "screening/held:correctDoi": "A source's left-out list corrects a DOI that wasn't found, or tries it again. The assistant reads screenings and changes nothing in them.",
+    "screening/sending:sendFiles": "The Export window emails a screening's files, built in the browser as their download is. The assistant reads screenings and sends nothing from them.",
     "screening/zoteroSources:groups": "The form's list of the person's Zotero groups. The assistant reads Zotero with its own tools (zotero/library).",
     "zotero/tree:open": "The form that starts a screening opening one of the person's Zotero libraries, which has its collections read again where what is kept is old. The assistant lists collections with zotero/library:collections.",
     "zotero/tree:state": "How that reading stands, for the form. The assistant lists collections with zotero/library:collections.",

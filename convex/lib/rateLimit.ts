@@ -23,6 +23,8 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   // Applications to join communities one person sends (OS-31), each emailing its owners and editors.
   "community-application": { kind: "fixed window", rate: 10, period: DAY, start: 0 },
   "item-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
+  // A screening's files mailed to a colleague (convex/screening/sending.ts): files under Openscholar's name, a few a day from one person.
+  "screening-files": { kind: "token bucket", rate: 20, period: DAY, capacity: 20 },
   // The contact form on openscholar.ai (convex/contact.ts): a few messages an hour from one visitor, and a ceiling on
   // what everyone together can send a day.
   "contact-address": { kind: "token bucket", rate: 5, period: HOUR, capacity: 5 },

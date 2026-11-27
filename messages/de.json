@@ -7934,6 +7934,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Per E-Mail senden",
+        "title": "{count, plural, one {Diese Datei senden} other {Diese # Dateien senden}}",
+        "to": "An",
+        "toPlaceholder": "kollegin@example.org",
+        "note": "Eine Notiz, wenn Sie möchten",
+        "says": "Die Dateien sind so, wie Sie sie herunterladen würden, ohne das, was vor Ihnen verborgen ist. Antworten gehen an Sie.",
+        "send": "Senden",
+        "sent": "{count, plural, one {Datei an {to} gesendet} other {# Dateien an {to} gesendet}}",
+        "failed": "Die Dateien wurden nicht gesendet"
+      },
       "title": "Exportieren",
       "description": "Die Artikel, alle Stimmen, das PRISMA-Diagramm, ein Methodenabsatz und das vollständige Protokoll",
       "tabsLabel": "Was exportiert wird",
