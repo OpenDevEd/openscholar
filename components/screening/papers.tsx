@@ -327,6 +327,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   }, [tableWidth, open.total > 0]);
 
   const conflictsPicked = pickedPapers.filter((one) => one.result === "conflict");
+  // The picked papers that wait for the person's own vote: what a vote on the selection is cast on. The rest, voted already, kept from them or not theirs, are left out, and the bar says how many.
+  // Read from the papers as they stand now, never from the selection's copies: a vote cast in the drawer since leaves the paper out.
+  const waitsOnMe = (one: Paper) => !one.withdrawn && one.mine && one.cast.some((place) => place.reviewer === open.me && !place.vote && !place.hidden && !place.failed);
+  const votablePicked = open.isReviewer && !screening.finishedAt ? pickedPapers.map((one) => listed.items.find((now) => now.id === one.id) ?? one).filter(waitsOnMe) : [];
   // Many papers are settled a few at a time: hundreds of saves at once would each wait on the others.
   // Each save's outcome is kept: what is said, and what Undo takes back, is only what the server took.
   const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => {
@@ -347,6 +351,35 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     if (refused) notSaved(t, refused);
     if (saved.length) toast(t("settledToast", { count: saved.length, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.resolve(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
   };
+  const voteAll = async (decision: Decision, why?: { reason: string; note?: string }) => {
+    const voting = votablePicked;
+    // As settling does: the selection goes at once, and the papers the server refuses come back picked.
+    setPicked([]);
+    // Only the papers the vote went on: one voted on since is left as it is, and Undo never touches it.
+    const cast: Paper[] = [];
+    const { refused } = await each(voting, async (one) => { if (await open.vote(one.id, { decision, ...(why?.reason ? { reason: why.reason } : {}), ...(why?.note ? { note: why.note } : {}) }, { onlyWaiting: true })) cast.push(one); });
+    const saved = cast;
+    if (refused) setPicked(voting.filter((one) => !saved.includes(one)));
+    if (refused) notSaved(t, refused);
+    if (saved.length) toast(t("votedToast", { count: saved.length, decision: words.decision(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.vote(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
+  };
+  const decideAll = (label: string, count: number, run: (decision: Decision, why?: { reason: string; note?: string }) => void) => (
+    <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {DECISIONS.map((decision) =>
+        decision === "exclude" ? (
+          <Popover key={decision}>
+            <PopoverTrigger asChild><VoteButton decision={decision} size="sm" /></PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-80 p-3" onEscapeKeyDown={(event) => { if ((event.target as HTMLElement | null)?.closest("[data-reason-note]")) event.preventDefault(); }}>
+              <ReasonPicker criteria={open.screening.criteria} many={count > 1} onPick={(key, note) => run("exclude", { reason: key, note })} />
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <VoteButton key={decision} decision={decision} size="sm" onClick={() => run(decision)} />
+        ),
+      )}
+    </span>
+  );
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
     if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, pickedPapers));
@@ -558,23 +591,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               <span className="px-1 text-sm font-medium tabular-nums">{t("selection.selected", { count: chosen.length })}</span>
               {/* Every paper on the page is selected and the table has more pages: the rest are one press away. */}
               {allShown && listed.hasPages && (total === undefined || chosen.length < total) ? <Button variant="outline" size="sm" className="h-7" disabled={takingAll} onClick={selectAll}>{takingAll ? <Spinner className="size-3.5" /> : null}{total === undefined ? t("selection.everyPage") : t("selection.all", { count: total })}</Button> : null}
-              {conflictsPicked.length && open.canResolve && !screening.finishedAt ? (
-                <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
-                  <span className="text-xs text-muted-foreground">{t("selection.settleAs", { count: conflictsPicked.length })}</span>
-                  {DECISIONS.map((decision) =>
-                    decision === "exclude" ? (
-                      <Popover key={decision}>
-                        <PopoverTrigger asChild><VoteButton decision={decision} size="sm" /></PopoverTrigger>
-                        <PopoverContent side="top" align="end" className="w-80 p-3" onEscapeKeyDown={(event) => { if ((event.target as HTMLElement | null)?.closest("[data-reason-note]")) event.preventDefault(); }}>
-                          <ReasonPicker criteria={open.screening.criteria} many={conflictsPicked.length > 1} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <VoteButton key={decision} decision={decision} size="sm" onClick={() => settleAll(decision)} />
-                    ),
-                  )}
-                </span>
-              ) : null}
+              {/* A vote on the papers that wait for yours, and settling the ones in conflict: the same three buttons, Exclude asking why. */}
+              {votablePicked.length ? decideAll(t("selection.voteAs", { count: votablePicked.length }), votablePicked.length, voteAll) : null}
+              {votablePicked.length && votablePicked.length < pickedPapers.length ? <span className="text-xs text-muted-foreground">{t("selection.notYours", { count: pickedPapers.length - votablePicked.length })}</span> : null}
+              {conflictsPicked.length && open.canResolve && !screening.finishedAt ? decideAll(t("selection.settleAs", { count: conflictsPicked.length }), conflictsPicked.length, settleAll) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7"><Download />{t("export")}</Button></DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="end">

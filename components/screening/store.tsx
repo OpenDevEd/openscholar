@@ -260,7 +260,7 @@ export function useOpenScreening(id: string) {
       const cost = model.model ? readingOf(screening, model.model, papers) : 0;
       return { papers, cost, short: Math.max(0, cost - (view.credits ?? Infinity)) };
     },
-    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null) => vote({ jobId, paperId, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
+    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false }: { onlyWaiting?: boolean } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
     voteMany: (paperIds: Id<"screeningResults">[], ballot: Ballot) => voteMany({ jobId, paperIds, decision: ballot.decision, ...(ballot.reason ? { reason: ballot.reason } : {}), ...(ballot.note ? { note: ballot.note } : {}) }),
     resolve: (paperId: Id<"screeningResults">, decision: Decision | null, note?: string, reason?: string) => resolve({ jobId, paperId, decision, ...(note ? { note } : {}), ...(reason ? { reason } : {}) }),
     pause: () => told(pause({ jobId })),

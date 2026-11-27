@@ -8219,6 +8219,11 @@
         "questionPlaceholder": "Par exemple « Les repas scolaires améliorent-ils l'apprentissage à l'école primaire ? »"
       },
       "papers": {
+        "correctDoi": "Le corriger",
+        "correctDoiFor": "Le DOI {doi}, tel qu’il doit être",
+        "tryAgain": "Réessayer",
+        "cancel": "Annuler",
+        "doiAgain": "La liste est relue. Un DOI trouvé cette fois rejoint le tri",
         "wholeSource": "lit toute la source",
         "fromAll": "lit les {total, number} de la source",
         "fromRange": "lit les articles {first} à {last} des {total, number} de la source",
@@ -9018,6 +9023,7 @@
         "byPlaceLabel": "Ordre de réception"
       },
       "settledBy": "{you, select, true {Tranché par vous} other {Tranché par {name}}}",
+      "votedToast": "Vote {decision} sur {count, plural, one {# article} other {# articles}}",
       "settledToast": "{count, number} tranchés comme {result}",
       "undo": "Annuler",
       "filter": {
@@ -9073,6 +9079,8 @@
         "selected": "{count, plural, one {# sélectionné} other {# sélectionnés}}",
         "everyPage": "Sélectionner toutes les pages",
         "all": "{count, plural, other {Sélectionner les #}}",
+        "voteAs": "{count, plural, one {Voter sur l’article qui vous attend comme} other {Voter sur les # qui vous attendent comme}}",
+        "notYours": "{count, plural, one {# autre n’attend pas votre vote} other {# autres n’attendent pas votre vote}}",
         "settleAs": "{count, plural, one {Trancher l'article en désaccord comme} other {Trancher les # en désaccord comme}}",
         "ris": "Fichier RIS, pour un gestionnaire de références",
         "csvSeen": "Fichier CSV, avec les votes que vous voyez",

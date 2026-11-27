@@ -8219,6 +8219,11 @@
         "questionPlaceholder": "जैसे “क्या स्कूल का भोजन प्राथमिक स्कूलों में सीखने को बेहतर बनाता है?”"
       },
       "papers": {
+        "correctDoi": "इसे सुधारें",
+        "correctDoiFor": "DOI {doi}, जैसा होना चाहिए",
+        "tryAgain": "फिर से कोशिश करें",
+        "cancel": "रद्द करें",
+        "doiAgain": "सूची फिर से पढ़ी जाती है। इस बार मिला DOI स्क्रीनिंग में जुड़ जाता है",
         "wholeSource": "पूरा स्रोत पढ़ता है",
         "fromAll": "स्रोत के सभी {total, number} पढ़ता है",
         "fromRange": "स्रोत के {total, number} में से लेख {first} से {last} तक पढ़ता है",
@@ -9018,6 +9023,7 @@
         "byPlaceLabel": "दिए जाने के क्रम में"
       },
       "settledBy": "{you, select, true {आपने तय किया} other {{name} ने तय किया}}",
+      "votedToast": "{count, number} लेखों पर {decision} वोट दिया",
       "settledToast": "{count, number} को {result} के रूप में तय किया",
       "undo": "पूर्ववत करें",
       "filter": {
@@ -9073,6 +9079,8 @@
         "selected": "{count, plural, other {# चुने गए}}",
         "everyPage": "हर पेज चुनें",
         "all": "{count, plural, other {सभी # चुनें}}",
+        "voteAs": "{count, plural, other {आपकी प्रतीक्षा कर रहे # पर इस रूप में वोट दें}}",
+        "notYours": "{count, plural, other {# अन्य आपके वोट की प्रतीक्षा नहीं कर रहे}}",
         "settleAs": "{count, plural, other {मतभेद वाले # को इस रूप में तय करें}}",
         "ris": "RIS फ़ाइल, रेफ़रेंस मैनेजर के लिए",
         "csvSeen": "CSV फ़ाइल, आपको दिखने वाले वोटों के साथ",
