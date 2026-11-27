@@ -66,7 +66,7 @@ export const context = internalQuery({
 export const readingValidator = v.union(
   v.object({ read: v.literal(false), why: v.union(v.literal("held"), v.literal("credits")) }),
   v.object({ read: v.literal(false), why: v.literal("unreadable"), error: v.string() }),
-  v.object({ read: v.literal(true), answers: voteAnswersValidator, confidences: v.record(v.string(), v.number()), passages: v.optional(votePassagesValidator), credits: v.number() }),
+  v.object({ read: v.literal(true), answers: voteAnswersValidator, confidences: v.record(v.string(), v.number()), passages: v.optional(votePassagesValidator), credits: v.number(), /** When its criteria were read: a criterion reworded since was answered as it was then. */ askedAt: v.optional(v.number()) }),
 );
 
 /** How much of why a model couldn't read a paper is kept. */
@@ -92,7 +92,7 @@ export const done = screeningPool.defineOnComplete({
       await ctx.db.patch("screeningVotes", vote._id, { status: "discarded", at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
     } else if (reading?.read && vote.status === "waiting") {
       // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
-      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: reading.askedAt ?? Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
     } else if ((result.kind === "failed" || (reading && !reading.read && reading.why === "unreadable")) && vote.status === "waiting") {
       await ctx.db.patch("screeningVotes", vote._id, { status: "failed", error: (result.kind === "failed" ? result.error : (reading as { error: string }).error).slice(0, ERROR_SHOWN), workId: undefined });
     } else {
