@@ -5157,7 +5157,8 @@
       "authorZA": "Autor Z-A",
       "titleAZ": "Título A-Z",
       "titleZA": "Título Z-A"
-    }
+    },
+    "pagerItems": "fuentes"
   },
   "fromLibrary": {
     "title": "Desde {library}",
@@ -7785,7 +7786,7 @@
       "model": {
         "startsLater": "{name} empieza cuando lleguen los artículos",
         "nothingToRead": "A {name} no le quedan artículos que leer",
-        "reads": "{name} lee {upTo, select, true {hasta {count, plural, one {# artículo} other {# artículos}}} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
+        "reads": "{name} lee {upTo, select, true {los artículos abiertos que nadie resuelva antes, {count, plural, one {# artículo} other {# artículos}} hoy} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
       },
       "person": {
         "invited": "{name} recibe una invitación por correo, y artículos cuando se una",
@@ -7897,6 +7898,7 @@
         "scheduledFound": "La comprobación programada encontró {count, plural, one {# artículo} other {# artículos}}{allNew, select, true {} other {, {added, number} de ellos nuevos}}",
         "scheduledNone": "La comprobación programada no encontró artículos nuevos",
         "known": "{count, plural, one {# ya estaba} other {# ya estaban}} en el cribado",
+        "leftOut": "{count, plural, one {# se descartó} other {# se descartaron}}",
         "joined": "{count, plural, one {# artículo entró} other {# artículos entraron}} en el cribado",
         "reopenedByCheck": "El cribado vuelve a estar abierto",
         "changed": "Cambió {parts}",
@@ -8232,7 +8234,7 @@
         "allOfIt": "Todo",
         "all": "{count, plural, one {El único artículo} other {Los # artículos}}",
         "inSource": "{count, plural, other {# en la fuente}}",
-        "readAsPdf": "{count, plural, one {# leído como su PDF} other {# leídos como PDF}}",
+        "readAsPdf": "{count, plural, one {# leído del PDF} other {# leídos de PDF}}",
         "duplicates": "{count, plural, one {# duplicado fusionado} other {# duplicados fusionados}}",
         "rangeHeld": "Los artículos {first} a {last} ya están en este cribado y se quedan en él, así que el rango solo puede ampliarse. Para sacarlos, quite la fuente.",
         "checkedEvery": "{every, select, day {Se comprueba cada día} week {Se comprueba cada semana} other {Se comprueba cada mes}}",
@@ -8258,6 +8260,9 @@
         "noSearches": "Todavía no hay búsquedas guardadas.",
         "nothingHere": "Todavía no hay nada aquí.",
         "pagerSources": "fuentes",
+        "pagerSearches": "búsquedas",
+        "pagerCollections": "colecciones",
+        "pagerScreenings": "cribados",
         "pagerLeftOut": "descartados",
         "pagerMerged": "duplicados",
         "mergedFrom": "El mismo artículo que uno de {source}",
@@ -8284,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo, más si se lee como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo}}",
         "noneGrow": "Ninguna de estas fuentes añade artículos. Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
         "addToCheck": "Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
-        "lastSpent": "Unos {spent, plural, one {# crédito} other {# créditos}} por {count, plural, one {el # artículo} other {los # artículos}} de la última comprobación con estos modelos"
+        "lastSpent": "Unos {spent, plural, one {# crédito} other {# créditos}} en la última comprobación, {count, plural, one {# artículo} other {# artículos}}"
       },
       "criteria": {
         "helpTitle": "Requisitos y deseables",
@@ -8356,9 +8361,9 @@
         "votesSplit": "Los votos se dividen",
         "help": "Un artículo queda resuelto cuando sus votos coinciden como pide la regla. Cuando no, queda en conflicto, y una persona lo resuelve.",
         "each": "Personas por artículo",
-        "factModels": "Los modelos leen todos los artículos abiertos",
+        "factModels": "Los modelos leen los artículos aún abiertos",
         "factEveryone": "Todos abarca a quien se una después",
-        "eachHelp": "Cada modelo lee todos los artículos abiertos cuando se une. Esto fija cuántas personas votan cada uno. Los artículos se reparten para que cada persona lea más o menos el mismo número. Un número fijo se mantiene aunque se unan personas. Todos significa todas las personas del cribado, ahora y después.",
+        "eachHelp": "Cada modelo lee los artículos aún abiertos cuando se une. Esto fija cuántas personas votan cada uno. Los artículos se reparten para que cada persona lea más o menos el mismo número. Un número fijo se mantiene aunque se unan personas. Todos significa todas las personas del cribado, ahora y después.",
         "everyone": "Todos",
         "onePerson": "Una persona, ya que decide el primer voto",
         "modelVotes": "Votos de los modelos",
@@ -8535,7 +8540,7 @@
         "papersRead": "{done, number} de {of, plural, one {# artículo leído} other {# artículos leídos}}",
         "turnsTitle": "Los modelos se turnan",
         "atATime": "{count, plural, one {# artículo a la vez} other {# artículos a la vez}}",
-        "turnsHelp": "Los modelos de {workspace} leen {count, plural, one {# artículo} other {# artículos}} a la vez, así que un cribado iniciado mientras otro está leyendo lo espera. Mientras tanto, las personas pueden votar.",
+        "turnsHelp": "{personal, select, true {Sus modelos leen} other {Los modelos de {workspace} leen}} {count, plural, one {# artículo} other {# artículos}} a la vez, así que un cribado iniciado mientras otro está leyendo lo espera. Mientras tanto, las personas pueden votar.",
         "modelReading": "<model>{name}</model> leyendo",
         "modelsReading": "{count, plural, one {# modelo leyendo} other {# modelos leyendo}}",
         "read": "{done, number} de {of, number}"
@@ -8585,7 +8590,9 @@
         "title": "¿Añadir a {name} como revisor?",
         "confirm": "Añadir como revisor",
         "noCriteria": "Un modelo vota respondiendo a los criterios, y este cribado todavía no tiene ninguno. Incluiría todos los artículos que lea.",
-        "addCriteria": "Añadir criterios"
+        "addCriteria": "Añadir criterios",
+        "noMustHave": "Un modelo solo excluye un artículo si no cumple un requisito, y ninguno de estos criterios es un requisito. Incluiría todos los artículos que lea.",
+        "markMustHave": "Convertir un criterio en requisito"
       },
       "takeOff": {
         "viewerTitle": "¿Hacer que {name} deje de votar?",
@@ -8614,7 +8621,7 @@
         "personalElse": "Cualquier otra persona solo lo tiene cuando se le comparte, ya sea como revisor, que recibe artículos y vota, o como lector, que ve todos los artículos y todos los votos.",
         "membersSee": "Los miembros de {workspace} ven este cribado y pueden cambiarlo. Los que son revisores reciben artículos y los votan.",
         "outsideHas": "Alguien de fuera de {workspace} solo lo tiene cuando se le comparte, ya sea como revisor, que recibe artículos y vota, o como lector, que ve todos los artículos y todos los votos.",
-        "modelToo": "{you, select, true {Un modelo también es un revisor. Lee todos los artículos abiertos y vota, y se paga con sus créditos.} other {Un modelo también es un revisor. Lee todos los artículos abiertos y vota, y se paga con los créditos de {workspace}.}}",
+        "modelToo": "{you, select, true {Un modelo también es un revisor. Lee los artículos aún abiertos y vota, y se paga con sus créditos.} other {Un modelo también es un revisor. Lee los artículos aún abiertos y vota, y se paga con los créditos del espacio de trabajo.}}",
         "close": "Cerrar",
         "addAs": "Añadir personas como",
         "finishedAdds": "Este cribado ha terminado, así que las personas que se añadan aquí pueden verlo. Para añadir un revisor, reábralo, o añádalo en Ajustes, donde votará cuando se reabra.",
@@ -8741,10 +8748,12 @@
         "answerLabel": "Su respuesta a {name}",
         "askLabel": "Su pregunta para {name}",
         "allLabel": "Su mensaje",
-        "send": "Enviar"
+        "send": "Enviar",
+        "earlier": "Mostrar mensajes anteriores",
+        "loading": "Leyendo la conversación"
       },
       "pdf": {
-        "readAs": "{pages, plural, =0 {Leído como su PDF} one {Leído como su PDF, # página} other {Leído como su PDF, # páginas}}",
+        "readAs": "{pages, plural, =0 {Leído del PDF} one {Leído del PDF, # página} other {Leído del PDF, # páginas}}",
         "openTab": "Abrir el PDF en una pestaña nueva",
         "onItsWay": "El PDF está en camino",
         "cantShow": "Este PDF no se puede mostrar aquí. Ábralo en una pestaña nueva."
@@ -8791,7 +8800,7 @@
         "helpTitle": "Cómo se reparten los artículos",
         "eachOf": "{each, plural, one {# de las {people, plural, one {# persona} other {# personas}} vota} other {# de las {people, plural, one {# persona} other {# personas}} votan}} cada artículo",
         "everyPerson": "Cada persona vota todos los artículos",
-        "modelsRead": "Los modelos leen todos los artículos abiertos",
+        "modelsRead": "Los modelos leen los artículos aún abiertos",
         "sharing": "{share, select, true {Cada persona vota una parte de los artículos.} other {Cada persona vota todos los artículos.}}{models, select, true { Cada modelo lee los artículos aún abiertos y los nuevos a medida que se añaden. Se salta un artículo que se resolvió antes de que se uniera.} other {}}",
         "pace": "Bajo el recuento de una persona aparece cuándo terminará lo que le queda, si mantiene el ritmo de sus últimos tres días.",
         "reviewer": "Revisor",
@@ -9073,8 +9082,8 @@
         "includedOnly": "Puntos solo en los artículos incluidos",
         "mostCommon": "Puntos de la respuesta más común",
         "stars": "De 1 a {count, number} estrellas según {points} puntos",
-        "says": "Por qué un artículo está donde está. Es el criterio que lo excluyó, aquel en el que un Quizá es dudoso, cómo se dividió un conflicto o de quién espera el voto.",
-        "points": "Un artículo incluido muestra sus puntos y estrellas. Cada criterio da puntos según la respuesta que dio la mayoría de los revisores. Un sí da 1, salvo que {canChange, select, true {los ajustes del cribado digan otra cosa} other {los miembros de {workspace} hayan fijado otra cosa}}. Las estrellas siguen a los puntos."
+        "says": "Por qué un artículo está donde está. Es el motivo de su exclusión (un criterio, un duplicado, una nota o ninguno), el criterio en el que un Quizá es dudoso, cómo se dividió un conflicto o de quién espera el voto.",
+        "points": "Un artículo incluido muestra sus puntos y estrellas. Cada criterio da puntos según la respuesta que dio la mayoría de los revisores. Un sí da 1, salvo que {canChange, select, true {los ajustes del cribado digan otra cosa} other {los miembros del espacio de trabajo hayan fijado otra cosa}}. Las estrellas siguen a los puntos."
       },
       "menu": {
         "papersVoted": "{you, select, true {Artículos que usted votó {decision}} other {Artículos que {name} votó {decision}}}",
@@ -9151,7 +9160,7 @@
         },
         "waiting": {
           "says": "Los modelos empiezan después de <link>{name}</link>",
-          "row": "Esperando su turno"
+          "row": "Esperando turno"
         }
       },
       "modelsReading": "Modelos leyendo",
@@ -9306,7 +9315,7 @@
         "guidanceFact": "La orientación dice qué cuenta y qué no",
         "markedFact": "Las palabras marcadas son las que busca un criterio",
         "showsFact": "<mark>Marcadas</mark>Cómo aparecen en el resumen",
-        "helpAnswering": "Responder es opcional, y basta con el voto. Un No en un requisito apunta a Excluir, y Excluir pregunta cuál no se cumplió, salvo que sus respuestas ya lo digan.",
+        "helpAnswering": "Responder es opcional y basta con un voto. Un No en un criterio imprescindible apunta a Excluir, y ese criterio es el motivo cuando excluye. Si no, Excluir solo pregunta si hay un motivo. Ninguno, un duplicado u otro que usted escribe.",
         "helpReading": "Las preguntas que cada revisor responde sobre un artículo y, debajo de cada una, cómo la respondió. Un No en un requisito apunta a Excluir.",
         "mustHave": "{answering, select, true {Un requisito, así que un No apunta a Excluir. Las respuestas son opcionales y no son su voto.} other {Un requisito, así que un No apunta a Excluir.}}",
         "guidance": "Orientación",
@@ -9351,8 +9360,8 @@
       },
       "note": {
         "label": "Nota",
-        "settling": "Por qué, para que conste (opcional)",
-        "voting": "Una nota para los demás, guardada con su voto. Una pregunta para uno de ellos va en Conversación, más abajo"
+        "settling": "Nota para que conste (opcional)",
+        "voting": "Nota para los demás (opcional)"
       },
       "settle": {
         "title": "Resolver este conflicto",
@@ -9398,8 +9407,7 @@
         "help": "El modelo puntúa cada una de sus respuestas de 0 a 100 %. Por debajo del 65 %, lea el resumen antes de fiarse de esa respuesta.",
         "unsure": "Solo {sure, number, percent} de seguridad",
         "sure": "{sure, number, percent} de seguridad"
-      },
-      "helpAnswering": "Responder es opcional y basta con un voto. Un No en un criterio imprescindible apunta a Excluir, y ese criterio es el motivo cuando excluye. Si no, Excluir solo pregunta si hay un motivo. Ninguno, un duplicado u otro que usted escribe."
+      }
     },
     "sources": {
       "add": "Añadir",
@@ -9462,7 +9470,7 @@
         "read": "{read, number} de {total, number} leídos",
         "inIndex": "<n>{count, number}</n> en el índice",
         "knownNoAbstract": "En el índice, sin resumen",
-        "fileWithPages": "Leído como su PDF, {count, plural, one {# página} other {# páginas}}",
+        "fileWithPages": "Leído del PDF, {count, plural, one {# página} other {# páginas}}",
         "list": "Los PDF de esta fuente",
         "pager": "PDF",
         "loading": "Cargando los PDF"
@@ -9490,8 +9498,8 @@
         "notConnected": "Zotero no está conectado",
         "connectWhy": "Conéctelo para elegir de su biblioteca de Zotero y sus grupos de Zotero.",
         "connect": "Conectar Zotero",
-        "withSubCollections": "Con sus subcolecciones",
-        "aboutUnder": "Unos {count, number} con sus subcolecciones",
+        "withSubCollections": "Con subcolecciones",
+        "aboutUnder": "Unos {count, number} con subcolecciones",
         "library": "Biblioteca de Zotero",
         "findGroup": "Buscar un grupo",
         "yours": "Suyas",
@@ -9586,7 +9594,7 @@
       },
       "pdf": {
         "known": "En el índice",
-        "file": "Leído como su PDF",
+        "file": "Leído del PDF",
         "broken": "No se abre",
         "waiting": "Leyéndolo"
       },

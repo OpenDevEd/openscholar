@@ -110,7 +110,7 @@ export function tableRecords(table: Pick<TableRead, "rows">, picked: TableRead["
 }
 
 /** One item as Zotero's importer gives it (zotero/translation-server, POST /import). */
-export type ImportedItem = { itemType?: string; title?: string; abstractNote?: string; creators?: Array<{ firstName?: string; lastName?: string; name?: string }>; date?: string; DOI?: string; publicationTitle?: string; bookTitle?: string; proceedingsTitle?: string };
+export type ImportedItem = { itemType?: string; title?: string; abstractNote?: string; creators?: Array<{ firstName?: string; lastName?: string; name?: string; creatorType?: string }>; thesisType?: string; date?: string; DOI?: string; publicationTitle?: string; bookTitle?: string; proceedingsTitle?: string };
 
 /** The records a reference file holds, from what Zotero's importer read in it. Notes and attached files are no records, and neither is an item with nothing in it: Ovid ends each record with a line the importer reads as one. */
 export function itemRecords(items: ImportedItem[]): FileRecord[] {
@@ -119,11 +119,12 @@ export function itemRecords(items: ImportedItem[]): FileRecord[] {
     .map((item) => kept({
       title: item.title?.trim() ?? "",
       abstract: item.abstractNote?.trim(),
-      authors: item.creators?.map((one) => (one.name ?? [one.firstName, one.lastName].filter(Boolean).join(" ")).trim()).filter(Boolean),
+      // Its authors, as a connected Zotero library gives them: an editor or a translator is no author. A creator with no role given is one.
+      authors: item.creators?.filter((one) => !one.creatorType || one.creatorType === "author").map((one) => (one.name ?? [one.firstName, one.lastName].filter(Boolean).join(" ")).trim()).filter(Boolean),
       publicationYear: yearOf(item.date),
       doi: item.DOI?.match(DOI)?.[0],
       venue: (item.publicationTitle ?? item.bookTitle ?? item.proceedingsTitle)?.trim(),
-      ...(item.itemType ? { workType: item.itemType } : {}),
+      ...(item.itemType ? { workType: item.itemType === "thesis" && /master|msc|m\.?a\b|m\.?s\b/i.test(item.thesisType ?? "") ? "mastersThesis" : item.itemType } : {}),
     }));
 }
 

@@ -167,7 +167,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={total - counts.conflict - counts.waiting} /></span>
             {/* The line under the count: its words and the chips beside them centred on one another, and the whole line on the count's baseline. */}
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
               {open.modelsNow === "reading" ? <Chip className="bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
               {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}

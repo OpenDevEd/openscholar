@@ -20,7 +20,7 @@
     },
     "waiting": {
       "says": "Models start after <link>{name}</link>",
-      "row": "Waiting its turn"
+      "row": "Waiting for a turn"
     }
   },
   "modelsReading": "Models reading",

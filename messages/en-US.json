@@ -5156,7 +5156,8 @@
       "authorZA": "Author Z-A",
       "titleAZ": "Title A-Z",
       "titleZA": "Title Z-A"
-    }
+    },
+    "pagerItems": "sources"
   },
   "fromLibrary": {
     "title": "From {library}",
@@ -7784,7 +7785,7 @@
       "model": {
         "startsLater": "{name} starts once the papers arrive",
         "nothingToRead": "{name} has no papers left to read",
-        "reads": "{name} reads {upTo, select, true {up to {count, plural, one {# paper} other {# papers}}} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
+        "reads": "{name} reads {upTo, select, true {the open papers nobody settles first, {count, plural, one {# paper} other {# papers}} today} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
       },
       "person": {
         "invited": "{name} gets an invitation by email, and papers once they join",
@@ -7896,6 +7897,7 @@
         "scheduledFound": "The scheduled check found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
         "scheduledNone": "The scheduled check found no new papers",
         "known": "{count, plural, one {# was} other {# were}} already in the screening",
+        "leftOut": "{count, plural, one {# was left out} other {# were left out}}",
         "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
         "reopenedByCheck": "The screening is open again",
         "changed": "Changed {parts}",
@@ -8231,7 +8233,7 @@
         "allOfIt": "All of it",
         "all": "{count, plural, one {The one paper} other {All # papers}}",
         "inSource": "{count, plural, other {# in the source}}",
-        "readAsPdf": "{count, plural, one {# read as its PDF} other {# read as PDFs}}",
+        "readAsPdf": "{count, plural, one {# read from the PDF} other {# read from PDFs}}",
         "duplicates": "{count, plural, one {# duplicate merged} other {# duplicates merged}}",
         "rangeHeld": "Papers {first} to {last} are in this screening already and stay in it, so the range can only take more. To take them out, remove the source.",
         "checkedEvery": "{every, select, day {Checked every day} week {Checked every week} other {Checked every month}}",
@@ -8257,6 +8259,9 @@
         "noSearches": "No saved searches yet.",
         "nothingHere": "Nothing here yet.",
         "pagerSources": "sources",
+        "pagerSearches": "searches",
+        "pagerCollections": "collections",
+        "pagerScreenings": "screenings",
         "pagerLeftOut": "left out",
         "pagerMerged": "duplicates",
         "mergedFrom": "Same paper as one from {source}",
@@ -8283,7 +8288,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# credit} other {# credits}} a new paper, more if read as a PDF} other {{credits, plural, one {# credit} other {# credits}} a new paper}}",
         "noneGrow": "None of these sources gains papers. Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
         "addToCheck": "Add a search, a collection, an Evidence Community, a Zotero library or another screening to check.",
-        "lastSpent": "About {spent, plural, one {# credit} other {# credits}} for the last check's {count, plural, one {# paper} other {# papers}} with these models"
+        "lastSpent": "About {spent, plural, one {# credit} other {# credits}} last check, {count, plural, one {# paper} other {# papers}}"
       },
       "criteria": {
         "helpTitle": "Must-have and nice-to-have",
@@ -8355,9 +8360,9 @@
         "votesSplit": "Votes split",
         "help": "A paper is settled when its votes agree as the rule asks. When they don't, it is in conflict, and one person settles it.",
         "each": "People on each paper",
-        "factModels": "Models read every open paper",
+        "factModels": "Models read the papers still open",
         "factEveryone": "Everyone covers people who join later",
-        "eachHelp": "Every model reads every paper that is open when it joins. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A set number stays the same as people join. Everyone means every person on the screening, now and later.",
+        "eachHelp": "Every model reads the papers still open when it joins. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A set number stays the same as people join. Everyone means every person on the screening, now and later.",
         "everyone": "Everyone",
         "onePerson": "One person, since the first vote decides",
         "modelVotes": "Models' votes",
@@ -8534,7 +8539,7 @@
         "papersRead": "{done, number} of {of, plural, one {# paper} other {# papers}} read",
         "turnsTitle": "Models take turns",
         "atATime": "{count, plural, one {# paper at a time} other {# papers at a time}}",
-        "turnsHelp": "{workspace}'s models read {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+        "turnsHelp": "{personal, select, true {Your models read} other {The models of {workspace} read}} {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
         "modelReading": "<model>{name}</model> reading",
         "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
         "read": "{done, number} of {of, number}"
@@ -8584,7 +8589,9 @@
         "title": "Add {name} as a reviewer?",
         "confirm": "Add as reviewer",
         "noCriteria": "A model votes by answering the criteria, and this screening has none yet. It would include every paper it reads.",
-        "addCriteria": "Add criteria"
+        "addCriteria": "Add criteria",
+        "noMustHave": "A model excludes a paper only for a must-have it fails, and none of these criteria is a must-have. It would include every paper it reads.",
+        "markMustHave": "Make a criterion a must-have"
       },
       "takeOff": {
         "viewerTitle": "Stop {name} voting?",
@@ -8613,7 +8620,7 @@
         "personalElse": "Anyone else has it only once it is shared with them, either as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
         "membersSee": "Members of {workspace} see this screening and can change it. Those who are reviewers get papers and vote on them.",
         "outsideHas": "Someone outside {workspace} has it only once it is shared with them, either as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
-        "modelToo": "{you, select, true {A model is a reviewer too. It reads every open paper and votes, paid from your credits.} other {A model is a reviewer too. It reads every open paper and votes, paid from {workspace}'s credits.}}",
+        "modelToo": "{you, select, true {A model is a reviewer too. It reads the papers still open and votes, paid from your credits.} other {A model is a reviewer too. It reads the papers still open and votes, paid from the workspace's credits.}}",
         "close": "Close",
         "addAs": "Add people as",
         "finishedAdds": "This screening is finished, so people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",
@@ -8740,10 +8747,12 @@
         "answerLabel": "Your answer to {name}",
         "askLabel": "Your question for {name}",
         "allLabel": "Your message",
-        "send": "Send"
+        "send": "Send",
+        "earlier": "Show earlier messages",
+        "loading": "Reading the discussion"
       },
       "pdf": {
-        "readAs": "{pages, plural, =0 {Read as its PDF} one {Read as its PDF, # page} other {Read as its PDF, # pages}}",
+        "readAs": "{pages, plural, =0 {Read from the PDF} one {Read from the PDF, # page} other {Read from the PDF, # pages}}",
         "openTab": "Open the PDF in a new tab",
         "onItsWay": "The PDF is on its way",
         "cantShow": "This PDF can't be shown here. Open it in a new tab."
@@ -8790,7 +8799,7 @@
         "helpTitle": "How papers are shared out",
         "eachOf": "{each, plural, one {# of the {people, plural, other {# people}} votes} other {# of the {people, plural, other {# people}} vote}} on each paper",
         "everyPerson": "Every person votes on every paper",
-        "modelsRead": "Models read every open paper",
+        "modelsRead": "Models read the papers still open",
         "sharing": "{share, select, true {Each person votes on a share of the papers.} other {Each person votes on every paper.}}{models, select, true { Each model reads the papers still open, and new ones as they are added. It skips a paper that was settled before it joined.} other {}}",
         "pace": "Under a person's count is when they get through what they have left, if they keep the pace of their last three days.",
         "reviewer": "Reviewer",
@@ -9072,8 +9081,8 @@
         "includedOnly": "Points on included papers only",
         "mostCommon": "Points from the most common answer",
         "stars": "1 to {count, number} stars from {points} points",
-        "says": "Why a paper stands where it does. This is the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.",
-        "points": "An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave. A yes earns 1 unless {canChange, select, true {the screening's settings say otherwise} other {{workspace}'s members set otherwise}}. The stars follow the points."
+        "says": "Why a paper stands where it does. This is why it was excluded (a criterion, a duplicate, a note or none), the criterion a Maybe is unclear on, how a conflict split, or whose vote it waits for.",
+        "points": "An included paper shows its points and stars. Each criterion earns points from the answer most reviewers gave. A yes earns 1 unless {canChange, select, true {the screening's settings say otherwise} other {the workspace's members set otherwise}}. The stars follow the points."
       },
       "menu": {
         "papersVoted": "{you, select, true {Papers you voted {decision}} other {Papers {name} voted {decision}}}",
@@ -9150,7 +9159,7 @@
         },
         "waiting": {
           "says": "Models start after <link>{name}</link>",
-          "row": "Waiting its turn"
+          "row": "Waiting for a turn"
         }
       },
       "modelsReading": "Models reading",
@@ -9305,7 +9314,7 @@
         "guidanceFact": "Guidance says what counts and what doesn't",
         "markedFact": "Marked words are the ones a criterion looks for",
         "showsFact": "<mark>Marked</mark>How they show in the abstract",
-        "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say.",
+        "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and that must-have is the reason when you exclude. Otherwise Exclude asks whether there is no reason, a duplicate, or another one you write down.",
         "helpReading": "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude.",
         "mustHave": "{answering, select, true {A must-have, so a No points to Exclude. Answers are optional and aren't your vote.} other {A must-have, so a No points to Exclude.}}",
         "guidance": "Guidance",
@@ -9350,8 +9359,8 @@
       },
       "note": {
         "label": "Note",
-        "settling": "Why, for the record (optional)",
-        "voting": "A note for the others, saved with your vote. A question for one of them goes in Discussion, below"
+        "settling": "Note for the record (optional)",
+        "voting": "Note for the others (optional)"
       },
       "settle": {
         "title": "Settle this conflict",
@@ -9397,8 +9406,7 @@
         "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
         "unsure": "Only {sure, number, percent} sure",
         "sure": "{sure, number, percent} sure"
-      },
-      "helpAnswering": "Answering is optional, and a vote alone is enough. A No on a must-have points to Exclude, and that must-have is the reason when you exclude. Otherwise Exclude asks only whether there is a reason: none, a duplicate, or another you write down."
+      }
     },
     "sources": {
       "add": "Add",
@@ -9461,7 +9469,7 @@
         "read": "{read, number} of {total, number} read",
         "inIndex": "<n>{count, number}</n> in the index",
         "knownNoAbstract": "In the index, no abstract",
-        "fileWithPages": "Read as its PDF, {count, plural, one {# page} other {# pages}}",
+        "fileWithPages": "Read from the PDF, {count, plural, one {# page} other {# pages}}",
         "list": "The PDFs of this source",
         "pager": "PDFs",
         "loading": "Loading the PDFs"
@@ -9489,8 +9497,8 @@
         "notConnected": "Zotero isn't connected",
         "connectWhy": "Connect it to pick from your Zotero library and Zotero groups.",
         "connect": "Connect Zotero",
-        "withSubCollections": "With its sub-collections",
-        "aboutUnder": "About {count, number} with its sub-collections",
+        "withSubCollections": "With sub-collections",
+        "aboutUnder": "About {count, number} with sub-collections",
         "library": "Zotero library",
         "findGroup": "Find a group",
         "yours": "Yours",
@@ -9585,7 +9593,7 @@
       },
       "pdf": {
         "known": "In the index",
-        "file": "Read as its PDF",
+        "file": "Read from the PDF",
         "broken": "Doesn't open",
         "waiting": "Reading it"
       },

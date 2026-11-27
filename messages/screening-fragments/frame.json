@@ -71,7 +71,7 @@
     "papersRead": "{done, number} of {of, plural, one {# paper} other {# papers}} read",
     "turnsTitle": "Models take turns",
     "atATime": "{count, plural, one {# paper at a time} other {# papers at a time}}",
-    "turnsHelp": "{workspace}'s models read {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+    "turnsHelp": "{personal, select, true {Your models read} other {The models of {workspace} read}} {count, plural, one {# paper} other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
     "modelReading": "<model>{name}</model> reading",
     "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
     "read": "{done, number} of {of, number}"
@@ -121,7 +121,9 @@
     "title": "Add {name} as a reviewer?",
     "confirm": "Add as reviewer",
     "noCriteria": "A model votes by answering the criteria, and this screening has none yet. It would include every paper it reads.",
-    "addCriteria": "Add criteria"
+    "addCriteria": "Add criteria",
+    "noMustHave": "A model excludes a paper only for a must-have it fails, and none of these criteria is a must-have. It would include every paper it reads.",
+    "markMustHave": "Make a criterion a must-have"
   },
   "takeOff": {
     "viewerTitle": "Stop {name} voting?",
@@ -150,7 +152,7 @@
     "personalElse": "Anyone else has it only once it is shared with them, either as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
     "membersSee": "Members of {workspace} see this screening and can change it. Those who are reviewers get papers and vote on them.",
     "outsideHas": "Someone outside {workspace} has it only once it is shared with them, either as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
-    "modelToo": "{you, select, true {A model is a reviewer too. It reads every open paper and votes, paid from your credits.} other {A model is a reviewer too. It reads every open paper and votes, paid from {workspace}'s credits.}}",
+    "modelToo": "{you, select, true {A model is a reviewer too. It reads the papers still open and votes, paid from your credits.} other {A model is a reviewer too. It reads the papers still open and votes, paid from the workspace's credits.}}",
     "close": "Close",
     "addAs": "Add people as",
     "finishedAdds": "This screening is finished, so people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",

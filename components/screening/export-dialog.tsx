@@ -61,7 +61,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const { figures } = useFigures(id);
 
   // Every file is built by export.ts, from the screening as it stands and from the papers as the server gives them to whoever takes the file out: what is hidden from them on a page is hidden from them in the file.
-  const out: Taken = { screening: state.filed, counts, me: state.me, figures, invited: state.invited };
+  const out: Taken = { screening: state.filed, counts, me: state.me, figures, invited: state.invited, kept: state.keepsVotes };
   const blind = screening.rule.blind === "after";
   const reviewers = inOrder(votingReviewers(screening), state.me);
   // The papers by where they stand, as the server has counted them.

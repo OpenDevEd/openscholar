@@ -97,10 +97,12 @@
     "answerLabel": "Your answer to {name}",
     "askLabel": "Your question for {name}",
     "allLabel": "Your message",
-    "send": "Send"
+    "send": "Send",
+    "earlier": "Show earlier messages",
+    "loading": "Reading the discussion"
   },
   "pdf": {
-    "readAs": "{pages, plural, =0 {Read as its PDF} one {Read as its PDF, # page} other {Read as its PDF, # pages}}",
+    "readAs": "{pages, plural, =0 {Read from the PDF} one {Read from the PDF, # page} other {Read from the PDF, # pages}}",
     "openTab": "Open the PDF in a new tab",
     "onItsWay": "The PDF is on its way",
     "cantShow": "This PDF can't be shown here. Open it in a new tab."

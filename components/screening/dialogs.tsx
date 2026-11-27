@@ -3,6 +3,7 @@
 // What opens over an open screening: its activity, and everyone who is on it or has it.
 // Every row that names a paper, a check, a setting or a person opens it, and closes what it is in on the way.
 
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { useDeferredValue, useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -60,6 +61,8 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
           <SheetDescription className="sr-only">{t("activitySheet.says")}</SheetDescription>
         </SheetHeader>
         <ScrollArea shades className="min-h-0 flex-1">
+          {/* Opened before its rows are in (from a list's menu), it holds their room. */}
+          {changes.status === "LoadingFirstPage" ? <ListRowsSkeleton rows={6} height={60} label={t("activitySheet.says")} /> : null}
           <ol className="divide-y divide-border-subtle">
             {changes.results.map((change) => {
               const scheduled = change.code === "scheduledCheck";

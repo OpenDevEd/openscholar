@@ -213,10 +213,11 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
   const change = !reviewer || reviewer.email ? null : reviewer.model ? { addModels: [{ model: reviewer.model.id, ...(reviewer.model.effort ? { effort: reviewer.model.effort } : {}) }] } : { addPeople: [reviewer.id as Id<"users">] };
   const counted = useSWR(change ? ["screening-add", id, reviewer!.id] : null, () => previewChange({ jobId: id, change: change! }), { revalidateOnFocus: false });
   const preview = counted.data ?? NO_PREVIEW;
-  const noCriteria = Boolean(reviewer?.model && !screening.criteria.length);
+  // A model excludes only for a must-have it fails: without one it would include every paper it reads, and the server refuses it (convex/screening/reviewers.ts).
+  const noCriteria = Boolean(reviewer?.model && !screening.criteria.some((criterion) => criterion.must));
   const after: Screening | null = reviewer ? withTwins({ ...screening, reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer] }, words.modelAtEffort) : null;
   return (
-    <ConfirmChange open={reviewer !== null} title={reviewer ? t("add.title", { name: reviewer.name }) : ""} confirm={t("add.confirm")} disabled={noCriteria || (change !== null && counted.isLoading)} onClose={onClose} onConfirm={() => void (reviewer && onConfirm(reviewer).catch(failed(t)))}>
+    <ConfirmChange open={reviewer !== null} title={reviewer ? t("add.title", { name: reviewer.name }) : ""} confirm={t("add.confirm")} disabled={noCriteria || (change !== null && (counted.isLoading || Boolean(counted.error)))} onClose={onClose} onConfirm={() => void (reviewer && onConfirm(reviewer).catch(failed(t)))}>
       {reviewer && after ? (
         <>
           {reviewer.model ? (
@@ -229,8 +230,8 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
           )}
           {noCriteria ? (
             <Panel tone="warning" className="space-y-3 rounded-xl p-3">
-              <p className="text-sm ink-warning">{t("add.noCriteria")}</p>
-              <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>{t("add.addCriteria")}</NextLink></Button>
+              <p className="text-sm ink-warning">{screening.criteria.length ? t("add.noMustHave") : t("add.noCriteria")}</p>
+              <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>{screening.criteria.length ? t("add.markMustHave") : t("add.addCriteria")}</NextLink></Button>
             </Panel>
           ) : (
             <EffectList lines={effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict })} />

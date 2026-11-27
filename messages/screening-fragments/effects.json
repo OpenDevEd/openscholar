@@ -4,7 +4,7 @@
   "model": {
     "startsLater": "{name} starts once the papers arrive",
     "nothingToRead": "{name} has no papers left to read",
-    "reads": "{name} reads {upTo, select, true {up to {count, plural, one {# paper} other {# papers}}} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
+    "reads": "{name} reads {upTo, select, true {the open papers nobody settles first, {count, plural, one {# paper} other {# papers}} today} other {{all, select, true {all {count, plural, one {# paper} other {# papers}}} other {the {count, plural, one {# paper} other {# papers}} not settled yet}}}}{when, select, gathered { once all the papers arrive} finished { once the screening is reopened} paused { once the models resume} credits { once the workspace has enough credits for its next paper} waiting { once it is this screening's turn} save { as soon as this is saved} other {}}"
   },
   "person": {
     "invited": "{name} gets an invitation by email, and papers once they join",
@@ -116,6 +116,7 @@
     "scheduledFound": "The scheduled check found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
     "scheduledNone": "The scheduled check found no new papers",
     "known": "{count, plural, one {# was} other {# were}} already in the screening",
+    "leftOut": "{count, plural, one {# was left out} other {# were left out}}",
     "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
     "reopenedByCheck": "The screening is open again",
     "changed": "Changed {parts}",

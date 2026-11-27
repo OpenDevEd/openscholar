@@ -135,8 +135,8 @@ export const hash = (text: string) => [...text].reduce((sum, char) => (Math.imul
 
 /** How many people a paper goes to, of the people there are. */
 export const readersFor = (each: Rule["each"], people: number) => (each === "all" ? people : Math.min(each, people));
-/** Whether the models' votes are only advice where `people` people and `models` models vote on a paper (`settle` leaves them out). Under "first vote decides" a person decides anyway, and a paper no person has is settled by its models. */
-export const modelsAdvise = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.models === "advice" && rule.settle !== "one" && people > 0 && models > 0;
+/** Whether the models' votes are only advice where `people` people and `models` models vote on a paper: set so, or under "first vote decides", where a person's vote decides a paper they have. A paper no person has is settled by its models. */
+export const modelsAdvise = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => (rule.models === "advice" || rule.settle === "one") && people > 0 && models > 0;
 /** Whether a paper can be in conflict: only where more than one vote settles it. One person, or one person with the models as advice, or "first vote decides", never splits, and nobody need settle anything. */
 export const canConflict = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.settle !== "one" && (modelsAdvise(rule, people, models) ? 0 : models) + people > 1;
 

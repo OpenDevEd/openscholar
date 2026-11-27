@@ -1122,7 +1122,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} {...searchLook(offer)} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
                       </div>
-                      {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length, ...(kind === "search" ? { total: searches.total, pageCount: searches.pageCount } : {}) }} /> : null}
+                      {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={kind === "search" ? t("papers.pagerSearches") : kind === "collection" ? t("papers.pagerCollections") : kind === "screening" ? t("papers.pagerScreenings") : t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length, ...(kind === "search" ? { total: searches.total, pageCount: searches.pageCount } : {}) }} /> : null}
                       </AutoHeight>
                     </div>
                     )}
@@ -1538,7 +1538,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className="mt-0.5 size-4 shrink-0 self-start ink-warning" /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">{line.label}</span>
-                    <span className="block truncate text-sm font-medium">{line.value}</span>
+                    <span className="block text-sm font-medium [overflow-wrap:anywhere]">{line.value}</span>
                   </span>
                   {line.aside}
                   <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />

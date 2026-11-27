@@ -6,9 +6,11 @@
 import { useRef, useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
-import { Hourglass, MessagesSquare, Send } from "@/components/icons";
+import { ChevronUp, Hourglass, MessagesSquare, Send } from "@/components/icons";
+import { ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -93,6 +95,10 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
       help={about(t, open)}
       aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{t("discussion.askedYou", { name: firstName(owed.name) })}</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>{t("discussion.waitingFor", { name: firstName(waitingFor.name) })}</StateChip> : null}
     >
+      {/* While the first lines are read, their room is held: "nobody has written" is said only once it is known. */}
+      {lines.status === "LoadingFirstPage" ? <ListRowsSkeleton rows={Math.max(1, Math.min(paper.messages ?? 1, 3))} height={44} icon={false} label={t("discussion.loading")} /> : null}
+      {/* Older lines than the latest page are there to read, a page at a time. */}
+      {lines.status === "CanLoadMore" || lines.status === "LoadingMore" ? <Button variant="ghost" size="sm" className="w-full" disabled={lines.status === "LoadingMore"} onClick={() => lines.loadMore(LINES)}>{lines.status === "LoadingMore" ? <Spinner className="size-4" /> : <ChevronUp />}{t("discussion.earlier")}</Button> : null}
       {said.length ? (
         // Each line carries its own room over and under it, so one that arrives opens from nothing with no gap jumping in beside it. The list takes that room back at its two ends, inside a box of its own so the room between it and the field stays.
         <div>
@@ -131,7 +137,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
         </div>
       ) : null}
       {/* Someone who only looks reads what was written, and is told who writes here. Nothing is left out for them without a word. */}
-      {maySay ? null : <ShutNote by="reviewer">{t("discussion.readOnly", { empty: String(!said.length), join: String(open.canChange && !open.screening.finishedAt) })}</ShutNote>}
+      {maySay || lines.status === "LoadingFirstPage" ? null : <ShutNote by="reviewer">{t("discussion.readOnly", { empty: String(!said.length), join: String(open.canChange && !open.screening.finishedAt) })}</ShutNote>}
       {maySay ? (
         <div className="space-y-2 rounded-2xl border border-border-subtle p-2.5">
           {/* Who the line is for: everyone on the paper, or one reviewer, which makes it a question that waits with them. The line under the choices says which, and is always there, so choosing moves nothing. */}
