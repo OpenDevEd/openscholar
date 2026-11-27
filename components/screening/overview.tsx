@@ -1007,7 +1007,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                       )}
                       {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
                       {/* The names under the chip, where a long search wraps instead of being cut off. */}
-                      {check.unread ? <LinkChip href={settingsHref(screening.id, "papers")} tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</LinkChip> : null}
+                      {check.unread ? <SettingsChip open={open} part="papers" tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</SettingsChip> : null}
                       {check.unread ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? []))}</p> : null}
                     </div>
                   </div>

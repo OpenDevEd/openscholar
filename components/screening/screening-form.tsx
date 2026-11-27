@@ -57,7 +57,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
 import { advisory, EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
-import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useWorkspaceHref, useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { bringsPdfs, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
@@ -70,7 +70,7 @@ import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help,
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
-import { searchHistory, leaveBehind } from "./address";
+import { searchHistory, leaveBehind, useOpenInAddress } from "./address";
 import { useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -199,6 +199,9 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     ...(recheck ? { recheck: true } : {}),
   };
 }
+
+/** The Discard question, open in the address (./address.ts). */
+const DISCARD_OPEN = ["edits"] as const;
 
 /** Where a source can be read as it stands, in a new tab: a search runs again, a collection opens where it lives, a screening opens its included papers. A file or pasted DOIs have nowhere to open. */
 function sourceLink(source: Pick<Source, "set">): { href: string; where: "search" | "library" | "collection" | "screening" | "zotero" } | null {
@@ -333,6 +336,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const effectsSay = { words, t: effects };
   const say = { words, t, effects: effectsSay };
   const router = useWorkspaceRouter();
+  // A source's own page, in the workspace this screening is in: a bare path would open the person's own workspace.
+  const hrefHere = useWorkspaceHref();
   const convex = useConvex();
   const workspaceId = usePageWorkspace();
   const here = useCurrentWorkspace();
@@ -438,7 +443,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   });
   // What the last save did, shown under Changes until the next edit.
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
+  // Asking before unsaved changes are thrown away: a step in the history, as any dialog over the page is, so Back closes it (./address.ts). The list it shows is kept as it was asked about, so it doesn't empty while it closes.
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
+  const [asksDiscard, setAsksDiscard] = useOpenInAddress("discard", DISCARD_OPEN);
   const [busy, setBusy] = useState(false);
   // Why the server wouldn't start it, said in the bar beside the button: a toast would sit over the button itself.
   const [refused, setRefused] = useState<string | null>(null);
@@ -974,7 +981,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const busy = source.read?.state === "reading" || source.read?.state === "waiting" ? t("papers.readingIt") : null;
                         const stopped = source.read?.state === "failed";
                         const itemsLabel = leftOut ? t("papers.leftOutCount", { count: leftOut }) : null;
-                        const link = sourceLink(source);
+                        const found = sourceLink(source);
+                        const link = found && { ...found, href: found.href.startsWith("/") ? hrefHere(found.href) : found.href };
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own were duplicates: papers another source already had, or that it lists twice itself.
                         const grew = grown(source);
                         const grewDoubled = (source.updates ?? []).reduce((sum, update) => sum + update.duplicates, 0);
@@ -1689,15 +1697,15 @@ export function ScreeningForm({ id }: { id?: string }) {
             </span>
             {holdUp ? <Blocker block={holdUp} /> : null}
             <div className="ms-auto flex items-center gap-2">
-              <Button variant="ghost" onClick={() => setDiscarding(edits)}>{t("bar.discard")}</Button>
+              <Button variant="ghost" onClick={() => { setDiscarding(edits); setAsksDiscard("edits"); }}>{t("bar.discard")}</Button>
               <Button disabled={Boolean(holdUp) || counting || countFailed} onClick={save}><Check />{t("bar.save")}</Button>
             </div>
           </div>
         </ActionBar>
       ) : null}
-      <ConfirmChange open={discarding !== null} title={t("bar.discardTitle", { count: discarding?.length ?? 0 })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setDiscarding(null)} onConfirm={discard}>
+      <ConfirmChange open={asksDiscard !== null && (discarding ?? edits).length > 0} title={t("bar.discardTitle", { count: (discarding ?? edits).length })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setAsksDiscard(null)} onConfirm={discard}>
         <ul className="space-y-1.5">
-          {discarding?.map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
+          {(discarding ?? edits).map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
         </ul>
       </ConfirmChange>
     </>
