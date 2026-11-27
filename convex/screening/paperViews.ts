@@ -71,6 +71,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
   return {
     id: paper._id,
     key: paper.paperKey,
+    ...(paper.withdrawn ? { withdrawn: true as const } : {}),
     title: paper.title,
     authors: paper.authors,
     ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),

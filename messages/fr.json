@@ -7822,7 +7822,7 @@
         "untilVotedAdvice": "Un évaluateur voit les votes des autres personnes sur un article une fois qu'il a voté dessus ou que l'article est tranché. Les votes des modèles s'affichent avant, comme avis",
         "never": "Tout le monde voit chaque vote dès qu'il est émis",
         "untilVoted": "Un évaluateur voit les autres votes sur un article une fois qu'il a voté dessus ou que l'article est tranché",
-        "discussion": "La discussion d’un article s’affiche pour un évaluateur au même moment"
+        "discussion": "Un évaluateur lit la discussion d'un article dès qu'il peut en voir les votes"
       },
       "criteria": {
         "modelsAnswerNew": "Les modèles répondent {count, plural, one {au nouveau critère} other {aux nouveaux critères}} sur les articles ouverts qu'ils ont lus",
@@ -8396,7 +8396,7 @@
         "whoSettles": "Qui tranche un désaccord",
         "seeVotes": "Les évaluateurs voient les autres votes",
         "seeingTitle": "Voir les autres votes",
-        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment. Le niveau d'accord entre les évaluateurs, et la façon dont chacun a voté dans l'ensemble, s'affichent pour un évaluateur dès qu'aucun article n'attend plus son vote.",
+        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment. Le niveau d'accord entre les évaluateurs, et la façon dont chacun a voté dans l'ensemble, s'affichent pour un évaluateur dès qu'aucun article n'attend plus son vote. La discussion d'un article s'affiche quand ses votes s'affichent.",
         "after": "Après leur vote",
         "always": "À tout moment",
         "withVotes": "{count, plural, one {Avec # vote sur un article, par exemple} other {Avec # votes sur un article, par exemple}}",
@@ -8854,7 +8854,7 @@
         "doneAfter": "<b>Tout le monde aura fini dans environ {afterWeeks, plural, =0 {{afterDays, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}</b>{same, select, true {<muted>, comme maintenant</muted>} other {<muted>, contre environ {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}} maintenant</muted>}}",
         "startsAt": "Le nombre de départ laisse aux deux autant d'articles l'un que l'autre. Les articles les plus bas dans {you, select, true {votre file} other {la file de {name}}} partent. Les votes déjà émis restent où ils sont.",
         "hasAll": "{takerYou, select, true {Vous avez déjà} other {{taker} a déjà}} {giverYou, select, true {tous vos articles} other {tous les articles de {giver}}}.",
-        "noneNear": "{takerYou, select, true {Vous avez déjà} other {{taker} a déjà}} tous les articles de la fin de la file de {giverYou, select, true {vous} other {{giver}}}, l’extrémité d’où un déplacement prend les articles.",
+        "noneNear": "{takerYou, select, true {Vous avez déjà} other {{taker} a déjà}} les derniers articles de la file de {giverYou, select, true {vous} other {{giver}}}. Déplacez des articles vers quelqu'un d'autre.",
         "nobodyElse": "Il n'y a personne d'autre vers qui déplacer des articles.",
         "doneIn": "Fini dans environ {weeks, plural, =0 {{days, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}"
       },
@@ -9140,7 +9140,7 @@
       "back": "Retour",
       "panel": {
         "placeOf": "{at, number} sur {of, number}",
-        "notInList": "Pas dans cette liste",
+        "notInList": "N'est plus dans cette liste",
         "close": "Fermer",
         "paper": "Article",
         "says": "Le résumé, les votes et le résultat de cet article",
@@ -9377,6 +9377,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Ce criblage est terminé, plus aucun vote n'est émis. Rouvrez-le pour voter de nouveau.} other {Ce criblage est terminé, plus aucun vote n'est émis.}}",
+        "left": "Cet article a quitté le tri avec sa source. Ses votes restent enregistrés et ne comptent pas",
         "settler": "{you, select, true {Vous tranchez les désaccords de ce criblage. Vous pouvez les lire ici.} other {{name} tranche les désaccords de ce criblage. Vous pouvez les lire ici.}}"
       },
       "through": {

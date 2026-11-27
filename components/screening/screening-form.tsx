@@ -670,7 +670,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Another screening's criteria are read when they are asked for, and added to the ones here with their points.
   // Several at once say so when the list has no room for all of them.
   const addCriteria = (questions: { text: string; short?: string; terms?: string[] }[]) => {
-    if (questions.length > MAX_QUESTIONS - draft.criteria.length) toast(t("criteria.full", { count: MAX_QUESTIONS }));
+    const fresh = [...new Set(questions.map((one) => one.text.trim().toLowerCase()).filter((text) => text && !draft.criteria.some((criterion) => criterion.text.toLowerCase() === text)))];
+    if (fresh.length > MAX_QUESTIONS - draft.criteria.length) toast(t("criteria.full", { count: MAX_QUESTIONS }));
     questions.forEach((one) => addCriterion(one.text, { ...(one.short ? { short: one.short } : {}), ...(one.terms ? { terms: one.terms } : {}) }));
   };
   const copyCriteria = async (one: { id: Id<"screeningJobs"> }) => {
@@ -684,7 +685,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     });
   };
   const copyable = screenings.items.filter((one) => one.id !== id && one.criteria > 0).slice(0, 8);
-  const cantWrite = !draft.question.trim() ? t("criteria.needQuestion") : null;
+  // Writing more costs credits, so it waits for a question to write from and for room on the list.
+  const cantWrite = !draft.question.trim() ? t("criteria.needQuestion") : draft.criteria.length >= MAX_QUESTIONS ? t("criteria.full", { count: MAX_QUESTIONS }) : null;
   // A model writes yes-or-no criteria from the research question, each with a short name and the words to mark for whoever votes.
   const writeCriteria = async () => {
     setWriting(true);
@@ -836,7 +838,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       : kind === "collection"
         ? { rows: [...(collections.page === 1 ? [{ ref: "saved", name: t("offer.allSaved"), detail: t("offer.library"), total: savedCount ?? 0, set: { kind: "saved" as const } }] : []), ...collections.items.map((one) => ({ ref: `collection:${one._id}`, name: one.name, detail: "", total: one.itemCount, set: { kind: "collection" as const, collectionId: one._id } }))], pager: collections, loading: collections.isLoading || savedCount === undefined }
         : { rows: withIncluded.items.filter((one) => one.id !== id).map((one) => ({ ref: `screening:${one.id}`, name: words.includedIn(one.name), detail: one.finishedAt ? t("offer.finished") : t("offer.running"), total: one.counts.include, set: { kind: "screening" as const, jobId: one.id } })), pager: withIncluded, loading: withIncluded.isLoading };
-  const importable = draft.sources.flatMap((source) => (source.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })));
+  const importable = draft.sources.flatMap((source) => (source.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text.toLowerCase() === question.trim().toLowerCase())).map((question) => ({ question, source })));
   const importSearches = new Set(importable.map(({ source }) => source.id)).size;
   const suggested = draft.name || draft.sources[0] ? words.includedIn(draft.name || draft.sources[0]!.name) : t("includedPapers");
   // A started screening's own collection already holds what it has included: it is a collection like the others, which can be renamed.
@@ -1403,7 +1405,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             </div>
                             {draft.criteria.map((criterion) => (
                               <div key={criterion.key} className="grid grid-cols-[minmax(0,1fr)_repeat(3,3.5rem)] items-center gap-2">
-                                <span className="flex min-w-0 items-center gap-2 text-sm"><span className="min-w-0">{criterion.text}</span>{criterion.must ? <Chip className="shrink-0">{t("criteria.must")}</Chip> : null}</span>
+                                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm"><span className="min-w-0 [overflow-wrap:anywhere]">{criterion.short || criterion.text}</span>{criterion.must ? <Chip className="shrink-0">{t("criteria.must")}</Chip> : null}</span>
                                 {[0, 1, 2].map((slot) => (
                                   <Input key={slot} type="number" value={draft.scoring.points[criterion.key]?.[slot] ?? 0} onChange={(event) => set({ scoring: { ...draft.scoring, points: { ...draft.scoring.points, [criterion.key]: (draft.scoring.points[criterion.key] ?? [1, 0, 0]).map((points, at) => (at === slot ? Number(event.target.value) : points)) as [number, number, number] } } })} aria-label={t("scoring.pointsFor", { answer: (["yes", "no", "unclear"] as const)[slot]!, name: criterionName(effectsSay, criterion) })} className="h-8 px-1 text-center text-sm tabular-nums" />
                                 ))}
@@ -1480,7 +1482,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </AnimatePresence>
               {guestsLeft.length ? <p className="flex items-start gap-2 px-4 py-2.5 text-xs text-muted-foreground"><Users aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("reviewers.guestsLeft", { count: guestsLeft.length, names: words.listed(guestsLeft) })}</span></p> : null}
               <div className="grid gap-2 px-4 py-2.5 sm:grid-cols-2">
-                <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
+                <AddPerson exclude={people.map((person) => person.id)} {...(saved ? { screening: saved.id } : {})} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />{t("reviewers.addPerson")}</Button>
                 </AddPerson>
                 <AddModel taken={models.map((model) => modelKey(model.model!))} pdfs={pdfs} onPick={(model) => addReviewer(modelReviewer(model, Date.now()))}>

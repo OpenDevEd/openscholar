@@ -86,15 +86,16 @@ type Readable = Pick<Doc<"screeningResults">, "abstract" | "file" | "pages">;
 export const teamFor = <Team extends { people: string[]; models: string[] }>(team: Team, paper: Readable, reads: Reads): Team =>
   paper.abstract || !paper.file ? team : { ...team, models: team.models.filter((id) => readsPdfOf(reads.get(id), paper.pages ?? 0)) };
 
-/** Questions put to one person on one screening that its pages count and open: the first of them. */
+/** Questions put to one person on one screening that its pages count and open, and how many open ones are looked through for them: papers that left with their source are passed over first. */
 const ASKED_SHOWN = 50;
+const ASKED_LOOKED = 100;
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
 export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
-  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
+  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_LOOKED);
   // A paper that left with its source keeps its question for when it comes back, and asks nothing while it is out.
   const papers = [...new Set(open.map((message) => message.resultId))];
   const out = await Promise.all(papers.map(async (id) => Boolean((await ctx.db.get("screeningResults", id))?.withdrawn)));
-  return papers.filter((_, at) => !out[at]);
+  return papers.filter((_, at) => !out[at]).slice(0, ASKED_SHOWN);
 }
 
 /** Where a question put to someone is opened for them to answer. */

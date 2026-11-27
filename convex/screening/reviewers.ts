@@ -138,6 +138,9 @@ export const leave = internalMutation({
 export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, reviewer: Reviewer, discard: boolean) {
   if (reviewer.left !== undefined) return;
   const now = Date.now();
+  // A guest who votes becomes one who looks, however they are taken off (the People dialog, Settings): nothing that reopens it puts them back on (./dealing.ts `placeGuests`).
+  const grant = reviewer.userId ? await grantOf(ctx, job._id, reviewer.userId) : null;
+  if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
   const rule = job.rule;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
@@ -239,9 +242,8 @@ export const remove = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (reviewer?.jobId !== jobId) throw createError("NOT_FOUND", "They aren't on this screening.");
-    // A guest who votes becomes one who looks: their place as a guest decides whether they vote (`guestChanged`).
+    // A guest who votes becomes one who looks (`takeOff`): Activity says so.
     const grant = reviewer.userId ? await grantOf(ctx, jobId, reviewer.userId) : null;
-    if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
     await takeOff(ctx, job, reviewer, discard === true);
     await logChange(ctx, actor, job, grant?.role === "editor" ? "madeViewer" : "reviewerRemoved", { detail: await calledOf(ctx, reviewer), more: discard ? [{ code: "votesDiscarded" }] : [] });
     return null;

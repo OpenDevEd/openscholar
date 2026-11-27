@@ -301,7 +301,7 @@ export function flowOf(out: Taken): FlowRow[] {
   // What the sources held and the screening never took: the duplicates merged, papers with no abstract, and what couldn't be read or found.
   const { left, bare, merged } = removedOf(screening.sources);
   const found = kept + merged;
-  const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
+  const looks = figures?.checks ?? { later: 0, listed: 0, found: 0, added: 0 };
   // The records with no abstract that came with their own PDF are read as that: the stage then says how many were read each way.
   const filed = filedOf(screening.sources);
   const on = filed ? "" : " on title and abstract";
@@ -381,7 +381,7 @@ export function methodsOf(out: Taken) {
   // Sources that gave some records and then failed: what they gave is counted, the rest isn't.
   const partlyRead = screening.sources.filter((source) => source.read?.state === "failed" && taken(source) + leftOf(source) > 0);
   const found = kept + merged;
-  const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
+  const looks = figures?.checks ?? { later: 0, listed: 0, found: 0, added: 0 };
   // The people per record the rule asks for, counting invitations still waiting, as every page counts them.
   const { people, each, invited } = readersOf(screening, out.invited ?? []);
   const [models, reviewers] = [modelsOf(screening), activeReviewers(screening)];

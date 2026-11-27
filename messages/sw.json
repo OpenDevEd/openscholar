@@ -7823,7 +7823,7 @@
         "untilVotedAdvice": "Mkaguzi anaona kura za watu wengine kwenye makala akishaipigia kura au ikishaamuliwa. Kura za modeli zinaonekana kabla ya hapo, kama ushauri",
         "never": "Kila mtu anaona kila kura inapopigwa",
         "untilVoted": "Mkaguzi anaona kura nyingine kwenye makala akishaipigia kura au ikishaamuliwa",
-        "discussion": "Majadiliano ya makala yanaonekana kwa mkaguzi wakati huo huo"
+        "discussion": "Mkaguzi anasoma majadiliano ya makala anapoweza kuona kura zake"
       },
       "criteria": {
         "modelsAnswerNew": "Modeli zinajibu {count, plural, one {kigezo kipya} other {vigezo vipya}} kwenye makala zilizo wazi ambazo zimesoma",
@@ -8397,7 +8397,7 @@
         "whoSettles": "Nani anaamua mgongano",
         "seeVotes": "Wakaguzi wanaona kura nyingine",
         "seeingTitle": "Kuona kura nyingine",
-        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote. Kiwango ambacho wakaguzi wanakubaliana, na jinsi kila mmoja alivyopiga kura kwa jumla, huonekana kwa mkaguzi pale ambapo hakuna makala inayosubiri kura yake.",
+        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote. Kiwango ambacho wakaguzi wanakubaliana, na jinsi kila mmoja alivyopiga kura kwa jumla, huonekana kwa mkaguzi pale ambapo hakuna makala inayosubiri kura yake. Majadiliano ya makala yanaonekana kura zake zinapoonekana.",
         "after": "Baada ya kupiga kura",
         "always": "Wakati wowote",
         "withVotes": "{count, plural, one {Na kura # kwenye makala, kwa mfano} other {Na kura # kwenye makala, kwa mfano}}",
@@ -8855,7 +8855,7 @@
         "doneAfter": "<b>Wote watamaliza baada ya takriban {afterWeeks, plural, =0 {{afterDays, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}</b>{same, select, true {<muted>, sawa na sasa</muted>} other {<muted>, ilhali sasa ni takriban {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}</muted>}}",
         "startsAt": "Inaanzia kwenye idadi inayowaachia wote wawili makala sawa kwa sawa. Makala za mwisho kabisa kwenye foleni {you, select, true {yako} other {ya {name}}} ndizo zinazoenda. Kura zilizokwisha kupigwa zinabaki zilipo.",
         "hasAll": "{takerYou, select, true {Tayari una} other {{taker} tayari ana}} makala zote {giverYou, select, true {zako} other {za {giver}}}.",
-        "noneNear": "{takerYou, select, true {Tayari una} other {{taker} tayari ana}} kila makala mwishoni mwa foleni ya {giverYou, select, true {wewe} other {{giver}}}, upande ambao uhamisho huchukua makala.",
+        "noneNear": "{takerYou, select, true {Tayari una} other {{taker} tayari ana}} makala za mwisho kwenye foleni ya {giverYou, select, true {wewe} other {{giver}}}. Hamishia makala kwa mtu mwingine.",
         "nobodyElse": "Hakuna mtu mwingine wa kumhamishia makala.",
         "doneIn": "Atamaliza baada ya takriban {weeks, plural, =0 {{days, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}"
       },
@@ -9141,7 +9141,7 @@
       "back": "Rudi",
       "panel": {
         "placeOf": "{at, number} kati ya {of, number}",
-        "notInList": "Haipo kwenye orodha hii",
+        "notInList": "Haipo tena kwenye orodha hii",
         "close": "Funga",
         "paper": "Makala",
         "says": "Muhtasari, kura na matokeo ya makala hii",
@@ -9378,6 +9378,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Uchujaji huu umekamilika, kwa hivyo hakuna kura zaidi zinazopigwa. Ufungue tena ili upige kura tena.} other {Uchujaji huu umekamilika, kwa hivyo hakuna kura zaidi zinazopigwa.}}",
+        "left": "Makala hii iliondoka kwenye uchujaji pamoja na chanzo chake. Kura zake zinabaki kwenye kumbukumbu na hazihesabiwi",
         "settler": "{you, select, true {Wewe unaamua migongano kwenye uchujaji huu. Unaweza kuisoma hapa.} other {{name} anaamua migongano kwenye uchujaji huu. Unaweza kuisoma hapa.}}"
       },
       "through": {

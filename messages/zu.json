@@ -7822,7 +7822,7 @@
         "untilVotedAdvice": "Umbuyekezi ubona amavoti abanye abantu ephepheni uma esevotile kulo noma selixazululiwe. Amavoti amamodeli ayabonakala ngaphambi kwalokho, njengeseluleko",
         "never": "Wonke umuntu ubona onke amavoti njengoba efakwa",
         "untilVoted": "Umbuyekezi ubona amanye amavoti ephepheni uma esevotile kulo noma selixazululiwe",
-        "discussion": "Ingxoxo yephepha ivela kumbuyekezi ngesikhathi esifanayo"
+        "discussion": "Umbuyekezi ufunda ingxoxo yephepha uma esekwazi ukubona amavoti alo"
       },
       "criteria": {
         "modelsAnswerNew": "Amamodeli aphendula {count, plural, one {umbandela omusha} other {imibandela emisha}} kumaphepha avulekile asewafundile",
@@ -8396,7 +8396,7 @@
         "whoSettles": "Ubani oxazulula ukungqubuzana",
         "seeVotes": "Ababuyekezi babona amanye amavoti",
         "seeingTitle": "Ukubona amanye amavoti",
-        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Amavoti amamodeli ayiseluleko kuphela ayabonakala ngaphambi kwalokho. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini. Ukuthi ababuyekezi bavumelana kangakanani, nokuthi ngamunye wavota kanjani sekukonke, kubonakala kumbuyekezi lapho kungasekho phepha elilinde ivoti lakhe.",
+        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Amavoti amamodeli ayiseluleko kuphela ayabonakala ngaphambi kwalokho. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini. Ukuthi ababuyekezi bavumelana kangakanani, nokuthi ngamunye wavota kanjani sekukonke, kubonakala kumbuyekezi lapho kungasekho phepha elilinde ivoti lakhe. Ingxoxo yephepha ivela uma amavoti alo evela.",
         "after": "Ngemuva kokuthi bevotile",
         "always": "Noma nini",
         "withVotes": "{count, plural, one {Nevoti elilodwa elingu-# ephepheni, isibonelo} other {Namavoti angu-# ephepheni, isibonelo}}",
@@ -8854,7 +8854,7 @@
         "doneAfter": "<b>Bonke bazoqeda cishe {afterWeeks, plural, =0 {{afterDays, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}</b>{same, select, true {<muted>, njengamanje</muted>} other {<muted>, lapho manje kucishe kube {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {wusuku olulodwa} other {yizinsuku ezingu-#}}} one {yiviki elilodwa} other {ngamaviki angu-#}}</muted>}}",
         "startsAt": "Kuqala esibalweni esishiya bobabili benamaphepha alinganayo. Kuhamba amaphepha asezansi kakhulu {you, select, true {emgqeni wakho} other {emgqeni ka-{name}}}. Amavoti asevele efakiwe ahlala lapho ekhona.",
         "hasAll": "{takerYou, select, true {Usevele unawo} other {{taker} usevele unawo}} wonke amaphepha {giverYou, select, true {akho} other {ka-{giver}}}.",
-        "noneNear": "{takerYou, select, true {Usunawo} other {U-{taker} usenawo}} wonke amaphepha asekugcineni kolayini {giverYou, select, true {wakho} other {ka-{giver}}}, uhlangothi ukuhambisa okuthatha kulo amaphepha.",
+        "noneNear": "{takerYou, select, true {Usunawo} other {U-{taker} usenawo}} amaphepha okugcina kolayini {giverYou, select, true {wakho} other {ka-{giver}}}. Hambisa amaphepha komunye umuntu.",
         "nobodyElse": "Akekho omunye ongahanjiselwa amaphepha.",
         "doneIn": "Kuqedwa cishe {weeks, plural, =0 {{days, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}"
       },
@@ -9140,7 +9140,7 @@
       "back": "Emuva",
       "panel": {
         "placeOf": "{at, number} kwa-{of, number}",
-        "notInList": "Akukho kulolu hlu",
+        "notInList": "Akusekho kulolu hlu",
         "close": "Vala",
         "paper": "Iphepha",
         "says": "Isifingqo, amavoti nomphumela waleli phepha",
@@ -9377,6 +9377,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Lokhu kuskrini kuqediwe, ngakho awasafakwa amavoti. Kuvule futhi ukuze uvote futhi.} other {Lokhu kuskrini kuqediwe, ngakho awasafakwa amavoti.}}",
+        "left": "Leli phepha lisuke ekuhlungeni nomthombo walo. Amavoti alo ahlala erekhodini futhi awabalwa",
         "settler": "{you, select, true {Wena uxazulula ukungqubuzana kulokhu kuskrini. Ungakufunda lapha.} other {{name} uxazulula ukungqubuzana kulokhu kuskrini. Ungakufunda lapha.}}"
       },
       "through": {

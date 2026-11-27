@@ -423,6 +423,8 @@ const castViewValidator = v.object({ reviewer: v.string(), vote: v.optional(vote
 /** A paper with the votes the person looking may see (./paperViews.ts `shown`). */
 export const paperViewValidator = v.object({
   id: v.id("screeningResults"),
+  // It left the screening with its source: shown where an address still names it, and voted on by nobody.
+  withdrawn: v.optional(v.literal(true)),
   key: v.string(),
   title: v.string(),
   authors: screeningAuthorsValidator,
@@ -469,7 +471,7 @@ export const figuresValidator = v.object({
   recent: capped(v.record(v.string(), v.number()), MAX_REVIEWERS),
   startedWith: v.number(),
   // Its checks for new papers after the start: how many, when the last one was, and what they found and added.
-  checks: v.object({ later: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number(), /** The later checks with a source they couldn't read. */ unread: v.optional(v.number()) }),
+  checks: v.object({ later: v.number(), /** The rows the list of checks has: every look but the first and one still running, as the Overview lists them. */ listed: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number(), /** The later checks with a source they couldn't read. */ unread: v.optional(v.number()) }),
   // How many times its settings were changed, and which parts: the parts a save named (`partsOf` in ./settings.ts), and "reviewers" for each added or taken off.
   changes: v.number(),
   changedParts: capped(v.optional(v.array(v.string())), 12),

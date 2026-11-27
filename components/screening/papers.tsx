@@ -1062,11 +1062,11 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={reasonCriteria(screening)} className="min-w-0 shrink" /> : null}</span>
-              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", noteOf("vote")); }}>{t("panel.changeIt")}</Button>}
+              {finished || paper.withdrawn ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", noteOf("vote")); }}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
-        ) : finished ? (
-          <ShutNote by="reviewer">{screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
+        ) : finished || paper.withdrawn ? (
+          <ShutNote by="reviewer">{paper.withdrawn ? screen("shut.left") : screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
             <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.resolvedBy === open.me ? screen("votes.settledBy", { you: "true", name: "" }) : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>

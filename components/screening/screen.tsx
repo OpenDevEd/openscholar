@@ -324,8 +324,10 @@ function Screen({ open }: { open: Open }) {
   // A page turned and not read yet counts too.
   const switching = (arrivedList !== holding || listed.isStale) && !picked;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
-  const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
-  const answering = !finished && !resolving && open.isReviewer && !switching;
+  // A paper that left with its source, named by an address from before, is read and voted on by nobody.
+  const gone = Boolean(paper?.withdrawn);
+  const mayDecide = !finished && !switching && !gone && (resolving ? open.canResolve : open.isReviewer);
+  const answering = !finished && !gone && !resolving && open.isReviewer && !switching;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
@@ -616,8 +618,8 @@ function Screen({ open }: { open: Open }) {
   // One the counts say is empty says so at once.
   // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked. Just after a vote here the counts lag it, so the list itself is waited for.
   // Only a pending vote that moves a count (a first vote, a conflict settled) makes the counts lag; changing a vote moves none.
-  // A queue the counts already say is empty says so at once, a choice of votes in Done that holds none included: that one says nothing matches, never "nothing voted yet".
-  const known = !searched && !find.trim() && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
+  // A queue the counts already say is empty says so at once. A choice of votes in Done is said in the list's own layout, its filters kept, never as "nothing voted yet".
+  const known = !searched && !narrowed && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -639,7 +641,7 @@ function Screen({ open }: { open: Open }) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} picked={queue === "done" && voted !== "any"} />}</div>
+        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} />}</div>
       </div>
     );
   }
@@ -987,7 +989,7 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{(queue === "done" && kept) || at < 0 || (queueTotal !== undefined && listed.offset + at + 1 > queueTotal) ? t("bar.notInList") : queue === "done" || !mayDecide || floor ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" && kept ? t("bar.notInList") : queue === "done" || !mayDecide || floor ? (at < 0 || (queueTotal !== undefined && listed.offset + at + 1 > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
@@ -1046,7 +1048,7 @@ function Screen({ open }: { open: Open }) {
             {/* The vote */}
             <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
               {!mayDecide ? (
-                <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
+                <ShutNote by={resolving ? "settler" : "reviewer"}>{gone ? t("shut.left") : finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
@@ -1186,7 +1188,7 @@ function Screen({ open }: { open: Open }) {
 }
 
 /** What a queue says when it holds nothing, and where to go from there. */
-function Empty({ open, queue, picked = false }: { open: Open; queue: Queue; /** Done is narrowed to one way of voting. */ picked?: boolean }) {
+function Empty({ open, queue }: { open: Open; queue: Queue }) {
   const t = useTranslations("screening.screen");
   const pieces = useTranslations("screening.pieces");
   const id = open.screening.id;
@@ -1208,7 +1210,7 @@ function Empty({ open, queue, picked = false }: { open: Open; queue: Queue; /** 
         ? [CircleCheck, t("empty.noneAgain"), null]
       : queue === "conflicts"
         ? [GitCompare, open.canResolve ? t("empty.noConflict") : t("empty.noConflictPaper"), null]
-        : picked ? [ListChecks, t("queue.noMatch"), null] : [ListChecks, t("empty.noVotes"), null];
+        : [ListChecks, t("empty.noVotes"), null];
   // The frame every list of the app has for nothing to show, and for loading: the page holds still when one follows the other.
   return (
     <ListEmpty

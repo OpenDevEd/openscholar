@@ -87,7 +87,8 @@ export const voteMany = workspaceMutation({
   handler: async (ctx, actor, { jobId, paperIds, ...same }) => {
     if (paperIds.length > VOTE_MANY) throw createError("VALIDATION_ERROR", `Vote on up to ${VOTE_MANY} papers at a time.`);
     const voter = await requireReviewer(ctx, actor, jobId);
-    for (const paperId of new Set(paperIds)) await cast(ctx, voter, { ...same, paperId });
+    // A paper of the selection that left with its source is passed over: the others are voted on.
+    for (const paperId of new Set(paperIds)) if (!(await ctx.db.get("screeningResults", paperId))?.withdrawn) await cast(ctx, voter, { ...same, paperId });
     await bookkeepLater(ctx);
     return null;
   },

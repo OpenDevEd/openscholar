@@ -7823,7 +7823,7 @@
         "untilVotedAdvice": "Un revisor ve los votos de las demás personas en un artículo cuando lo vota o cuando queda resuelto. Los votos de los modelos se ven antes, como consejo",
         "never": "Todos ven cada voto en cuanto se emite",
         "untilVoted": "Un revisor ve los demás votos de un artículo cuando lo vota o cuando queda resuelto",
-        "discussion": "La conversación de un artículo se le muestra a un revisor en el mismo momento"
+        "discussion": "Un revisor lee la conversación de un artículo cuando puede ver sus votos"
       },
       "criteria": {
         "modelsAnswerNew": "Los modelos responden {count, plural, one {el nuevo criterio} other {los nuevos criterios}} en los artículos abiertos que han leído",
@@ -8397,7 +8397,7 @@
         "whoSettles": "Quién resuelve un conflicto",
         "seeVotes": "Los revisores ven los demás votos",
         "seeingTitle": "Ver los demás votos",
-        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Los votos de los modelos que son solo consejo se ven antes. Quien no vota un artículo ve sus votos en cualquier momento. Cuánto coinciden los revisores, y cómo votó cada uno en total, se muestra a un revisor cuando ningún artículo espera ya su voto.",
+        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Los votos de los modelos que son solo consejo se ven antes. Quien no vota un artículo ve sus votos en cualquier momento. Cuánto coinciden los revisores, y cómo votó cada uno en total, se muestra a un revisor cuando ningún artículo espera ya su voto. La conversación de un artículo se muestra cuando se muestran sus votos.",
         "after": "Después de votar",
         "always": "En cualquier momento",
         "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",
@@ -8855,7 +8855,7 @@
         "doneAfter": "<b>Todos terminan en {afterWeeks, plural, =0 {{afterDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}</b>{same, select, true {<muted>, igual que ahora</muted>} other {<muted>, frente a {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}} ahora</muted>}}",
         "startsAt": "Empieza en el número que deja a los dos con tantos artículos como el otro. Se van los artículos del final de la cola de {you, select, true {usted} other {{name}}}. Los votos ya emitidos se quedan donde están.",
         "hasAll": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} todos los artículos de {giverYou, select, true {usted} other {{giver}}}.",
-        "noneNear": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} todos los artículos del final de la cola de {giverYou, select, true {usted} other {{giver}}}, el extremo del que se mueven los artículos.",
+        "noneNear": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} los últimos artículos de la cola de {giverYou, select, true {usted} other {{giver}}}. Mueva artículos a otra persona.",
         "nobodyElse": "No hay nadie más a quien mover artículos.",
         "doneIn": "Terminado en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}"
       },
@@ -9141,7 +9141,7 @@
       "back": "Atrás",
       "panel": {
         "placeOf": "{at, number} de {of, number}",
-        "notInList": "No está en esta lista",
+        "notInList": "Ya no está en esta lista",
         "close": "Cerrar",
         "paper": "Artículo",
         "says": "El resumen, los votos y el resultado de este artículo",
@@ -9378,6 +9378,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {Este cribado ha terminado, así que ya no se emiten votos. Reábralo para votar de nuevo.} other {Este cribado ha terminado, así que ya no se emiten votos.}}",
+        "left": "Este artículo salió del cribado con su fuente. Sus votos quedan registrados y no cuentan",
         "settler": "{you, select, true {Usted resuelve los conflictos de este cribado. Puede leerlos aquí.} other {{name} resuelve los conflictos de este cribado. Puede leerlos aquí.}}"
       },
       "through": {

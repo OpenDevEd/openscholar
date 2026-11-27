@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { api } from "@/convex/_generated/api";
+import { usePaginatedQuery } from "convex/react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,9 @@ import { useWords } from "./words";
 import type { Pdfs } from "@/lib/pricing/estimate";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
-export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
+/** The people shared with from outside and the invitations looked through for an address typed. */
+const SHARED_LOOKED = 50;
+export function AddPerson({ exclude, screening, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   const words = useWords();
   const [open, setOpen] = useState(false);
@@ -50,8 +53,16 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   // Someone typed as an address who is a member is added as that member, never invited. One already on it, or invited to it, is said to be.
   const known = email ? found?.page.find((person) => person.email.toLowerCase() === email) : undefined;
   const member = known && !exclude.includes(known.id) ? known : undefined;
-  const invitedAlready = email !== null && exclude.includes(`invite:${email}`);
-  const already = email !== null && ((known !== undefined && !member) || invitedAlready);
+  // The people it is shared with from outside and its invitations, as the People dialog reads them.
+  const shared = inWorkspace(workspaceId, screening && (open || near) ? { kind: "screening" as const, id: screening } : "skip");
+  const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: SHARED_LOOKED });
+  const invitations = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: SHARED_LOOKED });
+  const sharedRead = !screening || (guests.status !== "LoadingFirstPage" && invitations.status !== "LoadingFirstPage");
+  const invitedAlready = email !== null && (exclude.includes(`invite:${email}`) || invitations.results.some((one) => one.email.toLowerCase() === email));
+  // Someone it is shared with from outside is added as that guest, never invited: already a reviewer, they are said to be on it.
+  const guest = email === null ? undefined : guests.results.find((one) => one.email.toLowerCase() === email);
+  const guestAlready = guest !== undefined && exclude.includes(guest.userId);
+  const already = email !== null && ((known !== undefined && !member) || invitedAlready || guestAlready);
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
@@ -93,9 +104,20 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
               </CommandGroup>
             ) : null}
             {already ? <p className="px-3 py-2 text-sm text-muted-foreground">{t(invitedAlready ? "alreadyInvited" : "alreadyOn")}</p> : null}
-            {email && !member && !already ? (
+            {guest && !guestAlready ? (
+              <CommandGroup heading={words.t("person.guest")}>
+                <CommandItem value={guest.userId} disabled={stale} onSelect={() => pick({ person: { id: guest.userId, name: guest.name || guest.email, ...(guest.imageUrl ? { imageUrl: guest.imageUrl } : {}), guest: true } })} className="gap-3">
+                  <IdentityAvatar name={guest.name || guest.email} imageUrl={guest.imageUrl} className="size-7" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{guest.name || guest.email}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{guest.email}</span>
+                  </span>
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
+            {email && !member && !already && !guest ? (
               <CommandGroup heading={t("invite")}>
-                <CommandItem value={email} disabled={read === undefined} onSelect={() => pick({ email })} className="gap-3">
+                <CommandItem value={email} disabled={read === undefined || !sharedRead} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>
