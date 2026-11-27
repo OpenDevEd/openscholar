@@ -43,7 +43,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, modelsOf, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, modelsOf, readersOf, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
@@ -578,7 +578,7 @@ function Screen({ open }: { open: Open }) {
   const everyonesVotes = paper ? (
                     <Section
                       // As advice the models' votes settle nothing on a paper you have: the heading says so.
-                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && modelsOf(screening).length ? t("votes.titleAdvice") : t("votes.title")}
+                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && modelsOf(screening).length && readersOf(screening).each ? t("votes.titleAdvice") : t("votes.title")}
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
