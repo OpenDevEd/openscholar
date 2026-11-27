@@ -4,6 +4,7 @@
 // Moving an item to another of your workspaces (#654): you pick one, see what goes with it, and
 // go with it, so it stays open in the workspace it moved to.
 
+import { collectionHref } from "@/lib/library/search-params";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
@@ -43,7 +44,7 @@ const GOES = {
 
 /** Where the item opens in the workspace it moved to. */
 const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
-  collection: (id) => `/library?col=${id}`,
+  collection: collectionHref,
   author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
   screening: screeningPath,

@@ -4,6 +4,7 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
+import { collectionHref } from "@/lib/library/search-params";
 import { ButtonCredits } from "@/components/ui/button-credits";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
@@ -205,7 +206,7 @@ function sourceLink(source: Pick<Source, "set">): { href: string; where: "search
   if (!set) return null;
   if (set.kind === "search") return { href: `/results/${encodeURIComponent(set.searchId)}`, where: "search" };
   if (set.kind === "saved") return { href: "/library", where: "library" };
-  if (set.kind === "collection") return { href: `/library?col=${set.collectionId}`, where: "collection" };
+  if (set.kind === "collection") return { href: collectionHref(set.collectionId), where: "collection" };
   if (set.kind === "screening") return { href: papersHref(set.jobId, { result: "include" }), where: "screening" };
   if (set.kind === "zotero") return { href: "https://www.zotero.org/mylibrary", where: "zotero" };
   return null;

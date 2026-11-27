@@ -8,6 +8,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { collectionHref } from "@/lib/library/search-params";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
@@ -93,13 +94,13 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   return (
     <div className="@container/overview space-y-8 p-4 sm:p-6">
       <Progress open={open} onExport={onExport} />
-      {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. Two rows of two, each smaller block beside the one it goes with: who started it, where its papers go and what its models cost beside the reviewers, and the checks that bring papers in beside how far the reviewers agree. */}
-      <div className="grid grid-cols-1 items-start gap-8 @5xl/overview:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="min-w-0"><Reviewers open={open} figures={read.figures} now={read.now} /></div>
+      {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. The reviewers' table takes the page's width, with room for its columns. Under it the small facts stack beside the checks, two halves of a like height, and how far the reviewers agree takes a row of its own where there is a figure to show: no column stands empty beside a tall one. */}
+      <Reviewers open={open} figures={read.figures} now={read.now} />
+      <div className="grid grid-cols-1 items-start gap-8 @4xl/overview:grid-cols-2">
         <div className="min-w-0"><Facts open={open} /></div>
-        <div className="min-w-0"><Agreement open={open} figures={read.figures} /></div>
         <div className="min-w-0"><Checks open={open} figures={read.figures} /></div>
       </div>
+      <Agreement open={open} figures={read.figures} />
       <Flow open={open} figures={read.figures} onExport={onExport} />
     </div>
   );
@@ -179,7 +180,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
               {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
             </span>
           </p>
-          <ResultBar counts={counts} className="h-3" />
+          <ResultBar counts={counts} className="h-3" counted />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
             {/* In conflict is a count only where a paper can be in conflict, or one is. */}
             {RESULTS.filter((result) => result !== "conflict" || splitsIn(screening, counts.conflict, open.invited)).map((result) => {
@@ -208,6 +209,10 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
 
 /** Your own votes, each count opening those papers, and the papers of yours that still wait for someone else. */
 function Yours({ open }: { open: Open }) {
+  const workspaceId = usePageWorkspace();
+  // Where a paper waits for more votes than one: how many of the papers you voted on still wait for someone else's. The link to them shows only where there are some, so it never opens an empty list.
+  const asked = Boolean(open.counts.waiting && !open.screening.finishedAt && splitsIn(open.screening, 0, open.invited));
+  const stillWaiting = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, asked ? { jobId: open.screening.id, reviewer: open.me } : "skip")).data?.waiting ?? 0;
   const { screening } = open;
   const t = useTranslations("screening.overview");
   const mine = screening.reviewers.find((one) => one.id === open.me)?.tally;
@@ -228,7 +233,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {open.counts.waiting && !screening.finishedAt && splitsIn(screening, 0, open.invited) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {asked && stillWaiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground animate-in fade-in max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -843,7 +848,8 @@ function Facts({ open }: { open: Open }) {
           {collection ? (
             <p className="flex items-start gap-2 text-sm font-medium">
               <Folder className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <span className="line-clamp-2">{collection}</span>
+              {/* The collection opens in the Library, where its papers are. */}
+              {to.collection ? <NextLink href={collectionHref(to.collection)} className={cn(INLINE_LINK, "line-clamp-2")}>{collection}</NextLink> : <span className="line-clamp-2">{collection}</span>}
             </p>
           ) : (
             <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />{t("included.nowhereYet")}</p>
@@ -891,7 +897,6 @@ function Facts({ open }: { open: Open }) {
           )}
         </Panel>
       </Section>
-
     </div>
   );
 }
