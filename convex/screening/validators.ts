@@ -428,6 +428,8 @@ export const paperViewValidator = v.object({
   fileName: v.optional(v.string()),
   // It left the screening with its source: shown where an address still names it, and voted on by nobody.
   withdrawn: v.optional(v.literal(true)),
+  // When it was settled, where it is: the whole record reads its result against the rule in force then.
+  settledAt: v.optional(v.number()),
   key: v.string(),
   title: v.string(),
   authors: screeningAuthorsValidator,

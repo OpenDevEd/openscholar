@@ -25,7 +25,7 @@ import { progressRow } from "./bookkeeping";
 import { dealable, inWhole, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn, wholePass } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
-import { askedWhereValidator, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { askedWhereValidator, ruleValidator, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -565,6 +565,24 @@ export const mergedAction = defineUserQuery({
 });
 export const merged = userQuery(mergedAction);
 export const mergedForAssistant = assistantQuery(mergedAction);
+
+/** Versions of a screening's rule and criteria one page lists at most. */
+const VERSIONS_PAGE = 100;
+
+export const versionsAction = defineUserQuery({
+  path: "screening/view:versions",
+  description: "Lists what a screening's rule and criteria were from each moment on, a page at a time, the first first: a version when it started and one for each change to them, with who made it. A paper's result is read against the version in force when it was settled.",
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ at: v.number(), by: v.union(v.string(), v.null()), rule: ruleValidator, criteria: criteriaValidator })),
+  run: async (ctx, actor, { jobId, paginationOpts }) => {
+    if (!(await standingOn(ctx, actor, jobId))) return { page: [], isDone: true, continueCursor: "" };
+    const read = await ctx.db.query("screeningVersions").withIndex("by_job_and_at", (q) => q.eq("jobId", jobId)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, VERSIONS_PAGE) });
+    const page = await Promise.all(read.page.map(async (one) => ({ at: one.at, by: one.by ? nameOf(await ctx.db.get("users", one.by)) : null, rule: one.rule, criteria: one.criteria })));
+    return { ...read, page };
+  },
+});
+export const versions = userQuery(versionsAction);
+export const versionsForAssistant = assistantQuery(versionsAction);
 
 /** Changes one page of a screening's activity holds at most. */
 const ACTIVITY_PAGE = 50;

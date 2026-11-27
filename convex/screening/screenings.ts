@@ -19,7 +19,7 @@ import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startWaitingVotes } from "./slots";
 import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
@@ -286,6 +286,7 @@ export const open = internalMutation({
     }
     for (const person of people) await ctx.db.insert("screeningReviewers", { jobId, kind: "person", userId: person, addedAt: now, addedBy: userId, dealt: 0 });
     for (const { model, effort } of picked) await ctx.db.insert("screeningReviewers", { jobId, kind: "model", modelId: model._id, ...(effort ? { effort } : {}), addedAt: now, addedBy: userId, dealt: 0 });
+    await keepVersion(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId);
     // Papers read before it started are given out now. The ones still to arrive are dealt as they come, by the look that is reading them.
     if (adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.deal, { jobId, cursor: null });
     else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
@@ -461,7 +462,9 @@ export const erase = internalMutation({
     for (const row of notices) await ctx.db.delete("screeningNotices", row._id);
     const checks = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const row of checks) await ctx.db.delete("screeningChecks", row._id);
-    if (pairs.length || notices.length || checks.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
+    const versions = await ctx.db.query("screeningVersions").withIndex("by_job_and_at", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
+    for (const row of versions) await ctx.db.delete("screeningVersions", row._id);
+    if (pairs.length || notices.length || checks.length || versions.length) return void (await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId }));
     for (const row of await reviewersOf(ctx, jobId)) await ctx.db.delete("screeningReviewers", row._id);
     for (const row of await sourcesOf(ctx, jobId)) await ctx.db.delete("screeningSources", row._id);
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();

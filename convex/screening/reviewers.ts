@@ -22,7 +22,7 @@ import { isFinal, nextResolver, readersFor, takesOver } from "../../lib/screenin
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
-import { countDealt, dealable, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
+import { countDealt, dealable, keepVersion, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
 import { modelFor, modelInput, modelsLimit, NEEDS_CRITERIA } from "./screenings";
 import { startWaitingVotes } from "./slots";
 
@@ -146,6 +146,8 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
     await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver: nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) } });
+    // Who settles conflicts is part of the rule: the whole record lists the change.
+    await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
   }
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId: reviewer._id, discard, cursor: null, status: "waiting" });
 }
