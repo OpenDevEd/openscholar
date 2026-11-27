@@ -8120,7 +8120,8 @@
       "share": {
         "readsAll": "{you, select, true {Usted lee todos los artículos} other {{name} lee todos los artículos}}",
         "about": "{more, select, true {{count, plural, one {Alrededor de # artículo por persona, y una parte de los nuevos} other {Alrededor de # artículos por persona, y una parte de los nuevos}}} other {{count, plural, one {Alrededor de # artículo por persona} other {Alrededor de # artículos por persona}}}}",
-        "range": "{more, select, true {De {least} a {most} artículos por persona, y una parte de los nuevos} other {De {least} a {most} artículos por persona}}"
+        "range": "{more, select, true {De {least} a {most} artículos por persona, y una parte de los nuevos} other {De {least} a {most} artículos por persona}}",
+        "onceJoined": "{count, plural, one {Unos # artículo por persona cuando se unan todas las personas invitadas} other {Unos # artículos por persona cuando se unan todas las personas invitadas}}"
       },
       "unsaved": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
       "unsavedCount": "{count, plural, other {# sin guardar}}",

@@ -8120,7 +8120,8 @@
       "share": {
         "readsAll": "{you, select, true {Jy lees elke artikel} other {{name} lees elke artikel}}",
         "about": "{more, select, true {{count, plural, one {Omtrent # artikel vir elke persoon, en ’n deel van die nuwes} other {Omtrent # artikels vir elke persoon, en ’n deel van die nuwes}}} other {{count, plural, one {Omtrent # artikel vir elke persoon} other {Omtrent # artikels vir elke persoon}}}}",
-        "range": "{more, select, true {{least} tot {most} artikels vir elke persoon, en ’n deel van die nuwes} other {{least} tot {most} artikels vir elke persoon}}"
+        "range": "{more, select, true {{least} tot {most} artikels vir elke persoon, en ’n deel van die nuwes} other {{least} tot {most} artikels vir elke persoon}}",
+        "onceJoined": "{count, plural, one {Ongeveer # artikel per persoon sodra almal wat genooi is aangesluit het} other {Ongeveer # artikels per persoon sodra almal wat genooi is aangesluit het}}"
       },
       "unsaved": "{count, plural, one {# ongestoorde verandering} other {# ongestoorde veranderinge}}",
       "unsavedCount": "{count, plural, other {# ongestoor}}",

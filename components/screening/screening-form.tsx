@@ -527,7 +527,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!joined.length) return undefined;
     // Shared out among everyone the rule counts, people invited by email among them.
     if (fresh && readers === 1) return t("share.readsAll", { you: String(joined[0]!.id === me), name: words.firstName(joined[0]!.name) });
-    if (fresh) return t("share.about", { more: "false", count: Math.ceil((papers * each) / readers) });
+    // Someone invited is given papers once they join: until then the people on it hold every paper, and the share is what it comes to then.
+    if (fresh) return invited ? t("share.onceJoined", { count: Math.ceil((papers * each) / readers) }) : t("share.about", { more: "false", count: Math.ceil((papers * each) / readers) });
     const loads = preview.loads ?? (() => { const dealt = joined.map((person) => person.tally?.dealt ?? 0); return { least: Math.min(...dealt), most: Math.max(...dealt) }; })();
     const more = String(Boolean(promisedNew));
     return loads.most - loads.least <= 2 ? t("share.about", { more, count: loads.most }) : t("share.range", { more, least: words.num(loads.least), most: words.num(loads.most) });

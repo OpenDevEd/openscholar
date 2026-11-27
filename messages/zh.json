@@ -8119,7 +8119,8 @@
       "share": {
         "readsAll": "{you, select, true {你阅读每篇论文} other {{name} 阅读每篇论文}}",
         "about": "{more, select, true {{count, plural, other {每人约 # 篇论文，外加部分新论文}}} other {{count, plural, other {每人约 # 篇论文}}}}",
-        "range": "{more, select, true {每人 {least} 至 {most} 篇论文，外加部分新论文} other {每人 {least} 至 {most} 篇论文}}"
+        "range": "{more, select, true {每人 {least} 至 {most} 篇论文，外加部分新论文} other {每人 {least} 至 {most} 篇论文}}",
+        "onceJoined": "{count, plural, other {所有受邀者加入后，每人约 # 篇}}"
       },
       "unsaved": "{count, plural, other {# 处未保存的更改}}",
       "unsavedCount": "{count, plural, other {# 处未保存}}",
