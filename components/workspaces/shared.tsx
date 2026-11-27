@@ -4,6 +4,7 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { collectionHref } from "@/lib/library/search-params";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useDeferredValue, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +37,7 @@ import { screeningPath } from "@/lib/screening/links";
 
 /** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). `open` opens one that has no page of its own, over whatever page the person is on. */
 export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; open?: (id: string) => void; roles: readonly GuestRole[] }> = {
-  collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
+  collection: { icon: Folder, tint: "#e8890c", href: collectionHref, roles: ["viewer", "editor"] },
   // A screening's editor votes on its papers as one of its reviewers.
   screening: { icon: ListFilter, tint: "#34d399", href: screeningPath, roles: ["viewer", "editor"] },
   extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },

@@ -550,7 +550,7 @@ export function Reason({ reason, criteria, unclear = false, wrap = false, classN
 export const HATCH = "bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
 
 /** A screening's papers as one bar, split by where they stand. With `hrefOf`, each part opens its papers and says its own count. */
-export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string }) {
+export function ResultBar({ counts, className, hrefOf, counted = false }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string; /** Its counts are written out beside it already: it says them to a screen reader and opens no tooltip that repeats them. */ counted?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
   const format = useFormatter();
@@ -575,14 +575,13 @@ export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result
   }
   // A list with commas and no "and": the language's own unit list.
   const label = format.list(RESULTS.filter((result) => counts[result]).map(says), { type: "unit" }) || words.t("empty.all");
-  return (
-    <TooltipHint label={label}>
-      <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
-        {none}
-        {RESULTS.map((result) => (counts[result] ? <span key={result} className={cn(part(result), "transition-[flex-grow]")} style={{ flexGrow: counts[result] }} /> : null))}
-      </div>
-    </TooltipHint>
+  const bar = (
+    <div role="img" aria-label={label} tabIndex={counted ? undefined : 0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
+      {none}
+      {RESULTS.map((result) => (counts[result] ? <span key={result} className={cn(part(result), "transition-[flex-grow]")} style={{ flexGrow: counts[result] }} /> : null))}
+    </div>
   );
+  return counted ? bar : <TooltipHint label={label}>{bar}</TooltipHint>;
 }
 
 /** How a paper's reviewers voted, as a count beside each decision's mark. */
