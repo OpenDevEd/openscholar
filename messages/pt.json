@@ -1751,17 +1751,7 @@
     "savedToLibrary": "<n>{count, number}</n> adicionados a {name} em {library}",
     "notInLibrary": "<n>{count, number}</n> não estão em {library}",
     "savesToLibrary": "Adiciona os artigos incluídos a {name} em {library}",
-    "notInLibraryFilter": "Não está em {library}",
-    "libraryProblem": {
-      "role": "Não é possível adicionar a {name}: agora só pode vê-la",
-      "notFound": "{name} já não está em {library}",
-      "unreadable": "{library} não respondeu: alguns artigos não foram adicionados"
-    },
-    "pruneProblem": {
-      "role": "Não é possível remover artigos de {name}: agora só pode vê-la",
-      "notFound": "{name} já não está em {library}",
-      "unreadable": "{library} não respondeu: alguns artigos não foram removidos"
-    }
+    "notInLibraryFilter": "Não está em {library}"
   },
   "connectionsPage": {
     "connectedApps": "Aplicações ligadas",
@@ -7783,7 +7773,8 @@
   "screening": {
     "effects": {
       "counting": "A calcular o que isto faz",
-      "countFailed": "Não foi possível calcular o que isto faz. Feche e tente novamente",
+      "countFailed": "Não foi possível calcular o que isto faz",
+      "countAgain": "Tentar novamente",
       "criterionUnwritten": "o critério ainda sem pergunta",
       "reopens": "{count, plural, one {# artigo volta a estar em aberto. A triagem continua terminada, por isso ninguém vota nele até ela ser reaberta} other {# artigos voltam a estar em aberto. A triagem continua terminada, por isso ninguém vota neles até ela ser reaberta}}",
       "model": {
@@ -7902,6 +7893,7 @@
         "scheduledNone": "A verificação agendada não encontrou artigos novos",
         "known": "{count, plural, one {# já estava} other {# já estavam}} na triagem",
         "leftOut": "{count, plural, one {# ficou de fora} other {# ficaram de fora}}",
+        "unread": "{count, plural, one {Não foi possível ler # fonte} other {Não foi possível ler # fontes}}",
         "joined": "{count, plural, one {# artigo entrou} other {# artigos entraram}} na triagem",
         "reopenedByCheck": "A triagem voltou a abrir",
         "changed": "Alterou {parts}",
@@ -8157,6 +8149,7 @@
         "undo": "Anular",
         "failed": "Não funcionou. Tente novamente.",
         "notAdded": "Não foi possível adicionar algumas pessoas. Adicione-as de novo em Pessoas.",
+        "notInvited": "Não foi possível convidar algumas pessoas, por isso ainda nada foi guardado. Guarde de novo para tentar convidá-las outra vez.",
         "notStarted": "Não foi possível iniciar a triagem. Tente novamente.",
         "saved": "Alterações guardadas",
         "discarded": "Alterações descartadas"
@@ -8410,7 +8403,6 @@
         "willDo": "O que guardar faz",
         "counting": "A calcular o que guardar faz",
         "countFailed": "Não foi possível calcular o que guardar faz, por isso ainda não é possível guardar",
-        "countAgain": "Tentar novamente",
         "did": "O que foi feito ao guardar",
         "recheck": "Verificar de novo os artigos decididos",
         "recheckOn": "Cada artigo decidido é verificado com as novas definições. Os que aparecem acima recebem outro resultado.",
@@ -8758,6 +8750,7 @@
         "loading": "A ler a discussão"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Mostrar a # página} other {Mostrar todas as # páginas}}",
         "readAs": "{pages, plural, =0 {Lido a partir do PDF} one {Lido a partir do PDF, # página} other {Lido a partir do PDF, # páginas}}",
         "openTab": "Abrir o PDF num novo separador",
         "onItsWay": "O PDF está a caminho",
@@ -8906,6 +8899,7 @@
         "startedIt": "iniciou-a {ago}"
       },
       "included": {
+        "problem": "{why, select, role {Agora só pode ver {name}, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} notFound {{name} já não está na comunidade, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} other {A comunidade não respondeu, por isso alguns artigos incluídos {adding, select, true {não foram adicionados a {name}} other {não foram retirados de {name}}}}}",
         "title": "Os artigos incluídos vão para",
         "helpTitle": "Para onde vão os artigos incluídos",
         "savedEach": "Guardado à medida que cada um é incluído",
@@ -8951,6 +8945,7 @@
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} já na triagem",
         "leftOut": "{count, plural, one {# deixado de fora} other {# deixados de fora}}",
+        "unread": "{count, plural, one {Não conseguiu ler # fonte} other {Não conseguiu ler # fontes}}",
         "added": "{count, number} adicionados",
         "newFrom": "{count, number} novos de {source}",
         "result": "{result, select, include {{count, number} incluídos} maybe {{count, number} talvez} exclude {{count, number} excluídos} conflict {{count, number} em conflito} other {{count, number} à espera de votos}}",
@@ -9456,7 +9451,8 @@
           "unread": "Não foi possível lê-lo",
           "pdfTooBig": "Mais de {mb, number} MB",
           "unsent": "Não foi possível enviá-lo",
-          "allUnsent": "Não foi possível enviá-los"
+          "allUnsent": "Não foi possível enviá-los",
+          "priceComing": "Só é adicionado depois de aparecer o preço de um PDF. Adicione-o de novo daqui a pouco"
         },
         "drop": "Largue aqui ficheiros de referências ou PDF",
         "helpTitle": "Ficheiros",
@@ -9465,6 +9461,7 @@
         "aboutFiles": "Um ficheiro de referências é o que uma base de dados ou um gestor de referências exporta. Cada registo com título e resumo é um artigo.",
         "aboutPdfs": "Um PDF é lido assim que é adicionado, para obter o título e o DOI. Quando o índice do Openscholar tem esse DOI, o artigo aparece com o título e o resumo do índice. Caso contrário, o artigo é o próprio PDF. Uma pessoa que o triar lê o ficheiro, e cada modelo de IA que lê PDF também, todas as páginas. Um modelo que só lê texto, ou que não aceita um PDF tão longo, não tem voto nele. Uma digitalização é lida da mesma forma. Um ficheiro que não abre fica de fora.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF ou um ficheiro de texto com DOI, qualquer número de uma vez",
+        "pricing": "A calcular quanto custa um PDF",
         "pdfCost": "Um modelo lê as primeiras páginas de cada PDF para obter o título e o DOI. Isso custa até {credits, plural, one {# crédito} other {# créditos}} por PDF, pago quando o PDF é adicionado",
         "filesLabel": "Ficheiros a carregar",
         "choose": "Escolher ficheiros",
@@ -9497,6 +9494,8 @@
         "add": "Adicionar DOI"
       },
       "zotero": {
+        "gone": "Esta coleção já não está no Zotero",
+        "openAbove": "Abrir {name}",
         "myLibrary": "A minha biblioteca",
         "loading": "A carregar o Zotero",
         "loadingCollections": "A carregar as coleções",

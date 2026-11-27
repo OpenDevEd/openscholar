@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS, MAX_STARS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { MAX_SOURCE_ROWS, answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
+import { MAX_SOURCE_ROWS, RETIRED_CRITERIA, answerValidator, criterionValidator, retiredCriterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
@@ -1350,6 +1350,8 @@ export default defineSchema({
     // What the review asks, which its criteria are written from.
     question: v.optional(v.string()),
     criteria: capped(v.optional(v.array(criterionValidator)), MAX_QUESTIONS),
+    // Criteria taken off, by key and name: a result held through the change keeps its reason, which is named by them.
+    retiredCriteria: capped(v.optional(v.array(retiredCriterionValidator)), RETIRED_CRITERIA),
     // The points each star starts at.
     stars: capped(v.optional(v.array(v.number())), MAX_STARS),
     rule: v.optional(ruleValidator),
@@ -1804,6 +1806,8 @@ export default defineSchema({
     added: v.number(),
     // Of what it found, the records left out (no abstract, nothing to read): neither added nor already in the screening.
     left: v.optional(v.number()),
+    // The sources it couldn't read (each failed, with why, on its own row): a check that read none of them found nothing it can vouch for.
+    unread: v.optional(v.number()),
     // The papers it added, by the source that brought them.
     bySource: capped(v.optional(v.record(v.id("screeningSources"), v.number())), MAX_SOURCE_ROWS),
     // When its reading last gave it a step: a check that goes quiet is set off again (convex/screening/gathering.ts `watch`).

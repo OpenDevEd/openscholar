@@ -25,7 +25,14 @@ import { destination } from "./mutations";
 import { addModel, addPerson, takeOff } from "./reviewers";
 import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, NEEDS_CRITERIA, ruleFrom, ruleInput, sourceInput, starsFrom } from "./screenings";
 import { startWaitingVotes } from "./slots";
-import { everyValidator, libraryDestinationValidator, prunable, saveToValidator, SCREENING_TEXT } from "./validators";
+import { everyValidator, libraryDestinationValidator, prunable, RETIRED_CRITERIA, saveToValidator, SCREENING_TEXT } from "./validators";
+
+/** The criteria taken off by a save, kept by key and name with the ones taken off before: a criterion put back is no longer one of them. */
+const retiredOf = (job: Doc<"screeningJobs">, criteria: Array<{ key: string }>) => {
+  const kept = new Set(criteria.map((one) => one.key));
+  const gone = (job.criteria ?? []).filter((one) => !kept.has(one.key)).map(({ key, text, short, must }) => ({ key, text, short, must }));
+  return [...(job.retiredCriteria ?? []).filter((one) => !kept.has(one.key) && !gone.some((now) => now.key === one.key)), ...gone].slice(-RETIRED_CRITERIA);
+};
 
 /** What one save changes: only the parts named are touched. */
 export const changeValidator = v.object({
@@ -168,7 +175,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   await ctx.db.patch("screeningJobs", jobId, {
     ...(name ? { name } : {}),
     ...(change.question !== undefined ? { question: change.question.trim() || undefined } : {}),
-    ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars) } : {}),
+    ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars), retiredCriteria: retiredOf(job, plan.criteria) } : {}),
     rule: plan.rule,
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
     ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await destination(ctx, writer, change.saveTo)) } : {}),

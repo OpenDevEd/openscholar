@@ -42,6 +42,8 @@ export type Rule = {
 
 /** How long a criterion's short name can be. */
 export const SHORT_NAME_LENGTH = 40;
+/** The longest note on a vote or a settled result: the fields stop there, and the server refuses longer. */
+export const NOTE_LENGTH = 2_000;
 /** The short name a criterion has until someone writes one: its question's own words, cut where they run longer than a short name can be. */
 export const shortOf = (text: string) => {
   const words = text.replace(/[?.]$/, "").trim();

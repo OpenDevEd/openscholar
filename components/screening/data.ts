@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 // The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
@@ -171,7 +171,8 @@ export function removedOf(sources: Source[]) {
 export type Rule = Omit<SharedRule, "each" | "models"> & { each: `${number}` | "all"; models: NonNullable<SharedRule["models"]> };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
-export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
+export type WriteProblem = "role" | "notFound" | "unreadable";
+export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** A community that refused or didn't answer the last write of included papers, adding them or taking them out, until one gets through. */ problem?: WriteProblem; pruneProblem?: WriteProblem; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
@@ -182,12 +183,12 @@ export const isNamed = (criterion: Pick<Criterion, "short" | "text">) => criteri
 /** A criterion as a line names it: the name someone wrote, or else its question. Every sentence, chip and file that names one takes it from here, in whichever language. */
 export const criterionLabel = (criterion: Pick<Criterion, "short" | "text">) => (isNamed(criterion) ? criterion.short : criterion.text.replace(/[?.]$/, ""));
 /** A reason in words: the criterion as a line names it, or one of the others. */
-const reasonLabel = (key: string, criteria: Criterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
+const reasonLabel = (key: string, criteria: RetiredCriterion[]) => { const criterion = criteria.find((one) => one.key === key); return criterion ? criterionLabel(criterion) : OTHER_REASONS.find((one) => one.key === key)?.label ?? key; };
 /**
  * A reason for excluding in words, the same on a page, in a tooltip and in a file: the criterion that wasn't met,
  * by the name someone gave it or by its question, or one of the other reasons. On a page it is drawn, by `Reason`.
  */
-export const failedLabel = (key: string, criteria: Criterion[]) => {
+export const failedLabel = (key: string, criteria: RetiredCriterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion ? (isNamed(criterion) ? FILE_WORDS.notMet.replace("{name}", criterion.short) : FILE_WORDS.notMetInFull.replace("{name}", criterionLabel(criterion))) : reasonLabel(key, criteria);
 };
@@ -195,7 +196,7 @@ export const failedLabel = (key: string, criteria: Criterion[]) => {
  * The question a criterion's name stands for, where what a line shows of it isn't already the question's own words:
  * its short name in a column, or its label (`criterionLabel`) in a sentence or a chip.
  */
-export const questionOf = (key: string, criteria: Criterion[], shown: "short" | "label" = "short") => {
+export const questionOf = (key: string, criteria: RetiredCriterion[], shown: "short" | "label" = "short") => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion && (shown === "label" ? criterionLabel(criterion) : criterion.short).trim() !== criterion.text.replace(/[?.]$/, "").trim() ? criterion.text : undefined;
 };
@@ -217,8 +218,8 @@ export const bylineOf = (paper: Pick<Paper, "authors" | "year" | "venue">, short
 export const awaitedOn = (screening: Pick<Screening, "reviewers">, paper: Pick<Paper, "cast">) => castOf(screening, paper).filter((one) => !one.vote && !one.failed && !one.hidden).map((one) => one.reviewer);
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
-/** Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes. */
-export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0));
+/** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */
+export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && gotThrough(one.tally) > 0));
 /** The most points a paper can earn under the screening's scoring. */
 export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => scoreOf(screening.criteria.map(({ key }) => { const [yes, no, unclear] = screening.scoring.points[key] ?? [1, 0, 0]; return { key, points: { yes, no, unclear } }; }), [], []).of;
 /** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
@@ -239,8 +240,13 @@ export const EVERY_LABEL: Record<Every, string> = FILE_WORDS.every;
 /** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
 export const SETTLE_LABEL: Record<Rule["settle"], string> = FILE_WORDS.settle.label;
 
+export type RetiredCriterion = Pick<Criterion, "key" | "text" | "short" | "must">;
+/** The criteria a reason can name: the screening's, and the ones taken off that a result kept through the change was excluded for. */
+export const reasonCriteria = (screening: Pick<Screening, "criteria" | "retired">): RetiredCriterion[] => [...screening.criteria, ...screening.retired];
 export type Screening = {
   id: Id<"screeningJobs">;
+  /** Criteria taken off, which reasons kept from before still name. */
+  retired: RetiredCriterion[];
   name: string;
   createdBy: string;
   createdAt: number;

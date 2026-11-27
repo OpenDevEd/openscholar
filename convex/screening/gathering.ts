@@ -34,7 +34,7 @@ import { readersFor } from "../../lib/screening/rules";
 import { handedPapers, handedStart, withAbstracts, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
-import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator } from "./validators";
+import { leftOutWhyValidator, MAX_SOURCE_ROWS, screeningPaperInputValidator, sourceSetValidator } from "./validators";
 
 type SourceSet = Infer<typeof sourceSetValidator>;
 type Why = Infer<typeof leftOutWhyValidator>;
@@ -464,11 +464,13 @@ export const end = internalMutation({
     const check = await ctx.db.get("screeningChecks", checkId);
     if (check?.state !== "running") return null;
     const job = await ctx.db.get("screeningJobs", check.jobId);
-    await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
+    // The sources it couldn't read are counted on it, so nothing reads it as a check that found nothing new.
+    const unread = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", check.jobId)).take(MAX_SOURCE_ROWS)).filter((source) => source.state === "failed" && source.removedAt === undefined).length;
+    await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now(), ...(unread ? { unread } : {}) });
     if (!job) return null;
     await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, ...touched() });
     await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
-    await checked(ctx, job, check);
+    await checked(ctx, job, { ...check, ...(unread ? { unread } : {}) });
     return null;
   },
 });

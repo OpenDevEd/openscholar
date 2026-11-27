@@ -120,7 +120,9 @@ export const written = internalMutation({
         ...(removed ? { removed: Math.max(0, (progress.removed ?? 0) + removed) } : {}),
       });
     }
-    if ((problem || pruneProblem) && (await ctx.db.get("screeningJobs", job))) await ctx.db.patch("screeningJobs", job, { ...(problem ? { libraryWriteProblem: problem } : {}), ...(pruneProblem ? { libraryPruneProblem: pruneProblem } : {}) });
+    // A problem is kept until a later write gets through: then the screening stops saying papers aren't reaching the community.
+    const cleared = { ...(!problem && added ? { libraryWriteProblem: undefined } : {}), ...(!pruneProblem && removed ? { libraryPruneProblem: undefined } : {}) };
+    if ((problem || pruneProblem || Object.keys(cleared).length) && (await ctx.db.get("screeningJobs", job))) await ctx.db.patch("screeningJobs", job, { ...cleared, ...(problem ? { libraryWriteProblem: problem } : {}), ...(pruneProblem ? { libraryPruneProblem: pruneProblem } : {}) });
     return (await ctx.db.query("libraryWrites").withIndex("by_job", (q) => q.eq("job", job)).first()) !== null;
   },
 });

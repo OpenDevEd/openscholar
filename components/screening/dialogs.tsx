@@ -83,7 +83,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
                       {scheduled ? (
                         t("activitySheet.scheduled")
                       ) : reviewer ? (
-                        <NextLink href={papersHref(screening.id, { reviewer: reviewer.id })} onClick={onClose} className="min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
+                        <NextLink href={papersHref(screening.id, { reviewer: reviewer.id })} className="min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
                           <ReviewerName reviewer={reviewer} you={reviewer.id === state.me} />
                         </NextLink>
                       ) : (
@@ -92,7 +92,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
                       <span className="ms-auto shrink-0 text-xs font-normal text-muted-foreground">{words.ago(change.at)}</span>
                     </p>
                     {href ? (
-                      <NextLink href={href} onClick={onClose} className="-mx-2 flex items-start gap-2 rounded-lg px-2 py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
+                      <NextLink href={href} className="-mx-2 flex items-start gap-2 rounded-lg px-2 py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
                         {body}
                         <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       </NextLink>
@@ -111,7 +111,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
         {mine ? (
           <div className="border-t border-border-subtle p-4">
             <Button asChild variant="outline" className="w-full">
-              <NextLink href={papersHref(screening.id, { reviewer: state.me })} onClick={onClose}>
+              <NextLink href={papersHref(screening.id, { reviewer: state.me })}>
                 {t("activitySheet.yourVotes", { count: mine })}
                 <ArrowRight />
               </NextLink>
