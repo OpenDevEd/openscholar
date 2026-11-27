@@ -58,7 +58,7 @@ import { cn } from "@/lib/utils";
 import { advisory, EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
@@ -990,7 +990,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
                               <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-lg bg-foreground/[0.06] text-foreground"><Icon className="size-4" /></span>
-                              <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-3rem)]">
+                              <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-6rem)]">
                                 <div className="flex min-w-0 items-center gap-1">
                                   {gone ? (
                                     <p className="truncate text-sm font-medium text-muted-foreground line-through max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
@@ -1011,40 +1011,59 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     </TooltipHint>
                                   ) : null}
                                 </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {gone ? <StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip> : null}
-                                  {/* Its counts take the place the chip holds once the lookup or the count is back, so the row keeps its height. */}
-                                  {busy ? <Chip key="busy"><Spinner className="size-3" />{busy}</Chip> : (
-                                    <>
-                                      <Chip key="count">{source.scope === "all" ? (source.total > baseTotal(source) ? t("papers.atStart", { count: baseTotal(source) }) : heldBy(source) === null ? t("papers.allOfIt") : t("papers.all", { count: heldBy(source)! })) : t("papers.inSource", { count: baseTotal(source) })}</Chip>
-                                      {source.read?.filed ? <Chip icon={FileText}>{t("papers.readAsPdf", { count: source.read.filed })}</Chip> : null}
-                                      {/* The records it merged open from the chip that counts them, as what it left out does: each with the paper that stands for it. */}
-                                      {doubled > 0 && taken(source) ? (
-                                        rowOf(source) ? (
-                                          <button type="button" aria-expanded={open === "merged"} onClick={() => setOpenSource(open === "merged" ? null : { id: source.id, part: "merged" })} className="flex rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
-                                            <Chip>{t("papers.duplicates", { count: doubled })}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "merged" && "rotate-180")} /></Chip>
-                                          </button>
-                                        ) : <Chip>{t("papers.duplicates", { count: doubled })}</Chip>
+                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? <div className="flex"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip></div> : (
+                                  <>
+                                    {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. */}
+                                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
+                                      {own ? (
+                                        <NextLink href={papersHref(own, { source: source.id })} className="text-sm font-semibold text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm">{t("papers.gives", { count: keptOf(source) })}</NextLink>
+                                      ) : (
+                                        <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
+                                      )}
+                                      {baseTotal(source) > 1 ? (
+                                        <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : t("papers.fromAll", { total: baseTotal(source) })}
+                                          <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
+                                        </button>
+                                      ) : <span className="text-muted-foreground">{t("papers.fromAll", { total: baseTotal(source) })}</span>}
+                                    </div>
+                                    {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
+                                      {taken(source) + leftOut > 0 ? (
+                                        <div aria-hidden className="flex h-1.5 w-full gap-px overflow-hidden rounded-full sm:w-64">
+                                          <span className="bg-primary/70" style={{ flexGrow: keptOf(source) }} />
+                                          {doubled ? <span className="bg-foreground/15" style={{ flexGrow: doubled }} /> : null}
+                                          {leftOut ? <span className="bg-foreground/40" style={{ flexGrow: leftOut }} /> : null}
+                                        </div>
                                       ) : null}
-                                      {grew > 0 && own && !gone ? (
-                                        <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
-                                      ) : grew > 0 ? (
-                                        <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
-                                      ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>{t("papers.checkedEvery", { every: draft.living.every })}</Chip> : null}
-                                      {stopped ? <StateChip tone="destructive" icon={TriangleAlert}>{source.read!.read ? t("papers.stoppedAfter", { read: source.read!.read, total: words.num(source.total) }) : t("papers.couldntBeRead")}</StateChip> : null}
-                                      {/* PDFs not yet in a screening: how their first reading stands, as it arrives. */}
-                                      {source.set?.kind === "pdf" && !own ? <PdfFacts batch={source.set.batch} /> : null}
-                                      {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
-                                      {source.facts?.map((fact) => (/not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
-                                    </>
-                                  )}
-                                  {/* What it left out opens from the chip that counts it: the list says why for each. */}
-                                  {itemsLabel && !gone && !busy ? (
-                                    <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className="flex rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
-                                      <StateChip tone={leftOut ? "warning" : "neutral"} icon={leftOut ? FileX : undefined}>{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} /></StateChip>
-                                    </button>
-                                  ) : null}
-                                </div>
+                                        {doubled > 0 && taken(source) ? (
+                                          <button type="button" aria-expanded={open === "merged"} disabled={!rowOf(source)} onClick={() => setOpenSource(open === "merged" ? null : { id: source.id, part: "merged" })} className="inline-flex items-center gap-1 rounded-sm text-muted-foreground outline-none enabled:hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+                                            <Copy aria-hidden className="size-3.5 self-center" />{t("papers.duplicates", { count: doubled })}{rowOf(source) ? <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "merged" && "rotate-180")} /> : null}
+                                          </button>
+                                        ) : null}
+                                        {itemsLabel ? (
+                                          <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className={cn("inline-flex items-center gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", leftOut ? "ink-warning hover:opacity-80" : "text-muted-foreground hover:text-foreground")}>
+                                            {leftOut ? <FileX aria-hidden className="size-3.5 self-center" /> : null}{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} />
+                                          </button>
+                                        ) : null}
+                                    </div>
+                                    {/* What else is true of it, where something is: the rest keep their chips. */}
+                                    {source.read?.filed || grew > 0 || stopped || (source.set?.kind === "pdf" && !own) || source.filters?.length || source.facts?.length || (draft.living && GROWS.includes(source.kind)) ? (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {source.read?.filed ? <Chip icon={FileText}>{t("papers.readAsPdf", { count: source.read.filed })}</Chip> : null}
+                                        {grew > 0 && own ? (
+                                          <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
+                                        ) : grew > 0 ? (
+                                          <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
+                                        ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>{t("papers.checkedEvery", { every: draft.living.every })}</Chip> : null}
+                                        {stopped ? <StateChip tone="destructive" icon={TriangleAlert}>{source.read!.read ? t("papers.stoppedAfter", { read: source.read!.read, total: words.num(source.total) }) : t("papers.couldntBeRead")}</StateChip> : null}
+                                        {source.set?.kind === "pdf" && !own ? <PdfFacts batch={source.set.batch} /> : null}
+                                        {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
+                                        {source.facts?.map((fact) => (/not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                      </div>
+                                    ) : null}
+                                  </>
+                                )}
                                 {/* Why, on its own line: what the person can do about it, or that it went wrong in Openscholar. */}
                                 {stopped && !gone ? <p className="text-xs text-destructive">{source.read!.failure ?? t("papers.notSaved")}</p> : null}
                               </div>
@@ -1053,13 +1072,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                               ) : (
                                 <>
                                   {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
-                                  {baseTotal(source) > 1 ? (
-                                    <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })}>
-                                      {source.scope === "range" ? t("papers.range", { first: words.num(source.range[0]), last: words.num(source.range[1]) }) : t("papers.choose")}<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
-                                    </Button>
-                                  ) : null}
                                   <TooltipHint label={t("papers.remove", { name: source.name })}>
-                                    <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={t("papers.remove", { name: source.name })} onClick={() => removeSource(source)}><Trash2 /></Button>
+                                    <Button variant="ghost" size="icon" className="size-8 shrink-0 self-start text-muted-foreground" aria-label={t("papers.remove", { name: source.name })} onClick={() => removeSource(source)}><Trash2 /></Button>
                                   </TooltipHint>
                                 </>
                               )}
