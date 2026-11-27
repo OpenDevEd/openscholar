@@ -50,6 +50,7 @@ import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
+import { useOpenInAddress } from "./address";
 import { decide, OTHER_REASON, type Answer } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
@@ -73,6 +74,8 @@ const CHECKS = 30;
 type PapersT = ReturnType<typeof useTranslations<"screening.papers">>;
 const notSaved = (t: PapersT, error: unknown) => showStyledToast("error", getErrorMessage(error, t("notSaved")));
 
+/** The filters' sheet is open: the one value its key in the address takes. Starting or clearing a search is a step in the history; the letters between replace each other. */
+const FILTERS_OPEN = ["open"] as const;
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
 /** Each order's sign: an arrow for the way a title runs, and what the others go by. */
@@ -172,7 +175,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const chosen = pickedPapers.map((one) => one.id);
   const setPicked = (papers: Paper[]) => setSelection({ scope, papers });
   const pickOne = (paper: Paper) => setPicked(chosen.includes(paper.id) ? pickedPapers.filter((one) => one.id !== paper.id) : [...pickedPapers, paper]);
-  const [filtering, setFiltering] = useState(false);
+  // The filters' sheet, on a phone, is in the address: Back closes it.
+  const [filteringOpen, setFilteringOpen] = useOpenInAddress("filters", FILTERS_OPEN);
+  const filtering = filteringOpen !== null;
+  const setFiltering = (next: boolean) => setFilteringOpen(next ? "open" : null);
   const top = useRef<HTMLDivElement>(null);
 
   // Whose votes narrow the table: the reviewer named, or you when only a vote is, or the first of the others where an address names only those. With others beside them, the table shows the papers all of them voted on.
@@ -466,7 +472,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 max-sm:w-full">
-          <ListSearch box="min-w-0 flex-1 @2xl/papers:max-w-md" value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className={SEARCH_PILL} />
+          <ListSearch box="min-w-0 flex-1 @2xl/papers:max-w-md" value={query} onChange={(event) => void setPlace({ q: event.target.value || null }, Boolean(event.target.value.trim()) !== Boolean(query.trim()) ? undefined : { history: "replace" })} placeholder={t("find")} aria-label={t("findLabel")} className={SEARCH_PILL} />
           {/* The included papers can go to extraction from the list that shows them, whether or not every other paper is settled: the Overview offers the same once they all are. */}
           {filter === "include" && open.counts.include ? <Button asChild variant="outline" size="sm" className={cn(PILL, "shrink-0")}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, open.screening, open.counts.include)}><FileSearch />{t("extractIncluded")}</NextLink></Button> : null}
           {/* Under a wide window the bar's Export is in its menu: here it is beside the list it exports. */}

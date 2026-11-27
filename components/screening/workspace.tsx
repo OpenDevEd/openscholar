@@ -127,7 +127,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // Changes to its settings that were started and not saved.
   const unsaved = useKept((kept) => Boolean(kept.drafts[id]));
   // A deleted screening's page is left for good: Back does not return to it.
-  const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
+  const overlays = useScreeningOverlays(open, { address: true, onDeleted: () => router.replace(SCREENINGS) });
   // A page opened by a link starts at its top; Back and Forward, and a link to a section, keep their place. The window's scroll is the outside system.
   // Before the page's own effects, so a page that then brings the item its link named into view has the last word.
   useLayoutEffect(() => {

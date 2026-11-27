@@ -5,7 +5,8 @@
 // reviewer, taking one off and making one a viewer. Both places open these same ones, so they say
 // and do the same.
 
-import { useQueryState } from "nuqs";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { useOpenInAddress } from "./address";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -36,7 +37,9 @@ import { useWords } from "./words";
 /** This part's messages, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
-export type Over = "activity" | "export" | "people" | "move" | "finish" | "delete" | "leave" | "stopEmails";
+export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails"] as const;
+export type Over = (typeof OVERS)[number];
+const EXPORT_TABS = ["papers", "votes", "flow", "methods", "record"] as const;
 
 /**
  * The screening's menu: the same items under the same names wherever it opens, over the open screening and in its row
@@ -89,13 +92,20 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
  * The overlays of one screening and the ways to open them. `start` opens one at once, for a row's menu
  * in the list. `onClosed` runs when the last of them has closed, and `onDeleted` after a deletion.
  */
-export function useScreeningOverlays(state: Open | null, { start = null, onClosed, onDeleted }: { start?: Over | null; onClosed?: () => void; onDeleted?: () => void } = {}) {
+export function useScreeningOverlays(state: Open | null, { start = null, address = false, onClosed, onDeleted }: { start?: Over | null; /** Over an open screening, what is open is kept in the address: Back closes it (./address.ts). A list's row menu keeps it to itself. */ address?: boolean; onClosed?: () => void; onDeleted?: () => void } = {}) {
   const t = useTranslations("screening.frame");
   const words = useWords();
-  const [over, setOver] = useState<Over | null>(start);
+  const [kept, setKept] = useState<Over | null>(start);
+  const [addressed, setAddressed] = useOpenInAddress("over", OVERS);
+  const over = address ? addressed : kept;
+  const setOver = (next: Over | null) => (address ? setAddressed(next) : setKept(next));
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
   const [emailsLink, setEmailsLink] = useQueryState("emails");
-  const [exportTab, setExportTab] = useState<ExportTab>("papers");
+  // The Export dialog's tab, in the address with it, so a reload or Back keeps it.
+  const [keptTab, setKeptTab] = useState<ExportTab>("papers");
+  const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "replace", scroll: false }));
+  const exportTab = address ? (tabInAddress ?? "papers") : keptTab;
+  const setExportTab = (tab: ExportTab) => (address ? void setTabInAddress(tab === "papers" ? null : tab) : setKeptTab(tab));
   // A reviewer about to be added, one about to be taken off and one about to be made a viewer: each says what it does before it happens.
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);

@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { useOpenInAddress } from "./address";
 import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -62,6 +63,8 @@ const QUEUE_TONE: Record<Queue, Tone> = { todo: "primary", again: "warning", don
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
 /** The keys, each with who it is for: a vote's are for whoever may vote here, an answer's for whoever answers the criteria. */
 const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
+/** The queue's sheet is open: the one value its key in the address takes. */
+const LIST_OPEN = ["open"] as const;
 const ANSWER_KEY: Record<Answer, string> = { yes: "Y", no: "N", unclear: "U" };
 /** The bar is one row of controls on a wide screen, and grows by a row where a note is being written. */
 const BAR_HEIGHT = "lg:min-h-[4.5rem]";
@@ -169,7 +172,13 @@ function Screen({ open }: { open: Open }) {
 
   const paper: Paper | undefined = (opened ? (named ?? listed.items.find((one) => one.id === opened)) : undefined) ?? (opened && named === undefined ? undefined : listed.items[0]);
   // Typing in the search box takes the paper out of the address, so the first paper found opens.
-  const setFind = (next: string) => void setPlace({ q: next, paper: null }, { history: "replace" });
+  // Starting a search, and clearing one, is a step in the history: the list changes in front of the person. The letters typed between replace each other.
+  const setFind = (next: string) => {
+    const step = Boolean(next.trim()) !== Boolean(find.trim());
+    const search = () => void setPlace({ q: next, paper: null }, step ? undefined : { history: "replace" });
+    if (step && !picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(search);
+    else search();
+  };
   // The open paper is still being read by itself: a paper from a link or from Back, which the list doesn't hold.
   const opening = Boolean(opened) && named === undefined && !paper;
   // Where the open paper stood in the list when the list last held it. Once your vote takes it out of the queue it is shown there still. A paper opened from a link, which the list never held, leads the first page.
@@ -198,8 +207,11 @@ function Screen({ open }: { open: Open }) {
     if (row?.getClientRects().length) row.scrollIntoView({ block: "nearest" });
   }, []);
   // Every paper the page moves to is a step in the browser's history, by a vote or a key or a click alike: Back goes to the paper that was on the screen before it. Typing a search, or naming the paper already open, steps nowhere.
-  const openIt = (next: Paper) => {
-    void setPlace({ paper: next.id });
+  const openIt = (next: Paper, { inPlace = false }: { /** Takes the place of the entry the person is on: a refused vote's paper coming back, a paper picked from the queue's sheet. */ inPlace?: boolean } = {}) => {
+    const move = () => void setPlace({ paper: next.id }, inPlace ? { history: "replace" } : undefined);
+    // The paper on the screen that the address doesn't name yet (the first one a queue opens on) is named first, in its own entry, so Back comes back to it.
+    if (!inPlace && !picked && paper && paper.id !== next.id) void setPlace({ paper: paper.id }, { history: "replace" }).then(move);
+    else move();
     setReasonFor(null);
     setWriting(null);
     setShown(null);
@@ -219,8 +231,10 @@ function Screen({ open }: { open: Open }) {
   };
   // Past the page's last paper is the next page's first, and before its first the page before.
   const turn = (to: () => void) => {
-    void setPlace({ paper: null });
-    to();
+    const step = () => { void setPlace({ paper: null }); to(); };
+    // As with a paper: the one on the screen gets its own entry before the page moves on.
+    if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(step);
+    else step();
   };
   const go = (index: number) => {
     if (index >= items.length && listed.canNext) return turn(listed.next);
@@ -234,7 +248,10 @@ function Screen({ open }: { open: Open }) {
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
   // On a phone the queue opens over the paper.
-  const [listing, setListing] = useState(false);
+  // The queue's sheet, on a phone or a tablet, is in the address: Back closes it.
+  const [listingOpen, setListingOpen] = useOpenInAddress("list", LIST_OPEN);
+  const listing = listingOpen !== null;
+  const setListing = (next: boolean | ((now: boolean) => boolean), how?: { inPlace?: boolean }) => setListingOpen((typeof next === "function" ? next(listing) : next) ? "open" : null, how);
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);
@@ -295,7 +312,7 @@ function Screen({ open }: { open: Open }) {
     // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
     const refused = (error: unknown) => {
       setHistory((all) => all.filter((one) => one !== cast));
-      openIt(paper);
+      openIt(paper, { inPlace: true });
       failed(error);
     };
     // Each vote after the first of a sitting adds the time since the one before to the person's pace. Five minutes or more is a break, not a paper.
@@ -690,7 +707,7 @@ function Screen({ open }: { open: Open }) {
                 </SheetHeader>
                 <ScrollArea shades className="min-h-0 flex-1">
                 <ul className="divide-y divide-border-subtle">
-                  {items.map((one) => row(one, (picked) => { openIt(picked); setListing(false); }))}
+                  {items.map((one) => row(one, (picked) => { openIt(picked, { inPlace: true }); setListing(false, { inPlace: true }); }))}
                   {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">{t("queue.noMatch")}</li> : null}
                 </ul>
                 </ScrollArea>
