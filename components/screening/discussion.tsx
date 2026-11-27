@@ -22,7 +22,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
-import { activeReviewers, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
+import { activeReviewers, blindOf, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
 import { Help, Section, ShutChip, ShutNote, StateChip } from "./pieces";
 import type { Open } from "./store";
 import { useWords } from "./words";
@@ -40,7 +40,7 @@ const about = (t: ListT, open: Open) => (
   <Help title={t("discussion.title")}>
     {/* Said of the people who write here, so it is true for someone who only reads. */}
     <p>{t("discussion.about", { models: String(modelsOf(open.screening).length > 0) })}</p>
-    {open.screening.rule.blind === "after" ? <p>{t("discussion.blind")}</p> : null}
+    {blindOf(open.screening, open.invited) === "all" || blindOf(open.screening, open.invited) === "people" ? <p>{t("discussion.blind")}</p> : null}
   </Help>
 );
 

@@ -55,7 +55,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
-import { EVERY_MS, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
+import { EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
@@ -753,7 +753,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
-      const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).map((one) => one.email.toLowerCase()));
+      const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left) && !(one.email && waiting.has(one.email.toLowerCase())));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
       const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
@@ -1450,7 +1450,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </Select>
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>}>
+              {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && !hidesVotes(draft.rule, each) ? { detail: t("decided.seeingNothing") } : {})}>
                 <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
               </RuleRow>
               {/* What the rule does, on three made-up papers. */}

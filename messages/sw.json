@@ -7790,6 +7790,8 @@
       },
       "votesStay": "Kura zilizokwisha kupigwa zinabaki zilivyo",
       "modelVotes": {
+        "voteHidden": "Kura ya modeli inahesabiwa kama ya mkaguzi mmoja kwenye makala ambazo bado ziko wazi, na inafichwa kwa mkaguzi hadi aipigie kura makala hiyo",
+        "adviceSeen": "Makala ambazo bado ziko wazi na ambazo mtu anazo zinaamuliwa kwa kura za watu peke yake, na kura za modeli zikiwa ushauri ambao mkaguzi anauona kabla ya kupiga kura",
         "advice": "Makala ambazo bado ziko wazi na ambazo mtu anazo zinaamuliwa kwa kura za watu peke yake, na kura za modeli zikiwa ushauri",
         "vote": "Kura ya modeli inahesabiwa kama ya mkaguzi mmoja kwenye makala ambazo bado ziko wazi"
       },
@@ -7817,6 +7819,7 @@
         "stillShare": "Kila makala bado inaenda kwa {each, plural, one {mtu #} other {watu #}}. Yeyote atakayeongezwa baadaye anachukua mgao sawa wa makala zilizo wazi, si kila moja"
       },
       "blind": {
+        "untilVotedAdvice": "Mkaguzi anaona kura za watu wengine kwenye makala akishaipigia kura au ikishaamuliwa. Kura za modeli zinaonekana kabla ya hapo, kama ushauri",
         "never": "Kila mtu anaona kila kura inapopigwa",
         "untilVoted": "Mkaguzi anaona kura nyingine kwenye makala akishaipigia kura au ikishaamuliwa"
       },
@@ -7970,6 +7973,7 @@
         "noneMine": "Bado hujapigia Jumuisha makala yoyote."
       },
       "votes": {
+        "leftOutPeople": "Kura yoyote ambayo mtu mwingine alipigia {count, plural, one {makala #} other {makala #}} ambazo bado hujapigia kura imeachwa, ili isiathiri kura yako. Kura za modeli zimejumuishwa.",
         "title": "{votes, plural, one {kura #} other {kura #}} za {voters, plural, one {mkaguzi #} other {wakaguzi #}}",
         "help": "Safu moja kwa kila makala ambayo mkaguzi alipewa, pamoja na kura yake, sababu na dokezo lake, jibu kwa kila kigezo, na mahali makala ilipo sasa. Mkaguzi ambaye bado hajapiga kura ana safu pia, na hivyo pia modeli ambayo haikuweza kusoma makala. Modeli haipewi makala ambayo ni PDF tu isiyoweza kuisoma, na mkaguzi aliyeongezwa baadaye hapewi makala zilizoamuliwa kabla hajajiunga.",
         "leftOut": "Kura yoyote ambayo wengine walipigia {count, plural, one {makala #} other {makala #}} ambazo bado hujapigia kura imeachwa, ili isiathiri kura yako.",
@@ -8354,6 +8358,7 @@
         "addModel": "Ongeza modeli"
       },
       "decided": {
+        "seeingNothing": "Hakuna cha kuficha kukiwa na mtu mmoja kwenye kila makala",
         "votesAgree": "Kura zinakubaliana",
         "settled": "Imeamuliwa",
         "votesSplit": "Kura zinatofautiana",
@@ -8368,7 +8373,7 @@
         "countAsVote": "Hesabu kama ya mtu",
         "adviceOnly": "Ushauri tu",
         "modelVotesVote": "Kura za modeli zinapohesabiwa kama za mtu, kila moja ni kura ya mkaguzi mmoja, na makala inaamuliwa kwa kura za watu na za modeli pamoja. Pale ambapo modeli peke yake zingeshinda kura za kila mtu kwenye makala hiyo, makala ina mgongano badala yake.",
-        "modelVotesAdvice": "Zinapokuwa ushauri tu, makala aliyo nayo mtu inaamuliwa kwa kura za watu peke yake, na kura za modeli zinaonekana kando ya zao.",
+        "modelVotesAdvice": "Zinapokuwa ushauri tu, makala aliyo nayo mtu inaamuliwa kwa kura za watu peke yake, na mkaguzi anaona kura za modeli kabla ya kupiga kura yake.",
         "modelVotesNever": "Kwa njia yoyote, makala ambayo hakuna mtu aliyepewa inaamuliwa kwa kura za modeli. Chini ya “Kura ya kwanza inaamua”, kura za modeli ni ushauri kwenye makala yoyote aliyo nayo mtu.",
         "addModel": "Ongeza modeli ili uchague",
         "modelsUnderOne": "Ushauri kwenye makala aliyo nayo mtu",
@@ -8384,7 +8389,7 @@
         "whoSettles": "Nani anaamua mgongano",
         "seeVotes": "Wakaguzi wanaona kura nyingine",
         "seeingTitle": "Kuona kura nyingine",
-        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Yeyote asiyepigia kura makala anaona kura zake wakati wowote.",
+        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote.",
         "after": "Baada ya kupiga kura",
         "always": "Wakati wowote",
         "withVotes": "{count, plural, one {Na kura # kwenye makala, kwa mfano} other {Na kura # kwenye makala, kwa mfano}}",
@@ -8499,6 +8504,8 @@
         "add": "{you, select, true {Jiongeze kwenye kichujio} other {Mwongeze {name} kwenye kichujio}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Kura za watu zimefichwa kwenye orodha ya Kufanya ya wakaguzi",
+        "peopleHiddenMine": "Kura za watu zimefichwa kwenye orodha yako ya Kufanya",
         "advice": "Kura za modeli ni ushauri",
         "title": "Jinsi makala inavyoamuliwa",
         "eachPaper": "{who, select, both {{people, plural, one {mtu #} other {watu #}} na {models, plural, one {modeli #} other {modeli #}}} people {{people, plural, one {mtu #} other {watu #}}} other {{models, plural, one {modeli #} other {modeli #}}}} kwa kila makala",
@@ -8563,6 +8570,7 @@
         "nothingElse": "Hakuna kingine kinachobadilika"
       },
       "finish": {
+        "peopleVotesShow": "Kura za watu zilizofichwa kwa wakaguzi zinaonekana kwa kila mtu aliye kwenye uchujaji huu",
         "title": "Weka uchujaji huu kuwa umekamilika?",
         "unsettled": "{count, plural, one {Makala # haijaamuliwa, na inabaki ilivyo} other {Makala # hazijaamuliwa, na zinabaki zilivyo}}",
         "votingStops": "Hakuna anayeweza kupiga kura kwenye uchujaji huu hadi ufunguliwe tena",
@@ -8793,6 +8801,7 @@
         "stillWait": "Ona zipi kati yake bado zinasubiri kura nyingine"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {Mkaguzi # amealikwa kwa barua pepe, atapiga kura akishajiunga na uchujaji ukifunguliwa tena} other {Wakaguzi # wamealikwa kwa barua pepe, watapiga kura wakishajiunga na uchujaji ukifunguliwa tena}}} other {{count, plural, one {Mkaguzi # amealikwa kwa barua pepe, atapiga kura akishajiunga} other {Wakaguzi # wamealikwa kwa barua pepe, watapiga kura wakishajiunga}}}}",
         "title": "Wakaguzi",
         "everyoneDone": "Wote watamaliza baada ya takriban {weeks, plural, =0 {{days, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}, kwa kasi hii",
         "move": "Hamisha makala",
@@ -8980,6 +8989,7 @@
         "none": "Uchujaji huu bado hauna makala."
       },
       "sort": {
+        "peopleShut": "Uchujaji huu unaficha kura za watu wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua",
         "added": "Kama zilivyoongezwa",
         "title": "Kichwa, A hadi Z",
         "title-desc": "Kichwa, Z hadi A",
@@ -9099,11 +9109,12 @@
         "stopPapersWaiting": "{you, select, true {Acha kuonyesha makala zinazosubiri kura yako pekee} other {Acha kuonyesha makala zinazosubiri kura ya {name} pekee}}"
       },
       "marks": {
+        "peopleHidden": "Mtu amepiga kura, imefichwa wakati makala inasubiri kura yako",
         "title": "Alama za kura",
         "aReviewer": "Mkaguzi",
         "aModel": "Modeli",
         "voted": "Alipigia {decision}",
-        "hidden": "Amepiga kura, imefichwa wakati makala inasubiri kura ya mkaguzi mwenyewe",
+        "hidden": "Amepiga kura, imefichwa wakati makala inasubiri kura yako",
         "empty": "Kisanduku kitupu ni makala ambayo si yake kuipigia kura"
       },
       "why": {
@@ -9185,6 +9196,7 @@
         "join": "Wewe si mkaguzi wa uchujaji huu. Jiunge kama mkaguzi ili upige kura."
       },
       "votesShut": "Kura za wengine zinabaki zimefichwa ili zisiathiri kura yako.",
+      "peopleVotesShut": "{people, plural, =0 {} one {Kura ya mtu mwingine inabaki imefichwa ili isiathiri kura yako.} other {Kura za watu wengine zinabaki zimefichwa ili zisiathiri kura yako.}} {models, plural, one {Kura ya modeli inaonekana mara tu inapopigwa.} other {Kura za modeli zinaonekana mara tu zinapopigwa.}}",
       "creditsShort": "{short, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
       "retry": "{papers, plural, one {Jaribu makala tena kwa {cost, plural, one {krediti #} other {krediti #}}} other {Jaribu makala zote # tena kwa {cost, plural, one {krediti #} other {krediti #}}}}",
       "votesBy": "{you, select, true {Kura zako} other {Kura za {name}}}",
@@ -9544,6 +9556,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Kura za watu zimefichwa hadi upige kura",
+      "votesWereHiddenSays": "Kura zilifichwa kwa mkaguzi kwenye makala zilizokuwa zikisubiri kura yake mwenyewe tu. Sasa kwa kuwa uchujaji umekamilika, kila kura inaonekana.",
+      "votesHiddenPeopleSays": "Uchujaji huu unamficha mkaguzi kura za watu wengine kwenye makala ambazo bado zinasubiri kura yake mwenyewe tu. Kura za modeli ni ushauri, na zinaonekana wakati wowote.",
       "decision": {
         "include": "Jumuisha",
         "maybe": "Labda",

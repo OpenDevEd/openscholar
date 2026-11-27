@@ -26,10 +26,10 @@ import { ANSWERS, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } fr
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
-import { type RetiredCriterion, RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { type Blind, type RetiredCriterion, RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
-import { useWords } from "./words";
+import { useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** This part's messages, for a function that is handed them. */
@@ -184,7 +184,23 @@ export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(
 };
 
 /** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
-export const VOTES_SHUT = (t: T) => t("votesShut");
+/**
+ * What the person looking may not see of a paper's votes: whether any are kept from them, and whether none shows at
+ * all, so the table of votes has no answers to draw. The models' advice shows before they vote (lib/screening/rules.ts `showsEarly`).
+ */
+export const votesShutOf = (sees: boolean, cast: Array<{ vote?: unknown; hidden?: boolean }>) => ({ kept: !sees && cast.some((one) => one.hidden), none: !sees && !cast.some((one) => one.vote) });
+/** Why the others' votes on a paper are out of sight. Where the models' votes are advice, it is the people's votes that are, and the models' show as they are cast. */
+export const VOTES_SHUT = (t: T, blind: Blind, cast: Array<{ reviewer: { kind: string; id: string } }>, me: string) => {
+  const models = cast.filter((one) => one.reviewer.kind === "model").length;
+  return blind === "people" && models ? t("peopleVotesShut", { people: cast.filter((one) => one.reviewer.kind === "person" && one.reviewer.id !== me).length, models }) : t("votesShut");
+};
+/** What a screening hides until a reviewer votes, said in full for whoever reads it, or nothing where it hides nothing. */
+export const blindSays = (words: Words, blind: Blind) => (blind === "all" ? words.t("votesHiddenSays") : blind === "people" ? words.t("votesHiddenPeopleSays") : blind === "done" ? words.t("votesWereHiddenSays") : null);
+/** The chip over a paper's votes while some are kept from you. */
+export const HiddenChip = ({ blind }: { blind: Blind }) => {
+  const words = useWords();
+  return <ShutChip by="vote">{blind === "people" ? words.t("peopleHiddenUntilVote") : undefined}</ShutChip>;
+};
 
 /**
  * Sends a model back to the papers it couldn't read: the one control for it, wherever a failed read shows, with the
@@ -657,7 +673,7 @@ const MarkInFact = ({ children }: { children: ReactNode }) => <span className="-
  * What a paper's table of votes shows, behind its "?": the same on Screen and in the Papers drawer, with every sign the
  * table draws. The rule that hides votes is named only on a screening that has it.
  */
-export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bottom" | "left" }) {
+export function VotesHelp({ blind, side }: { blind: Blind; side?: "top" | "bottom" | "left" }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
   return (
@@ -678,7 +694,7 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
     >
       <p>{t("votesHelp.body")}</p>
       {/* The rule, said for anyone who reads this: someone who never votes here sees every vote, and is promised no lock. */}
-      {blind ? <p>{words.t("votesHiddenSays")} {t("votesHelp.lock")}</p> : null}
+      {blindSays(words, blind) ? <p>{blindSays(words, blind)}{blind === "all" || blind === "people" ? ` ${t("votesHelp.lock")}` : ""}</p> : null}
     </Help>
   );
 }

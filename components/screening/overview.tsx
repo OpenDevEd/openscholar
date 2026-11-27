@@ -381,7 +381,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
                 <span role="cell">{t("reviewers.invited")} <span className="font-normal tabular-nums text-muted-foreground">{open.invited.length}</span></span>
               </div>
-              {open.invited.map((one) => (
+              {open.invited.flatMap((one) => (one.email ? [{ email: one.email }] : [])).map((one) => (
                 <div key={one.email} role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   {/* The address and what waiting means stack under each other on a phone, so the address keeps the row's width. */}
                   <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">
@@ -393,6 +393,15 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
                   </span>
                 </div>
               ))}
+              {/* A guest is told how many, and never whose address. */}
+              {open.invited.some((one) => !one.email) ? (
+                <div role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                  <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">
+                    <ReviewerMark reviewer={{ kind: "person", name: "", email: "invited" }} className="size-8" />
+                    <span className="min-w-0 text-muted-foreground">{t("reviewers.invitedCount", { count: open.invited.filter((one) => !one.email).length, finished: String(Boolean(screening.finishedAt)) })}</span>
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {/* Whoever was taken off, and what became of their votes: results can rest on votes from someone no longer in the lists above. */}

@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
+import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, advisory, canConflict, hidesVotes, gotThrough, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
 // The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
@@ -284,17 +284,26 @@ export const activeReviewers = (screening: Pick<Screening, "reviewers">) => scre
  * no paper until they join, so they are not among `people`, but the rule waits for them (lib/screening/project.ts), so
  * they count toward `each`.
  */
-export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pending: Array<{ email: string }> = []) => {
+export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pending: Pending[] = []) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
   const invited = invitedOf(screening, pending);
   return { people, invited, each: readersFor(eachOf(screening.rule), people.length + invited) };
 };
+/** How a screening hides votes from a reviewer until they vote, for what its pages say about it (lib/screening/rules.ts `hidesVotes`). */
+export type Blind = "none" | "all" | "people" | "done";
+/**
+ * "none" where it hides nothing: votes show at any time, or one person reads each paper and the models only advise.
+ * "people" where only the people's votes are hidden, since the models' are advice and show at once. "all" where every
+ * other vote is hidden. "done" once it is finished, and every vote that was hidden shows.
+ */
+export const blindOf = (screening: Pick<Screening, "reviewers" | "rule" | "finishedAt">, pending: Pending[] = []): Blind =>
+  !hidesVotes(screening.rule, readersOf(screening, pending).each) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
 /**
  * Whether this screening's papers can be in conflict, and so need someone to settle them: more than one vote settles a
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with
  * their votes kept. Every page that offers a settler, or says a paper settles on one vote, asks this.
  */
-export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => {
+export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Pending[] = []) => {
   const { people, invited } = readersOf(screening, pending);
   // Reviewers taken off with their votes kept: a kept vote sits beside the places still open on its paper, so it counts as one more reader there.
   const kept = screening.reviewers.filter((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0);
@@ -305,8 +314,10 @@ export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, confl
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));
 /** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */
-export const invitedOf = (screening: Pick<Screening, "reviewers">, pending: Array<{ email: string }> = []) =>
-  new Set([...screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).map((reviewer) => reviewer.email!.toLowerCase()), ...pending.map((one) => one.email.toLowerCase())]).size;
+export const invitedOf = (screening: Pick<Screening, "reviewers">, pending: Pending[] = []) =>
+  new Set([...screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && reviewer.email).map((reviewer) => reviewer.email!.toLowerCase()), ...pending.flatMap((one) => one.email?.toLowerCase() ?? [])]).size + pending.filter((one) => !one.email).length;
+/** An invitation still waiting, as the screening's page has it: with its address for the workspace's members, and without it for a guest. */
+export type Pending = { email?: string };
 /**
  * A screening as it would be with a reviewer taken off. The conflicts they settled go to whoever the server gives
  * them to, by the same rule (lib/screening/rules.ts `nextResolver`).

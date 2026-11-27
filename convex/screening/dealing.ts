@@ -36,9 +36,11 @@ export const readingModel = (reviewer: Reviewer) => reviewer.kind === "model" &&
 export const teamOf = (reviewers: Reviewer[], invited = 0) => ({ people: reviewers.filter(dealable).map((one) => one._id as string), models: reviewers.filter(readingModel).map((one) => one._id as string), invited });
 
 /** How many people were asked by email to vote on a screening and haven't answered yet: its rule waits for them as for anyone on it. */
-export async function invitedTo(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) {
+export const invitedTo = async (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) => (await invitationsTo(ctx, jobId)).length;
+/** Those invitations themselves. */
+export async function invitationsTo(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) {
   const now = Date.now();
-  return (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && one.expiresAt > now).length;
+  return (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && one.expiresAt > now);
 }
 
 /** Someone whose account is gone still has a name where their votes are. */

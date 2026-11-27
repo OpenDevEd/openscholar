@@ -7789,6 +7789,8 @@
       },
       "votesStay": "Les votes déjà émis restent tels quels",
       "modelVotes": {
+        "voteHidden": "Le vote d'un modèle compte comme celui d'un évaluateur sur les articles encore ouverts, et reste masqué à un évaluateur jusqu'à ce qu'il vote sur l'article",
+        "adviceSeen": "Les articles encore ouverts confiés à une personne sont tranchés sur les seuls votes des personnes, et les votes des modèles servent d'avis, qu'un évaluateur voit avant de voter",
         "advice": "Les articles encore ouverts confiés à une personne sont tranchés sur les seuls votes des personnes, et les votes des modèles servent d'avis",
         "vote": "Le vote d'un modèle compte comme celui d'un évaluateur sur les articles encore ouverts"
       },
@@ -7816,6 +7818,7 @@
         "stillShare": "Chaque article va toujours à {each, plural, one {# personne} other {# personnes}}. Toute personne ajoutée plus tard reçoit une part égale des articles ouverts, pas tous"
       },
       "blind": {
+        "untilVotedAdvice": "Un évaluateur voit les votes des autres personnes sur un article une fois qu'il a voté dessus ou que l'article est tranché. Les votes des modèles s'affichent avant, comme avis",
         "never": "Tout le monde voit chaque vote dès qu'il est émis",
         "untilVoted": "Un évaluateur voit les autres votes sur un article une fois qu'il a voté dessus ou que l'article est tranché"
       },
@@ -7969,6 +7972,7 @@
         "noneMine": "Vous n'avez encore voté Inclure sur aucun article."
       },
       "votes": {
+        "leftOutPeople": "Tout vote d'une autre personne sur {count, plural, one {l'article} other {les # articles}} où vous n'avez pas encore voté est écarté, pour ne pas influencer le vôtre. Les votes des modèles sont inclus.",
         "title": "{votes, plural, one {# vote} other {# votes}} de {voters, plural, one {# évaluateur} other {# évaluateurs}}",
         "help": "Une ligne pour chaque article qu'un évaluateur a reçu, avec son vote, son motif et sa remarque, la réponse à chaque critère, et où en est l'article maintenant. Un évaluateur qui n'a pas encore voté a aussi une ligne, tout comme un modèle qui n'a pas pu lire l'article. Un modèle ne reçoit pas un article qui n'est qu'un PDF qu'il ne sait pas lire, et un évaluateur ajouté plus tard ne reçoit pas les articles tranchés avant son arrivée.",
         "leftOut": "Tout vote des autres sur {count, plural, one {l'article} other {les # articles}} où vous n'avez pas encore voté est écarté, pour ne pas influencer le vôtre.",
@@ -8353,6 +8357,7 @@
         "addModel": "Ajouter un modèle"
       },
       "decided": {
+        "seeingNothing": "Rien à masquer avec une seule personne par article",
         "votesAgree": "Votes concordants",
         "settled": "Tranché",
         "votesSplit": "Votes partagés",
@@ -8367,7 +8372,7 @@
         "countAsVote": "Compter comme une personne",
         "adviceOnly": "Avis seulement",
         "modelVotesVote": "Quand les votes des modèles comptent comme celui d'une personne, chacun vaut le vote d'un évaluateur, et un article est tranché sur les votes des personnes et des modèles ensemble. Si les modèles l'emportaient à eux seuls sur chaque personne à qui l'article est confié, il est en désaccord à la place.",
-        "modelVotesAdvice": "Quand ils ne servent que d'avis, un article confié à une personne est tranché sur les seuls votes des personnes, et les votes des modèles s'affichent à côté des leurs.",
+        "modelVotesAdvice": "Quand ils ne servent que d'avis, un article confié à une personne est tranché sur les seuls votes des personnes, et un évaluateur voit les votes des modèles avant d'émettre le sien.",
         "modelVotesNever": "Dans les deux cas, un article qui n'est confié à aucune personne est tranché sur les votes des modèles. Avec « Le premier vote décide », les votes des modèles servent d'avis sur tout article confié à une personne.",
         "addModel": "Ajoutez un modèle pour choisir",
         "modelsUnderOne": "Avis sur les articles confiés à une personne",
@@ -8383,7 +8388,7 @@
         "whoSettles": "Qui tranche un désaccord",
         "seeVotes": "Les évaluateurs voient les autres votes",
         "seeingTitle": "Voir les autres votes",
-        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Quiconque ne vote pas sur un article voit ses votes à tout moment.",
+        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment.",
         "after": "Après leur vote",
         "always": "À tout moment",
         "withVotes": "{count, plural, one {Avec # vote sur un article, par exemple} other {Avec # votes sur un article, par exemple}}",
@@ -8498,6 +8503,8 @@
         "add": "{you, select, true {Vous ajouter au filtre} other {Ajouter {name} au filtre}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Votes des personnes masqués dans la liste À faire des évaluateurs",
+        "peopleHiddenMine": "Votes des personnes masqués dans votre liste À faire",
         "advice": "Les votes des modèles servent d'avis",
         "title": "Comment un article est tranché",
         "eachPaper": "{who, select, both {{people, plural, one {# personne} other {# personnes}} et {models, plural, one {# modèle} other {# modèles}}} people {{people, plural, one {# personne} other {# personnes}}} other {{models, plural, one {# modèle} other {# modèles}}}} sur chaque article",
@@ -8562,6 +8569,7 @@
         "nothingElse": "Rien d'autre ne change"
       },
       "finish": {
+        "peopleVotesShow": "Les votes des personnes qui étaient masqués aux évaluateurs deviennent visibles par toutes les personnes du criblage",
         "title": "Marquer ce criblage comme terminé ?",
         "unsettled": "{count, plural, one {# article n'est pas tranché et reste tel quel} other {# articles ne sont pas tranchés et restent tels quels}}",
         "votingStops": "Personne ne peut voter dessus tant qu'il n'est pas rouvert",
@@ -8792,6 +8800,7 @@
         "stillWait": "Voir lesquels attendent encore d'autres votes"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {# évaluateur invité par e-mail, qui vote une fois le criblage rejoint et rouvert} other {# évaluateurs invités par e-mail, qui votent une fois le criblage rejoint et rouvert}}} other {{count, plural, one {# évaluateur invité par e-mail, qui vote après avoir rejoint le criblage} other {# évaluateurs invités par e-mail, qui votent après avoir rejoint le criblage}}}}",
         "title": "Évaluateurs",
         "everyoneDone": "Tout le monde aura fini dans environ {weeks, plural, =0 {{days, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}, à ce rythme",
         "move": "Déplacer des articles",
@@ -8979,6 +8988,7 @@
         "none": "Ce criblage n'a pas encore d'articles."
       },
       "sort": {
+        "peopleShut": "Ce criblage masque les votes des autres personnes sur les articles où vous n'avez pas encore voté, et cet ordre les révélerait",
         "added": "Ordre d'ajout",
         "title": "Titre, de A à Z",
         "title-desc": "Titre, de Z à A",
@@ -9098,11 +9108,12 @@
         "stopPapersWaiting": "{you, select, true {Ne plus afficher seulement les articles en attente de votre vote} other {Ne plus afficher seulement les articles en attente du vote de {name}}}"
       },
       "marks": {
+        "peopleHidden": "Une personne a voté, masqué tant que l'article attend votre vote",
         "title": "Marques de vote",
         "aReviewer": "Un évaluateur",
         "aModel": "Un modèle",
         "voted": "A voté {decision}",
-        "hidden": "A voté, masqué tant que l'article attend le vote de l'évaluateur",
+        "hidden": "A voté, masqué tant que l'article attend votre vote",
         "empty": "Une case vide est un article sur lequel il ne lui revient pas de voter"
       },
       "why": {
@@ -9184,6 +9195,7 @@
         "join": "Vous n'êtes pas évaluateur de ce criblage. Rejoignez-le comme évaluateur pour voter."
       },
       "votesShut": "Les autres votes restent masqués pour ne pas influencer le vôtre.",
+      "peopleVotesShut": "{people, plural, =0 {} one {Le vote de l'autre personne reste masqué pour ne pas influencer le vôtre.} other {Les votes des autres personnes restent masqués pour ne pas influencer le vôtre.}} {models, plural, one {Le vote du modèle s'affiche dès qu'il est émis.} other {Les votes des modèles s'affichent dès qu'ils sont émis.}}",
       "creditsShort": "{short, plural, one {Il manque # crédit} other {Il manque # crédits}}",
       "retry": "{papers, plural, one {Relancer l'article pour {cost, plural, one {# crédit} other {# crédits}}} other {Relancer les # articles pour {cost, plural, one {# crédit} other {# crédits}}}}",
       "votesBy": "{you, select, true {Vos votes} other {Votes de {name}}}",
@@ -9543,6 +9555,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Votes des personnes masqués jusqu'à votre vote",
+      "votesWereHiddenSays": "Les votes n'étaient masqués à un évaluateur que sur les articles qui attendaient son propre vote. Maintenant que le criblage est terminé, tous les votes sont visibles.",
+      "votesHiddenPeopleSays": "Ce criblage masque les votes des autres personnes à un évaluateur uniquement sur les articles qui attendent encore son propre vote. Les votes des modèles servent d'avis et restent visibles à tout moment.",
       "decision": {
         "include": "Inclure",
         "maybe": "Peut-être",

@@ -7789,6 +7789,8 @@
       },
       "votesStay": "Amavoti asevele efakiwe ahlala enjalo",
       "modelVotes": {
+        "voteHidden": "Ivoti lemodeli libalwa njengelombuyekezi oyedwa emaphepheni asavulekile, futhi lifihlelwa umbuyekezi aze avote ephepheni",
+        "adviceSeen": "Amaphepha asavulekile anomuntu axazululwa ngamavoti abantu kuphela, amavoti amamodeli eyiseluleko umbuyekezi asibona ngaphambi kokuvota",
         "advice": "Amaphepha asavulekile anomuntu axazululwa ngamavoti abantu kuphela, amavoti amamodeli eyiseluleko",
         "vote": "Ivoti lemodeli libalwa njengelombuyekezi oyedwa emaphepheni asavulekile"
       },
@@ -7816,6 +7818,7 @@
         "stillShare": "Iphepha ngalinye lisaya {each, plural, one {kumuntu ongu-#} other {kubantu abangu-#}}. Noma ubani ongezwa kamuva uthatha isabelo esilinganayo samaphepha avulekile, hhayi onke"
       },
       "blind": {
+        "untilVotedAdvice": "Umbuyekezi ubona amavoti abanye abantu ephepheni uma esevotile kulo noma selixazululiwe. Amavoti amamodeli ayabonakala ngaphambi kwalokho, njengeseluleko",
         "never": "Wonke umuntu ubona onke amavoti njengoba efakwa",
         "untilVoted": "Umbuyekezi ubona amanye amavoti ephepheni uma esevotile kulo noma selixazululiwe"
       },
@@ -7969,6 +7972,7 @@
         "noneMine": "Awukavoti ngokuthi Faka kunoma yiliphi iphepha okwamanje."
       },
       "votes": {
+        "leftOutPeople": "Noma yiliphi ivoti omunye umuntu alifake {count, plural, one {ku-# iphepha} other {kumaphepha angu-#}} ongakavoti kuwo lishiywe ngaphandle, ukuze lingalithonyi elakho. Amavoti amamodeli afakiwe.",
         "title": "{votes, plural, one {# ivoti} other {# amavoti}} {voters, plural, one {lombuyekezi ongu-#} other {lababuyekezi abangu-#}}",
         "help": "Umugqa owodwa wephepha ngalinye umbuyekezi alinikiwe, nevoti labo, isizathu nenothi lalo, impendulo yombandela ngamunye, kanye nalapho iphepha limi khona manje. Umbuyekezi ongakavoti naye unomugqa, kanjalo nemodeli engakwazanga ukufunda iphepha. Imodeli ayinikwa iphepha eliyi-PDF kuphela engakwazi ukuyifunda, futhi umbuyekezi owengezwe kamuva akanikwa amaphepha axazululwe ngaphambi kokuba ajoyine.",
         "leftOut": "Noma yiliphi ivoti abanye abalifake {count, plural, one {ku-# iphepha} other {kumaphepha angu-#}} ongakavoti kuwo lishiywe ngaphandle, ukuze lingalithonyi elakho.",
@@ -8353,6 +8357,7 @@
         "addModel": "Engeza imodeli"
       },
       "decided": {
+        "seeingNothing": "Akukho okufanele kufihlwe uma kunomuntu oyedwa ephepheni ngalinye",
         "votesAgree": "Amavoti ayavumelana",
         "settled": "Kuxazululiwe",
         "votesSplit": "Amavoti ayehlukana",
@@ -8367,7 +8372,7 @@
         "countAsVote": "Bala njengelomuntu",
         "adviceOnly": "Iseluleko kuphela",
         "modelVotesVote": "Uma amavoti amamodeli ebalwa njengelomuntu, ngalinye lilingana nelombuyekezi oyedwa, futhi iphepha lixazululwa ngamavoti abantu namamodeli ndawonye. Lapho amamodeli odwa engadlula amavoti abo bonke abantu ephepheni, iphepha esikhundleni salokho liyangqubuzana.",
-        "modelVotesAdvice": "Uma eyiseluleko kuphela, iphepha elinomuntu lixazululwa ngamavoti abantu kuphela, futhi amavoti amamodeli avela eceleni kwawo.",
+        "modelVotesAdvice": "Uma eyiseluleko kuphela, iphepha elinomuntu lixazululwa ngamavoti abantu kuphela, futhi umbuyekezi ubona amavoti amamodeli ngaphambi kokufaka elakhe.",
         "modelVotesNever": "Noma kunjani, iphepha okungekho muntu olinikiwe lixazululwa ngamavoti amamodeli. Ngaphansi kokuthi “Ivoti lokuqala liyanquma”, amavoti amamodeli ayiseluleko kunoma yiliphi iphepha elinomuntu.",
         "addModel": "Engeza imodeli ukuze ukhethe",
         "modelsUnderOne": "Iseluleko emaphepheni anomuntu",
@@ -8383,7 +8388,7 @@
         "whoSettles": "Ubani oxazulula ukungqubuzana",
         "seeVotes": "Ababuyekezi babona amanye amavoti",
         "seeingTitle": "Ukubona amanye amavoti",
-        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini.",
+        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Amavoti amamodeli ayiseluleko kuphela ayabonakala ngaphambi kwalokho. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini.",
         "after": "Ngemuva kokuthi bevotile",
         "always": "Noma nini",
         "withVotes": "{count, plural, one {Nevoti elilodwa elingu-# ephepheni, isibonelo} other {Namavoti angu-# ephepheni, isibonelo}}",
@@ -8498,6 +8503,8 @@
         "add": "{you, select, true {Zengeze esihlungini} other {Engeza u-{name} esihlungini}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Amavoti abantu afihliwe ku-Okusazokwenziwa kwababuyekezi",
+        "peopleHiddenMine": "Amavoti abantu afihliwe ku-Okusazokwenziwa kwakho",
         "advice": "Amavoti amamodeli ayiseluleko",
         "title": "Indlela iphepha elixazululwa ngayo",
         "eachPaper": "{who, select, both {{people, plural, one {# umuntu} other {# abantu}} kanye {models, plural, one {ne-# modeli} other {nama-# amamodeli}}} people {{people, plural, one {# umuntu} other {# abantu}}} other {{models, plural, one {# imodeli} other {# amamodeli}}}} ephepheni ngalinye",
@@ -8562,6 +8569,7 @@
         "nothingElse": "Akukho okunye okushintshayo"
       },
       "finish": {
+        "peopleVotesShow": "Amavoti abantu ayefihlelwe ababuyekezi ayabonakala kubo bonke abakukho",
         "title": "Maka lokhu kuskrini njengokuqediwe?",
         "unsettled": "{count, plural, one {# iphepha alikaxazululwa, futhi lihlala linjalo} other {# amaphepha awakaxazululwa, futhi ahlala enjalo}}",
         "votingStops": "Akekho ongavota kukho kuze kuvulwe futhi",
@@ -8792,6 +8800,7 @@
         "stillWait": "Bona ukuthi yimaphi kuwo asalinde amanye amavoti"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {Umbuyekezi ongu-# umenywe nge-imeyili, uvota uma esejoyinile futhi ukuskrini sekuvulwe futhi} other {Ababuyekezi abangu-# bamenywe nge-imeyili, bavota uma sebejoyinile futhi ukuskrini sekuvulwe futhi}}} other {{count, plural, one {Umbuyekezi ongu-# umenywe nge-imeyili, uvota uma esejoyinile} other {Ababuyekezi abangu-# bamenywe nge-imeyili, bavota uma sebejoyinile}}}}",
         "title": "Ababuyekezi",
         "everyoneDone": "Bonke bazoqeda cishe {weeks, plural, =0 {{days, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}, ngalesi sivinini",
         "move": "Hambisa amaphepha",
@@ -8979,6 +8988,7 @@
         "none": "Lokhu kuskrini akunawo amaphepha okwamanje."
       },
       "sort": {
+        "peopleShut": "Lokhu kuskrini kufihla amavoti abanye abantu emaphepheni ongakavoti kuwo, futhi lolu hlelo beluzowadalula",
         "added": "Njengoba engeziwe",
         "title": "Isihloko, A kuya ku-Z",
         "title-desc": "Isihloko, Z kuya ku-A",
@@ -9098,11 +9108,12 @@
         "stopPapersWaiting": "{you, select, true {Yeka ukubonisa amaphepha alinde ivoti lakho kuphela} other {Yeka ukubonisa amaphepha alinde ivoti lika-{name} kuphela}}"
       },
       "marks": {
+        "peopleHidden": "Umuntu uvotile, kufihliwe ngesikhathi iphepha lisalinde ivoti lakho",
         "title": "Amamaki amavoti",
         "aReviewer": "Umbuyekezi",
         "aModel": "Imodeli",
         "voted": "Uvote ngokuthi {decision}",
-        "hidden": "Uvotile, kufihliwe ngesikhathi iphepha lisalinde ivoti lombuyekezi uqobo",
+        "hidden": "Uvotile, kufihliwe ngesikhathi iphepha lisalinde ivoti lakho",
         "empty": "Iseli elingenalutho yiphepha okungelona elabo ukulivotela"
       },
       "why": {
@@ -9184,6 +9195,7 @@
         "join": "Awusiye umbuyekezi kulokhu kuskrini. Joyina njengombuyekezi ukuze uvote."
       },
       "votesShut": "Amanye amavoti ahlala engabonakali ukuze angalithonyi elakho.",
+      "peopleVotesShut": "{people, plural, =0 {} one {Ivoti lomunye umuntu lihlala lingabonakali ukuze lingalithonyi elakho.} other {Amavoti abanye abantu ahlala engabonakali ukuze angalithonyi elakho.}} {models, plural, one {Ivoti lemodeli liyabonakala uma nje selifakiwe.} other {Amavoti amamodeli ayabonakala uma nje esefakiwe.}}",
       "creditsShort": "{short, plural, one {Kusilele # ikhredithi} other {Kusilele # amakhredithi}}",
       "retry": "{papers, plural, one {Zama iphepha futhi {cost, plural, one {nge-# ikhredithi} other {ngamakhredithi angu-#}}} other {Zama wonke amaphepha angu-# futhi {cost, plural, one {nge-# ikhredithi} other {ngamakhredithi angu-#}}}}",
       "votesBy": "{you, select, true {Amavoti akho} other {Amavoti ka-{name}}}",
@@ -9543,6 +9555,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Amavoti abantu afihliwe uze uvote",
+      "votesWereHiddenSays": "Amavoti ayefihlelwe umbuyekezi kuphela kumaphepha ayelinde ivoti lakhe. Manje njengoba ukuskrini sekuqediwe, wonke amavoti ayabonakala.",
+      "votesHiddenPeopleSays": "Lokhu kuskrini kufihlela umbuyekezi amavoti abanye abantu kuphela kumaphepha asalinde ivoti lalowo mbuyekezi. Amavoti amamodeli ayiseluleko, futhi ayabonakala noma nini.",
       "decision": {
         "include": "Faka",
         "maybe": "Mhlawumbe",

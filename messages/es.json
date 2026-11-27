@@ -7790,6 +7790,8 @@
       },
       "votesStay": "Los votos ya emitidos se quedan como están",
       "modelVotes": {
+        "voteHidden": "El voto de un modelo cuenta como el de un revisor en los artículos aún abiertos, y queda oculto para un revisor hasta que vota el artículo",
+        "adviceSeen": "Los artículos aún abiertos que tiene una persona se resuelven solo con los votos de las personas, con los votos de los modelos como consejo, que un revisor ve antes de votar",
         "advice": "Los artículos aún abiertos que tiene una persona se resuelven solo con los votos de las personas, con los votos de los modelos como consejo",
         "vote": "El voto de un modelo cuenta como el de un revisor en los artículos aún abiertos"
       },
@@ -7817,6 +7819,7 @@
         "stillShare": "Cada artículo sigue yendo a {each, plural, one {# persona} other {# personas}}. Quien se añada después recibe una parte igual de los artículos abiertos, no todos"
       },
       "blind": {
+        "untilVotedAdvice": "Un revisor ve los votos de las demás personas en un artículo cuando lo vota o cuando queda resuelto. Los votos de los modelos se ven antes, como consejo",
         "never": "Todos ven cada voto en cuanto se emite",
         "untilVoted": "Un revisor ve los demás votos de un artículo cuando lo vota o cuando queda resuelto"
       },
@@ -7970,6 +7973,7 @@
         "noneMine": "Todavía no ha votado Incluir en ningún artículo."
       },
       "votes": {
+        "leftOutPeople": "Cualquier voto de otra persona en {count, plural, one {el # artículo} other {los # artículos}} que usted aún no ha votado queda fuera, para que no influya en su voto. Los votos de los modelos sí se incluyen.",
         "title": "{votes, plural, one {# voto} other {# votos}} de {voters, plural, one {# revisor} other {# revisores}}",
         "help": "Una fila por cada artículo que recibió un revisor, con su voto, su motivo y su nota, la respuesta a cada criterio y en qué punto está ahora el artículo. Un revisor que aún no ha votado también tiene fila, y también un modelo que no pudo leer el artículo. Un modelo no recibe un artículo que es solo un PDF que no puede leer, y un revisor añadido más tarde no recibe los artículos resueltos antes de que se uniera.",
         "leftOut": "Cualquier voto de los demás en {count, plural, one {el # artículo} other {los # artículos}} que usted aún no ha votado queda fuera, para que no influya en su voto.",
@@ -8354,6 +8358,7 @@
         "addModel": "Añadir un modelo"
       },
       "decided": {
+        "seeingNothing": "Nada que ocultar con una persona en cada artículo",
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",
         "votesSplit": "Los votos se dividen",
@@ -8368,7 +8373,7 @@
         "countAsVote": "Contar como el de una persona",
         "adviceOnly": "Solo consejo",
         "modelVotesVote": "Cuando los votos de los modelos cuentan como los de una persona, cada uno vale lo que el de un revisor, y un artículo queda resuelto con los votos de las personas y de los modelos juntos. Cuando los modelos por sí solos superarían en votos a todas las personas del artículo, el artículo queda en conflicto.",
-        "modelVotesAdvice": "Cuando son solo consejo, un artículo que tiene una persona queda resuelto solo con los votos de las personas, y los votos de los modelos aparecen junto a los suyos.",
+        "modelVotesAdvice": "Cuando son solo consejo, un artículo que tiene una persona queda resuelto solo con los votos de las personas, y un revisor ve los votos de los modelos antes de emitir el suyo.",
         "modelVotesNever": "En cualquier caso, un artículo que no recibe ninguna persona queda resuelto con los votos de los modelos. Con «Decide el primer voto», los votos de los modelos son consejo en cualquier artículo que tenga una persona.",
         "addModel": "Añada un modelo para elegir",
         "modelsUnderOne": "Consejo en los artículos que tiene una persona",
@@ -8384,7 +8389,7 @@
         "whoSettles": "Quién resuelve un conflicto",
         "seeVotes": "Los revisores ven los demás votos",
         "seeingTitle": "Ver los demás votos",
-        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Quien no vota un artículo ve sus votos en cualquier momento.",
+        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Los votos de los modelos que son solo consejo se ven antes. Quien no vota un artículo ve sus votos en cualquier momento.",
         "after": "Después de votar",
         "always": "En cualquier momento",
         "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",
@@ -8499,6 +8504,8 @@
         "add": "{you, select, true {Añadirse al filtro} other {Añadir a {name} al filtro}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Votos de personas ocultos en los Pendientes de los revisores",
+        "peopleHiddenMine": "Votos de personas ocultos en sus Pendientes",
         "advice": "Los votos de los modelos son consejo",
         "title": "Cómo se resuelve un artículo",
         "eachPaper": "{who, select, both {{people, plural, one {# persona} other {# personas}} y {models, plural, one {# modelo} other {# modelos}}} people {{people, plural, one {# persona} other {# personas}}} other {{models, plural, one {# modelo} other {# modelos}}}} en cada artículo",
@@ -8563,6 +8570,7 @@
         "nothingElse": "Nada más cambia"
       },
       "finish": {
+        "peopleVotesShow": "Los votos de las personas que estaban ocultos para los revisores se muestran a todos los que están en él",
         "title": "¿Marcar este cribado como terminado?",
         "unsettled": "{count, plural, one {# artículo no está resuelto y se queda como está} other {# artículos no están resueltos y se quedan como están}}",
         "votingStops": "Nadie puede votar en él hasta que se reabra",
@@ -8793,6 +8801,7 @@
         "stillWait": "Ver cuáles aún esperan otros votos"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {# revisor invitado por correo, que vota cuando se haya unido y el cribado se reabra} other {# revisores invitados por correo, que votan cuando se hayan unido y el cribado se reabra}}} other {{count, plural, one {# revisor invitado por correo, que vota cuando se una} other {# revisores invitados por correo, que votan cuando se unan}}}}",
         "title": "Revisores",
         "everyoneDone": "Todos terminan en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}, a este ritmo",
         "move": "Mover artículos",
@@ -8980,6 +8989,7 @@
         "none": "Este cribado todavía no tiene artículos."
       },
       "sort": {
+        "peopleShut": "Este cribado oculta los votos de las demás personas en los artículos que usted aún no ha votado, y este orden los delataría",
         "added": "Según se añadieron",
         "title": "Título, de la A a la Z",
         "title-desc": "Título, de la Z a la A",
@@ -9099,11 +9109,12 @@
         "stopPapersWaiting": "{you, select, true {Dejar de mostrar solo los artículos que esperan su voto} other {Dejar de mostrar solo los artículos que esperan el voto de {name}}}"
       },
       "marks": {
+        "peopleHidden": "Una persona votó, oculto mientras el artículo espera su voto",
         "title": "Marcas de voto",
         "aReviewer": "Un revisor",
         "aModel": "Un modelo",
         "voted": "Votó {decision}",
-        "hidden": "Votó, oculto mientras el artículo espera el voto del propio revisor",
+        "hidden": "Votó, oculto mientras el artículo espera su voto",
         "empty": "Una celda vacía es un artículo que no le toca votar"
       },
       "why": {
@@ -9185,6 +9196,7 @@
         "join": "No es revisor de este cribado. Únase como revisor para votar."
       },
       "votesShut": "Los demás votos quedan ocultos para que no influyan en el suyo.",
+      "peopleVotesShut": "{people, plural, =0 {} one {El voto de la otra persona queda oculto para que no influya en el suyo.} other {Los votos de las demás personas quedan ocultos para que no influyan en el suyo.}} {models, plural, one {El voto del modelo se ve en cuanto lo emite.} other {Los votos de los modelos se ven en cuanto los emiten.}}",
       "creditsShort": "{short, plural, one {Falta # crédito} other {Faltan # créditos}}",
       "retry": "{papers, plural, one {Reintentar el artículo por {cost, plural, one {# crédito} other {# créditos}}} other {Reintentar los # artículos por {cost, plural, one {# crédito} other {# créditos}}}}",
       "votesBy": "{you, select, true {Sus votos} other {Votos de {name}}}",
@@ -9544,6 +9556,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Votos de personas ocultos hasta que vote",
+      "votesWereHiddenSays": "Los votos se ocultaban a un revisor solo en los artículos que esperaban su propio voto. Ahora que el cribado ha terminado, se ven todos los votos.",
+      "votesHiddenPeopleSays": "Este cribado oculta los votos de las demás personas a un revisor solo en los artículos que aún esperan el voto de ese revisor. Los votos de los modelos son consejo y se ven en cualquier momento.",
       "decision": {
         "include": "Incluir",
         "maybe": "Quizá",

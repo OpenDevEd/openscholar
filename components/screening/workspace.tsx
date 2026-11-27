@@ -31,12 +31,12 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
+import { blindOf, inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Pending, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
-import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
+import { blindSays, Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
 import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
 import { useWords, type Words } from "./words";
 
@@ -95,8 +95,8 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Array<{ email: string }> = []) {
-  const [{ each }, models] = [readersOf(screening, pending), modelsOf(screening).length];
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Pending[] = []) {
+  const [{ each }, models, blind] = [readersOf(screening, pending), modelsOf(screening).length, blindOf(screening, pending)];
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
@@ -105,8 +105,8 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
     advice: modelsAdvise(screening.rule, each, models) ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
     // Once it is finished nobody has a vote left to cast, and every vote shows (lib/screening/rules.ts `seesVotes`).
-    see: screening.rule.blind === "after" && !screening.finishedAt ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : screening.finishedAt && screening.rule.blind === "after" ? t("rule.visibleFinished") : t("rule.visible"),
-    seeIcon: screening.rule.blind === "after" && !screening.finishedAt ? Lock : Eye,
+    see: blind === "all" ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : blind === "people" ? (voter ? t("rule.peopleHiddenMine") : t("rule.peopleHiddenTheirs")) : blind === "done" ? t("rule.visibleFinished") : t("rule.visible"),
+    seeIcon: blind === "all" || blind === "people" ? Lock : Eye,
   };
 }
 
@@ -336,7 +336,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           <p>{t("rule.chips")}</p>
           <p>{words.t(`settle.means.${screening.rule.settle}`)}</p>{!splits ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
-          {screening.rule.blind === "after" ? <p>{words.t("votesHiddenSays")}</p> : null}
+          {blindSays(words, blindOf(screening, open.invited)) ? <p>{blindSays(words, blindOf(screening, open.invited))}</p> : null}
           {screening.living ? <p>{t("rule.living")}</p> : null}
         </Help>
       </span>

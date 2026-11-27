@@ -7790,6 +7790,8 @@
       },
       "votesStay": "Bereits abgegebene Stimmen bleiben, wie sie sind",
       "modelVotes": {
+        "voteHidden": "Die Stimme eines Modells zählt bei den noch offenen Artikeln wie die eines Reviewers und bleibt vor einem Reviewer verborgen, bis er über den Artikel abstimmt",
+        "adviceSeen": "Die noch offenen Artikel, die eine Person hat, werden allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle gelten als Empfehlung, die ein Reviewer vor der eigenen Stimme sieht",
         "advice": "Die noch offenen Artikel, die eine Person hat, werden allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle gelten als Empfehlung",
         "vote": "Die Stimme eines Modells zählt bei den noch offenen Artikeln wie die eines Reviewers"
       },
@@ -7817,6 +7819,7 @@
         "stillShare": "Jeder Artikel geht weiterhin an {each, plural, one {# Person} other {# Personen}}. Wer später hinzukommt, übernimmt einen gleichen Anteil der offenen Artikel, nicht alle"
       },
       "blind": {
+        "untilVotedAdvice": "Ein Reviewer sieht die Stimmen der anderen Personen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist. Die Stimmen der Modelle sind schon vorher als Empfehlung sichtbar",
         "never": "Alle sehen jede Stimme, sobald sie abgegeben ist",
         "untilVoted": "Ein Reviewer sieht die anderen Stimmen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist"
       },
@@ -7970,6 +7973,7 @@
         "noneMine": "Sie haben noch bei keinem Artikel für Einschließen gestimmt."
       },
       "votes": {
+        "leftOutPeople": "Jede Stimme einer anderen Person zu {count, plural, one {dem # Artikel, über den} other {den # Artikeln, über die}} Sie noch abstimmen, ist ausgenommen, damit sie Ihre Stimme nicht beeinflusst. Die Stimmen der Modelle sind enthalten.",
         "title": "{votes, plural, one {# Stimme} other {# Stimmen}} von {voters, plural, one {# Reviewer} other {# Reviewern}}",
         "help": "Eine Zeile für jeden Artikel, den ein Reviewer bekommen hat, mit der Stimme samt Grund und Notiz, der Antwort auf jedes Kriterium und dem aktuellen Stand des Artikels. Auch ein Reviewer, der noch nicht abgestimmt hat, hat eine Zeile, ebenso ein Modell, das den Artikel nicht lesen konnte. Ein Modell bekommt keinen Artikel, der nur aus einem PDF besteht, das es nicht lesen kann, und ein später hinzugefügter Reviewer bekommt keine Artikel, die vor seinem Beitritt entschieden waren.",
         "leftOut": "Jede Stimme der anderen zu {count, plural, one {dem # Artikel, über den} other {den # Artikeln, über die}} Sie noch abstimmen, ist ausgenommen, damit sie Ihre Stimme nicht beeinflusst.",
@@ -8354,6 +8358,7 @@
         "addModel": "Modell hinzufügen"
       },
       "decided": {
+        "seeingNothing": "Mit einer Person pro Artikel gibt es nichts zu verbergen",
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",
@@ -8368,7 +8373,7 @@
         "countAsVote": "Wie eine Person zählen",
         "adviceOnly": "Nur Empfehlung",
         "modelVotesVote": "Zählen die Stimmen der Modelle wie die einer Person, ist jede davon die Stimme eines Reviewers, und ein Artikel wird aus den Stimmen der Personen und der Modelle zusammen entschieden. Würden die Modelle allein jede Person an diesem Artikel überstimmen, ist der Artikel stattdessen im Konflikt.",
-        "modelVotesAdvice": "Gelten sie nur als Empfehlung, wird ein Artikel, den eine Person hat, allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle stehen neben ihren.",
+        "modelVotesAdvice": "Gelten sie nur als Empfehlung, wird ein Artikel, den eine Person hat, allein aus den Stimmen der Personen entschieden, und ein Reviewer sieht die Stimmen der Modelle, bevor er selbst abstimmt.",
         "modelVotesNever": "So oder so wird ein Artikel, den keine Person bekommt, aus den Stimmen der Modelle entschieden. Bei „Erste Stimme entscheidet“ gelten die Stimmen der Modelle bei jedem Artikel, den eine Person hat, als Empfehlung.",
         "addModel": "Fügen Sie ein Modell hinzu, um zu wählen",
         "modelsUnderOne": "Empfehlung bei Artikeln, die eine Person hat",
@@ -8384,7 +8389,7 @@
         "whoSettles": "Wer einen Konflikt entscheidet",
         "seeVotes": "Reviewer sehen die anderen Stimmen",
         "seeingTitle": "Andere Stimmen sehen",
-        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
+        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
         "after": "Nach der eigenen Stimme",
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",
@@ -8499,6 +8504,8 @@
         "add": "{you, select, true {Sich selbst zum Filter hinzufügen} other {{name} zum Filter hinzufügen}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Stimmen von Personen im Bereich Offen der Reviewer verborgen",
+        "peopleHiddenMine": "Stimmen von Personen in Ihrem Bereich Offen verborgen",
         "advice": "Stimmen der Modelle sind Empfehlungen",
         "title": "Wie ein Artikel entschieden wird",
         "eachPaper": "{who, select, both {{people, plural, one {# Person} other {# Personen}} und {models, plural, one {# Modell} other {# Modelle}}} people {{people, plural, one {# Person} other {# Personen}}} other {{models, plural, one {# Modell} other {# Modelle}}}} pro Artikel",
@@ -8563,6 +8570,7 @@
         "nothingElse": "Sonst ändert sich nichts"
       },
       "finish": {
+        "peopleVotesShow": "Die Stimmen von Personen, die vor Reviewern verborgen waren, werden für alle Beteiligten sichtbar",
         "title": "Dieses Screening als abgeschlossen markieren?",
         "unsettled": "{count, plural, one {# Artikel ist nicht entschieden und bleibt, wie er ist} other {# Artikel sind nicht entschieden und bleiben, wie sie sind}}",
         "votingStops": "Niemand kann darüber abstimmen, bis es wieder geöffnet ist",
@@ -8793,6 +8801,7 @@
         "stillWait": "Sehen, welche davon noch auf andere Stimmen warten"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {# Reviewer per E-Mail eingeladen, der abstimmt, sobald er beigetreten ist und das Screening wieder geöffnet ist} other {# Reviewer per E-Mail eingeladen, die abstimmen, sobald sie beigetreten sind und das Screening wieder geöffnet ist}}} other {{count, plural, one {# Reviewer per E-Mail eingeladen, der abstimmt, sobald er beitritt} other {# Reviewer per E-Mail eingeladen, die abstimmen, sobald sie beitreten}}}}",
         "title": "Reviewer",
         "everyoneDone": "Alle fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}, bei diesem Tempo",
         "move": "Artikel verschieben",
@@ -8980,6 +8989,7 @@
         "none": "Dieses Screening hat noch keine Artikel."
       },
       "sort": {
+        "peopleShut": "Dieses Screening verbirgt die Stimmen anderer Personen bei den Artikeln, über die Sie noch abstimmen, und diese Reihenfolge würde sie verraten",
         "added": "Wie hinzugefügt",
         "title": "Titel, A bis Z",
         "title-desc": "Titel, Z bis A",
@@ -9099,11 +9109,12 @@
         "stopPapersWaiting": "{you, select, true {Nicht mehr nur die Artikel zeigen, die auf Ihre Stimme warten} other {Nicht mehr nur die Artikel zeigen, die auf die Stimme von {name} warten}}"
       },
       "marks": {
+        "peopleHidden": "Eine Person hat abgestimmt, verborgen, solange der Artikel auf Ihre Stimme wartet",
         "title": "Markierungen der Stimmen",
         "aReviewer": "Ein Reviewer",
         "aModel": "Ein Modell",
         "voted": "Für {decision} gestimmt",
-        "hidden": "Abgestimmt, verborgen, solange der Artikel auf die eigene Stimme des Reviewers wartet",
+        "hidden": "Abgestimmt, verborgen, solange der Artikel auf Ihre Stimme wartet",
         "empty": "Eine leere Zelle ist ein Artikel, über den dieser Reviewer nicht abstimmt"
       },
       "why": {
@@ -9185,6 +9196,7 @@
         "join": "Sie sind kein Reviewer dieses Screenings. Treten Sie als Reviewer bei, um abzustimmen."
       },
       "votesShut": "Die anderen Stimmen bleiben verborgen, damit sie Ihre nicht beeinflussen.",
+      "peopleVotesShut": "{people, plural, =0 {} one {Die Stimme der anderen Person bleibt verborgen, damit sie Ihre nicht beeinflusst.} other {Die Stimmen der anderen Personen bleiben verborgen, damit sie Ihre nicht beeinflussen.}} {models, plural, one {Die Stimme des Modells erscheint, sobald sie abgegeben ist.} other {Die Stimmen der Modelle erscheinen, sobald sie abgegeben sind.}}",
       "creditsShort": "{short, plural, one {# Credit zu wenig} other {# Credits zu wenig}}",
       "retry": "{papers, plural, one {Artikel für {cost, plural, one {# Credit} other {# Credits}} erneut versuchen} other {Alle # Artikel für {cost, plural, one {# Credit} other {# Credits}} erneut versuchen}}",
       "votesBy": "{you, select, true {Ihre Stimmen} other {Stimmen von {name}}}",
@@ -9544,6 +9556,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Stimmen von Personen verborgen, bis Sie abstimmen",
+      "votesWereHiddenSays": "Stimmen waren vor einem Reviewer nur bei Artikeln verborgen, die auf dessen eigene Stimme warteten. Jetzt, da das Screening abgeschlossen ist, sind alle Stimmen sichtbar.",
+      "votesHiddenPeopleSays": "Dieses Screening verbirgt die Stimmen anderer Personen vor einem Reviewer nur bei Artikeln, die noch auf dessen eigene Stimme warten. Die Stimmen der Modelle sind Empfehlungen und jederzeit sichtbar.",
       "decision": {
         "include": "Einschließen",
         "maybe": "Vielleicht",

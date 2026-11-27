@@ -10,7 +10,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalQuery } from "../lib/functions";
 import { workspaceAction } from "../lib/userActions";
-import { isFinal, modelKey, seesVotes, type Decision, type Result } from "../../lib/screening/rules";
+import { isFinal, modelKey, seesVotes, showsEarly, type Decision, type Result } from "../../lib/screening/rules";
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
@@ -91,7 +91,7 @@ export const step = internalQuery({
       const held = isFinal(was) && !paper.resolved && !recheck && !thrown;
       const onIt = teamFor(team, paper, reads);
       // A paper someone else has voted on, whose votes the person asking can't see yet: that they voted shows already (./paperViews.ts `hidden`), how doesn't. Nothing that depends on how the others voted on it is worked out: where the change leaves it, whether it stays open, what is left of anyone's papers on it. Any of those, even as a count, would say whether the others agree. Who is on it shows, so the places are counted as the change gives them out before a vote is read, with every model that joins taken to read it: a cost is never under what is charged. Where the change can move a result, the paper is counted once, under no result, whether or not it would move.
-      const kept = before.some((place) => place.reviewer !== mine && place.status === "cast") && !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
+      const kept = before.some((place) => place.reviewer !== mine && place.status === "cast" && !showsEarly(job.rule!, place.kind)) && !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
       const after = kept ? null : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, onIt, plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
       const now = after?.result ?? was;
       const open = after ? !isFinal(now) : true;

@@ -29,10 +29,10 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { changeOpens, changeSays } from "./activity-words";
-import { modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
+import { blindOf, modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
 import { papersHref } from "./links";
-import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
+import { blindSays, Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { pdfsOf, perPaper, type Open } from "./store";
 import { AddModel } from "./team";
 import { useWords } from "./words";
@@ -212,7 +212,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   </>
                 )}
                 {models.length ? <p>{t("peopleDialog.modelToo", { you: String(workspace.kind === "personal" && state.canChange), workspace: workspace.name })}</p> : null}
-                {screening.rule.blind === "after" ? <p>{words.t("votesHiddenSays")}</p> : null}
+                {blindSays(words, blindOf(screening, state.invited)) ? <p>{blindSays(words, blindOf(screening, state.invited))}</p> : null}
               </Help>
             </DialogTitle>
             <DialogDescription className="truncate text-xs">{screening.name}</DialogDescription>

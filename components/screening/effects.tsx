@@ -5,7 +5,7 @@
 // the papers behind them.
 
 import { EASE } from "@/components/settings/model-map";
-import { canConflict, modelsAdvise } from "@/lib/screening/rules";
+import { advisory, canConflict, modelsAdvise } from "@/lib/screening/rules";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
@@ -178,8 +178,10 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
     // The same number today, and another rule for whoever joins later.
     lines.push({ text: after.rule.each === "all" ? t("each.stillAll", { each: eachOf(after) }) : t("each.stillShare", { each: eachOf(after) }), section: "decided" });
   }
-  if ((before.rule.models !== after.rule.models) && modelsOf(after).length && after.rule.settle !== "one") lines.push({ text: after.rule.models === "advice" ? t("modelVotes.advice") : t("modelVotes.vote"), section: "decided" });
-  if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? t("blind.never") : t("blind.untilVoted"), section: "decided" });
+  // Where votes are hidden until a reviewer votes, the models' votes as advice show before then, and as votes don't.
+  const hiding = after.rule.blind === "after";
+  if ((before.rule.models !== after.rule.models) && modelsOf(after).length && after.rule.settle !== "one") lines.push({ text: after.rule.models === "advice" ? t(hiding ? "modelVotes.adviceSeen" : "modelVotes.advice") : t(hiding ? "modelVotes.voteHidden" : "modelVotes.vote"), section: "decided" });
+  if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? t("blind.never") : advisory(after.rule) && modelsOf(after).length ? t("blind.untilVotedAdvice") : t("blind.untilVoted"), section: "decided" });
 
   const had = new Set(before.criteria.map((criterion) => criterion.key));
   const fresh = after.criteria.filter((criterion) => !had.has(criterion.key));

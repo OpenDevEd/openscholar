@@ -12,7 +12,7 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../l
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
-import { isFinal, nameHas, seesVotes, type Answer } from "../../lib/screening/rules";
+import { advisory, isFinal, leansOpen, nameHas, seesVotes, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
 import { askedOf, reviewersOf, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
@@ -51,20 +51,24 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
 /**
  * A paper with the votes the person looking may see. The others' votes are kept from a reviewer only while the paper
  * still waits for their own (lib/screening/rules.ts `seesVotes`): then each other reviewer is named as being on it,
- * with whether they have voted and nothing of how. Their own vote always shows.
+ * with whether they have voted and nothing of how. Their own vote always shows, and so does a model's where the
+ * models only advise the people on the paper: advice is there to be read before voting.
  */
 export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper: Paper, votes: Vote[]): PaperView {
   const mine = reviewer ? votes.find((vote) => vote.reviewerId === reviewer._id) : undefined;
   const result = paper.result ?? "waiting";
-  const sees = seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
+  // Where the models only advise, a paper nobody else is on hides nothing (lib/screening/rules.ts `hidesVotes`).
+  const alone = advisory(job.rule!) && !votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== reviewer?._id && reviewers.get(vote.reviewerId)?.kind === "person");
+  const sees = alone || seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
   const cast = votes
     .filter((vote) => vote.status !== "discarded")
     // A place closed because the paper was settled without that vote is still a place: the page says the paper was settled without it.
     .map((vote) => {
       const by = reviewers.get(vote.reviewerId);
       const own = vote.reviewerId === reviewer?._id;
-      const told = sees || own ? voteOf(job, vote, by) : undefined;
-      return { reviewer: by ? viewId(by) : vote.reviewerId, ...(told ? { vote: told } : {}), ...(vote.status === "failed" ? { failed: true } : {}), ...(!sees && !own && vote.status === "cast" ? { hidden: true } : {}) };
+      const open = sees || own || showsEarly(job.rule!, by?.kind);
+      const told = open ? voteOf(job, vote, by) : undefined;
+      return { reviewer: by ? viewId(by) : vote.reviewerId, ...(told ? { vote: told } : {}), ...(vote.status === "failed" ? { failed: true } : {}), ...(!open && vote.status === "cast" ? { hidden: true } : {}) };
     });
   return {
     id: paper._id,
@@ -105,7 +109,7 @@ const FILTER_ROWS = 1_500;
 
 export const paperAction = defineUserQuery({
   path: "screening/paperViews:paper",
-  description: "Reads one paper of a screening the person may see: its title, authors and abstract, where it stands, and each reviewer's vote with their answers to the criteria, their reason and their note. A reviewer who has yet to vote on it sees who else is on it and not how they voted, unless the screening shows votes at any time.",
+  description: "Reads one paper of a screening the person may see: its title, authors and abstract, where it stands, and each reviewer's vote with their answers to the criteria, their reason and their note. A reviewer who has yet to vote on it sees who else is on it and not how they voted, unless the screening shows votes at any time. Where the models only advise, their votes show before the reviewer votes.",
   args: { ...byJob, paperId: v.id("screeningResults") },
   returns: v.union(paperValidator, v.null()),
   run: async (ctx, actor, { jobId, paperId }) => {
@@ -164,7 +168,7 @@ export const counts = workspaceQuery({
     if (!row) return null;
     // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
     const others = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
-    if (others && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers)) return null;
+    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values())) return null;
     const votes = ctx.db.query("screeningVotes");
     const theirs = await (voted === "none" || voted === "failed"
       ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
@@ -216,8 +220,8 @@ export const queueAction = defineUserQuery({
     }
     if (!reviewer || (queue === "todo" && !todo)) return NONE;
     const votes = ctx.db.query("screeningVotes");
-    // Where votes are hidden until the person votes, an order by the models' votes would give them away.
-    const lean = order === "lean" && job.rule!.blind === "always";
+    // Where votes are hidden until the person votes, an order by the models' votes would give them away, unless the models only advise: then their votes show anyway.
+    const lean = order === "lean" && leansOpen(job.rule!);
     const read =
       queue === "todo"
         ? await (lean ? votes.withIndex("by_reviewer_and_status_and_lean_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting")) : votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting"))).order(order === "fresh" ? "desc" : "asc").paginate(options)
@@ -260,7 +264,7 @@ export const listAction = defineUserQuery({
     if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     // While the others' votes are kept from the person (./view.ts `keepsVotes`), nothing worked out from those votes orders or narrows what they are given.
-    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers);
+    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values());
     // How divided a paper's votes are, and the points their answers give it, put the papers in an order that says how the others voted: asked for then, the papers come as they were added.
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
@@ -307,7 +311,7 @@ export const listAction = defineUserQuery({
       // One reviewer's papers, in the order of their votes: what they are on, or the ones they voted one way.
       const votes = stream(ctx.db, schema).query("screeningVotes");
       // Which way someone else voted on a paper whose votes are kept from the person looking is kept from them here too. Their votes are then read whichever way they went, every one of them, and the way is looked at only on a paper whose votes show: what a page holds, where it ends and whether another follows depend on how many votes they cast, which shows anyway, and never on a vote that is kept.
-      const told = kept && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
+      const told = kept && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id && !showsEarly(looking.job.rule!, row.kind);
       const mine = looking.reviewer?._id;
       const open = async (vote: Doc<"screeningVotes">) => !told || (vote.decision === voted && (!mine || !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === mine && one.status === "waiting")));
       const read = await (voted === "none" || voted === "failed"

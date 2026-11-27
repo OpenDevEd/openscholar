@@ -25,7 +25,7 @@ import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { reasonCriteria, RESULTS, type Result, slug, bylineOf, questionOf, inOrder, nameOn, votingReviewers } from "./data";
+import { blindOf, reasonCriteria, RESULTS, type Result, slug, bylineOf, questionOf, inOrder, nameOn, votingReviewers } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./pieces";
 import { bibOf, everyPaper, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
@@ -70,7 +70,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
 
   // Every file is built by export.ts, from the screening as it stands and from the papers as the server gives them to whoever takes the file out: what is hidden from them on a page is hidden from them in the file.
   const out: Taken = { screening: state.filed, counts, me: state.me, figures, invited: state.invited, kept: state.keepsVotes };
-  const blind = screening.rule.blind === "after";
+  // Votes kept from the person taking the file out are left out of it (./data.ts `blindOf`).
+  const blindIs = blindOf(screening, state.invited);
+  const blind = blindIs === "all" || blindIs === "people";
   const reviewers = inOrder(votingReviewers(screening), state.me);
   // The papers by where they stand, as the server has counted them.
   const sizes: Record<Group, number> = { ...counts, all: total, mine: reviewers.find((one) => one.id === state.me)?.tally?.include ?? 0 };
@@ -116,7 +118,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   };
   const methods = methodsOf(out);
   // What a file leaves out for this person, said over it: how the others voted on the papers they have yet to vote on.
-  const leftOut = blind && state.toDo ? <ShutNote by="vote">{t("votes.leftOut", { count: state.toDo })}</ShutNote> : null;
+  const leftOut = blind && state.toDo ? <ShutNote by="vote">{t(blindIs === "people" ? "votes.leftOutPeople" : "votes.leftOut", { count: state.toDo })}</ShutNote> : null;
   // Every paper of a file is read from the server when the file is asked for.
   const every = (narrowed: object) => (workspaceId ? everyPaper(convex, { workspaceId, jobId: id, ...narrowed }) : Promise.reject(new Error(t("notLoaded"))));
   // `run` answers false where it said itself that it didn't work, as a copy the browser refused does.

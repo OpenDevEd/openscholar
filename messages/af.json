@@ -7790,6 +7790,8 @@
       },
       "votesStay": "Stemme wat reeds uitgebring is, bly soos hulle is",
       "modelVotes": {
+        "voteHidden": "’n Model se stem tel soos een beoordelaar s’n op die artikels wat nog oop is, en is vir ’n beoordelaar versteek totdat hulle op die artikel stem",
+        "adviceSeen": "Die artikels wat nog oop is en wat ’n persoon het, word net op die mense se stemme beslis, met die modelle se stemme as advies wat ’n beoordelaar sien voordat hulle stem",
         "advice": "Die artikels wat nog oop is en wat ’n persoon het, word net op die mense se stemme beslis, met die modelle se stemme as advies",
         "vote": "’n Model se stem tel soos een beoordelaar s’n op die artikels wat nog oop is"
       },
@@ -7817,6 +7819,7 @@
         "stillShare": "Elke artikel gaan steeds na {each, plural, one {# persoon} other {# mense}}. Enigiemand wat later bygevoeg word, kry ’n gelyke deel van die oop artikels, nie elkeen nie"
       },
       "blind": {
+        "untilVotedAdvice": "’n Beoordelaar sien die ander mense se stemme op ’n artikel sodra hulle daarop stem of dit beslis is. Die modelle se stemme wys al voor dit, as advies",
         "never": "Almal sien elke stem soos dit uitgebring word",
         "untilVoted": "’n Beoordelaar sien die ander stemme op ’n artikel sodra hulle daarop stem of dit beslis is"
       },
@@ -7970,6 +7973,7 @@
         "noneMine": "Jy het nog op geen artikel Sluit in gestem nie."
       },
       "votes": {
+        "leftOutPeople": "Enige stem wat ’n ander persoon uitgebring het op die {count, plural, one {# artikel} other {# artikels}} waarop jy nog moet stem, word uitgelaat sodat dit joune nie kan beïnvloed nie. Die modelle se stemme is ingesluit.",
         "title": "{votes, plural, one {# stem} other {# stemme}} deur {voters, plural, one {# beoordelaar} other {# beoordelaars}}",
         "help": "Een ry vir elke artikel wat ’n beoordelaar gekry het, met hul stem, die rede en nota daarby, die antwoord op elke kriterium, en waar die artikel nou staan. ’n Beoordelaar wat nog moet stem, het ook ’n ry, en so ook ’n model wat die artikel nie kon lees nie. ’n Model kry nie ’n artikel wat net ’n PDF is wat dit nie kan lees nie, en ’n beoordelaar wat later bygevoeg word, kry nie artikels wat beslis is voordat hulle aangesluit het nie.",
         "leftOut": "Enige stem wat die ander uitgebring het op die {count, plural, one {# artikel} other {# artikels}} waarop jy nog moet stem, word uitgelaat sodat dit joune nie kan beïnvloed nie.",
@@ -8354,6 +8358,7 @@
         "addModel": "Voeg ’n model by"
       },
       "decided": {
+        "seeingNothing": "Niks om te versteek met een persoon op elke artikel nie",
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",
         "votesSplit": "Stemme verdeel",
@@ -8368,7 +8373,7 @@
         "countAsVote": "Tel soos ’n persoon s’n",
         "adviceOnly": "Net advies",
         "modelVotesVote": "Wanneer die modelle se stemme soos ’n persoon s’n tel, is elkeen een beoordelaar se stem, en ’n artikel word op die mense en die modelle se stemme saam beslis. Waar die modelle alleen elke persoon op die artikel sou uitstem, is die artikel eerder in konflik.",
-        "modelVotesAdvice": "Wanneer dit net advies is, word ’n artikel wat ’n persoon het, net op die mense se stemme beslis, en die modelle se stemme wys langs hulle s’n.",
+        "modelVotesAdvice": "Wanneer dit net advies is, word ’n artikel wat ’n persoon het, net op die mense se stemme beslis, en ’n beoordelaar sien die modelle se stemme voordat hulle hul eie uitbring.",
         "modelVotesNever": "Hoe ook al, ’n artikel wat geen persoon kry nie, word op die modelle se stemme beslis. Onder “Eerste stem beslis” is die modelle se stemme advies op enige artikel wat ’n persoon het.",
         "addModel": "Voeg ’n model by om te kies",
         "modelsUnderOne": "Advies op artikels wat ’n persoon het",
@@ -8384,7 +8389,7 @@
         "whoSettles": "Wie ’n konflik beslis",
         "seeVotes": "Beoordelaars sien die ander stemme",
         "seeingTitle": "Hoe ander stemme gesien word",
-        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
+        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
         "after": "Nadat hulle stem",
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",
@@ -8499,6 +8504,8 @@
         "add": "{you, select, true {Voeg jouself by die filter} other {Voeg {name} by die filter}}"
       },
       "rule": {
+        "peopleHiddenTheirs": "Mense se stemme versteek in beoordelaars se Om te doen",
+        "peopleHiddenMine": "Mense se stemme versteek in jou Om te doen",
         "advice": "Die modelle se stemme is advies",
         "title": "Hoe ’n artikel beslis word",
         "eachPaper": "{who, select, both {{people, plural, one {# persoon} other {# mense}} en {models, plural, one {# model} other {# modelle}}} people {{people, plural, one {# persoon} other {# mense}}} other {{models, plural, one {# model} other {# modelle}}}} op elke artikel",
@@ -8563,6 +8570,7 @@
         "nothingElse": "Niks anders verander nie"
       },
       "finish": {
+        "peopleVotesShow": "Die mense se stemme wat vir beoordelaars versteek was, word vir almal daarop gewys",
         "title": "Merk hierdie siftering as klaar?",
         "unsettled": "{count, plural, one {# artikel is nie beslis nie, en bly soos dit is} other {# artikels is nie beslis nie, en bly soos hulle is}}",
         "votingStops": "Niemand kan daarop stem totdat dit heropen word nie",
@@ -8793,6 +8801,7 @@
         "stillWait": "Sien watter van hulle nog vir ander stemme wag"
       },
       "reviewers": {
+        "invitedCount": "{finished, select, true {{count, plural, one {# beoordelaar per e-pos uitgenooi, wat stem sodra hulle aangesluit het en dit heropen is} other {# beoordelaars per e-pos uitgenooi, wat stem sodra hulle aangesluit het en dit heropen is}}} other {{count, plural, one {# beoordelaar per e-pos uitgenooi, wat stem sodra hulle aansluit} other {# beoordelaars per e-pos uitgenooi, wat stem sodra hulle aansluit}}}}",
         "title": "Beoordelaars",
         "everyoneDone": "Almal klaar oor omtrent {weeks, plural, =0 {{days, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}, teen hierdie tempo",
         "move": "Skuif artikels",
@@ -8980,6 +8989,7 @@
         "none": "Hierdie siftering het nog geen artikels nie."
       },
       "sort": {
+        "peopleShut": "Hierdie siftering versteek ander mense se stemme op die artikels waarop jy nog moet stem, en hierdie volgorde sou hulle verklap",
         "added": "Soos bygevoeg",
         "title": "Titel, A tot Z",
         "title-desc": "Titel, Z tot A",
@@ -9099,11 +9109,12 @@
         "stopPapersWaiting": "{you, select, true {Hou op om net die artikels te wys wat vir jou stem wag} other {Hou op om net die artikels te wys wat vir {name} se stem wag}}"
       },
       "marks": {
+        "peopleHidden": "’n Persoon het gestem, versteek solank die artikel vir jou stem wag",
         "title": "Stemmerke",
         "aReviewer": "’n Beoordelaar",
         "aModel": "’n Model",
         "voted": "{decision} gestem",
-        "hidden": "Gestem, versteek solank die artikel vir die beoordelaar se eie stem wag",
+        "hidden": "Gestem, versteek solank die artikel vir jou stem wag",
         "empty": "’n Leë sel is ’n artikel wat nie hulle s’n is om op te stem nie"
       },
       "why": {
@@ -9185,6 +9196,7 @@
         "join": "Jy is nie ’n beoordelaar op hierdie siftering nie. Sluit as beoordelaar aan om te stem."
       },
       "votesShut": "Die ander stemme bly uit sig sodat hulle joune nie kan beïnvloed nie.",
+      "peopleVotesShut": "{people, plural, =0 {} one {Die ander persoon se stem bly uit sig sodat dit joune nie kan beïnvloed nie.} other {Die ander mense se stemme bly uit sig sodat hulle joune nie kan beïnvloed nie.}} {models, plural, one {Die model se stem wys sodra dit uitgebring is.} other {Die modelle se stemme wys sodra hulle uitgebring is.}}",
       "creditsShort": "{short, plural, one {# krediet kort} other {# krediete kort}}",
       "retry": "{papers, plural, one {Probeer die artikel weer vir {cost, plural, one {# krediet} other {# krediete}}} other {Probeer al # artikels weer vir {cost, plural, one {# krediet} other {# krediete}}}}",
       "votesBy": "{you, select, true {Jou stemme} other {Stemme deur {name}}}",
@@ -9544,6 +9556,9 @@
       }
     },
     "words": {
+      "peopleHiddenUntilVote": "Mense se stemme versteek totdat jy stem",
+      "votesWereHiddenSays": "Stemme was vir ’n beoordelaar net versteek op artikels wat vir hul eie stem gewag het. Noudat die siftering klaar is, wys elke stem.",
+      "votesHiddenPeopleSays": "Hierdie siftering versteek ander mense se stemme vir ’n beoordelaar net op artikels wat nog vir daardie beoordelaar se eie stem wag. Die modelle se stemme is advies en wys enige tyd.",
       "decision": {
         "include": "Sluit in",
         "maybe": "Miskien",
