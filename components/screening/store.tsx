@@ -270,7 +270,7 @@ export function useOpenScreening(id: string) {
     rename: (name: string) => rename({ jobId, name }),
     remove: () => remove({ jobId }),
     /** Looks in its sources again now, whoever asks: the papers they gained since the last look join the queue. */
-    check: () => check({ jobId }),
+    check: () => told(check({ jobId })),
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
     join: () => told(join({ jobId })),
     /** Whether the screening emails the person looking, and their own switch for it. */

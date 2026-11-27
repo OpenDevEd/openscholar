@@ -303,7 +303,7 @@ export const move = workspaceMutation({
     const most = Math.min(Math.max(0, Math.floor(papers)), MOVE_MAX);
     // From the far end of their queue, passing the ones the other person is on already.
     let moved = 0;
-    for (const vote of await freeToMove(ctx, from, to, most)) {
+    for (const vote of (await freeToMove(ctx, from, to, most)).found) {
       await ctx.db.patch("screeningVotes", vote._id, { reviewerId: to });
       // It goes back to them only where nobody else is left to take it.
       const paper = await ctx.db.get("screeningResults", vote.resultId);
@@ -318,20 +318,23 @@ export const move = workspaceMutation({
 /** The most papers one call moves between two people, the places of a queue looked through at a time for them, and how many such stretches it looks through. */
 const MOVE_MAX = 200;
 const MOVE_LOOKED = 400;
-const MOVE_STRETCHES = 4;
+// Nine stretches, 3,600 places: each place is one index range, and a transaction has 4,096 of them.
+const MOVE_STRETCHES = 9;
 
 /** The waiting votes of one person that another isn't on, from the far end of the first one's queue: up to `most`, a stretch of places at a time, so papers past a stretch the other person all has are still found. */
 async function freeToMove(ctx: Pick<QueryCtx, "db">, from: Id<"screeningReviewers">, to: Id<"screeningReviewers">, most: number) {
   const found: Doc<"screeningVotes">[] = [];
   let below: number | undefined;
+  // Whether the whole queue was looked through, or the stretches ran out first.
+  let whole = false;
   for (let stretch = 0; stretch < MOVE_STRETCHES && found.length < most; stretch++) {
     const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => (below === undefined ? q.eq("reviewerId", from).eq("status", "waiting") : q.eq("reviewerId", from).eq("status", "waiting").lt("place", below))).order("desc").take(MOVE_LOOKED);
     // One indexed look for the other person on each paper: a large team's votes are never all read.
     for (const vote of waiting) if (found.length < most && !(await ctx.db.query("screeningVotes").withIndex("by_result_and_reviewer", (q) => q.eq("resultId", vote.resultId).eq("reviewerId", to)).first())) found.push(vote);
-    if (waiting.length < MOVE_LOOKED) break;
+    if (waiting.length < MOVE_LOOKED) { whole = true; break; }
     below = waiting.at(-1)!.place;
   }
-  return found;
+  return { found, whole };
 }
 
 /**
@@ -340,13 +343,15 @@ async function freeToMove(ctx: Pick<QueryCtx, "db">, from: Id<"screeningReviewer
  */
 export const movable = workspaceQuery({
   args: { jobId: v.id("screeningJobs"), from: v.id("screeningReviewers"), to: v.id("screeningReviewers") },
-  returns: v.number(),
+  // `whole`: the first person's whole queue was looked through, so none found means the second person has them all.
+  returns: v.object({ count: v.number(), whole: v.boolean() }),
   handler: async (ctx, actor, { jobId, from, to }) => {
     await requireMember(ctx, actor, jobId);
     const [giver, taker] = await Promise.all([ctx.db.get("screeningReviewers", from), ctx.db.get("screeningReviewers", to)]);
-    if (giver?.jobId !== jobId || taker?.jobId !== jobId) return 0;
+    if (giver?.jobId !== jobId || taker?.jobId !== jobId) return { count: 0, whole: true };
     // Found as the move finds them: the count is what the move does.
-    return (await freeToMove(ctx, from, to, MOVE_MAX)).length;
+    const { found, whole } = await freeToMove(ctx, from, to, MOVE_MAX);
+    return { count: found.length, whole };
   },
 });
 

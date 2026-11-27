@@ -7822,15 +7822,17 @@
       "blind": {
         "untilVotedAdvice": "Mkaguzi anaona kura za watu wengine kwenye makala akishaipigia kura au ikishaamuliwa. Kura za modeli zinaonekana kabla ya hapo, kama ushauri",
         "never": "Kila mtu anaona kila kura inapopigwa",
-        "untilVoted": "Mkaguzi anaona kura nyingine kwenye makala akishaipigia kura au ikishaamuliwa"
+        "untilVoted": "Mkaguzi anaona kura nyingine kwenye makala akishaipigia kura au ikishaamuliwa",
+        "discussion": "Majadiliano ya makala yanaonekana kwa mkaguzi wakati huo huo"
       },
       "criteria": {
         "modelsAnswerNew": "Modeli zinajibu {count, plural, one {kigezo kipya} other {vigezo vipya}} kwenye makala zilizo wazi ambazo zimesoma",
         "votesStand": "Kura za watu zinabaki zilivyo, kwa kuwa zilipigwa kabla ya {count, plural, one {kigezo hiki} other {vigezo hivi}}",
-        "modelsStop": "Modeli zinaacha kujibu {name}. Kura zilizokwisha kupigwa zinabaki zilivyo",
+        "modelsStop": "Modeli zinaacha kujibu {name}. Kura za watu zilizokwisha kupigwa zinabaki zilivyo",
         "noLongerAsked": "{name} hakiulizwi tena. Kura zilizokwisha kupigwa zinabaki zilivyo",
         "becomesMust": "{name} kinakuwa sharti la lazima. Kuanzia sasa hapana juu yake inaelekeza kwenye Tenga. Kura za watu kwenye makala ambazo bado ziko wazi zinabaki, na zinahamia Piga kura tena",
-        "becomesNice": "{name} kinakuwa cha hiari. Kuanzia sasa hapana juu yake haielekezi tena kwenye Tenga. Kura zilizokwisha kupigwa zinabaki zilivyo",
+        "becomesNice": "{name} kinakuwa cha hiari. Kuanzia sasa hapana juu yake haielekezi tena kwenye Tenga. Kura za watu zilizokwisha kupigwa zinabaki zilivyo",
+        "modelsFollow": "Kura za miundo hufuata majibu yao kwa vigezo vilivyopo sasa, hivyo baadhi zinaweza kubadilika",
         "writeQuestion": "Andika swali la kigezo kabla ya kuhifadhi",
         "modelsReworded": "Modeli zinajibu {name} kilichoandikwa upya kwenye makala zinazosoma kuanzia sasa",
         "reviewersReworded": "Wakaguzi wanajibu {name} kilichoandikwa upya kuanzia sasa. Kura zilizokwisha kupigwa zinabaki zilivyo",
@@ -8321,6 +8323,7 @@
         "guidanceFor": "Mwongozo wa kigezo {n}",
         "guidancePlaceholder": "Kama \"Shule za msingi tu, si vyuo vikuu\"",
         "wordsFor": "Maneno ya kuwekea alama kwa kigezo {n}",
+        "wordsFull": "Maneno {count} ya kwanza tu ndiyo yanahifadhiwa",
         "wordsPlaceholder": "Maneno yakitenganishwa kwa koma",
         "is": "Kigezo {n} ni",
         "must": "Lazima",
@@ -8734,7 +8737,8 @@
       "moreFor": "Zaidi kwa {name}",
       "addPerson": "Ongeza mtu",
       "findPerson": "Tafuta mtu, au andika barua pepe",
-      "nobodyByName": "Hakuna mtu kwenye nafasi kazi hii mwenye jina hilo. Andika anwani ya barua pepe ili kumwalika mtu.",
+      "nobodyByName": "Hakuna mwingine katika eneo hili la kazi mwenye jina hilo. Andika anwani ya barua pepe kumwalika mtu.",
+      "alreadyInvited": "Mtu huyu tayari amealikwa",
       "alreadyOn": "Mtu huyu tayari yuko kwenye uchujaji huu",
       "nobodyElse": "Hakuna mtu mwingine kwenye nafasi kazi hii wa kuongeza. Andika anwani ya barua pepe ili kumwalika mtu.",
       "invite": "Alika",
@@ -8851,6 +8855,7 @@
         "doneAfter": "<b>Wote watamaliza baada ya takriban {afterWeeks, plural, =0 {{afterDays, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}</b>{same, select, true {<muted>, sawa na sasa</muted>} other {<muted>, ilhali sasa ni takriban {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}</muted>}}",
         "startsAt": "Inaanzia kwenye idadi inayowaachia wote wawili makala sawa kwa sawa. Makala za mwisho kabisa kwenye foleni {you, select, true {yako} other {ya {name}}} ndizo zinazoenda. Kura zilizokwisha kupigwa zinabaki zilipo.",
         "hasAll": "{takerYou, select, true {Tayari una} other {{taker} tayari ana}} makala zote {giverYou, select, true {zako} other {za {giver}}}.",
+        "noneNear": "{takerYou, select, true {Tayari una} other {{taker} tayari ana}} kila makala mwishoni mwa foleni ya {giverYou, select, true {wewe} other {{giver}}}, upande ambao uhamisho huchukua makala.",
         "nobodyElse": "Hakuna mtu mwingine wa kumhamishia makala.",
         "doneIn": "Atamaliza baada ya takriban {weeks, plural, =0 {{days, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}"
       },
@@ -8974,8 +8979,6 @@
         "nothingNew": "Hakuna jipya",
         "showLast": "Onyesha {count, number} za mwisho",
         "seeEvery": "Ona kila ukaguzi, {count, number} kwa jumla",
-        "later": "Za baadaye",
-        "earlier": "Za awali",
         "atStart": "Mwanzoni",
         "startedWith": "{known, select, true {{papers, plural, one {Makala #} other {Makala #}}} other {Makala}} kutoka {sources, plural, one {chanzo #} other {vyanzo #}}",
         "finished": "{every, select, day {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila siku uanze tena} week {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila wiki uanze tena} other {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila mwezi uanze tena}}"
@@ -9269,6 +9272,7 @@
       "queue": {
         "readFurther": "Soma zaidi",
         "noMatchYet": "Hakuna makala iliyosomwa hadi sasa inayolingana",
+        "leftWithSource": "Makala ya hapa yaliondoka kwenye uchujaji pamoja na chanzo chake",
         "label": "Foleni",
         "todo": "Kufanya",
         "again": "Piga kura tena",

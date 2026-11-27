@@ -7821,15 +7821,17 @@
       "blind": {
         "untilVotedAdvice": "レビュアーは、論文に投票するか結果が確定した後に、その論文へのほかの人の投票を見られます。モデルの投票はそれより前に参考として表示されます",
         "never": "投票は行われた時点で全員に表示されます",
-        "untilVoted": "レビュアーは、論文に投票するか結果が確定した後に、その論文へのほかの投票を見られます"
+        "untilVoted": "レビュアーは、論文に投票するか結果が確定した後に、その論文へのほかの投票を見られます",
+        "discussion": "論文のディスカッションも同じタイミングでレビュアーに表示されます"
       },
       "criteria": {
         "modelsAnswerNew": "モデルは、読み取り済みの未確定の論文について、新しい{count, plural, other {基準}}に答えます",
         "votesStand": "人の投票はそのまま残ります。{count, plural, =1 {この基準} other {これらの基準}}ができる前に行われた投票だからです",
-        "modelsStop": "モデルは {name} に答えなくなります。投票済みの票はそのまま残ります",
+        "modelsStop": "モデルは {name} に答えなくなります。人が投じた票はそのまま残ります",
         "noLongerAsked": "{name} は今後尋ねられません。投票済みの票はそのまま残ります",
         "becomesMust": "{name} が必須基準になります。今後は「いいえ」なら除外を示します。未確定の論文への人の投票は残り、「再投票」に移ります",
-        "becomesNice": "{name} は望ましい基準になります。今後は「いいえ」でも除外を示しません。投票済みの票はそのまま残ります",
+        "becomesNice": "{name} は望ましい基準になります。今後は「いいえ」でも除外を示しません。人が投じた票はそのまま残ります",
+        "modelsFollow": "モデルの投票は現在の基準に対する回答に従うため、一部が変わることがあります",
         "writeQuestion": "保存する前に基準の質問を書いてください",
         "modelsReworded": "モデルは今後読む論文について、書き直した {name} に答えます",
         "reviewersReworded": "レビュアーは今後、書き直した {name} に答えます。投票済みの票はそのまま残ります",
@@ -8320,6 +8322,7 @@
         "guidanceFor": "基準 {n} の目安",
         "guidancePlaceholder": "例「小学校のみ、大学は除く」",
         "wordsFor": "基準 {n} でマークする語",
+        "wordsFull": "最初の{count}語だけが保存されます",
         "wordsPlaceholder": "カンマで区切った語",
         "is": "基準 {n} の種類",
         "must": "必須基準",
@@ -8733,7 +8736,8 @@
       "moreFor": "{name} のその他の操作",
       "addPerson": "人を追加",
       "findPerson": "人を探すか、メールアドレスを入力",
-      "nobodyByName": "このワークスペースにその名前の人はいません。招待するにはメールアドレスを入力してください。",
+      "nobodyByName": "このワークスペースにその名前の人はほかにいません。招待するにはメールアドレスを入力してください。",
+      "alreadyInvited": "この人はすでに招待されています",
       "alreadyOn": "この人はすでにこのスクリーニングに参加しています",
       "nobodyElse": "このワークスペースに追加できる人はほかにいません。招待するにはメールアドレスを入力してください。",
       "invite": "招待",
@@ -8850,6 +8854,7 @@
         "doneAfter": "<b>全員が約 {afterWeeks, plural, =0 {{afterDays, plural, other {# 日}}} other {# 週間}}で終わります</b>{same, select, true {<muted>、今と同じです</muted>} other {<muted>、今は約 {beforeWeeks, plural, =0 {{beforeDays, plural, other {# 日}}} other {# 週間}}です</muted>}}",
         "startsAt": "最初は、2 人の論文数が同じになる数に設定されています。{you, select, true {あなた} other {{name}}}のキューの最後の方にある論文から移ります。投票済みの票はそのまま残ります。",
         "hasAll": "{takerYou, select, true {あなた} other {{taker}}}は{giverYou, select, true {あなた} other {{giver}}}の論文をすでにすべて持っています。",
+        "noneNear": "{giverYou, select, true {あなたの} other {{giver}の}}キューの末尾にある論文は、すべて{takerYou, select, true {あなた} other {{taker}}}がすでに担当しています。移動は末尾から論文を移します。",
         "nobodyElse": "論文を移せる人がほかにいません。",
         "doneIn": "約 {weeks, plural, =0 {{days, plural, other {# 日}}} other {# 週間}}で完了"
       },
@@ -8973,8 +8978,6 @@
         "nothingNew": "新しいものはありません",
         "showLast": "直近 {count, number} 件を表示",
         "seeEvery": "すべての確認を見る、計 {count, number} 件",
-        "later": "後のもの",
-        "earlier": "前のもの",
         "atStart": "開始時",
         "startedWith": "{sources, plural, other {取得元 # 件}}から{known, select, true {{papers, plural, other {論文 # 件}}} other {論文}}",
         "finished": "{every, select, day {完了している間は確認しません。再開すると再び毎日確認します} week {完了している間は確認しません。再開すると再び毎週確認します} other {完了している間は確認しません。再開すると再び毎月確認します}}"
@@ -9268,6 +9271,7 @@
       "queue": {
         "readFurther": "さらに読む",
         "noMatchYet": "これまでに読んだ論文に一致するものはありません",
+        "leftWithSource": "ここの論文は出典とともにスクリーニングから外れました",
         "label": "キュー",
         "todo": "未投票",
         "again": "再投票",

@@ -7822,15 +7822,17 @@
       "blind": {
         "untilVotedAdvice": "’n Beoordelaar sien die ander mense se stemme op ’n artikel sodra hulle daarop stem of dit beslis is. Die modelle se stemme wys al voor dit, as advies",
         "never": "Almal sien elke stem soos dit uitgebring word",
-        "untilVoted": "’n Beoordelaar sien die ander stemme op ’n artikel sodra hulle daarop stem of dit beslis is"
+        "untilVoted": "’n Beoordelaar sien die ander stemme op ’n artikel sodra hulle daarop stem of dit beslis is",
+        "discussion": "’n Artikel se bespreking wys op dieselfde oomblik aan ’n beoordelaar"
       },
       "criteria": {
         "modelsAnswerNew": "Die modelle beantwoord {count, plural, one {die nuwe kriterium} other {die nuwe kriteria}} op die oop artikels wat hulle gelees het",
         "votesStand": "Mense se stemme bly soos hulle is, omdat hulle voor {count, plural, one {hierdie kriterium} other {hierdie kriteria}} uitgebring is",
-        "modelsStop": "Die modelle hou op om {name} te beantwoord. Stemme wat reeds uitgebring is, bly soos hulle is",
+        "modelsStop": "Die modelle hou op om {name} te beantwoord. Mense se stemme wat reeds uitgebring is, bly soos hulle is",
         "noLongerAsked": "{name} word nie meer gevra nie. Stemme wat reeds uitgebring is, bly soos hulle is",
         "becomesMust": "{name} word ’n vereiste. Voortaan dui ’n nee daarop op Sluit uit. Mense se stemme op die artikels wat nog oop is, bly, en skuif na Stem weer",
-        "becomesNice": "{name} word wenslik. Voortaan dui ’n nee daarop nie meer op Sluit uit nie. Stemme wat reeds uitgebring is, bly soos hulle is",
+        "becomesNice": "{name} word wenslik. Voortaan dui ’n nee daarop nie meer op Sluit uit nie. Mense se stemme wat reeds uitgebring is, bly soos hulle is",
+        "modelsFollow": "Die modelle se stemme volg hulle antwoorde volgens die kriteria soos hulle nou is, so sommige kan verander",
         "writeQuestion": "Skryf die kriterium se vraag voordat jy stoor",
         "modelsReworded": "Die modelle beantwoord die herformuleerde {name} op artikels wat hulle voortaan lees",
         "reviewersReworded": "Beoordelaars beantwoord voortaan die herformuleerde {name}. Stemme wat reeds uitgebring is, bly soos hulle is",
@@ -8321,6 +8323,7 @@
         "guidanceFor": "Riglyne vir kriterium {n}",
         "guidancePlaceholder": "Soos \"Slegs laerskole, nie universiteite nie\"",
         "wordsFor": "Woorde om te merk vir kriterium {n}",
+        "wordsFull": "Net die eerste {count} woorde word gehou",
         "wordsPlaceholder": "Woorde met kommas tussen hulle",
         "is": "Kriterium {n} is",
         "must": "Vereiste",
@@ -8734,7 +8737,8 @@
       "moreFor": "Meer vir {name}",
       "addPerson": "Voeg ’n persoon by",
       "findPerson": "Soek ’n persoon, of tik ’n e-posadres",
-      "nobodyByName": "Niemand in hierdie werkruimte met daardie naam nie. Tik ’n e-posadres om iemand uit te nooi.",
+      "nobodyByName": "Niemand anders in hierdie werkruimte met daardie naam nie. Tik ’n e-posadres om iemand uit te nooi.",
+      "alreadyInvited": "Hulle is reeds uitgenooi",
       "alreadyOn": "Hulle is reeds op hierdie keuring",
       "nobodyElse": "Niemand anders in hierdie werkruimte om by te voeg nie. Tik ’n e-posadres om iemand uit te nooi.",
       "invite": "Nooi uit",
@@ -8851,6 +8855,7 @@
         "doneAfter": "<b>Almal klaar oor omtrent {afterWeeks, plural, =0 {{afterDays, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}</b>{same, select, true {<muted>, dieselfde as nou</muted>} other {<muted>, waar dit nou omtrent {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}} is</muted>}}",
         "startsAt": "Dit begin by die getal wat die twee met ewe veel artikels laat. Die artikels heel onder in {you, select, true {jou} other {{name} se}} ry gaan. Stemme wat reeds uitgebring is, bly waar hulle is.",
         "hasAll": "{takerYou, select, true {Jy het reeds} other {{taker} het reeds}} al {giverYou, select, true {jou} other {{giver} se}} artikels.",
+        "noneNear": "{takerYou, select, true {Jy het reeds} other {{taker} het reeds}} elke artikel aan die einde van {giverYou, select, true {jou} other {{giver} se}} tou, die kant waarvandaan ’n skuif artikels neem.",
         "nobodyElse": "Daar is niemand anders om artikels na te skuif nie.",
         "doneIn": "Klaar oor omtrent {weeks, plural, =0 {{days, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}"
       },
@@ -8974,8 +8979,6 @@
         "nothingNew": "Niks nuuts nie",
         "showLast": "Wys die laaste {count, number}",
         "seeEvery": "Sien elke kontrole, {count, number} altesaam",
-        "later": "Latere",
-        "earlier": "Vroeëre",
         "atStart": "By die begin",
         "startedWith": "{known, select, true {{papers, plural, one {# artikel} other {# artikels}}} other {Artikels}} uit {sources, plural, one {# bron} other {# bronne}}",
         "finished": "{every, select, day {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke dag te kontroleer} week {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke week te kontroleer} other {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke maand te kontroleer}}"
@@ -9269,6 +9272,7 @@
       "queue": {
         "readFurther": "Lees verder",
         "noMatchYet": "Geen van die artikels wat tot dusver gelees is, pas nie",
+        "leftWithSource": "Die artikels hier het die keuring saam met hulle bron verlaat",
         "label": "Ry",
         "todo": "Om te doen",
         "again": "Stem weer",

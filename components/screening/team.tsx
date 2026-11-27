@@ -45,12 +45,13 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   if (read !== undefined && read !== last) setLast(read);
   const found = read ?? last;
   const stale = read === undefined && last !== undefined;
-  // Rows found for what was typed before stay to look at, never to pick: Enter waits for the people the typing finds.
+  // Rows found for what was typed before stay to look at, never to pick: Enter waits for the people the typing finds. An address is invited only once the lookup has said whose it is, the first one included.
   const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
   // Someone typed as an address who is a member is added as that member, never invited. One already on it, or invited to it, is said to be.
   const known = email ? found?.page.find((person) => person.email.toLowerCase() === email) : undefined;
   const member = known && !exclude.includes(known.id) ? known : undefined;
-  const already = email !== null && ((known !== undefined && !member) || exclude.includes(`invite:${email}`));
+  const invitedAlready = email !== null && exclude.includes(`invite:${email}`);
+  const already = email !== null && ((known !== undefined && !member) || invitedAlready);
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
@@ -91,10 +92,10 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
                 ))}
               </CommandGroup>
             ) : null}
-            {already ? <p className="px-3 py-2 text-sm text-muted-foreground">{t("alreadyOn")}</p> : null}
+            {already ? <p className="px-3 py-2 text-sm text-muted-foreground">{t(invitedAlready ? "alreadyInvited" : "alreadyOn")}</p> : null}
             {email && !member && !already ? (
               <CommandGroup heading={t("invite")}>
-                <CommandItem value={email} disabled={stale} onSelect={() => pick({ email })} className="gap-3">
+                <CommandItem value={email} disabled={read === undefined} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>

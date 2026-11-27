@@ -7822,15 +7822,17 @@
       "blind": {
         "untilVotedAdvice": "Un revisor ve los votos de las demás personas en un artículo cuando lo vota o cuando queda resuelto. Los votos de los modelos se ven antes, como consejo",
         "never": "Todos ven cada voto en cuanto se emite",
-        "untilVoted": "Un revisor ve los demás votos de un artículo cuando lo vota o cuando queda resuelto"
+        "untilVoted": "Un revisor ve los demás votos de un artículo cuando lo vota o cuando queda resuelto",
+        "discussion": "La conversación de un artículo se le muestra a un revisor en el mismo momento"
       },
       "criteria": {
         "modelsAnswerNew": "Los modelos responden {count, plural, one {el nuevo criterio} other {los nuevos criterios}} en los artículos abiertos que han leído",
         "votesStand": "Los votos de las personas se quedan como están, ya que se emitieron antes de {count, plural, one {este criterio} other {estos criterios}}",
-        "modelsStop": "Los modelos dejan de responder {name}. Los votos ya emitidos se quedan como están",
+        "modelsStop": "Los modelos dejan de responder {name}. Los votos ya emitidos por personas se quedan como están",
         "noLongerAsked": "{name} ya no se pregunta. Los votos ya emitidos se quedan como están",
         "becomesMust": "{name} pasa a ser un requisito. Desde ahora un no en él apunta a Excluir. Los votos de las personas en los artículos aún abiertos se quedan, y pasan a Votar de nuevo",
-        "becomesNice": "{name} pasa a ser deseable. Desde ahora un no en él ya no apunta a Excluir. Los votos ya emitidos se quedan como están",
+        "becomesNice": "{name} pasa a ser deseable. Desde ahora un no en él ya no apunta a Excluir. Los votos ya emitidos por personas se quedan como están",
+        "modelsFollow": "Los votos de los modelos siguen sus respuestas según los criterios actuales, así que algunos pueden cambiar",
         "writeQuestion": "Escriba la pregunta del criterio antes de guardar",
         "modelsReworded": "Los modelos responden {name} con su nueva redacción en los artículos que lean desde ahora",
         "reviewersReworded": "Los revisores responden {name} con su nueva redacción desde ahora. Los votos ya emitidos se quedan como están",
@@ -8321,6 +8323,7 @@
         "guidanceFor": "Orientación para el criterio {n}",
         "guidancePlaceholder": "Por ejemplo, «Solo escuelas primarias, no universidades»",
         "wordsFor": "Palabras que marcar para el criterio {n}",
+        "wordsFull": "Solo se guardan las primeras {count} palabras",
         "wordsPlaceholder": "Palabras separadas por comas",
         "is": "El criterio {n} es",
         "must": "Requisito",
@@ -8734,7 +8737,8 @@
       "moreFor": "Más para {name}",
       "addPerson": "Añadir una persona",
       "findPerson": "Busque una persona o escriba un correo",
-      "nobodyByName": "Nadie en este espacio de trabajo tiene ese nombre. Escriba una dirección de correo para invitar a alguien.",
+      "nobodyByName": "Nadie más en este espacio de trabajo tiene ese nombre. Escriba una dirección de correo para invitar a alguien.",
+      "alreadyInvited": "Esta persona ya está invitada",
       "alreadyOn": "Esta persona ya está en este cribado",
       "nobodyElse": "No queda nadie más en este espacio de trabajo para añadir. Escriba una dirección de correo para invitar a alguien.",
       "invite": "Invitar",
@@ -8851,6 +8855,7 @@
         "doneAfter": "<b>Todos terminan en {afterWeeks, plural, =0 {{afterDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}</b>{same, select, true {<muted>, igual que ahora</muted>} other {<muted>, frente a {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}} ahora</muted>}}",
         "startsAt": "Empieza en el número que deja a los dos con tantos artículos como el otro. Se van los artículos del final de la cola de {you, select, true {usted} other {{name}}}. Los votos ya emitidos se quedan donde están.",
         "hasAll": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} todos los artículos de {giverYou, select, true {usted} other {{giver}}}.",
+        "noneNear": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} todos los artículos del final de la cola de {giverYou, select, true {usted} other {{giver}}}, el extremo del que se mueven los artículos.",
         "nobodyElse": "No hay nadie más a quien mover artículos.",
         "doneIn": "Terminado en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}"
       },
@@ -8974,8 +8979,6 @@
         "nothingNew": "Nada nuevo",
         "showLast": "Mostrar las últimas {count, number}",
         "seeEvery": "Ver todas las comprobaciones, {count, number} en total",
-        "later": "Posteriores",
-        "earlier": "Anteriores",
         "atStart": "Al inicio",
         "startedWith": "{known, select, true {{papers, plural, one {# artículo} other {# artículos}}} other {Artículos}} de {sources, plural, one {# fuente} other {# fuentes}}",
         "finished": "{every, select, day {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada día} week {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada semana} other {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada mes}}"
@@ -9269,6 +9272,7 @@
       "queue": {
         "readFurther": "Seguir leyendo",
         "noMatchYet": "Ninguno de los artículos leídos hasta ahora coincide",
+        "leftWithSource": "Los artículos de aquí salieron del cribado con su fuente",
         "label": "Cola",
         "todo": "Pendientes",
         "again": "Votar de nuevo",

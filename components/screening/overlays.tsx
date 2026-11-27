@@ -72,7 +72,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       <DropdownMenuSeparator className={bar ? "xl:hidden" : undefined} />
       {member ? (live ? <DropdownMenuItem onSelect={() => show("finish")}><CircleCheck />{t("markFinished")}</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />{t("reopen")}</DropdownMenuItem>) : null}
       {member && live && modelsOf(screening).length ? (screening.paused ? <DropdownMenuItem onSelect={() => void open.resume()}><Play />{t("resumeModels")}</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />{t("menu.pauseModels")}</DropdownMenuItem>) : null}
-      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking || open.gathering)} onSelect={() => void open.check().catch((error) => showStyledToast("error", getErrorMessage(error, t("failed"))))}><RefreshCw />{t("checkNew")}</DropdownMenuItem> : null}
+      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking || open.gathering)} onSelect={() => void open.check()}><RefreshCw />{t(screening.finishedAt ? "checkReopens" : "checkNew")}</DropdownMenuItem> : null}
       <DropdownMenuItem asChild><NextLink href={newHref({ from: id })}><Copy />{t("menu.duplicate")}</NextLink></DropdownMenuItem>
       {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />{t("menu.move")}</DropdownMenuItem> : null}
       {/* In the widest windows the bar over a screening has this as a button. */}

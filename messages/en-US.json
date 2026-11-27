@@ -7821,15 +7821,17 @@
       "blind": {
         "untilVotedAdvice": "A reviewer sees the other people's votes on a paper once they vote on it or it is settled. The models' votes show before then, as advice",
         "never": "Everyone sees every vote as it is cast",
-        "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled"
+        "untilVoted": "A reviewer sees the other votes on a paper once they vote on it or it is settled",
+        "discussion": "A paper’s discussion shows to a reviewer at the same moment"
       },
       "criteria": {
         "modelsAnswerNew": "The models answer the new {count, plural, one {criterion} other {criteria}} on the open papers they have read",
         "votesStand": "People's votes stay as they are, since they were cast before {count, plural, one {this criterion} other {these criteria}}",
-        "modelsStop": "The models stop answering {name}. Votes already cast stay as they are",
+        "modelsStop": "The models stop answering {name}. People's votes already cast stay as they are",
         "noLongerAsked": "{name} is no longer asked. Votes already cast stay as they are",
         "becomesMust": "{name} becomes a must-have. From now on a no on it points to Exclude. People's votes on the papers still open stay, and move to Vote again",
-        "becomesNice": "{name} becomes a nice-to-have. From now on a no on it no longer points to Exclude. Votes already cast stay as they are",
+        "becomesNice": "{name} becomes a nice-to-have. From now on a no on it no longer points to Exclude. People's votes already cast stay as they are",
+        "modelsFollow": "The models' votes follow their answers under the criteria as they now stand, so some may change",
         "writeQuestion": "Write the criterion's question before saving",
         "modelsReworded": "The models answer the reworded {name} on papers they read from now on",
         "reviewersReworded": "Reviewers answer the reworded {name} from now on. Votes already cast stay as they are",
@@ -8320,6 +8322,7 @@
         "guidanceFor": "Guidance for criterion {n}",
         "guidancePlaceholder": "Such as \"Primary schools only, not universities\"",
         "wordsFor": "Words to mark for criterion {n}",
+        "wordsFull": "Only the first {count} words are kept",
         "wordsPlaceholder": "Words with commas between them",
         "is": "Criterion {n} is",
         "must": "Must-have",
@@ -8733,7 +8736,8 @@
       "moreFor": "More for {name}",
       "addPerson": "Add a person",
       "findPerson": "Find a person, or type an email",
-      "nobodyByName": "Nobody in this workspace by that name. Type an email address to invite someone.",
+      "nobodyByName": "Nobody else in this workspace by that name. Type an email address to invite someone.",
+      "alreadyInvited": "They are invited already",
       "alreadyOn": "They are already on this screening",
       "nobodyElse": "Nobody else in this workspace to add. Type an email address to invite someone.",
       "invite": "Invite",
@@ -8850,6 +8854,7 @@
         "doneAfter": "<b>Everyone done in about {afterWeeks, plural, =0 {{afterDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}</b>{same, select, true {<muted>, the same as now</muted>} other {<muted>, where it is about {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}} now</muted>}}",
         "startsAt": "It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {you, select, true {your} other {{name}'s}} queue go. Votes already cast stay where they are.",
         "hasAll": "{takerYou, select, true {You already have} other {{taker} already has}} all of {giverYou, select, true {your} other {{giver}'s}} papers.",
+        "noneNear": "{takerYou, select, true {You already have} other {{taker} already has}} every paper at the end of {giverYou, select, true {your} other {{giver}’s}} queue, the end a move takes papers from.",
         "nobodyElse": "There is nobody else to move papers to.",
         "doneIn": "Done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}"
       },
@@ -8973,8 +8978,6 @@
         "nothingNew": "Nothing new",
         "showLast": "Show the last {count, number}",
         "seeEvery": "See every check, {count, number} in all",
-        "later": "Later ones",
-        "earlier": "Earlier ones",
         "atStart": "At the start",
         "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}",
         "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
@@ -9268,6 +9271,7 @@
       "queue": {
         "readFurther": "Read further",
         "noMatchYet": "None of the papers read so far match",
+        "leftWithSource": "The papers here left the screening with their source",
         "label": "Queue",
         "todo": "To do",
         "again": "Vote again",

@@ -7821,15 +7821,17 @@
       "blind": {
         "untilVotedAdvice": "Un évaluateur voit les votes des autres personnes sur un article une fois qu'il a voté dessus ou que l'article est tranché. Les votes des modèles s'affichent avant, comme avis",
         "never": "Tout le monde voit chaque vote dès qu'il est émis",
-        "untilVoted": "Un évaluateur voit les autres votes sur un article une fois qu'il a voté dessus ou que l'article est tranché"
+        "untilVoted": "Un évaluateur voit les autres votes sur un article une fois qu'il a voté dessus ou que l'article est tranché",
+        "discussion": "La discussion d’un article s’affiche pour un évaluateur au même moment"
       },
       "criteria": {
         "modelsAnswerNew": "Les modèles répondent {count, plural, one {au nouveau critère} other {aux nouveaux critères}} sur les articles ouverts qu'ils ont lus",
         "votesStand": "Les votes des personnes restent tels quels, car ils ont été émis avant {count, plural, one {ce critère} other {ces critères}}",
-        "modelsStop": "Les modèles ne répondent plus à {name}. Les votes déjà émis restent tels quels",
+        "modelsStop": "Les modèles ne répondent plus à {name}. Les votes déjà émis par des personnes restent tels quels",
         "noLongerAsked": "{name} n'est plus posé. Les votes déjà émis restent tels quels",
         "becomesMust": "{name} devient indispensable. Désormais, un non indique Exclure. Les votes des personnes sur les articles encore ouverts restent, et passent dans Revoter",
-        "becomesNice": "{name} devient souhaitable. Désormais, un non n'indique plus Exclure. Les votes déjà émis restent tels quels",
+        "becomesNice": "{name} devient souhaitable. Désormais, un non n'indique plus Exclure. Les votes déjà émis par des personnes restent tels quels",
+        "modelsFollow": "Les votes des modèles suivent leurs réponses selon les critères actuels, donc certains peuvent changer",
         "writeQuestion": "Écrivez la question du critère avant d'enregistrer",
         "modelsReworded": "Les modèles répondent à la nouvelle formulation de {name} sur les articles qu'ils lisent désormais",
         "reviewersReworded": "Les évaluateurs répondent désormais à la nouvelle formulation de {name}. Les votes déjà émis restent tels quels",
@@ -8320,6 +8322,7 @@
         "guidanceFor": "Consignes pour le critère {n}",
         "guidancePlaceholder": "Par exemple « Écoles primaires seulement, pas les universités »",
         "wordsFor": "Mots à surligner pour le critère {n}",
+        "wordsFull": "Seuls les {count} premiers mots sont gardés",
         "wordsPlaceholder": "Mots séparés par des virgules",
         "is": "Le critère {n} est",
         "must": "Indispensable",
@@ -8733,7 +8736,8 @@
       "moreFor": "Plus pour {name}",
       "addPerson": "Ajouter une personne",
       "findPerson": "Trouvez une personne ou saisissez une adresse e-mail",
-      "nobodyByName": "Personne de ce nom dans cet espace de travail. Saisissez une adresse e-mail pour inviter quelqu'un.",
+      "nobodyByName": "Personne d’autre de ce nom dans cet espace de travail. Saisissez une adresse e-mail pour inviter quelqu’un.",
+      "alreadyInvited": "Cette personne est déjà invitée",
       "alreadyOn": "Cette personne fait déjà partie de ce tri",
       "nobodyElse": "Personne d'autre à ajouter dans cet espace de travail. Saisissez une adresse e-mail pour inviter quelqu'un.",
       "invite": "Inviter",
@@ -8850,6 +8854,7 @@
         "doneAfter": "<b>Tout le monde aura fini dans environ {afterWeeks, plural, =0 {{afterDays, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}</b>{same, select, true {<muted>, comme maintenant</muted>} other {<muted>, contre environ {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}} maintenant</muted>}}",
         "startsAt": "Le nombre de départ laisse aux deux autant d'articles l'un que l'autre. Les articles les plus bas dans {you, select, true {votre file} other {la file de {name}}} partent. Les votes déjà émis restent où ils sont.",
         "hasAll": "{takerYou, select, true {Vous avez déjà} other {{taker} a déjà}} {giverYou, select, true {tous vos articles} other {tous les articles de {giver}}}.",
+        "noneNear": "{takerYou, select, true {Vous avez déjà} other {{taker} a déjà}} tous les articles de la fin de la file de {giverYou, select, true {vous} other {{giver}}}, l’extrémité d’où un déplacement prend les articles.",
         "nobodyElse": "Il n'y a personne d'autre vers qui déplacer des articles.",
         "doneIn": "Fini dans environ {weeks, plural, =0 {{days, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}"
       },
@@ -8973,8 +8978,6 @@
         "nothingNew": "Rien de nouveau",
         "showLast": "Afficher les {count, number} dernières",
         "seeEvery": "Voir toutes les vérifications, {count, number} au total",
-        "later": "Plus récentes",
-        "earlier": "Plus anciennes",
         "atStart": "Au départ",
         "startedWith": "{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}",
         "finished": "{every, select, day {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque jour} week {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque semaine} other {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque mois}}"
@@ -9268,6 +9271,7 @@
       "queue": {
         "readFurther": "Lire la suite",
         "noMatchYet": "Aucun des articles lus jusqu'ici ne correspond",
+        "leftWithSource": "Les articles d’ici ont quitté le tri avec leur source",
         "label": "File",
         "todo": "À faire",
         "again": "Revoter",

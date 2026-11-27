@@ -25,6 +25,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { PageStepper } from "@/components/shared/page-stepper";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
@@ -37,7 +38,7 @@ import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, spl
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { papersHref, reviewerHref, screenHref, settingsHref } from "./links";
-import { settleMeans, votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
+import { SENTENCE_CHIP, settleMeans, votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
 import { pdfsMissed, pdfsOf, unreadPdfs, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -276,7 +277,8 @@ const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-co
 /** A part of the table that spans it: a group of rows, or a line that isn't cut into the columns. */
 const ACROSS = "@2xl/reviewers:col-span-full";
 const SHARED = "@2xl/reviewers:col-span-full @2xl/reviewers:grid @2xl/reviewers:grid-cols-subgrid";
-const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:col-span-full @2xl/reviewers:grid-cols-subgrid @2xl/reviewers:gap-x-3";
+// On a narrow card what is said in the second column takes at most 60% of the row and wraps, so it never runs over how far the reviewer is, in the first.
+const COLUMNS = "grid grid-cols-[minmax(0,1fr)_fit-content(60%)_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:col-span-full @2xl/reviewers:grid-cols-subgrid @2xl/reviewers:gap-x-3";
 
 function Reviewers({ open, figures, now }: { open: Open; figures: Figures | undefined; now: number }) {
   const { screening, counts } = open;
@@ -477,7 +479,8 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   // Whoever has the least left is offered first.
   const picked = others.find((row) => row.reviewer.id === chosen) ?? [...others].sort((x, y) => x.left - y.left)[0];
   // How many of the giver's papers the taker doesn't already have: counted by the server for the two of them.
-  const can = useProtectedQuery(api.screening.reviewers.movable, inWorkspace(workspaceId, picked && giver.reviewer.row && picked.reviewer.row ? { jobId: open.screening.id, from: giver.reviewer.row, to: picked.reviewer.row } : "skip")).data;
+  const counted = useProtectedQuery(api.screening.reviewers.movable, inWorkspace(workspaceId, picked && giver.reviewer.row && picked.reviewer.row ? { jobId: open.screening.id, from: giver.reviewer.row, to: picked.reviewer.row } : "skip")).data;
+  const can = counted?.count;
   const taker = picked && can ? { row: picked, can } : undefined;
   const most = taker?.can ?? 0;
   // To start with, enough to leave the two with the same number.
@@ -527,7 +530,7 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
         // While the two are counted, the dialog keeps the room the count will take.
         <div aria-hidden className="h-40" />
       ) : (
-        <EmptyNote>{picked ? t("move.hasAll", { takerYou: String(isMe(picked)), taker: firstName(picked.reviewer.name), giverYou: String(isMe(giver)), giver: firstName(giver.reviewer.name) }) : t("move.nobodyElse")}</EmptyNote>
+        <EmptyNote>{picked && counted && !counted.whole ? t("move.noneNear", { giverYou: String(isMe(giver)), giver: firstName(giver.reviewer.name), takerYou: String(isMe(picked)), taker: firstName(picked.reviewer.name) }) : picked ? t("move.hasAll", { takerYou: String(isMe(picked)), taker: firstName(picked.reviewer.name), giverYou: String(isMe(giver)), giver: firstName(giver.reviewer.name) }) : t("move.nobodyElse")}</EmptyNote>
       )}
     </ConfirmChange>
   );
@@ -615,7 +618,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
         <div role="cell" className="col-span-4 flex justify-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-          <Chip icon={Lock}>{words.t("hiddenWhileToDo")}</Chip>
+          <Chip icon={Lock} className={SENTENCE_CHIP}>{words.t("hiddenWhileToDo")}</Chip>
         </div>
       ) : (
       <>
@@ -987,7 +990,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         </Help>
       }
       aside={open.canChange ? (() => { // While papers arrive it waits, and says why where it is pointed at.
-        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
+        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -1064,7 +1067,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           {later > RECENT_CHECKS ? (
             <div className="flex flex-wrap items-center gap-2 px-4 py-2">
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { void setPlace({ checks: checks === "all" ? null : "all" }); if (checks === "all") void setChecksPage(null); }}>{checks === "all" ? t("checks.showLast", { count: RECENT_CHECKS }) : t("checks.seeEvery", { count: later })}</Button>
-              {checks === "all" && read.hasPages ? <span className="ms-auto flex items-center gap-1"><Button variant="ghost" size="xs" disabled={!read.canPrevious} onClick={read.previous}>{t("checks.later")}</Button><Button variant="ghost" size="xs" disabled={!read.canNext} onClick={read.next}>{t("checks.earlier")}</Button></span> : null}
+              {/* The pages of every check say where they are, as the app's other pagers do. */}{checks === "all" && read.hasPages ? <PageStepper className="ms-auto w-28" page={read.page} {...(figures ? { pageCount: Math.max(1, Math.ceil(later / ALL_CHECKS)) } : {})} canPrevious={read.canPrevious} canNext={read.canNext} onPrevious={read.previous} onNext={read.next} /> : null}
             </div>
           ) : null}
           <div className="flex items-start gap-3 px-4 py-3">
@@ -1198,5 +1201,5 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
 
 /** A name that opens its papers where it has any, and stands as a name, with nothing to press, where it has none (./links.ts `reviewerHref`). */
 function LinkOr({ href, className, children, ...rest }: Omit<ComponentProps<typeof NextLink>, "href"> & { href: string | null }) {
-  return href ? <NextLink href={href} className={className} {...rest}>{children}</NextLink> : <span className={className} aria-label={rest["aria-label"]}>{children}</span>;
+  return href ? <NextLink href={href} className={className} {...rest}>{children}</NextLink> : <span className={className}>{children}</span>;
 }

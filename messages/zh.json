@@ -7821,15 +7821,17 @@
       "blind": {
         "untilVotedAdvice": "审核人对论文投票后或论文定案后，才能看到其他人员的投票。模型的投票在此之前就会显示，作为参考",
         "never": "所有人都能在投票时看到每一票",
-        "untilVoted": "审核人对论文投票后或论文定案后，才能看到其他人的投票"
+        "untilVoted": "审核人对论文投票后或论文定案后，才能看到其他人的投票",
+        "discussion": "论文的讨论也在同一时间向审核人显示"
       },
       "criteria": {
         "modelsAnswerNew": "模型会在已读过的未定案论文上回答新的{count, plural, other {标准}}",
         "votesStand": "人员的投票保持不变，因为它们是在{count, plural, =1 {这条标准} other {这些标准}}之前投的",
-        "modelsStop": "模型不再回答 {name}。已投的票保持不变",
+        "modelsStop": "模型不再回答 {name}。人已投的票保持不变",
         "noLongerAsked": "不再询问 {name}。已投的票保持不变",
         "becomesMust": "{name} 变为必要条件。从现在起，对它答“否”会指向排除。人员对仍未定案论文的投票保留，并移到“重新投票”",
-        "becomesNice": "{name} 变为加分项。从现在起，对它答“否”不再指向排除。已投的票保持不变",
+        "becomesNice": "{name} 变为加分项。从现在起，对它答“否”不再指向排除。人已投的票保持不变",
+        "modelsFollow": "模型的投票按其在当前标准下的回答而定，因此部分可能改变",
         "writeQuestion": "保存前请写好标准的问题",
         "modelsReworded": "从现在起，模型在阅读论文时回答改写后的 {name}",
         "reviewersReworded": "从现在起，审核人回答改写后的 {name}。已投的票保持不变",
@@ -8320,6 +8322,7 @@
         "guidanceFor": "标准 {n} 的说明",
         "guidancePlaceholder": "例如\"仅限小学，不含大学\"",
         "wordsFor": "标准 {n} 的标记词",
+        "wordsFull": "只保留前 {count} 个词",
         "wordsPlaceholder": "用逗号分隔的词",
         "is": "标准 {n} 是",
         "must": "必要条件",
@@ -8733,7 +8736,8 @@
       "moreFor": "{name} 的更多操作",
       "addPerson": "添加人员",
       "findPerson": "查找人员，或输入邮箱",
-      "nobodyByName": "此工作区中没有这个名字的人。输入邮箱地址即可邀请。",
+      "nobodyByName": "此工作区中没有其他人叫这个名字。输入电子邮件地址即可邀请某人。",
+      "alreadyInvited": "此人已被邀请",
       "alreadyOn": "此人已在这项筛选中",
       "nobodyElse": "此工作区中没有其他可添加的人。输入邮箱地址即可邀请。",
       "invite": "邀请",
@@ -8850,6 +8854,7 @@
         "doneAfter": "<b>大约 {afterWeeks, plural, =0 {{afterDays, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成</b>{same, select, true {<muted>，与现在相同</muted>} other {<muted>，现在大约是 {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {一天} other {# 天}}} other {# 周}}</muted>}}",
         "startsAt": "初始数量会让两人的论文数相同。转走的是{you, select, true {你} other {{name} }}的队列中最靠后的论文。已投的票保持不变。",
         "hasAll": "{takerYou, select, true {你} other {{taker} }}已经有{giverYou, select, true {你} other {{giver} }}的全部论文。",
+        "noneNear": "{giverYou, select, true {你} other {{giver}}}队列末尾的每篇论文，{takerYou, select, true {你} other {{taker}}}都已经有了；转移正是从末尾取论文。",
         "nobodyElse": "没有其他人可以接收论文。",
         "doneIn": "大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后完成"
       },
@@ -8973,8 +8978,6 @@
         "nothingNew": "没有新论文",
         "showLast": "显示最近 {count, number} 次",
         "seeEvery": "查看全部 {count, number} 次检查",
-        "later": "较新的",
-        "earlier": "较早的",
         "atStart": "开始时",
         "startedWith": "{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}",
         "finished": "{every, select, day {已完成期间不检查。重新打开即可恢复每天检查} week {已完成期间不检查。重新打开即可恢复每周检查} other {已完成期间不检查。重新打开即可恢复每月检查}}"
@@ -9268,6 +9271,7 @@
       "queue": {
         "readFurther": "继续读取",
         "noMatchYet": "目前读到的论文中没有匹配的",
+        "leftWithSource": "这里的论文已随其来源离开这项筛选",
         "label": "队列",
         "todo": "待处理",
         "again": "重新投票",
