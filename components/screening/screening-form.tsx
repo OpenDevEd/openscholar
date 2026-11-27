@@ -6,7 +6,7 @@
 
 import { collectionHref } from "@/lib/library/links";
 import { ButtonCredits } from "@/components/ui/button-credits";
-import { useId, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useMemo, useState, type ComponentProps, type KeyboardEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -14,7 +14,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon, RotateCcw } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -26,7 +26,7 @@ import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { FadeRow } from "@/components/ui/fade-row";
-import { FilterChips } from "@/components/ui/filter-display";
+import { FilterChips, useFilterLabels } from "@/components/ui/filter-display";
 import { QueryText } from "@/components/ui/query-text";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
@@ -275,7 +275,11 @@ function changesOf({ words, t, effects }: Say, before: Screening, after: Screeni
   const [was, is] = [activeReviewers(before), activeReviewers(after)];
   if (gone(is, was).length) push(t("edit.addedReviewers", named(gone(is, was).map((reviewer) => reviewer.name))), "reviewers");
   if (gone(was, is).length) push(t("edit.removedReviewers", named(gone(was, is).map((reviewer) => reviewer.name))), "reviewers");
-  if (JSON.stringify(before.rule) !== JSON.stringify(after.rule)) push(t("edit.rule"), "decided");
+  // When the votes are seen is a change of its own: it settles no paper differently.
+  const { blind: blindBefore, ...ruleBefore } = before.rule;
+  const { blind: blindAfter, ...ruleAfter } = after.rule;
+  if (JSON.stringify(ruleBefore) !== JSON.stringify(ruleAfter)) push(t("edit.rule"), "decided");
+  if (blindBefore !== blindAfter) push(t("edit.seeing"), "decided");
   if (JSON.stringify(before.destination) !== JSON.stringify(after.destination)) {
     const renamed = before.destination.kind === "new" && after.destination.kind === "new" && !after.destination.collection;
     const to = words.collectionName(after);
@@ -1199,7 +1203,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       <AutoHeight>
                       <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
                         {offered.loading && !offered.rows.length ? <ListRowsSkeleton rows={OFFER_PAGE} height={57} label={t("papers.loadingList")} /> : null}
-                        {offered.rows.map((offer) => <OfferRow key={offer.ref} offer={offer} {...searchLook(offer)} icon={kindIcon(offer.set.kind)} added={taken_(offer.ref)} onAdd={() => pick(offer)} />)}
+                        {offered.rows.map((offer) => { const search = searchOf.get(offer.ref); const row = { offer, ...searchLook(offer), icon: kindIcon(offer.set.kind), added: taken_(offer.ref) }; return search ? <SearchOfferRow key={offer.ref} {...row} search={search} onAdd={(filters) => pick(filters.length ? { ...offer, filters } : offer)} /> : <OfferRow key={offer.ref} {...row} onAdd={() => pick(offer)} />; })}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
                       </div>
                       {offered.pager?.hasPages ? <CommandCenterPagination className="pt-1" currentPage={offered.pager.page} itemLabel={kind === "search" ? t("papers.pagerSearches") : kind === "collection" ? t("papers.pagerCollections") : kind === "screening" ? t("papers.pagerScreenings") : t("papers.pagerSources")} steps={{ canPrevious: offered.pager.canPrevious, canNext: offered.pager.canNext, onPrevious: offered.pager.previous, onNext: offered.pager.next, offset: offered.pager.offset, shown: offered.pager.items.length, ...(kind === "search" ? { total: searches.total, pageCount: searches.pageCount } : {}) }} /> : null}
@@ -1658,7 +1662,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsRead", { count: pdfs.papers, pages: pdfs.pages, capped: String(Boolean(pdfCost)), credits: words.credits(pdfCost) })}</span></p> : null}
                 {pdfsUnpriced ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsUnpriced")}</span></p> : null}
                 {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{t("cost.firstReading", { count: handedPdfs })}</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">{t("cost.upTo", { credits: words.creditsOf(handedPdfs * lookCredits) })}</span></div> : null}
-                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.creditsOf(reread) })}</span></div> : null}
+                {/* What the change has the models read again is a part of their rows above, said under them as the PDFs are: it is in the total once. */}
+                {reread ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><RotateCcw aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.creditsOf(reread) })}</span></p> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.creditsOf(cost) }) : t("cost.nothing")}</span></div>
                 <div role="img" aria-label={cost > wallet ? t("cost.overWallet", { credits: words.creditsOf(cost - wallet) }) : t("cost.walletShare", { share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}>
                   <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-warning" : "bg-primary"} />
@@ -1671,8 +1676,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
                     <>
-                    <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
-                    {lastCheck?.added && lastPerNew ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * lastPerNew), count: lastCheck.added })}</Chip> : null}
+                    <Chip className={SENTENCE_CHIP} icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
+                    {lastCheck?.added && lastPerNew ? <Chip className={SENTENCE_CHIP} icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * lastPerNew), count: lastCheck.added })}</Chip> : null}
                     </>
                   ) : null}
                 </div>
@@ -1925,4 +1930,14 @@ function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourc
       {rows.hasPages || (rows.isLoading && total > LEFT_PAGE) ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("papers.pagerLeftOut")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? Math.min(total, LEFT_PAGE) : rows.items.length, total, pageCount: Math.ceil(total / LEFT_PAGE) }} /> : null}
     </div>
   );
+}
+
+/**
+ * A saved search offered as a source. Its filters go with it once added, in the words its chips say them, so two
+ * searches for the same words, or with no words, stay told apart wherever the screening names its sources.
+ */
+// ponytail: the filters are kept in the words of whoever added the search; reading them from the search itself would name them in each reader's language.
+function SearchOfferRow({ search, onAdd, ...row }: Omit<ComponentProps<typeof OfferRow>, "onAdd"> & { search: ComponentProps<typeof FilterChips>["filters"]; onAdd: (filters: string[]) => void }) {
+  const filters = useFilterLabels(search);
+  return <OfferRow {...row} onAdd={() => onAdd(filters)} />;
 }

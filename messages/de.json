@@ -8112,6 +8112,7 @@
         "addedReviewers": "{count, plural, =1 {{names} hinzugefügt} =2 {{names} hinzugefügt} other {# Reviewer hinzugefügt}}",
         "removedReviewers": "{count, plural, =1 {{names} entfernt} =2 {{names} entfernt} other {# Reviewer entfernt}}",
         "rule": "Geändert, wie ein Artikel entschieden wird",
+        "seeing": "Geändert, wann Reviewer die anderen Stimmen sehen",
         "destination": "Geändert, wohin eingeschlossene Artikel gehen",
         "collectionRenamed": "Die Sammlung des Screenings in {name} umbenannt",
         "goesTo": "Eingeschlossene Artikel gehen nach {name}",

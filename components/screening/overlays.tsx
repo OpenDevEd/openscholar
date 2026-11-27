@@ -208,6 +208,14 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
       >
         <p className="text-sm text-muted-foreground">{t("stopEmails.says")}</p>
       </ConfirmChange>
+      {/* The link in an email that turns them off, followed when they are off already: it says so, with the way to have them again, never a page that does nothing. */}
+      <ConfirmChange
+        open={emailsLink === "off" && !state.emails && (state.isReviewer || state.canResolve)}
+        title={t("menu.emailsOff")}
+        confirm={t("menu.emailAgain")}
+        onClose={() => void setEmailsLink(null)}
+        onConfirm={() => void state.setEmails(true).then(() => toast(t("menu.emailsOn"))).catch(failed(t))}
+      />
       <ConfirmChange open={over === "finish"} title={t("finish.title")} confirm={t("markFinished")} onClose={close} onConfirm={() => void state.finish().catch(failed(t))}>
         <EffectList
           lines={[

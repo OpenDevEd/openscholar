@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {A ajouté {names}} =2 {A ajouté {names}} other {A ajouté # évaluateurs}}",
         "removedReviewers": "{count, plural, =1 {A retiré {names}} =2 {A retiré {names}} other {A retiré # évaluateurs}}",
         "rule": "A modifié la façon dont un article est tranché",
+        "seeing": "A modifié le moment où les évaluateurs voient les autres votes",
         "destination": "A changé la destination des articles inclus",
         "collectionRenamed": "A renommé la collection du criblage en {name}",
         "goesTo": "Les articles inclus vont dans {name}",

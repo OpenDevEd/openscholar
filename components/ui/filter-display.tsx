@@ -32,35 +32,8 @@ export function FilterChips({
   valuesOnly?: boolean;
   className?: string;
 }) {
-  const t = useTranslations("searchFilters");
   const tc = useTranslations("common");
-  const format = useFormatter();
-  const locale = useLocale();
-  // Names come from the bundled catalog, so a chip never shows an ID first.
-  const researchAreas = Object.fromEntries(
-    (filters.researchAreas ?? []).map((id) => [id, topicName(id) ?? id]),
-  );
-  const funders = useFunderNames(filters.funders ?? []);
-  const authors = useAuthorNames(filters.authors ?? []);
-  const journals = useJournalNames(filters.journals ?? []);
-  const institutions = useInstitutionNames(filters.institutions ?? []);
-  const languageNames = new Intl.DisplayNames([locale], { type: "language" });
-  const vocabulary = useVocabulary();
-  const items = getAllFilterItems(
-    filters,
-    t as FilterT,
-    (date, options) => format.dateTime(date, options as Parameters<typeof format.dateTime>[1]),
-    {
-      researchAreas,
-      funders,
-      authors,
-      journals,
-      institutions,
-      place: (id) => getRegionDisplayName(id, locale, (key) => (t as FilterT)(key)),
-      language: (code) => languageNames.of(code) ?? code,
-      vocabulary,
-    },
-  );
+  const items = useFilterItems(filters);
   if (!items.length) return null;
 
   return (
@@ -74,6 +47,43 @@ export function FilterChips({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A search's filters as plain words, each its name and value, as its chips say them: for where a search is named in text. */
+export function useFilterLabels(filters: FilterParams) {
+  return useFilterItems(filters).map((item) => (item.label !== item.displayValue ? `${item.label} ${item.displayValue}` : item.displayValue));
+}
+
+/** A search's active filters, each named in the reader's language with its real value. */
+function useFilterItems(filters: FilterParams) {
+  const t = useTranslations("searchFilters");
+  const format = useFormatter();
+  const locale = useLocale();
+  // Names come from the bundled catalog, so a chip never shows an ID first.
+  const researchAreas = Object.fromEntries(
+    (filters.researchAreas ?? []).map((id) => [id, topicName(id) ?? id]),
+  );
+  const funders = useFunderNames(filters.funders ?? []);
+  const authors = useAuthorNames(filters.authors ?? []);
+  const journals = useJournalNames(filters.journals ?? []);
+  const institutions = useInstitutionNames(filters.institutions ?? []);
+  const languageNames = new Intl.DisplayNames([locale], { type: "language" });
+  const vocabulary = useVocabulary();
+  return getAllFilterItems(
+    filters,
+    t as FilterT,
+    (date, options) => format.dateTime(date, options as Parameters<typeof format.dateTime>[1]),
+    {
+      researchAreas,
+      funders,
+      authors,
+      journals,
+      institutions,
+      place: (id) => getRegionDisplayName(id, locale, (key) => (t as FilterT)(key)),
+      language: (code) => languageNames.of(code) ?? code,
+      vocabulary,
+    },
   );
 }
 

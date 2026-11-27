@@ -258,7 +258,7 @@ export function ScreeningsIndex() {
                           </span>
                           {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
                           <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
-                            <Faces reviewers={reviewers} me={me} className="[grid-area:faces] @5xl:row-span-2" linkOf={(reviewer) => ({ href: reviewerHref(id, reviewer) ?? papersHref(id, { reviewer: reviewer.id }), says: votesBy(tp, reviewer, me) })} more={{ href: overviewHref(id, "reviewers"), says: t("everyReviewer") }} />
+                            <Faces reviewers={reviewers} me={me} className="[grid-area:faces] @5xl:row-span-2" linkOf={(reviewer) => { const href = reviewerHref(id, reviewer); return href ? { href, says: votesBy(tp, reviewer, me) } : null; }} more={{ href: overviewHref(id, "reviewers"), says: t("everyReviewer") }} />
                             <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @5xl:row-span-2 @5xl:[grid-area:when]">{t.rich("lastActivity", { when: words.ago(row.activeAt), label: (chunks) => <span className="@5xl:hidden">{chunks}</span> })}</span>
                           </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
@@ -276,7 +276,7 @@ export function ScreeningsIndex() {
                             {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{t("forYouToScreen", { count: forYou })}</LinkChip> : null}
                             {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{t("conflictsToSettle", { count: conflicts })}</LinkChip> : null}
                             {/* It opens the paper the question is about, where it is answered. */}
-                            {asked ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: askedFirst })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{t("questionsForYou", { count: asked })}</LinkChip> : null}
+                            {asked ? <LinkChip href={row.isReviewer ? screenHref(id, { paper: askedFirst }) : papersHref(id, { paper: askedFirst })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{t("questionsForYou", { count: asked })}</LinkChip> : null}
                             {/* What its models are doing shows beside your work. */}
                             {models === "reading" ? <LinkChip href={overviewHref(id)} className="relative shrink-0"><span className="flex items-center gap-1.5"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</span></LinkChip>
                               : models === "waiting" ? (ahead ? <LinkChip href={overviewHref(ahead.id)} icon={MODELS_SAY.waiting.icon} className="relative shrink-0">{tp.rich("modelsSay.waiting.says", { name: ahead.name, link: (chunks) => chunks })}</LinkChip> : null)
@@ -309,7 +309,8 @@ export function ScreeningsIndex() {
                 </ul>
                 )}
                 </AutoHeight>
-                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, ...(searched || runBy.by || !tally ? {} : ((total: number) => ({ total, pageCount: Math.max(1, Math.ceil(total / PAGE)) }))(show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished)) }} /> : null}
+                {/* The total is the tabs' own count, the screenings shared from outside with it. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so no total is said there. */}
+                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, ...(searched || runBy.by || !counts || sort === "you" ? {} : ((total: number) => ({ total, pageCount: Math.max(1, Math.ceil(total / PAGE)) }))(show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all)) }} /> : null}
               </>
             )}
             </AutoHeight>

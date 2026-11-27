@@ -80,8 +80,12 @@ export const step = internalQuery({
     const allSources = leavingSources.size ? await sourcesOf(ctx, jobId) : [];
     for (const paper of page.page) {
       if (paper.withdrawn) continue;
-      if (paper.sourceId && leavingSources.has(paper.sourceId) && !(await keeperOf(ctx, paper._id, leavingSources, allSources))) continue;
       const before = (await votesOf(ctx, paper._id)).map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
+      if (paper.sourceId && leavingSources.has(paper.sourceId) && !(await keeperOf(ctx, paper._id, leavingSources, allSources))) {
+        // It leaves each person who had it one paper fewer, as the save's bookkeeping counts them.
+        for (const place of before) if (place.kind === "person" && place.status !== "discarded") loads[place.reviewer] = (loads[place.reviewer] ?? 0) - 1;
+        continue;
+      }
       const was: Result = paper.result ?? "waiting";
       const thrown = before.some((place) => discards.get(place.reviewer) && place.status === "cast");
       // As the save leaves them: the votes of a reviewer taken off stay unless they are thrown out, the models answer a new criterion on the papers still open, and whoever joins takes their share of the places nobody voted from.
@@ -246,7 +250,8 @@ export const preview = workspaceAction({
         } while (cursor);
       }));
     await Promise.all([
-      ...(["waiting", "conflict", ...(change.recheck || base.discards ? SETTLED : [])] as const).map((result) => through(result, change.recheck === true, (read) => add(counted, loads, read))),
+      // Settled papers are read too where a source is taken out: theirs leave their people's counts.
+      ...(["waiting", "conflict", ...(change.recheck || base.discards || change.removeSources?.length ? SETTLED : [])] as const).map((result) => through(result, change.recheck === true, (read) => add(counted, loads, read))),
       // How many settled papers the change would move if they were checked again: what it holds back, and what asking for the check lets go.
       ...(base.decides && !change.recheck ? SETTLED : []).map((result) => through(result, true, (read) => { counted.again += read.counted.moves.reduce((sum, move) => sum + move.count, 0); })),
     ]);

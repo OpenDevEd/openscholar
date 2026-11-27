@@ -8112,6 +8112,7 @@
         "addedReviewers": "{count, plural, =1 {Het {names} bygevoeg} =2 {Het {names} bygevoeg} other {Het # beoordelaars bygevoeg}}",
         "removedReviewers": "{count, plural, =1 {Het {names} afgehaal} =2 {Het {names} afgehaal} other {Het # beoordelaars afgehaal}}",
         "rule": "Het verander hoe ’n artikel beslis word",
+        "seeing": "Het verander wanneer beoordelaars die ander stemme sien",
         "destination": "Het verander waarheen ingesluite artikels gaan",
         "collectionRenamed": "Het die siftering se versameling na {name} hernoem",
         "goesTo": "Ingesluite artikels gaan na {name}",

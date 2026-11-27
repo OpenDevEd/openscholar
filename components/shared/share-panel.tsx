@@ -42,6 +42,8 @@ export type ShareAdding = {
   onQuery: (query: string) => void;
   /** Undefined while the first of them loads. */
   candidates: ShareCandidate[] | undefined;
+  /** The people shown were found for what was typed before: they stay to look at, dimmed, and none is picked until the typing's own are in. */
+  stale?: boolean;
   /** More people to look through, a page at a time. */
   more?: { loading: boolean; load: () => void };
   invite: (email: string) => void;
@@ -69,6 +71,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
   };
   // Picking someone closes the list; typing or clicking the field opens it again.
   const choose = (at: number) => {
+    if (adding?.stale) return;
     if (canInvite && at === 0) adding.invite(typed);
     else candidates[at - (canInvite ? 1 : 0)]?.pick();
     reset();
@@ -134,7 +137,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                   }}
                   className="w-(--radix-popover-trigger-width) rounded-2xl border-border/60 p-1.5 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.45)]"
                 >
-                  <ul ref={suggestions} id="share-suggestions" role="listbox">
+                  <ul ref={suggestions} id="share-suggestions" role="listbox" aria-busy={adding.stale || undefined} className={cn("transition-opacity", adding.stale && "opacity-60")}>
                     {canInvite ? (
                       <Suggestion active={active === 0} onHover={() => setActive(0)} onPick={() => choose(0)} avatar={<EmailAvatar />} name={t("inviteEmail", { email: typed })} detail={t("byEmail")} />
                     ) : null}

@@ -986,7 +986,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <p>{t("checks.means")}</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button> : null}
+      aside={open.canChange ? (() => { // While papers arrive it waits, and says why where it is pointed at.
+        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => notSaved(t, error))}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -1005,6 +1006,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         <div className="divide-y divide-border-subtle">
           <AnimatePresence initial={false}>
             {shown.map((check) => {
+              // The sources it couldn't read that the screening still has: one taken out since is no longer said, so the count and the names under it agree.
+              const unread = (check.unread ?? []).flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? []);
               const who = check.by;
               return (
                 <motion.div key={check.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
@@ -1045,13 +1048,13 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                             </div>
                           ) : null}
                         </>
-                      ) : check.unread ? null : (
+                      ) : unread.length ? null : (
                         <Chip>{t("checks.nothingNew")}</Chip>
                       )}
                       {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
                       {/* The names under the chip, where a long search wraps instead of being cut off. */}
-                      {check.unread ? <SettingsChip open={open} part="papers" tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</SettingsChip> : null}
-                      {check.unread ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? []))}</p> : null}
+                      {unread.length ? <SettingsChip open={open} part="papers" tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: unread.length })}</SettingsChip> : null}
+                      {unread.length ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{words.listed(unread)}</p> : null}
                     </div>
                   </div>
                 </motion.div>
@@ -1068,7 +1071,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
-              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length || 1 })}</LinkChip>
+              {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
+              {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length || 1 }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>
           </div>
         </div>

@@ -235,6 +235,7 @@ export function useOpenScreening(id: string) {
     lastCheck: view.lastCheck ?? null,
     /** Votes of theirs that ask for a new one, since a criterion became a must-have. */
     flagged: view.flagged,
+    flaggedMore: Boolean(view.flaggedMore),
     /** The models that still have papers to read. */
     reading,
     outOfCredits: view.models === "credits",

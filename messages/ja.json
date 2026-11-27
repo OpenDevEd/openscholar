@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {{names} を追加} =2 {{names} を追加} other {レビュアー # 人を追加}}",
         "removedReviewers": "{count, plural, =1 {{names} を外しました} =2 {{names} を外しました} other {レビュアー # 人を外しました}}",
         "rule": "論文の結果の確定方法を変更",
+        "seeing": "レビュアーがほかの投票を見られるタイミングを変更",
         "destination": "採用した論文の保存先を変更",
         "collectionRenamed": "スクリーニングのコレクションの名前を {name} に変更",
         "goesTo": "採用した論文は {name} に保存",
