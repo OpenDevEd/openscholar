@@ -4,6 +4,7 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
+import { collectionHref } from "@/lib/library/search-params";
 import { ButtonCredits } from "@/components/ui/button-credits";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
@@ -205,7 +206,7 @@ function sourceLink(source: Pick<Source, "set">): { href: string; where: "search
   if (!set) return null;
   if (set.kind === "search") return { href: `/results/${encodeURIComponent(set.searchId)}`, where: "search" };
   if (set.kind === "saved") return { href: "/library", where: "library" };
-  if (set.kind === "collection") return { href: `/library?col=${set.collectionId}`, where: "collection" };
+  if (set.kind === "collection") return { href: collectionHref(set.collectionId), where: "collection" };
   if (set.kind === "screening") return { href: papersHref(set.jobId, { result: "include" }), where: "screening" };
   if (set.kind === "zotero") return { href: "https://www.zotero.org/mylibrary", where: "zotero" };
   return null;
@@ -1472,8 +1473,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) ? { detail: hidesVotes(draft.rule, each) ? t("decided.seeingAdvice") : t("decided.seeingNothing") } : {})}>
-                <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, each) ? { detail: t("decided.seeingAdvice") } : {})}>
+                {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
+                {/* Whether the choice could hide anything at all, asked as if votes were hidden until one votes: under At any time nothing is hidden either way. */}
+                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, each) ? (
+                  <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
+                ) : (
+                  <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
+                )}
               </RuleRow>
               {/* What the rule does, on three made-up papers. */}
               <div className="space-y-2 bg-inset px-4 py-3">

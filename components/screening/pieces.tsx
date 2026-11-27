@@ -22,7 +22,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, modelsAdvise, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
 import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
@@ -195,6 +195,9 @@ export const VOTES_SHUT = (t: T, blind: Blind, cast: Array<{ reviewer: { kind: s
   const models = cast.filter((one) => one.reviewer.kind === "model").length;
   return blind === "people" && models ? t("peopleVotesShut", { people: cast.filter((one) => one.reviewer.kind === "person" && one.reviewer.id !== me).length, models }) : t("votesShut");
 };
+/** The heading over a paper's votes, on Screen and in the Papers drawer alike: where the models only advise the people on it, it names their votes as advice. */
+export const votesTitle = (rule: Pick<Rule, "settle" | "models">, cast: Array<{ reviewer: { kind: string } }>) =>
+  modelsAdvise(rule, cast.filter((one) => one.reviewer.kind === "person").length, cast.filter((one) => one.reviewer.kind === "model").length) ? ("votes.titleAdvice" as const) : ("votes.title" as const);
 /** What a screening hides until a reviewer votes, said in full for whoever reads it, or nothing where it hides nothing. */
 export const blindSays = (words: Words, blind: Blind) => (blind === "all" ? words.t("votesHiddenSays") : blind === "people" ? words.t("votesHiddenPeopleSays") : blind === "done" ? words.t("votesWereHiddenSays") : null);
 /** The chip over a paper's votes while some are kept from you. */
@@ -550,7 +553,7 @@ export function Reason({ reason, criteria, unclear = false, wrap = false, classN
 export const HATCH = "bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
 
 /** A screening's papers as one bar, split by where they stand. With `hrefOf`, each part opens its papers and says its own count. */
-export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string }) {
+export function ResultBar({ counts, className, hrefOf, counted = false }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string; /** Its counts are written out beside it already: it says them to a screen reader and opens no tooltip that repeats them. */ counted?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
   const format = useFormatter();
@@ -575,14 +578,13 @@ export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result
   }
   // A list with commas and no "and": the language's own unit list.
   const label = format.list(RESULTS.filter((result) => counts[result]).map(says), { type: "unit" }) || words.t("empty.all");
-  return (
-    <TooltipHint label={label}>
-      <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
-        {none}
-        {RESULTS.map((result) => (counts[result] ? <span key={result} className={cn(part(result), "transition-[flex-grow]")} style={{ flexGrow: counts[result] }} /> : null))}
-      </div>
-    </TooltipHint>
+  const bar = (
+    <div role="img" aria-label={label} tabIndex={counted ? undefined : 0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
+      {none}
+      {RESULTS.map((result) => (counts[result] ? <span key={result} className={cn(part(result), "transition-[flex-grow]")} style={{ flexGrow: counts[result] }} /> : null))}
+    </div>
   );
+  return counted ? bar : <TooltipHint label={label}>{bar}</TooltipHint>;
 }
 
 /** How a paper's reviewers voted, as a count beside each decision's mark. */
