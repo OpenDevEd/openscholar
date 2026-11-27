@@ -7,7 +7,7 @@
       "row": "Waiting for the check"
     },
     "gathering": {
-      "says": "Getting its papers",
+      "says": "Getting the papers",
       "row": "Waiting for the papers to arrive"
     },
     "paused": {
@@ -26,15 +26,15 @@
   "modelsReading": "Models reading",
   "about": "About {title}",
   "shut": {
-    "reviewer": "For its reviewers",
+    "reviewer": "For the screening's reviewers",
     "settler": "For whoever settles conflicts",
     "member": "For the workspace's members",
     "sources": "No source gains papers"
   },
   "notReviewer": {
     "shared": "This screening is shared with you to read. Only its reviewers vote.",
-    "finished": "You aren't one of its reviewers, and the screening is finished.",
-    "join": "You aren't one of its reviewers. Join as a reviewer to vote on its papers."
+    "finished": "You aren't a reviewer on this screening, and it is finished.",
+    "join": "You aren't a reviewer on this screening. Join as a reviewer to vote."
   },
   "votesShut": "The other votes stay out of sight so they can't sway yours.",
   "creditsShort": "{short} credits short",

@@ -85,7 +85,7 @@
     "askedYou": "{name} asked you",
     "waitingFor": "Waiting for {name}'s answer",
     "asked": "asked {who}",
-    "readOnly": "{empty, select, true {Nobody has written about this paper yet. } other {}}Only its reviewers and the person who settles conflicts write here.{join, select, true { Join as a reviewer to write.} other {}}",
+    "readOnly": "{empty, select, true {Nobody has written about this paper yet. } other {}}Only the paper's reviewers and the person who settles conflicts write here.{join, select, true { Join as a reviewer to write.} other {}}",
     "whoFor": "Who it is for",
     "to": "To",
     "everyone": "Everyone",
