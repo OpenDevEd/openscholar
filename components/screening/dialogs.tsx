@@ -324,8 +324,8 @@ export function useSharing(jobId: Id<"screeningJobs">) {
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
   return {
-    /** Gives it to someone the person can pick by name, to vote: a guest it is shared with already, to look, is made one who votes, and anyone else is given it. */
-    give: (personId: Id<"users">) => setRole({ kind: "screening", id: jobId, guest: { userId: personId }, role: "editor" }).catch(() => give({ kind: "screening", id: jobId, personId, role: "editor" })),
+    /** Gives it to someone picked by name, to vote: a guest it is shared with already is made one who votes (convex/sharing/guests.ts `add`). */
+    give: (personId: Id<"users">) => give({ kind: "screening", id: jobId, personId, role: "editor" }),
     /** Invites an address to vote. */
     invite: (email: string) => invite({ kind: "screening", id: jobId, email, role: "editor" }),
     /** Makes a guest who votes one who looks. */

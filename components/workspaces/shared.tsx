@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Building2, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, MessageSquare, Search, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
+import { Building2, Check, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, MessageSquare, Search, SearchX, Share2, Unlink, UserRound, X, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -20,7 +20,9 @@ import { LIST, Tile } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { PersonTag, RoleLabel } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { toast } from "sonner";
 import { showStyledToast } from "@/components/ui/sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -118,6 +120,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
         </div>
       }
     >
+      <WaitingInvitations {...(kind ? { kind } : {})} />
       {rows?.length ? (
         // Rows of the view before stay, dimmed and still, until the one asked for arrives.
         <div className={cn("divide-y divide-border-subtle", loading && "pointer-events-none opacity-60")}>
@@ -312,5 +315,68 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
         {t("open")}
       </Button>
     </Landing>
+  );
+}
+
+/**
+ * The invitations to items that wait for the person's answer, as the Evidence Communities list shows its own: above
+ * the list, each with who sent it, Decline and Accept. Accepting opens the item. Given a `kind`, only those to it,
+ * as a list of that kind shows them; on Shared with me, all of them.
+ */
+export function WaitingInvitations({ kind }: { kind?: SharedKind }) {
+  const t = useTranslations("workspaces.shared");
+  const ts = useTranslations("workspaces.share");
+  const router = useRouter();
+  const workspaceId = useWorkspace();
+  const personal = useCurrentWorkspace();
+  // An invitation is the person's own, answered in their own workspace, where what it shares then sits.
+  const rows = useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(workspaceId, personal?.kind === "personal" ? (kind ? { kind } : {}) : "skip")).data?.page ?? [];
+  const respond = useWorkspaceAction(api.sharing.invitations.respond);
+  const [answering, setAnswering] = useState<string | null>(null);
+  if (!rows.length) return null;
+  const answer = (row: (typeof rows)[number], accept: boolean) => {
+    setAnswering(row.invitationId);
+    void respond({ invitationId: row.invitationId, accept }).then(
+      (item) => {
+        if (!accept || !item) return void (setAnswering(null), toast(t("declined", { name: row.name })));
+        SHARED_KINDS[item.kind].open?.(item.id);
+        router.push(SHARED_KINDS[item.kind].href(item.id));
+      },
+      (error) => {
+        setAnswering(null);
+        showStyledToast("error", getErrorMessage(error, t("answerFailed")));
+      },
+    );
+  };
+  return (
+    <ul aria-label={t("invitations")} className="fade-enter divide-y divide-border-subtle border-b border-border-subtle">
+      <li className="flex items-baseline gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
+        <span>{t("invitations")}</span>
+        <span className="tabular-nums text-muted-foreground">{rows.length}</span>
+      </li>
+      {rows.map((row) => (
+        <li key={row.invitationId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
+          <Tile icon={SHARED_KINDS[row.kind].icon} tint={SHARED_KINDS[row.kind].tint} className="size-8 self-start" />
+          {/* The name is read whole: on a phone the buttons go under it. */}
+          <div className="flex min-w-0 flex-1 basis-52 flex-col gap-0.5">
+            <span dir="auto" className="text-sm font-semibold [overflow-wrap:anywhere]">{row.name}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="flex min-w-0 items-center gap-1.5"><IdentityAvatar name={row.by.name} imageUrl={row.by.imageUrl} className="size-4" /><span>{t(`sharedOne.${row.kind}`, { name: row.by.name })}</span></span>
+              <RoleLabel role={row.role === "viewer" ? "view" : "edit"}>{row.role === "viewer" ? ts("canView") : row.kind === "screening" ? ts("canVote") : ts("canEdit")}</RoleLabel>
+            </span>
+          </div>
+          <div className="ms-auto flex shrink-0 items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon-sm" variant="ghost" className="size-7" aria-label={t("decline", { name: row.name })} disabled={answering !== null} onClick={() => answer(row, false)}><X /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("decline", { name: row.name })}</TooltipContent>
+            </Tooltip>
+            {/* A text button: it leaves with the row once the invitation is answered, and a tooltip would go with it. */}
+            <Button size="sm" className="h-7 px-2.5" disabled={answering !== null} onClick={() => answer(row, true)}><Check />{t("accept")}</Button>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

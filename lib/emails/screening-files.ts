@@ -6,13 +6,15 @@ import { emailButton, emailStyles, renderLibraryEmail } from "./library-template
  * screening, the files attached, and a link to the screening for whoever can open it. Files stay English, as they do
  * when downloaded.
  */
-export function screeningFilesMessage({ origin, path, name, by, files, note }: {
+export function screeningFilesMessage({ origin, path, name, by, replies, files, note }: {
   origin: string;
   /** The screening's own page, with its workspace's prefix where it has one. */
   path: string;
   name: string;
-  /** Who sent them. Replies go to them. */
+  /** Who sent them. */
   by: string;
+  /** Whether a reply reaches them: it does where their account has an address. */
+  replies: boolean;
   /** The names of the files attached. */
   files: string[];
   /** What the sender wrote with them. */
@@ -29,7 +31,7 @@ export function screeningFilesMessage({ origin, path, name, by, files, note }: {
       identity,
       title: subject,
       content: `<p style="${emailStyles.paragraph}">${escapeHtml(line)}</p>${note ? `<p style="${emailStyles.paragraph}">${escapeHtml(note).replace(/\n/g, "<br>")}</p>` : ""}${emailButton("Open the screening", open, identity.accent)}`,
-      footerHtml: `${escapeHtml(by)} sent you this email from Openscholar. Reply to it to answer them.`,
+      footerHtml: `${escapeHtml(by)} sent you this email from Openscholar.${replies ? " Reply to it to answer them." : ""}`,
     }),
   };
 }

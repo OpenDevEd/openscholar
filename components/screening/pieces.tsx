@@ -243,11 +243,11 @@ export const INLINE_LINK = "rounded-sm font-medium text-foreground underline dec
 export const FIGURE_LINK = "underline decoration-current/35 underline-offset-[3px]";
 
 /** A paper's authors, journal and year under its title where the paper is open, as a reference gives them. Nothing where it has none of the three. */
-export function Byline({ paper }: { paper: Pick<Paper, "authors" | "venue" | "year" | "fileName"> }) {
+export function Byline({ paper }: { paper: Pick<Paper, "authors" | "venue" | "year" | "fileName" | "title"> }) {
   const t = useTranslations("screening.pieces");
   const credits = paper.authors?.length || paper.venue || paper.year ? <p className="text-sm text-muted-foreground">{paper.authors?.length ? `${paper.authors.join(", ")}. ` : null}{paper.venue ? <span className="italic">{paper.venue}</span> : null}{paper.venue && paper.year ? ", " : null}{paper.year}</p> : null;
-  // A paper read from a PDF dropped in says which file it was, under who wrote it.
-  const file = paper.fileName ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]"><FileText aria-hidden className="mt-px size-3.5 shrink-0" />{t("fromFile", { name: paper.fileName })}</p> : null;
+  // A paper read from a PDF dropped in says which file it was, under who wrote it: unless its title is the file's name, the PDF having given none.
+  const file = paper.fileName && paper.fileName.replace(/\.pdf$/i, "") !== paper.title ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]"><FileText aria-hidden className="mt-px size-3.5 shrink-0" />{t("fromFile", { name: paper.fileName })}</p> : null;
   return credits || file ? <>{credits}{file}</> : null;
 }
 

@@ -255,6 +255,20 @@ describe("what a change takes out", () => {
     expect(counts.toSorted()).toEqual([0, 1]);
   });
 
+  it("counts the papers a screening started without as new ones: in its total, and emailed to whoever they went to", async () => {
+    const made = await team(["ann", "ben"]);
+    const { workspaceId } = made;
+    // Started with no source, its first look finds nothing. The source added later is read by a check of its own.
+    const { jobId } = await started(made, ["ann", "ben"], 0, { sources: [], rule: { each: 1, settle: "all", blind: "after" } });
+    await run(made.t);
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "saved" }, name: "Saved papers" }] } });
+    await give(made.t, jobId, 0, [paper(1), paper(2), paper(3)]);
+    await run(made.t);
+    expect(await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId })).toMatchObject({ total: 3 });
+    const about = (name: string) => made.t.query(internal.screening.notices.context, { jobId, userId: made.ids[name]!, about: "papers" });
+    expect(((await about("ann"))?.count ?? 0) + ((await about("ben"))?.count ?? 0)).toBe(3);
+  });
+
   it("counts a check for new papers as a later search, and not a save that reads a source it adds", async () => {
     const made = await team(["ann"]);
     const { workspaceId } = made;

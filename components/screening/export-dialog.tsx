@@ -106,7 +106,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const svg = () => flowSvg(out, Date.now());
 
   // The same diagram as a picture, drawn from the drawing: what a word processor takes.
-  const png = () => {
+  // The diagram drawn at twice its size on white, as a PNG's data address: downloaded, or sent as its bytes.
+  const pngData = () => new Promise<string>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       const canvas = Object.assign(document.createElement("canvas"), { width: image.width * 2, height: image.height * 2 });
@@ -114,13 +115,11 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       context.fillStyle = "#fff";
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
-      link.download = fileName(out, "flow", "png", Date.now());
-      link.click();
+      resolve(canvas.toDataURL("image/png"));
     };
+    image.onerror = reject;
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`;
-  };
+  });
   const methods = methodsOf(out);
   // What a file leaves out for this person, said over it: how the others voted on the papers they have yet to vote on.
   const leftOut = blind && state.toDo ? <ShutNote by="vote">{t(blindIs === "people" ? "votes.leftOutPeople" : "votes.leftOut", { count: state.toDo })}</ShutNote> : null;
@@ -184,19 +183,22 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   }[tab];
 
   // The files of the tab open, each built as a download builds it, so what is sent by email is what would be downloaded: what is hidden from the person is hidden in it.
-  type Made = { name: string; type: string; body: string };
-  const file = (key: string, format: string, make: () => Promise<Made>, off: boolean) => ({ key, format, make, run: async () => { const one = await make(); save(one.name, one.type, one.body); }, off });
+  type Made = { name: string; type: string; body: string; base64?: true };
+  const file = (key: string, format: string, make: () => Promise<Made>, off: boolean) => ({ key, format, make, run: async () => { const one = await make(); if (one.base64) Object.assign(document.createElement("a"), { href: `data:${one.type};base64,${one.body}`, download: one.name }).click(); else save(one.name, one.type, one.body); }, off });
+  // A group's papers are read once for the files made of them together, as sending all three does: each file of a later download reads them anew.
+  let reading: ReturnType<typeof every> | undefined;
+  const groupPapers = () => (reading ??= every(papersOf(group)).finally(() => setTimeout(() => { reading = undefined; })));
   const buttons: Array<{ key: string; format: string | undefined; run: () => void | boolean | Promise<void | boolean>; make?: () => Promise<Made>; off: boolean }> =
     tab === "papers"
       ? [
-          file(`papers-csv:${group}`, "CSV", async () => ({ name: fileName(out, GROUP_FILE[group], "csv", Date.now()), type: "text/csv", body: papersCsv(out, await every(papersOf(group))) }), !included),
-          file(`bib:${group}`, "BibTeX", async () => ({ name: fileName(out, GROUP_FILE[group], "bib", Date.now()), type: "application/x-bibtex", body: bibOf(await every(papersOf(group))) }), !included),
-          file(`ris:${group}`, "RIS", async () => ({ name: fileName(out, GROUP_FILE[group], "ris", Date.now()), type: "application/x-research-info-systems", body: risOf(await every(papersOf(group))) }), !included),
+          file(`papers-csv:${group}`, "CSV", async () => ({ name: fileName(out, GROUP_FILE[group], "csv", Date.now()), type: "text/csv", body: papersCsv(out, await groupPapers()) }), !included),
+          file(`bib:${group}`, "BibTeX", async () => ({ name: fileName(out, GROUP_FILE[group], "bib", Date.now()), type: "application/x-bibtex", body: bibOf(await groupPapers()) }), !included),
+          file(`ris:${group}`, "RIS", async () => ({ name: fileName(out, GROUP_FILE[group], "ris", Date.now()), type: "application/x-research-info-systems", body: risOf(await groupPapers()) }), !included),
         ]
       : tab === "votes"
         ? [file(`csv:${whose}`, "CSV", async () => ({ name: fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(state.filed, whose))}`, "csv", Date.now()), type: "text/csv", body: votesCsv(state.filed, await every({}), whose === "all" ? undefined : whose) }), !total)]
         : tab === "flow"
-          ? [file("svg", "SVG", async () => ({ name: fileName(out, "flow", "svg", Date.now()), type: "image/svg+xml", body: svg() }), !figures), { key: "png", format: "PNG", run: png, off: !figures }]
+          ? [file("svg", "SVG", async () => ({ name: fileName(out, "flow", "svg", Date.now()), type: "image/svg+xml", body: svg() }), !figures), file("png", "PNG", async () => ({ name: fileName(out, "flow", "png", Date.now()), type: "image/png", body: (await pngData()).split(",")[1]!, base64: true }), !figures)]
           : tab === "record"
             ? [file("json", "JSON", async () => { if (!workspaceId) throw new Error(t("notLoaded")); return { name: fileName(out, "record", "json", Date.now()), type: "application/json", body: JSON.stringify(await recordOf(convex, workspaceId, out, Date.now()), null, 2) }; }, false)]
             : [{ key: "copy", format: undefined, run: () => copyText(methods, { copied: t("copyToast.copied"), failed: t("copyToast.failed"), select: t("copyToast.select"), selected: t("copyToast.selected") }, document.getElementById(METHODS_ID)), make: async () => ({ name: fileName(out, "methods", "txt", Date.now()), type: "text/plain", body: methods }), off: !figures }];
@@ -364,7 +366,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
           <p className="min-w-48 flex-1 text-xs text-muted-foreground max-sm:basis-full">{t(`hint.${tab}`)}</p>
           {/* The files of this tab sent to a colleague, as they would be downloaded. */}
-          {buttons.some((button) => button.make && !button.off) ? <SendFiles jobId={id} files={buttons.flatMap((button) => (button.make && !button.off ? [button.make] : []))} /> : null}
+          {buttons.some((button) => button.make && !button.off) ? <SendFiles key={tab} jobId={id} files={buttons.flatMap((button) => (button.make && !button.off && button.format ? [{ format: button.format, make: button.make }] : button.make && !button.off ? [{ format: t("send.text"), make: button.make }] : []))} /> : null}
           {buttons.map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off || busy !== null} onClick={() => void take(button.key, button.run)}>
               {busy === button.key ? <Spinner className="size-4" /> : done.includes(button.key) ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}
@@ -389,9 +391,12 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
  * Sends the files of the tab open to an email address, with a note: built here as their download is and mailed as they
  * are, with a link to the screening (convex/screening/sending.ts). Replies go to the sender.
  */
-function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise<{ name: string; type: string; body: string }>> }) {
+function SendFiles({ jobId, files }: { jobId: string; files: Array<{ format: string; make: () => Promise<{ name: string; type: string; body: string; base64?: true }> }> }) {
   const t = useTranslations("screening.files");
   const [open, setOpen] = useState(false);
+  // Every file of the tab goes, unless some are ticked off: fewer files, where they are too large for one email together.
+  const [left, setLeft] = useState<string[]>([]);
+  const chosen = files.filter((one) => !left.includes(one.format));
   const [to, setTo] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -399,7 +404,7 @@ function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise
   const send = async () => {
     setBusy(true);
     try {
-      const made = await Promise.all(files.map((make) => make()));
+      const made = await Promise.all(chosen.map((one) => one.make()));
       await sendFiles({ jobId: jobId as Id<"screeningJobs">, to: to.trim(), files: made, ...(note.trim() ? { note: note.trim() } : {}) });
       toast(t("send.sent", { to: to.trim(), count: made.length }));
       setOpen(false);
@@ -415,7 +420,15 @@ function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise
       <PopoverTrigger asChild><Button size="sm" variant="outline"><Mail />{t("send.open")}</Button></PopoverTrigger>
       <PopoverContent side="top" align="end" className="w-80 space-y-3 p-3">
         <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void send(); }}>
-          <p className="text-sm font-semibold">{t("send.title", { count: files.length })}</p>
+          <p className="text-sm font-semibold">{t("send.title", { count: chosen.length })}</p>
+          {files.length > 1 ? (
+            <div role="group" aria-label={t("send.which")} className="flex flex-wrap gap-1.5">
+              {files.map((one) => {
+                const on = !left.includes(one.format);
+                return <Button key={one.format} type="button" size="xs" variant={on ? "secondary" : "outline"} aria-pressed={on} onClick={() => setLeft((now) => (on ? [...now, one.format] : now.filter((format) => format !== one.format)))}>{on ? <Check /> : null}{one.format}</Button>;
+              })}
+            </div>
+          ) : null}
           <label className="block space-y-1">
             <span className="text-xs font-medium">{t("send.to")}</span>
             <Input type="email" required autoFocus value={to} onChange={(event) => setTo(event.target.value)} placeholder={t("send.toPlaceholder")} className="h-8 text-sm" />
@@ -425,7 +438,7 @@ function SendFiles({ jobId, files }: { jobId: string; files: Array<() => Promise
             <Textarea rows={2} maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} className="min-h-14 resize-none text-sm" />
           </label>
           <p className="text-xs text-muted-foreground">{t("send.says")}</p>
-          <Button type="submit" size="sm" className="w-full" disabled={busy || !to.trim()}>{busy ? <Spinner className="size-4" /> : <Mail />}{t("send.send")}</Button>
+          <Button type="submit" size="sm" className="w-full" disabled={busy || !to.trim() || !chosen.length}>{busy ? <Spinner className="size-4" /> : <Mail />}{t("send.send")}</Button>
         </form>
       </PopoverContent>
     </Popover>

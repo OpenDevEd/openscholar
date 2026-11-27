@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { AnswersDiffer, ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FileSearch, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "./parts";
+import { NoPapers } from "./overview";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
@@ -67,6 +68,10 @@ const PAGE = 20;
 type CountArgs = Omit<(typeof api.screening.paperViews.counts)["_args"], "workspaceId">;
 /** Papers settled at once where many are settled together. */
 const SETTLED_AT_ONCE = 10;
+/** Papers one vote on a selection sends at a time: as many as the server takes in one call (convex/screening/voting.ts `VOTE_MANY`). */
+const VOTE_MANY = 100;
+/** How long a selection's Undo stays: long enough to read what was done, and reach it. */
+const UNDO_MS = 10_000;
 const ROW = 57;
 /** A button in the papers' bar, the pill its filter menus and its search are. */
 const PILL = "h-8 rounded-full px-3.5 text-xs";
@@ -326,11 +331,12 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     return () => observer.disconnect();
   }, [tableWidth, open.total > 0]);
 
-  const conflictsPicked = pickedPapers.filter((one) => one.result === "conflict");
+  // Read from the papers as they stand now, never from the selection's copies: a paper settled or voted on in the drawer since is left out.
+  const pickedNow = pickedPapers.map((one) => listed.items.find((now) => now.id === one.id) ?? one);
+  const conflictsPicked = pickedNow.filter((one) => one.result === "conflict");
   // The picked papers that wait for the person's own vote: what a vote on the selection is cast on. The rest, voted already, kept from them or not theirs, are left out, and the bar says how many.
-  // Read from the papers as they stand now, never from the selection's copies: a vote cast in the drawer since leaves the paper out.
   const waitsOnMe = (one: Paper) => !one.withdrawn && one.mine && one.cast.some((place) => place.reviewer === open.me && !place.vote && !place.hidden && !place.failed);
-  const votablePicked = open.isReviewer && !screening.finishedAt ? pickedPapers.map((one) => listed.items.find((now) => now.id === one.id) ?? one).filter(waitsOnMe) : [];
+  const votablePicked = open.isReviewer && !screening.finishedAt ? pickedNow.filter(waitsOnMe) : [];
   // Many papers are settled a few at a time: hundreds of saves at once would each wait on the others.
   // Each save's outcome is kept: what is said, and what Undo takes back, is only what the server took.
   const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => {
@@ -342,6 +348,16 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     }
     return { saved, refused };
   };
+  // A selection's votes go a hundred papers to a call (convex/screening/voting.ts `VOTE_MANY`), each call saying which it changed.
+  const inHundreds = async (ids: Id<"screeningResults">[], save: (ids: Id<"screeningResults">[]) => Promise<Id<"screeningResults">[]>) => {
+    const [saved, changed]: [Id<"screeningResults">[], Id<"screeningResults">[]] = [[], []];
+    let refused: unknown;
+    for (let at = 0; at < ids.length; at += VOTE_MANY) {
+      const batch = ids.slice(at, at + VOTE_MANY);
+      try { changed.push(...(await save(batch))); saved.push(...batch); } catch (error) { refused ??= error; }
+    }
+    return { saved, changed, refused };
+  };
   const settleAll = async (decision: Decision, why?: { reason: string; note?: string }) => {
     const settling = conflictsPicked;
     // The selection goes at once, so its buttons can't settle the same papers again while these saves run; the ones the server refuses come back picked, to try again.
@@ -349,19 +365,20 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     const { saved, refused } = await each(settling, (one) => open.resolve(one.id, decision, why?.note, why?.reason));
     if (refused) setPicked(settling.filter((one) => !saved.includes(one)));
     if (refused) notSaved(t, refused);
-    if (saved.length) toast(t("settledToast", { count: saved.length, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.resolve(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
+    if (saved.length) toast(t("settledToast", { count: saved.length, result: words.result(decision) }), { duration: UNDO_MS, action: { label: t("undo"), onClick: () => void each(saved, (one) => open.resolve(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
   };
   const voteAll = async (decision: Decision, why?: { reason: string; note?: string }) => {
     const voting = votablePicked;
     // As settling does: the selection goes at once, and the papers the server refuses come back picked.
     setPicked([]);
-    // Only the papers the vote went on: one voted on since is left as it is, and Undo never touches it.
-    const cast: Paper[] = [];
-    const { refused } = await each(voting, async (one) => { if (await open.vote(one.id, { decision, ...(why?.reason ? { reason: why.reason } : {}), ...(why?.note ? { note: why.note } : {}) }, { onlyWaiting: true })) cast.push(one); });
-    const saved = cast;
-    if (refused) setPicked(voting.filter((one) => !saved.includes(one)));
+    // A hundred papers a call. Only the papers the vote went on count: one voted on since is left as it is, and Undo never touches it.
+    const ballot = { decision, ...(why?.reason ? { reason: why.reason } : {}), ...(why?.note ? { note: why.note } : {}) };
+    const { saved: sent, refused, changed } = await inHundreds(voting.map((one) => one.id as Id<"screeningResults">), (ids) => open.voteMany(ids, ballot));
+    if (refused) setPicked(voting.filter((one) => !sent.includes(one.id)));
     if (refused) notSaved(t, refused);
-    if (saved.length) toast(t("votedToast", { count: saved.length, decision: words.decision(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.vote(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });
+    const since = sent.length - changed.length;
+    if (changed.length) toast(t("votedToast", { count: changed.length, decision: words.decision(decision) }), { duration: UNDO_MS, ...(since ? { description: t("votedSince", { count: since }) } : {}), action: { label: t("undo"), onClick: () => void inHundreds(changed, (ids) => open.voteMany(ids, null, decision)).then(({ refused: again }) => again && notSaved(t, again)) } });
+    else if (since) toast(t("votedSince", { count: since }));
   };
   const decideAll = (label: string, count: number, run: (decision: Decision, why?: { reason: string; note?: string }) => void) => (
     <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
@@ -410,7 +427,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   ].filter((one) => one !== null);
   const anyFilter = active.length > 0 || Boolean(query.trim());
 
-  if (!open.total) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? t("noPapers.gathering") : t("noPapers.none")}</p>;
+  if (!open.total) return open.gathering ? <p className="px-6 py-20 text-center text-sm text-muted-foreground">{t("noPapers.gathering")}</p> : <NoPapers open={open} />;
 
   const reviewerOptions = reviewers;
   const settles = (reviewerId: string) => resolves(screening, reviewerId);
@@ -593,7 +610,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               {allShown && listed.hasPages && (total === undefined || chosen.length < total) ? <Button variant="outline" size="sm" className="h-7" disabled={takingAll} onClick={selectAll}>{takingAll ? <Spinner className="size-3.5" /> : null}{total === undefined ? t("selection.everyPage") : t("selection.all", { count: total })}</Button> : null}
               {/* A vote on the papers that wait for yours, and settling the ones in conflict: the same three buttons, Exclude asking why. */}
               {votablePicked.length ? decideAll(t("selection.voteAs", { count: votablePicked.length }), votablePicked.length, voteAll) : null}
-              {votablePicked.length && votablePicked.length < pickedPapers.length ? <span className="text-xs text-muted-foreground">{t("selection.notYours", { count: pickedPapers.length - votablePicked.length })}</span> : null}
+              {/* Picked papers none of which waits for the person's vote say so, where the vote buttons would be. */}
+              {open.isReviewer && !screening.finishedAt && votablePicked.length < pickedPapers.length ? <span className="text-xs text-muted-foreground">{votablePicked.length ? t("selection.notYours", { count: pickedPapers.length - votablePicked.length }) : t("selection.noneYours", { count: pickedPapers.length })}</span> : null}
               {conflictsPicked.length && open.canResolve && !screening.finishedAt ? decideAll(t("selection.settleAs", { count: conflictsPicked.length }), conflictsPicked.length, settleAll) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7"><Download />{t("export")}</Button></DropdownMenuTrigger>
@@ -932,10 +950,10 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   return score ? <span className="inline-flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground"><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</span> : null;
 }
 
-/** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
 /** The drawer's own scroll is the outside system: a step that opens low in it is brought into view once, as it is first drawn. Kept outside the panel so it is the same function on every draw: one made anew each draw would be called again whenever a model reads on, and pull the drawer back. */
 const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
+/** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
 function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
   const t = useTranslations("screening.papers");
   const screen = useTranslations("screening.screen");
@@ -966,10 +984,10 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
   );
 }
 
-/** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
 /** A note for a vote and one for a result, as written in the drawer and not yet saved. */
 type PaperNotes = Partial<Record<"vote" | "result", string>>;
 
+/** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
 function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onStep, canStep, place }: { paper: Paper; open: Open; notes: PaperNotes; setNotes: (update: (now: PaperNotes) => PaperNotes) => void; talk: DiscussionDraft | undefined; onTalk: (update: (now: DiscussionDraft) => DiscussionDraft) => void; onClose: () => void; onStep: (by: 1 | -1) => void; canStep: { previous: boolean; next: boolean }; /** Where it is in the list, and how many the list holds where that is counted. */ place: { at: number; of?: number } }) {
   const t = useTranslations("screening.papers");
   const words = useWords();
@@ -1092,7 +1110,13 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
             <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.resolvedBy === open.me ? screen("votes.settledBy", { you: "true", name: "" }) : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
             {buttons("vote")}
             {/* Changing a vote can be let go, as the override can: the vote stands as it was. */}
-            {mine && reasonFor !== "vote" ? <Button variant="ghost" size="sm" className="w-full" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); }}>{t("panel.cancel")}</Button> : null}
+            {/* Or taken back, and the paper waits for the person's vote again: what a selection's Undo does, for as long as the screening runs. */}
+            {mine && reasonFor !== "vote" ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="ghost" size="sm" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); void open.vote(paper.id, null, { onlyIf: mine.decision }).catch((error) => notSaved(t, error)); }}><Undo2 />{t("panel.takeBack")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); }}>{t("panel.cancel")}</Button>
+              </div>
+            ) : null}
           </Panel>
         )
       ) : null}

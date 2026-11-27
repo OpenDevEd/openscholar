@@ -18,6 +18,7 @@ import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { searchHistory, useOpenInAddress } from "./address";
 import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, BookOpen, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
+import { NoPapers } from "./overview";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
@@ -1189,6 +1190,11 @@ function Screen({ open }: { open: Open }) {
 
 /** What a queue says when it holds nothing, and where to go from there. */
 function Empty({ open, queue }: { open: Open; queue: Queue }) {
+  if (!open.total && !open.gathering) return <NoPapers open={open} />;
+  return <QueueEmpty open={open} queue={queue} />;
+}
+
+function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
   const t = useTranslations("screening.screen");
   const pieces = useTranslations("screening.pieces");
   const id = open.screening.id;

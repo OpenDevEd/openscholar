@@ -5069,6 +5069,11 @@
       "pointCredits": "你在上面运行的任务使用你的积分",
       "open": "打开",
       "openFailed": "无法打开",
+      "invitations": "邀请",
+      "accept": "接受",
+      "decline": "拒绝加入{name}的邀请",
+      "declined": "已拒绝加入{name}的邀请",
+      "answerFailed": "操作未成功，请重试。",
       "goneTitle": "此链接已失效",
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
@@ -7871,7 +7876,7 @@
       "more": "另外 {count, number} 项",
       "activity": {
         "started": "发起了筛选",
-        "startedWith": "{sources, plural, other {# 个来源}}，审核人：{who}",
+        "startedWith": "{sources, plural, =0 {面向{who}} other {{sources, plural, other {# 个来源}}，审核人：{who}}}",
         "renamed": "将其重命名为 {name}",
         "finished": "将筛选标记为已完成",
         "unsettled": "{count, plural, other {# 篇论文}}尚未定案",
@@ -7936,6 +7941,8 @@
       "send": {
         "open": "通过电子邮件发送",
         "title": "{count, plural, other {发送这 # 个文件}}",
+        "which": "要发送的文件",
+        "text": "文本",
         "to": "收件人",
         "toPlaceholder": "colleague@example.org",
         "note": "附言（可选）",
@@ -8527,14 +8534,14 @@
         "add": "{you, select, true {把自己加入筛选条件} other {把 {name} 加入筛选条件}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "审核人的待处理中隐藏人员投票",
-        "peopleHiddenMine": "你的待处理中隐藏人员投票",
+        "peopleHiddenTheirs": "每位审核人投票前看不到他人的票",
+        "peopleHiddenMine": "投票前看不到他人的票",
         "advice": "模型投票仅作参考",
         "title": "论文如何定案",
         "eachPaper": "每篇论文由{who, select, both {{people, plural, other {# 人}}和{models, plural, other {# 个模型}}} people {{people, plural, other {# 人}}} other {{models, plural, other {# 个模型}}}}投票",
         "noReviewer": "还没有审核人",
-        "hiddenMine": "你的待处理中隐藏投票",
-        "hiddenTheirs": "审核人的待处理中隐藏投票",
+        "hiddenMine": "投票前看不到其他票",
+        "hiddenTheirs": "每位审核人投票前看不到其他票",
         "visible": "投票对所有人可见",
         "visibleFinished": "已完成，投票现在可见",
         "conflictsGoTo": "冲突交由 {who} 裁决",
@@ -8751,10 +8758,11 @@
       "moreFor": "{name} 的更多操作",
       "addPerson": "添加人员",
       "findPerson": "查找人员，或输入邮箱",
-      "nobodyByName": "此工作区中没有其他人叫这个名字。输入电子邮件地址即可邀请某人。",
+      "nobodyByName": "此工作区中没有其他人叫这个名字。",
       "alreadyInvited": "此人已被邀请",
       "alreadyOn": "此人已在这项筛选中",
-      "nobodyElse": "此工作区中没有其他可添加的人。输入邮箱地址即可邀请。",
+      "nobodyElse": "此工作区中没有其他可添加的人。",
+      "inviteHint": "输入电子邮件地址即可邀请某人。",
       "invite": "邀请",
       "onAlready": "{effort, select, true {{name} 已以该推理强度参与} other {{name} 已参与}}",
       "confirm": {
@@ -8801,7 +8809,7 @@
       "empty": {
         "arriving": "论文正在路上",
         "arrivingSays": "{reviewer, select, true {论文从来源到达后会显示在这里。第一批到达后你就可以开始筛选。} other {论文从来源到达后会显示在这里。}}",
-        "noPaper": "{sources, select, true {来源中没有可筛选的论文。} other {它在等待论文。添加一个来源后，其论文会分给审核人。}}",
+        "noPaper": "{sources, select, true {来源中没有可筛选的论文。} other {{canChange, select, true {添加来源，审核人就会收到论文。} other {添加来源后，论文就会到来。}}}}",
         "toSources": "{sources, select, true {查看来源} other {添加来源}}"
       },
       "progress": {
@@ -8994,7 +9002,7 @@
         "showLast": "显示最近 {count, number} 次",
         "seeEvery": "查看全部 {count, number} 次检查",
         "atStart": "开始时",
-        "startedWith": "{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}",
+        "startedWith": "{sources, plural, =0 {没有来源} other {{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}}}",
         "finished": "{every, select, day {已完成期间不检查。重新打开即可恢复每天检查} week {已完成期间不检查。重新打开即可恢复每周检查} other {已完成期间不检查。重新打开即可恢复每月检查}}"
       },
       "flow": {
@@ -9013,8 +9021,7 @@
     "papers": {
       "notSaved": "未能保存，请重试。",
       "noPapers": {
-        "gathering": "论文正在路上，到达后会显示在这里。",
-        "none": "此筛选还没有论文。"
+        "gathering": "论文正在路上，到达后会显示在这里。"
       },
       "sort": {
         "peopleShut": "这次筛选会隐藏其他人员在你尚未投票的论文上的投票，而这种排序会泄露这些投票",
@@ -9035,6 +9042,7 @@
       },
       "settledBy": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
       "votedToast": "已为 {count, number} 篇投下{decision}票",
+      "votedSince": "{count, plural, other {有 # 篇在此期间已被投票，保留原有投票}}",
       "settledToast": "已将 {count, number} 篇定为{result}",
       "undo": "撤销",
       "filter": {
@@ -9092,6 +9100,7 @@
         "all": "{count, plural, other {全选 # 篇}}",
         "voteAs": "{count, plural, other {为等待你的 # 篇投票}}",
         "notYours": "{count, plural, other {另外 # 篇不在等你投票}}",
+        "noneYours": "{count, plural, other {所选的 # 篇都不在等你的投票}}",
         "settleAs": "{count, plural, other {将 # 篇有冲突的论文定为}}",
         "ris": "RIS 文件，用于文献管理工具",
         "csvSeen": "CSV 文件，含你能看到的投票",
@@ -9179,6 +9188,7 @@
         "overrideSays": "你的选择会取代投票得出的结果。投票仍保留在记录中。重新打开会移除你的选择，结果再次由投票决定。",
         "yetToVote": "{who, select, you {你还没有投票。你的选择会在没有这一票的情况下为论文定案，并把它从你的列表中移除。} one {{names} 还没有投票。你的选择会在没有这一票的情况下为论文定案，并把它从其列表中移除。} withYou {{names} 还没有投票。你的选择会在没有这些票的情况下为论文定案，并把它从你们的列表中移除。} other {{names} 还没有投票。你的选择会在没有这些票的情况下为论文定案，并把它从他们的列表中移除。}}",
         "cancel": "取消",
+        "takeBack": "撤回我的投票",
         "afterYouVote": "你投票之后"
       }
     },

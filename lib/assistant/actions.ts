@@ -247,6 +247,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "sharing/guests:invited": { kind: "other", words: "guests" },
   "sharing/guests:candidates": { kind: "other", words: "sharePeople" },
   "sharing/invitations:get": { kind: "other", words: "readInvite" },
+  "sharing/invitations:waiting": { kind: "other", words: "readInvite" },
   "sharing/shared:list": { kind: "other", words: "sharedWithMe" },
   "sharing/shared:counts": { kind: "other", words: "sharedWithMe" },
   "sharing/shared:editableCollections": { kind: "other", words: "sharedWithMe" },

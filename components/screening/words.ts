@@ -7,7 +7,7 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import { NAMED_REASONS, NO_REASON, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
-import { criterionLabel, isNamed } from "./data";
+import { criterionLabel, isNamed, nameOn as nameOnScreening } from "./data";
 
 /** A criterion as far as its name goes. */
 type Named = { key: string; text: string; short: string; must: boolean };
@@ -46,7 +46,7 @@ export function wordsOf({ t, format, effort = (level) => level }: Said) {
   /** A reason in words: the criterion as a line names it, or one of the others. */
   const reason = (key: string, criteria: Named[]) => labelOf(key, criteria) ?? otherReason(key) ?? key;
   /** Someone on a screening by name, or the words for someone whose account is gone. */
-  const nameOn = (screening: Peopled, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? t("someone");
+  const nameOn = (screening: Peopled, id: string) => nameOnScreening(screening, id, t("someone"));
   /** The name someone is called by in a line of text or a narrow column. */
   const firstName = (name: string) => name.split(" ")[0]!;
 

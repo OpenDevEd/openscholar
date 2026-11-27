@@ -13,12 +13,15 @@ import { standingOn } from "./access";
 import { nameOf } from "./dealing";
 import { screeningPath } from "../../lib/screening/links";
 
-/** Files one email carries at most, how large they may be together, and how long a note may be. */
+/** Files one email carries at most, how large they may be together, and how long a note may be. The files go to a Node action whole, and its arguments take 5 MiB at most: 4 MiB of files leaves room for the rest. */
 const FILES_MAX = 6;
-const BYTES_MAX = 8 * 1024 * 1024;
+const BYTES_MAX = 4 * 1024 * 1024;
 const NOTE_MAX = 2_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const fileValidator = v.object({ name: v.string(), type: v.string(), body: v.string() });
+const fileValidator = v.object({ name: v.string(), type: v.string(), body: v.string(), base64: v.optional(v.boolean()) });
+/** The files Export makes, by their ending: nothing else goes out under Openscholar's name. Only a PNG comes as bytes, in base64. */
+const KINDS: Record<string, string> = { csv: "text/csv", bib: "application/x-bibtex", ris: "application/x-research-info-systems", json: "application/json", svg: "image/svg+xml", png: "image/png", txt: "text/plain" };
+const exported = (one: { name: string; type: string; base64?: boolean }) => { const ending = one.name.split(".").pop()?.toLowerCase() ?? ""; return KINDS[ending] === one.type && Boolean(one.base64) === (ending === "png"); };
 
 export const sendFiles = workspaceAction({
   args: { jobId: v.id("screeningJobs"), to: v.string(), note: v.optional(v.string()), files: v.array(fileValidator) },
@@ -28,11 +31,12 @@ export const sendFiles = workspaceAction({
     const address = to.trim().toLowerCase();
     if (!EMAIL.test(address)) throw createError("VALIDATION_ERROR", "Type an email address to send the files to.");
     if (!files.length || files.length > FILES_MAX) throw createError("VALIDATION_ERROR", `Send 1 to ${FILES_MAX} files at a time.`);
+    if (!files.every(exported)) throw createError("VALIDATION_ERROR", "Only Export's own files can be sent.");
     if ((note?.length ?? 0) > NOTE_MAX) throw createError("VALIDATION_ERROR", "That note is too long.");
-    if (files.reduce((sum, one) => sum + new TextEncoder().encode(one.body).length, 0) > BYTES_MAX) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
+    if (new TextEncoder().encode(JSON.stringify(files)).length > BYTES_MAX) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
     const about: { name: string; path: string; by: string; replyTo?: string } = await ctx.runQuery(internal.screening.sending.about, { jobId, userId: actor.userId, workspaceId: actor.workspaceId });
     await ctx.runMutation(internal.screening.sending.spend, { userId: actor.userId });
-    await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: one.name.slice(0, 200), type: one.type.slice(0, 100), body: one.body })), ...(note?.trim() ? { note: note.trim() } : {}) });
+    await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: one.name.slice(0, 200), type: one.type, body: one.body, ...(one.base64 ? { base64: true } : {}) })), ...(note?.trim() ? { note: note.trim() } : {}) });
     return null;
   },
 });

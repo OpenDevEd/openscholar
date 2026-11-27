@@ -87,7 +87,8 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const kindOf = (id: string) => screening.reviewers.find((one) => one.id === id)?.kind;
   const alone = (id: string) => advisory(screening.rule) && !paper.cast.some((one) => one.reviewer !== id && kindOf(one.reviewer) === "person");
   const waitsToRead = (id: string) => yetToRead && !alone(id) && paper.cast.some((one) => one.reviewer === id && !one.vote && !one.hidden && !one.failed);
-  const people = [...new Set([...paper.cast.map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me && !waitsToRead(id)).flatMap((id) => personIn(screening, id) ?? []);
+  // A paper that left with its source asks nothing of anyone (convex/screening/dealing.ts `askedOf`): its discussion is for everyone.
+  const people = paper.withdrawn ? [] : [...new Set([...paper.cast.map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me && !waitsToRead(id)).flatMap((id) => personIn(screening, id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
   // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
   const waiting = waitingQuestions(said);

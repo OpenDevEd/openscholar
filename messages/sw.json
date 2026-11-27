@@ -5070,6 +5070,11 @@
       "pointCredits": "Kazi unayoiendesha juu yake inatumia krediti zako",
       "open": "Fungua",
       "openFailed": "Haikuweza kufunguliwa",
+      "invitations": "Mialiko",
+      "accept": "Kubali",
+      "decline": "Kataa mwaliko wa {name}",
+      "declined": "Mwaliko wa {name} umekataliwa",
+      "answerFailed": "Haikufanikiwa. Jaribu tena.",
       "goneTitle": "Kiungo hiki hakiko wazi tena",
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
@@ -7872,7 +7877,7 @@
       "more": "{count, number} zaidi",
       "activity": {
         "started": "Uchujaji ulianzishwa",
-        "startedWith": "{sources, plural, one {chanzo #} other {vyanzo #}}, kwa {who}",
+        "startedWith": "{sources, plural, =0 {Kwa {who}} other {{sources, plural, one {chanzo #} other {vyanzo #}}, kwa {who}}}",
         "renamed": "Jina lilibadilishwa kuwa {name}",
         "finished": "Uchujaji uliwekwa kuwa umekamilika",
         "unsettled": "{count, plural, one {Makala # haikuwa imeamuliwa} other {Makala # hazikuwa zimeamuliwa}}",
@@ -7937,6 +7942,8 @@
       "send": {
         "open": "Tuma kwa barua pepe",
         "title": "{count, plural, one {Tuma faili hii} other {Tuma faili hizi #}}",
+        "which": "Faili za kutuma",
+        "text": "Maandishi",
         "to": "Kwa",
         "toPlaceholder": "colleague@example.org",
         "note": "Ujumbe, ukipenda",
@@ -8528,14 +8535,14 @@
         "add": "{you, select, true {Jiongeze kwenye kichujio} other {Mwongeze {name} kwenye kichujio}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "Kura za watu zimefichwa kwenye orodha ya Kufanya ya wakaguzi",
-        "peopleHiddenMine": "Kura za watu zimefichwa kwenye orodha yako ya Kufanya",
+        "peopleHiddenTheirs": "Kura za watu zimefichwa hadi kila mkaguzi apige kura",
+        "peopleHiddenMine": "Kura za watu zimefichwa hadi upige kura",
         "advice": "Kura za modeli ni ushauri",
         "title": "Jinsi makala inavyoamuliwa",
         "eachPaper": "{who, select, both {{people, plural, one {mtu #} other {watu #}} na {models, plural, one {modeli #} other {modeli #}}} people {{people, plural, one {mtu #} other {watu #}}} other {{models, plural, one {modeli #} other {modeli #}}}} kwa kila makala",
         "noReviewer": "Bado hakuna mkaguzi",
-        "hiddenMine": "Kura zimefichwa kwenye orodha yako ya Kufanya",
-        "hiddenTheirs": "Kura zimefichwa kwenye orodha ya Kufanya ya wakaguzi",
+        "hiddenMine": "Kura zimefichwa hadi upige kura",
+        "hiddenTheirs": "Kura zimefichwa hadi kila mkaguzi apige kura",
         "visible": "Kura zinaonekana kwa wote",
         "visibleFinished": "Kura zinaonekana sasa kwa kuwa umekamilika",
         "conflictsGoTo": "Migongano inaenda kwa {who}",
@@ -8752,10 +8759,11 @@
       "moreFor": "Zaidi kwa {name}",
       "addPerson": "Ongeza mtu",
       "findPerson": "Tafuta mtu, au andika barua pepe",
-      "nobodyByName": "Hakuna mwingine katika eneo hili la kazi mwenye jina hilo. Andika anwani ya barua pepe kumwalika mtu.",
+      "nobodyByName": "Hakuna mwingine katika eneo hili la kazi mwenye jina hilo.",
       "alreadyInvited": "Mtu huyu tayari amealikwa",
       "alreadyOn": "Mtu huyu tayari yuko kwenye uchujaji huu",
-      "nobodyElse": "Hakuna mtu mwingine kwenye nafasi kazi hii wa kuongeza. Andika anwani ya barua pepe ili kumwalika mtu.",
+      "nobodyElse": "Hakuna mtu mwingine kwenye nafasi kazi hii wa kuongeza.",
+      "inviteHint": "Andika anwani ya barua pepe kumwalika mtu.",
       "invite": "Alika",
       "onAlready": "{effort, select, true {{name} tayari yuko kwenye kiwango hicho} other {{name} tayari yuko}}",
       "confirm": {
@@ -8802,7 +8810,7 @@
       "empty": {
         "arriving": "Makala ziko njiani",
         "arrivingSays": "{reviewer, select, true {Zinaonekana hapa zinapofika kutoka kwenye vyanzo. Unaweza kuanza kuchuja mara zile za kwanza zikifika.} other {Zinaonekana hapa zinapofika kutoka kwenye vyanzo.}}",
-        "noPaper": "{sources, select, true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {Inasubiri makala. Ongeza chanzo, na makala zake zitaenda kwa wakaguzi.}}",
+        "noPaper": "{sources, select, true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {{canChange, select, true {Ongeza chanzo ili kuwapa wakaguzi makala.} other {Makala huja chanzo kikishaongezwa.}}}}",
         "toSources": "{sources, select, true {Ona vyanzo} other {Ongeza chanzo}}"
       },
       "progress": {
@@ -8995,7 +9003,7 @@
         "showLast": "Onyesha {count, number} za mwisho",
         "seeEvery": "Ona kila ukaguzi, {count, number} kwa jumla",
         "atStart": "Mwanzoni",
-        "startedWith": "{known, select, true {{papers, plural, one {Makala #} other {Makala #}}} other {Makala}} kutoka {sources, plural, one {chanzo #} other {vyanzo #}}",
+        "startedWith": "{sources, plural, =0 {Hakuna vyanzo} other {{known, select, true {{papers, plural, one {Makala #} other {Makala #}}} other {Makala}} kutoka {sources, plural, one {chanzo #} other {vyanzo #}}}}",
         "finished": "{every, select, day {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila siku uanze tena} week {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila wiki uanze tena} other {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila mwezi uanze tena}}"
       },
       "flow": {
@@ -9014,8 +9022,7 @@
     "papers": {
       "notSaved": "Haikuhifadhiwa. Jaribu tena.",
       "noPapers": {
-        "gathering": "Makala ziko njiani. Zinaonekana hapa zinapofika.",
-        "none": "Uchujaji huu bado hauna makala."
+        "gathering": "Makala ziko njiani. Zinaonekana hapa zinapofika."
       },
       "sort": {
         "peopleShut": "Uchujaji huu unaficha kura za watu wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua",
@@ -9036,6 +9043,7 @@
       },
       "settledBy": "{you, select, true {Imeamuliwa na wewe} other {Imeamuliwa na {name}}}",
       "votedToast": "Umepiga kura {decision} kwa makala {count, number}",
+      "votedSince": "{count, plural, one {# imepigiwa kura tangu hapo, na inabaki na kura hiyo} other {# zimepigiwa kura tangu hapo, na zinabaki na kura hizo}}",
       "settledToast": "{count, number} zimeamuliwa kama {result}",
       "undo": "Tendua",
       "filter": {
@@ -9093,6 +9101,7 @@
         "all": "{count, plural, other {Chagua zote #}}",
         "voteAs": "{count, plural, other {Piga kura kwa # zinazokusubiri kama}}",
         "notYours": "{count, plural, other {# nyingine hazisubiri kura yako}}",
+        "noneYours": "{count, plural, one {Makala hii haisubiri kura yako} other {Hakuna kati ya hizi # inayosubiri kura yako}}",
         "settleAs": "{count, plural, other {Amua # zenye mgongano kama}}",
         "ris": "Faili ya RIS, kwa programu ya marejeleo",
         "csvSeen": "Faili ya CSV, yenye kura unazoweza kuona",
@@ -9180,6 +9189,7 @@
         "overrideSays": "Unachochagua kinachukua nafasi ya matokeo yaliyotolewa na kura. Kura zinabaki kwenye kumbukumbu. Fungua tena inaondoa ulichochagua, na kura zinaamua matokeo tena.",
         "yetToVote": "{who, select, you {Bado hujapiga kura. Unachochagua kinaamua makala bila kura hiyo, na kuiondoa kwenye orodha yako.} one {{names} bado hajapiga kura. Unachochagua kinaamua makala bila kura hiyo, na kuiondoa kwenye orodha yake.} withYou {{names} bado hamjapiga kura. Unachochagua kinaamua makala bila kura hizo, na kuiondoa kwenye orodha zenu.} other {{names} bado hawajapiga kura. Unachochagua kinaamua makala bila kura hizo, na kuiondoa kwenye orodha zao.}}",
         "cancel": "Ghairi",
+        "takeBack": "Ondoa kura yangu",
         "afterYouVote": "Baada ya kupiga kura"
       }
     },

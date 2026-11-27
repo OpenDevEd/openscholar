@@ -2,6 +2,7 @@
 
 // The list of a workspace's screenings, as a table: the ones waiting on you first.
 
+import { WaitingInvitations } from "@/components/workspaces/shared";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
@@ -144,6 +145,7 @@ export function ScreeningsIndex() {
                   <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
                 </div>
               ) : null}
+              <WaitingInvitations kind="screening" />
               <Elsewhere rows={elsewhere ?? []} />
             </AutoHeight>
             <AutoHeight>

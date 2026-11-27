@@ -5070,6 +5070,11 @@
       "pointCredits": "Werk wat jy hierop uitvoer, gebruik jou krediete",
       "open": "Maak oop",
       "openFailed": "Kon nie dit oopmaak nie",
+      "invitations": "Uitnodigings",
+      "accept": "Aanvaar",
+      "decline": "Wys die uitnodiging na {name} van die hand",
+      "declined": "Die uitnodiging na {name} is van die hand gewys",
+      "answerFailed": "Dit het nie deurgegaan nie. Probeer weer.",
       "goneTitle": "Hierdie skakel is nie meer oop nie",
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
@@ -7872,7 +7877,7 @@
       "more": "nog {count, number}",
       "activity": {
         "started": "Het die siftering begin",
-        "startedWith": "{sources, plural, one {# bron} other {# bronne}}, vir {who}",
+        "startedWith": "{sources, plural, =0 {Vir {who}} other {{sources, plural, one {# bron} other {# bronne}}, vir {who}}}",
         "renamed": "Het dit na {name} hernoem",
         "finished": "Het die siftering as klaar gemerk",
         "unsettled": "{count, plural, one {# artikel is} other {# artikels is}} nie beslis nie",
@@ -7937,6 +7942,8 @@
       "send": {
         "open": "Stuur per e-pos",
         "title": "{count, plural, one {Stuur hierdie lêer} other {Stuur hierdie # lêers}}",
+        "which": "Lêers om te stuur",
+        "text": "Teks",
         "to": "Aan",
         "toPlaceholder": "kollega@example.org",
         "note": "’n Nota, as jy wil",
@@ -8528,14 +8535,14 @@
         "add": "{you, select, true {Voeg jouself by die filter} other {Voeg {name} by die filter}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "Mense se stemme versteek in beoordelaars se Om te doen",
-        "peopleHiddenMine": "Mense se stemme versteek in jou Om te doen",
+        "peopleHiddenTheirs": "Mense se stemme versteek totdat elke beoordelaar stem",
+        "peopleHiddenMine": "Mense se stemme versteek totdat jy stem",
         "advice": "Die modelle se stemme is advies",
         "title": "Hoe ’n artikel beslis word",
         "eachPaper": "{who, select, both {{people, plural, one {# persoon} other {# mense}} en {models, plural, one {# model} other {# modelle}}} people {{people, plural, one {# persoon} other {# mense}}} other {{models, plural, one {# model} other {# modelle}}}} op elke artikel",
         "noReviewer": "Nog geen beoordelaar nie",
-        "hiddenMine": "Stemme versteek in jou Om te doen",
-        "hiddenTheirs": "Stemme versteek in beoordelaars se Om te doen",
+        "hiddenMine": "Stemme versteek totdat jy stem",
+        "hiddenTheirs": "Stemme versteek totdat elke beoordelaar stem",
         "visible": "Stemme sigbaar vir almal",
         "visibleFinished": "Stemme sigbaar noudat dit klaar is",
         "conflictsGoTo": "Konflikte gaan na {who}",
@@ -8752,10 +8759,11 @@
       "moreFor": "Meer vir {name}",
       "addPerson": "Voeg ’n persoon by",
       "findPerson": "Soek ’n persoon, of tik ’n e-posadres",
-      "nobodyByName": "Niemand anders in hierdie werkruimte met daardie naam nie. Tik ’n e-posadres om iemand uit te nooi.",
+      "nobodyByName": "Niemand anders in hierdie werkruimte met daardie naam nie.",
       "alreadyInvited": "Hulle is reeds uitgenooi",
       "alreadyOn": "Hulle is reeds op hierdie keuring",
-      "nobodyElse": "Niemand anders in hierdie werkruimte om by te voeg nie. Tik ’n e-posadres om iemand uit te nooi.",
+      "nobodyElse": "Niemand anders in hierdie werkruimte om by te voeg nie.",
+      "inviteHint": "Tik ’n e-posadres om iemand uit te nooi.",
       "invite": "Nooi uit",
       "onAlready": "{effort, select, true {{name} is reeds daarop met daardie inspanning} other {{name} is reeds daarop}}",
       "confirm": {
@@ -8802,7 +8810,7 @@
       "empty": {
         "arriving": "Die artikels is op pad",
         "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit die bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit die bronne aankom.}}",
-        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {Dit wag vir artikels. Voeg ’n bron by, en sy artikels gaan na die beoordelaars.}}",
+        "noPaper": "{sources, select, true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {{canChange, select, true {Voeg ’n bron by om die beoordelaars artikels te gee.} other {Artikels kom sodra ’n bron bygevoeg is.}}}}",
         "toSources": "{sources, select, true {Sien die bronne} other {Voeg ’n bron by}}"
       },
       "progress": {
@@ -8995,7 +9003,7 @@
         "showLast": "Wys die laaste {count, number}",
         "seeEvery": "Sien elke kontrole, {count, number} altesaam",
         "atStart": "By die begin",
-        "startedWith": "{known, select, true {{papers, plural, one {# artikel} other {# artikels}}} other {Artikels}} uit {sources, plural, one {# bron} other {# bronne}}",
+        "startedWith": "{sources, plural, =0 {Geen bronne} other {{known, select, true {{papers, plural, one {# artikel} other {# artikels}}} other {Artikels}} uit {sources, plural, one {# bron} other {# bronne}}}}",
         "finished": "{every, select, day {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke dag te kontroleer} week {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke week te kontroleer} other {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke maand te kontroleer}}"
       },
       "flow": {
@@ -9014,8 +9022,7 @@
     "papers": {
       "notSaved": "Dit is nie gestoor nie. Probeer weer.",
       "noPapers": {
-        "gathering": "Die artikels is op pad. Hulle verskyn hier soos hulle aankom.",
-        "none": "Hierdie siftering het nog geen artikels nie."
+        "gathering": "Die artikels is op pad. Hulle verskyn hier soos hulle aankom."
       },
       "sort": {
         "peopleShut": "Hierdie siftering versteek ander mense se stemme op die artikels waarop jy nog moet stem, en hierdie volgorde sou hulle verklap",
@@ -9036,6 +9043,7 @@
       },
       "settledBy": "{you, select, true {Deur jou beslis} other {Deur {name} beslis}}",
       "votedToast": "{decision} gestem op {count, plural, one {# artikel} other {# artikels}}",
+      "votedSince": "{count, plural, one {Op # is intussen gestem, en dit hou daardie stem} other {Op # is intussen gestem, en hulle hou daardie stemme}}",
       "settledToast": "{count, number} beslis as {result}",
       "undo": "Ongedaan maak",
       "filter": {
@@ -9093,6 +9101,7 @@
         "all": "{count, plural, other {Kies al #}}",
         "voteAs": "{count, plural, other {Stem op # wat vir jou wag as}}",
         "notYours": "{count, plural, one {# ander wag nie vir jou stem nie} other {# ander wag nie vir jou stem nie}}",
+        "noneYours": "{count, plural, one {Hierdie artikel wag nie vir jou stem nie} other {Nie een van hierdie # wag vir jou stem nie}}",
         "settleAs": "{count, plural, other {Beslis # in konflik as}}",
         "ris": "RIS-lêer, vir ’n verwysingsbestuurder",
         "csvSeen": "CSV-lêer, met die stemme wat jy kan sien",
@@ -9180,6 +9189,7 @@
         "overrideSays": "Wat jy kies, vervang die uitslag wat die stemme gegee het. Die stemme bly op rekord. Heropen verwyder wat jy gekies het, en die stemme bepaal weer die uitslag.",
         "yetToVote": "{who, select, you {Jy moet nog stem. Wat jy kies, beslis die artikel sonder daardie stem, en haal dit van jou lys af.} one {{names} moet nog stem. Wat jy kies, beslis die artikel sonder daardie stem, en haal dit van hul lys af.} withYou {{names} moet nog stem. Wat jy kies, beslis die artikel sonder daardie stemme, en haal dit van julle lyste af.} other {{names} moet nog stem. Wat jy kies, beslis die artikel sonder daardie stemme, en haal dit van hul lyste af.}}",
         "cancel": "Kanselleer",
+        "takeBack": "Trek my stem terug",
         "afterYouVote": "Nadat jy gestem het"
       }
     },

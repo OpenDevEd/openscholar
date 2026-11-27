@@ -260,8 +260,9 @@ export function useOpenScreening(id: string) {
       const cost = model.model ? readingOf(screening, model.model, papers) : 0;
       return { papers, cost, short: Math.max(0, cost - (view.credits ?? Infinity)) };
     },
-    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false }: { onlyWaiting?: boolean } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
-    voteMany: (paperIds: Id<"screeningResults">[], ballot: Ballot) => voteMany({ jobId, paperIds, decision: ballot.decision, ...(ballot.reason ? { reason: ballot.reason } : {}), ...(ballot.note ? { note: ballot.note } : {}) }),
+    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false, onlyIf }: { onlyWaiting?: boolean; onlyIf?: Decision } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), ...(onlyIf ? { onlyIf } : {}), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
+    // A vote on a selection, on the papers that still wait for it; `null` with `onlyIf` takes back what one cast. Returns the papers it changed.
+    voteMany: (paperIds: Id<"screeningResults">[], ballot: Omit<Ballot, "answers"> | null, onlyIf?: Decision) => voteMany({ jobId, paperIds, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(onlyIf ? { onlyIf } : {}) }),
     resolve: (paperId: Id<"screeningResults">, decision: Decision | null, note?: string, reason?: string) => resolve({ jobId, paperId, decision, ...(note ? { note } : {}), ...(reason ? { reason } : {}) }),
     pause: () => told(pause({ jobId })),
     resume: () => told(resume({ jobId })),
