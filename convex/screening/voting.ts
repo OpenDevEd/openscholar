@@ -31,17 +31,17 @@ function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
   if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
-const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by a selection's Undo: only while it is still the one that selection cast. */ onlyIf: v.optional(decisionValidator) };
+const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by Undo or Take back: only while it is still the one cast at that moment, never one changed since. */ onlyAt: v.optional(v.number()) };
 
 /** One person's vote on one paper, or their vote taken back. The paper is stamped: whoever calls wakes the worker once for all it cast. */
-async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyIf }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyIf?: "include" | "maybe" | "exclude"; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
+async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyAt }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyAt?: number; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
-  if (onlyIf && (mine?.status !== "cast" || mine.decision !== onlyIf)) return false;
+  if (onlyAt !== undefined && (mine?.status !== "cast" || mine.at !== onlyAt)) return false;
   if (decision === null) {
     // Taken back: the place is theirs again to vote from.
     if (mine?.status !== "cast") return;
@@ -82,24 +82,26 @@ export const VOTE_MANY = 100;
 
 /**
  * Casts the person's own vote on a selection of a screening's papers, the same vote on each, up to 100 at a time:
- * only on the papers that still wait for it, never over a vote cast since. `decision: null` with `onlyIf` takes back
- * the votes a selection cast, where each is still that decision. Returns the papers it changed.
+ * only on the papers that still wait for it, never over a vote cast since. `decision: null` with `onlyAt` takes back
+ * the votes a selection cast at that moment, where each is still that vote. Returns the papers it changed, and the
+ * moment its votes were cast.
  */
 export const voteMany = workspaceMutation({
-  args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()), onlyIf: v.optional(decisionValidator) },
-  returns: v.array(v.id("screeningResults")),
-  handler: async (ctx, actor, { jobId, paperIds, decision, onlyIf, ...same }) => {
+  args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()), onlyAt: v.optional(v.number()) },
+  returns: v.object({ changed: v.array(v.id("screeningResults")), at: v.number() }),
+  handler: async (ctx, actor, { jobId, paperIds, decision, onlyAt, ...same }) => {
     if (paperIds.length > VOTE_MANY) throw createError("VALIDATION_ERROR", `Vote on up to ${VOTE_MANY} papers at a time.`);
-    if (decision === null && !onlyIf) throw createError("VALIDATION_ERROR", "Say which vote to take back.");
+    if (decision === null && onlyAt === undefined) throw createError("VALIDATION_ERROR", "Say which votes to take back.");
     const voter = await requireReviewer(ctx, actor, jobId);
     const changed: Id<"screeningResults">[] = [];
     // A paper of the selection that left with its source is passed over: the others are voted on.
     for (const paperId of new Set(paperIds)) {
       if ((await ctx.db.get("screeningResults", paperId))?.withdrawn) continue;
-      if ((await cast(ctx, voter, { ...same, paperId, decision, ...(decision === null ? { onlyIf } : { onlyWaiting: true }) })) !== false) changed.push(paperId);
+      if ((await cast(ctx, voter, { ...same, paperId, decision, ...(decision === null ? { onlyAt } : { onlyWaiting: true }) })) !== false) changed.push(paperId);
     }
     await bookkeepLater(ctx);
-    return changed;
+    // Every vote one call casts carries the same moment (a mutation's clock stands still), which its Undo names.
+    return { changed, at: Date.now() };
   },
 });
 
@@ -109,21 +111,24 @@ export const voteMany = workspaceMutation({
  * where its votes put it.
  */
 export const resolve = workspaceMutation({
-  args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, actor, { jobId, paperId, decision, reason, note }) => {
+  args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()), /** A settlement taken back by Undo: only while it is still the one made at that moment. */ onlyAt: v.optional(v.number()) },
+  // When the settlement was made, for an Undo to name; null where nothing changed.
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, actor, { jobId, paperId, decision, reason, note, onlyAt }) => {
     const standing = await standingOn(ctx, actor, jobId);
     if (!standing || standing.job.shape !== 2) throw createError("SCREENING_JOB_NOT_FOUND", "Screening not found");
     const { job } = standing;
     if (job.rule?.resolver !== actor.userId) throw createError("FORBIDDEN", "Only whoever settles this screening's conflicts decides a paper for everyone.");
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to settle a paper.");
-    await paperOf(ctx, jobId, paperId);
+    const paper = await paperOf(ctx, jobId, paperId);
+    if (onlyAt !== undefined && paper.resolved?.at !== onlyAt) return null;
     requireReason(job, reason);
     // A note too long is refused, as a vote's is: none is cut short without a word.
     if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
-    await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim() } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
+    const at = Date.now();
+    await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at, ...(note?.trim() ? { note: note.trim() } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
     await stamp(ctx, paperId);
     await bookkeepLater(ctx);
-    return null;
+    return at;
   },
 });

@@ -7,7 +7,7 @@
 import { AutoHeight } from "@/components/ui/auto-height";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useState, type ComponentProps } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { collectionHref } from "@/lib/library/links";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -71,7 +71,8 @@ export function OverviewPage() {
 export function NoPapers({ open }: { open: Open }) {
   const t = useTranslations("screening.overview");
   const words = useWords();
-  const sources = String(open.screening.sources.length > 0);
+  // Sources that were read and held nothing it can screen, or that couldn't be read at all: Settings says why, and reads them again.
+  const sources = !open.screening.sources.length ? "false" : open.screening.sources.every((source) => source.read?.state === "failed") ? "failed" : "true";
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
       <p className="text-sm font-medium">{words.t("empty.all")}</p>
@@ -88,7 +89,8 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   const t = useTranslations("screening.overview");
   const words = useWords();
 
-  if (!total && open.gathering) {
+  // Papers on their way: the look it started with, or a later one reading a source added to a screening that has none yet.
+  if (!total && (open.gathering || screening.checking)) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">{t("empty.arriving")}</p>
@@ -163,7 +165,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
                 {/* Offered once there is something in it: with nothing included, the file would be empty. */}
                 {counts.include ? <Button variant="outline" size="sm" onClick={() => onExport("papers")}><Download />{t("progress.exportIncluded")}</Button> : null}
                 {/* With every paper settled, finishing is the next step for a member. Once it is finished, extracting is. */}
-                {counts.include ? <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, screening, counts.include)}><FileSearch />{t("progress.extract")}</NextLink></Button> : null}
+                {/* An extraction reads a screening of the workspace it runs in: a guest's own workspace has none of this one's. */}
+                {counts.include && open.canChange ? <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href={EXTRACT_HREF} onClick={() => pickForExtraction(workspaceId, screening, counts.include)}><FileSearch />{t("progress.extract")}</NextLink></Button> : null}
                 {finishable ? <Button size="sm" onClick={finish}><CircleCheck />{t("progress.finish")}</Button> : null}
               </>
             ) : null}
@@ -968,6 +971,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
   const workspaceId = usePageWorkspace();
   const t = useTranslations("screening.overview");
   const words = useWords();
+  // Drawn again each minute, so a check "just now" moves on while the page stays open.
+  useNow({ updateInterval: 60_000 });
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
   // The latest checks, a page at a time once every one is asked for. The look it started with is its own row under them.
@@ -982,7 +987,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       </Section>
     ) : null;
   }
-  const all = read.items.filter((check) => !check.first && check.state !== "running");
+  const all = read.items;
   const shown = checks === "all" ? all : all.slice(0, RECENT_CHECKS);
   // How many rows the list of every check has, counted as it lists them: failed checks and sources added included.
   const later = figures?.checks.listed ?? all.length;
@@ -992,7 +997,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
       id="new-papers"
       title={t("checks.title")}
       help={
-        <Help title={t("checks.helpTitle")} facts={<>{screening.living && screening.finishedAt ? <HelpFact icon={RefreshCw}>{t("checks.finished", { every: screening.living.every })}</HelpFact> : screening.living ? <><HelpFact icon={RefreshCw}>{words.t(`every.${screening.living.every}`)}</HelpFact><HelpFact>{t("checks.next", { day: words.day(screening.living.next) })}</HelpFact></> : <HelpFact>{t("checks.onlyAsked")}</HelpFact>}{fixed ? <HelpFact>{t("checks.skips", { count: fixed })}</HelpFact> : null}</>}>
+        // How often and when next are the chips under the title: the help says only what they don't.
+        <Help title={t("checks.helpTitle")} facts={fixed ? <HelpFact>{t("checks.skips", { count: fixed })}</HelpFact> : undefined}>
           <p>{t("checks.means")}</p>
         </Help>
       }

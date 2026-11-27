@@ -73,8 +73,10 @@ export async function findShared<Kind extends AccessKind>(ctx: Read, kind: Kind,
   const { table, name, size } = KINDS[kind] as { table: (typeof KINDS)[AccessKind]["table"]; name: (row: unknown) => string; size?: (row: unknown) => number };
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
+  // A screening's papers that left with their source are in it no more, as its own pages count them (../screening/dealing.ts `papersOf`).
+  const gone = kind === "screening" && row ? ((await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", row._id as Id<"screeningJobs">)).unique())?.withdrawn ?? 0) : 0;
   // Whole characters: an emoji cut in two is no character at all.
-  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: size(row) } : {}), ...("localId" in row ? { pageId: row.localId } : {}), ...(row.createdBy ? { createdBy: row.createdBy } : {}), ...("lastMessageAt" in row ? { lastMessageAt: row.lastMessageAt } : {}) } : null;
+  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: Math.max(0, size(row) - gone) } : {}), ...("localId" in row ? { pageId: row.localId } : {}), ...(row.createdBy ? { createdBy: row.createdBy } : {}), ...("lastMessageAt" in row ? { lastMessageAt: row.lastMessageAt } : {}) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. A kind its owners alone share (an author profile) refuses its workspace's other members. */

@@ -98,9 +98,11 @@ export function project(paper: PaperState, places: Place[], team: Team, rule: Pi
 }
 
 /**
- * A paper's places once people have joined the screening: on a paper that waits for votes, each of them takes over one
- * of the places nobody voted from, as often as leaves everyone an even share (`takesOver`). `joined` are the people
- * who joined, in order, each with how many people there were before them.
+ * A paper's places once people have joined the screening, as a change's preview estimates them: on a paper that waits
+ * for votes, each of them takes over one of the places nobody voted from, as often as leaves everyone an even share
+ * (`takesOver`). Joining itself deals those places in turn, exactly (convex/screening/reviewers.ts `join`); the preview
+ * reads the papers a slice at a time and says "about". `joined` are the people who joined, in order, each with how many
+ * people there were before them.
  */
 export function withJoined(paper: Pick<PaperState, "id" | "result">, places: Place[], joined: Array<{ id: string; before: number }>, everyone: boolean): Place[] {
   if (everyone || paper.result !== "waiting") return places;

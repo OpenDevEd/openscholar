@@ -57,7 +57,7 @@ import {
 import { pdfsMissed, pdfsOf, type Figures } from "./store";
 
 /** A screening as it stands, with the figures the server keeps of it, and the person taking a file out of it. */
-export type Taken = { screening: Screening; counts: Record<Result, number>; me: string; figures: Figures | undefined; /** Invitations still waiting, which the rule waits for as for anyone (./data.ts `readersOf`). */ invited?: Pending[]; /** The others' votes are kept from the person taking it (convex/screening/view.ts `keepsVotes`): what they agreed on is unknown to them, not absent. */ kept?: boolean };
+export type Taken = { screening: Screening; counts: Record<Result, number>; me: string; /** The person taking it out, by name. */ meName?: string; figures: Figures | undefined; /** Invitations still waiting, which the rule waits for as for anyone (./data.ts `readersOf`). */ invited?: Pending[]; /** The others' votes are kept from the person taking it (convex/screening/view.ts `keepsVotes`): what they agreed on is unknown to them, not absent. */ kept?: boolean };
 
 const iso = (at: number) => new Date(at).toISOString();
 /** A day as a file says it, with its year: a file is read long after the year it was made in. */
@@ -504,7 +504,7 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
   return {
-    exported: { at: iso(at), by: nameOn(screening, me), ...(hidden.votes ? { left_out: `${plural(hidden.votes, "vote", "votes")} on ${plural(hidden.papers, "paper", "papers")}, hidden from ${nameOn(screening, me)}, who had not voted on ${hidden.papers === 1 ? "it" : "them"} yet` } : {}) },
+    exported: { at: iso(at), by: out.meName ?? nameOn(screening, me), ...(hidden.votes ? { left_out: `${plural(hidden.votes, "vote", "votes")} on ${plural(hidden.papers, "paper", "papers")}, hidden from ${nameOn(screening, me)}, who had not voted on ${hidden.papers === 1 ? "it" : "them"} yet` } : {}) },
     guide: { papers: PAPER_GUIDE, votes: VOTE_GUIDE, vote_rows: VOTE_ROWS },
     screening: {
       id: screening.id,
@@ -552,7 +552,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     without_a_vote: rows.flatMap(({ paper, reviewer, vote, kept, status }) => (vote || kept ? [] : [{ paper_id: paper.id, reviewer_id: reviewer.id, status }])),
     // The votes that were cast and are kept from the person: who cast them shows on the page, and here.
     hidden_votes: rows.flatMap(({ paper, reviewer, kept }) => (kept ? [{ paper_id: paper.id, reviewer_id: reviewer.id }] : [])),
-    discussion: said.map((line) => ({ paper_id: line.paperId, by: line.by.name, to: line.to?.name ?? null, at: iso(line.at), text: line.text })),
+    // What was written about papers that left with their source goes with them: the file names no paper it doesn't hold.
+    discussion: said.filter((line) => papers.some((paper) => paper.id === line.paperId)).map((line) => ({ paper_id: line.paperId, by: line.by.name, to: line.to?.name ?? null, at: iso(line.at), text: line.text })),
     activity: logged.map((row) => { const says = changeSays(english, row); return { at: iso(row.at), by: row.by.name, what: says.what, effect: says.effect ?? null }; }),
   };
 }

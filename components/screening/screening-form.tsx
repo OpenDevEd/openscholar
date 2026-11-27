@@ -391,8 +391,10 @@ export function ScreeningForm({ id }: { id?: string }) {
     }
     if (!copied) return start;
     // A copy takes the papers the one it copies took: the same part of each source. Whoever votes on that one from outside its workspace is not on the copy: a screening is shared with a guest once it exists (`guestsLeft`).
-    const mine = (one: Reviewer) => one.kind === "model" || !one.guest;
-    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id })), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } };
+    // A copy made in another workspace than the one it copies (a guest copying what was shared with them) takes none of that workspace's people, nor where it sent its papers: the copy is theirs, with them on it and settling it.
+    const here = copied.workspace.id === workspaceId;
+    const mine = (one: Reviewer) => one.kind === "model" || (here && !one.guest);
+    return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: [...(here ? [] : start.reviewers), ...activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id }))], rule: here ? copied.rule : { ...copied.rule, resolver: start.rule.resolver }, scoring: copied.scoring, destination: here ? { ...copied.destination, name: "" } : start.destination };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
   }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
@@ -753,7 +755,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What each list shows: on a running screening, what saving would remove stays in its place.
   const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : sources.map((source) => ({ source, gone: false }));
   const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
-  const reviewerRows = draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left) }));
+  // Someone invited to vote is a row from the save that invited them on, as the People dialog lists them, until they join: the saved screening holds them as an invitation, not a reviewer. Removing the row takes the invitation back.
+  const invitedRows = (saved ? (open?.invited ?? []) : []).flatMap((one) => (one.email && !draft.reviewers.some((reviewer) => reviewer.email?.toLowerCase() === one.email!.toLowerCase()) ? [{ reviewer: invitedReviewer(one.email, 0), gone: false, invitation: true }] : []));
+  const reviewerRows = [...draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left), invitation: false })), ...invitedRows];
 
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")));
   const start = async () => {
@@ -1442,7 +1446,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
             <div className={cn(LIST, "bg-card")}>
               <AnimatePresence initial={false}>
-                {youFirst(reviewerRows, me).map(({ reviewer, gone }) => {
+                {youFirst(reviewerRows, me).map(({ reviewer, gone, invitation }) => {
                   const votes = wasOn(reviewer) || gone ? votesOf(reviewer) : 0;
                   const left = reviewer.kind === "model" ? ahead(reviewer) : 0;
                   return (
@@ -1452,7 +1456,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? words.t(saved.finishedAt ? "person.invitedFinished" : "person.invited") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>
@@ -1480,7 +1484,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </>
                         )
                       }
-                      onRemove={() => removeReviewer(reviewer)}
+                      onRemove={() => (invitation && reviewer.email ? void share.uninvite(reviewer.email).catch(failed) : removeReviewer(reviewer))}
                       onKeep={() => keepReviewer(reviewer)}
                     />
                   );
@@ -1929,7 +1933,7 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
           // The source that brought the paper this record is the same as: another one, or this one where it lists the paper more than once.
           const from = row.paper?.sourceId === sourceId ? t("papers.mergedSame") : row.paper ? t("papers.mergedFrom", { source: sources.find((one) => one.id === row.paper!.sourceId)?.name ?? t("papers.mergedElsewhere") }) : t("papers.mergedGone");
           return (
-            <li key={row.id} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+            <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
               <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
               {row.paper && open ? <LinkChip href={papersHref(open, { paper: row.paper.id })} className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></LinkChip> : <Chip className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></Chip>}
             </li>
@@ -1981,7 +1985,7 @@ function LeftOut({ jobId, sourceId, total, dois = false, onList }: { jobId: Id<"
       {rows.isLoading ? <ListRowsSkeleton rows={Math.min(total, LEFT_PAGE)} height={45} icon={false} label={t("papers.loadingList")} className="[&>div]:px-0" /> : (
       <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => (
-          <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
+          <li key={row.id} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
             {/* A title is read in full here: this list is where someone finds out what was left out. */}
             <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
             <StateChip tone="warning" icon={FileX} className="shrink-0 self-start">{words.t(`leftWhy.${row.why}`)}</StateChip>

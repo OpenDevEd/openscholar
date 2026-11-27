@@ -1190,7 +1190,7 @@ function Screen({ open }: { open: Open }) {
 
 /** What a queue says when it holds nothing, and where to go from there. */
 function Empty({ open, queue }: { open: Open; queue: Queue }) {
-  if (!open.total && !open.gathering) return <NoPapers open={open} />;
+  if (!open.total && !open.gathering && !open.screening.checking) return <NoPapers open={open} />;
   return <QueueEmpty open={open} queue={queue} />;
 }
 
@@ -1207,7 +1207,8 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
       ? open.gathering
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
-        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), null]
+        // Papers given out to someone else under a rule of so many people on each: said, so an empty To do isn't a fault.
+        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), living: String(Boolean(open.screening.living)) }) : null]
         // A finished screening takes no vote: the papers it left without theirs are said, not passed off as voted on.
         : open.screening.finishedAt && yours > voted + closed ? [CircleCheck, t("empty.finished"), t("empty.unvoted", { count: yours - voted - closed })]
         : !closed ? [CircleCheck, t("empty.allVoted"), null]

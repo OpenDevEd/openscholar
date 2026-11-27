@@ -323,11 +323,14 @@ export function useSharing(jobId: Id<"screeningJobs">) {
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
+  const unshare = useWorkspaceMutation(api.sharing.guests.remove);
   return {
     /** Gives it to someone picked by name, to vote: a guest it is shared with already is made one who votes (convex/sharing/guests.ts `add`). */
     give: (personId: Id<"users">) => give({ kind: "screening", id: jobId, personId, role: "editor" }),
     /** Invites an address to vote. */
     invite: (email: string) => invite({ kind: "screening", id: jobId, email, role: "editor" }),
+    /** Takes back an invitation that waits for its answer. */
+    uninvite: (email: string) => unshare({ kind: "screening", id: jobId, guest: { email } }),
     /** Makes a guest who votes one who looks. */
     demote: (userId: Id<"users">) => setRole({ kind: "screening", id: jobId, guest: { userId }, role: "viewer" }),
   };

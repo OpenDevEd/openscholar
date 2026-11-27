@@ -5050,6 +5050,7 @@
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
       "empty": "Nothing shared with you yet",
+      "emptyInvited": "Accept an invitation above, and what it shares shows here.",
       "emptyKind": "Nothing shared with you of this kind yet",
       "emptySearch": "Nothing shared with you matches",
       "leave": "Leave",
@@ -5078,7 +5079,7 @@
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
       "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to",
-      "pointScreening": "Voting is free. Its models are paid for by the workspace it is in"
+      "pointScreening": "Voting is free. {name} pays for the screening's AI models."
     },
     "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
     "asRole": "as {role}",
@@ -5086,7 +5087,9 @@
     "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending.",
     "badge": {
       "screen": "{count, plural, one {# screening needs you} other {# screenings need you}}",
-      "screenWhy": "Papers to screen, conflicts to settle or questions put to you",
+      "screenWhy": "Papers to screen, conflicts to settle, questions put to you or invitations to answer",
+      "shared": "{count, plural, one {# invitation waits for your answer} other {# invitations wait for your answer}}",
+      "sharedWhy": "Screenings, chats, searches and extractions shared with you",
       "publish": "{count, plural, one {# report is ready to go live} other {# reports are ready to go live}}",
       "publishWhy": "{count, plural, one {It goes live once you activate it} other {They go live once you activate them}}"
     }
@@ -8809,8 +8812,8 @@
       "empty": {
         "arriving": "Papers are on their way",
         "arrivingSays": "{reviewer, select, true {They show here as they arrive from the sources. You can start screening as soon as the first are in.} other {They show here as they arrive from the sources.}}",
-        "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {{canChange, select, true {Add a source to give the reviewers papers.} other {Papers come once a source is added.}}}}",
-        "toSources": "{sources, select, true {See the sources} other {Add a source}}"
+        "noPaper": "{sources, select, failed {The sources couldn't be read. Settings says why, and can read them again.} true {The sources held no paper that can be screened.} other {{canChange, select, true {Add a source to give the reviewers papers.} other {Papers come once a source is added.}}}}",
+        "toSources": "{sources, select, failed {See the sources} true {See the sources} other {Add a source}}"
       },
       "progress": {
         "title": "Progress",
@@ -8980,7 +8983,6 @@
         "shut": "{change, select, true {A check looks for papers this screening doesn't have yet in its searches, collections, Evidence Communities, Zotero libraries and other screenings. Uploaded files and pasted DOIs never change. Add one of those sources to get new papers.} other {A check looks for papers this screening doesn't have yet in its searches, collections, Evidence Communities, Zotero libraries and other screenings. Uploaded files and pasted DOIs never change. Nothing is checked until one of those sources is added.}}",
         "helpTitle": "Checking for new papers",
         "next": "Next check {day}",
-        "onlyAsked": "Only when asked",
         "skips": "{count, plural, one {Skips # source that never changes} other {Skips # sources that never change}}",
         "means": "A check reads each source again and adds the papers this screening doesn't have yet. Uploaded files and pasted DOIs never change, so checks skip them.",
         "checkNow": "Check now",
@@ -9438,6 +9440,7 @@
         "arrived": "{done, number} of {count, number} are in",
         "noneYet": "No paper has come to you yet",
         "noneYours": "None of the papers here is yours to vote on",
+        "givenOut": "{count, plural, one {Each paper goes to # person} other {Each paper goes to # people}}, and the papers here went to others before you joined. {living, select, true {New papers are shared with you as they arrive.} other {Papers can be moved to you from the Overview.}}",
         "allVoted": "You have voted on all your papers",
         "finished": "This screening is finished",
         "unvoted": "{count, plural, one {# of your papers has no vote from you} other {# of your papers have no vote from you}}",

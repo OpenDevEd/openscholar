@@ -6,7 +6,7 @@
 import { leaveBehind } from "./address";
 import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
@@ -254,7 +254,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   }
 
   const { screening } = open;
-  const facts = ruleFacts({ words, t }, screening, open.isReviewer, open.invited, open.counts.conflict);
+  // "Until you vote" is for a reviewer who holds papers: one given none sees the votes, and reads what holds for the reviewers who do.
+  const facts = ruleFacts({ words, t }, screening, open.isReviewer && (screening.reviewers.find((one) => one.id === open.me)?.tally?.dealt ?? 0) > 0, open.invited, open.counts.conflict);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.total;
   const workspace = screening.workspace;
@@ -493,6 +494,8 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   const list = useTranslations("screening.list");
   const words = useWords();
   const format = useFormatter();
+  // Drawn again each minute, so "just now" moves on to "2 min ago" while the page stays open.
+  useNow({ updateInterval: 60_000 });
   if (!kind) return null;
   const tone = TONE[BANNER_TONE[kind]];
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
@@ -568,6 +571,8 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   const t = useTranslations("screening.frame");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
+  // Drawn again each minute, so "just now" moves on while the page stays open.
+  useNow({ updateInterval: 60_000 });
   const says = "@max-[48rem]/strip:sr-only";
   // On a phone's strip the sign alone stays, so the four tabs keep their room.
   const figures = "tabular-nums text-muted-foreground @max-[30rem]/strip:sr-only";
