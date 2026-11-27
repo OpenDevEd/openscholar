@@ -9019,6 +9019,7 @@
         "byPlaceLabel": "按分配顺序"
       },
       "settledBy": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
+      "votedToast": "已为 {count, number} 篇投下{decision}票",
       "settledToast": "已将 {count, number} 篇定为{result}",
       "undo": "撤销",
       "filter": {
@@ -9074,6 +9075,8 @@
         "selected": "{count, plural, other {已选择 # 篇}}",
         "everyPage": "选择所有页",
         "all": "{count, plural, other {全选 # 篇}}",
+        "voteAs": "{count, plural, other {为等待你的 # 篇投票}}",
+        "notYours": "{count, plural, other {另外 # 篇不在等你投票}}",
         "settleAs": "{count, plural, other {将 # 篇有冲突的论文定为}}",
         "ris": "RIS 文件，用于文献管理工具",
         "csvSeen": "CSV 文件，含你能看到的投票",

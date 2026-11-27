@@ -9020,6 +9020,7 @@
         "byPlaceLabel": "Kama alivyozipewa"
       },
       "settledBy": "{you, select, true {Imeamuliwa na wewe} other {Imeamuliwa na {name}}}",
+      "votedToast": "Umepiga kura {decision} kwa makala {count, number}",
       "settledToast": "{count, number} zimeamuliwa kama {result}",
       "undo": "Tendua",
       "filter": {
@@ -9075,6 +9076,8 @@
         "selected": "{count, plural, other {# zimechaguliwa}}",
         "everyPage": "Chagua kila ukurasa",
         "all": "{count, plural, other {Chagua zote #}}",
+        "voteAs": "{count, plural, other {Piga kura kwa # zinazokusubiri kama}}",
+        "notYours": "{count, plural, other {# nyingine hazisubiri kura yako}}",
         "settleAs": "{count, plural, other {Amua # zenye mgongano kama}}",
         "ris": "Faili ya RIS, kwa programu ya marejeleo",
         "csvSeen": "Faili ya CSV, yenye kura unazoweza kuona",

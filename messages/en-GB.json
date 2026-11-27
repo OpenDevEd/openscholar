@@ -9019,6 +9019,7 @@
         "byPlaceLabel": "In the order they were given"
       },
       "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
+      "votedToast": "Voted {decision} on {count, plural, one {# paper} other {# papers}}",
       "settledToast": "Settled {count, number} as {result}",
       "undo": "Undo",
       "filter": {
@@ -9074,6 +9075,8 @@
         "selected": "{count, plural, other {# selected}}",
         "everyPage": "Select every page",
         "all": "{count, plural, other {Select all #}}",
+        "voteAs": "{count, plural, one {Vote on # waiting for you as} other {Vote on # waiting for you as}}",
+        "notYours": "{count, plural, one {# other isn't waiting for your vote} other {# others aren't waiting for your vote}}",
         "settleAs": "{count, plural, other {Settle # in conflict as}}",
         "ris": "RIS file, for a reference manager",
         "csvSeen": "CSV file, with the votes you can see",

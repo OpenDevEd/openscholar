@@ -9019,6 +9019,7 @@
         "byPlaceLabel": "割り当て順"
       },
       "settledBy": "{you, select, true {あなたが判定} other {{name} が判定}}",
+      "votedToast": "{count, number} 件に{decision}で投票しました",
       "settledToast": "{count, number} 件を{result}と判定しました",
       "undo": "取り消す",
       "filter": {
@@ -9074,6 +9075,8 @@
         "selected": "{count, plural, other {# 件を選択中}}",
         "everyPage": "すべてのページを選択",
         "all": "{count, plural, other {# 件すべてを選択}}",
+        "voteAs": "{count, plural, other {あなたを待つ # 件に投票}}",
+        "notYours": "{count, plural, other {ほかの # 件はあなたの投票を待っていません}}",
         "settleAs": "{count, plural, other {不一致 # 件を判定:}}",
         "ris": "RIS ファイル（文献管理ソフト用）",
         "csvSeen": "CSV ファイル（あなたが見られる投票を含む）",
