@@ -135,7 +135,8 @@ export const leave = internalMutation({
 });
 
 /** Takes someone off: they stop being dealt papers at once, and their places follow. Conflicts always have someone to settle them. */
-export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, reviewer: Reviewer, discard: boolean) {
+/** `by`: whoever took them off by hand, whom the rule's new version names. A guest whose access changed is taken off by nobody. */
+export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, reviewer: Reviewer, discard: boolean, by?: Id<"users">) {
   if (reviewer.left !== undefined) return;
   const now = Date.now();
   // A guest who votes becomes one who looks, however they are taken off (the People dialog, Settings): nothing that reopens it puts them back on (./dealing.ts `placeGuests`).
@@ -147,7 +148,7 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
     await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver: nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) } });
     // Who settles conflicts is part of the rule: the whole record lists the change.
-    await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
+    await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
   }
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId: reviewer._id, discard, cursor: null, status: "waiting" });
 }
@@ -246,7 +247,7 @@ export const remove = workspaceMutation({
     if (reviewer?.jobId !== jobId) throw createError("NOT_FOUND", "They aren't on this screening.");
     // A guest who votes becomes one who looks (`takeOff`): Activity says so.
     const grant = reviewer.userId ? await grantOf(ctx, jobId, reviewer.userId) : null;
-    await takeOff(ctx, job, reviewer, discard === true);
+    await takeOff(ctx, job, reviewer, discard === true, actor.userId);
     await logChange(ctx, actor, job, grant?.role === "editor" ? "madeViewer" : "reviewerRemoved", { detail: await calledOf(ctx, reviewer), more: discard ? [{ code: "votesDiscarded" }] : [] });
     return null;
   },

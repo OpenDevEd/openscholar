@@ -5069,6 +5069,11 @@
       "pointCredits": "Work you run on it uses your credits",
       "open": "Open",
       "openFailed": "Couldn't open it",
+      "invitations": "Invitations",
+      "accept": "Accept",
+      "decline": "Decline the invitation to {name}",
+      "declined": "Declined the invitation to {name}",
+      "answerFailed": "That didn't go through. Try again.",
       "goneTitle": "This link is no longer open",
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
@@ -7871,7 +7876,7 @@
       "more": "{count, number} more",
       "activity": {
         "started": "Started the screening",
-        "startedWith": "{sources, plural, one {# source} other {# sources}}, for {who}",
+        "startedWith": "{sources, plural, =0 {For {who}} other {{sources, plural, one {# source} other {# sources}}, for {who}}}",
         "renamed": "Renamed it to {name}",
         "finished": "Marked the screening as finished",
         "unsettled": "{count, plural, one {# paper was} other {# papers were}} not settled",
@@ -7936,6 +7941,8 @@
       "send": {
         "open": "Send by email",
         "title": "{count, plural, one {Send this file} other {Send these # files}}",
+        "which": "Files to send",
+        "text": "Text",
         "to": "To",
         "toPlaceholder": "colleague@example.org",
         "note": "A note, if you like",
@@ -8527,14 +8534,14 @@
         "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "People's votes hidden in reviewers' To do",
-        "peopleHiddenMine": "People's votes hidden in your To do",
+        "peopleHiddenTheirs": "People's votes hidden until each reviewer votes",
+        "peopleHiddenMine": "People's votes hidden until you vote",
         "advice": "The models' votes are advice",
         "title": "How a paper is settled",
         "eachPaper": "{who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# model} other {# models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# model} other {# models}}}} on each paper",
         "noReviewer": "No reviewer yet",
-        "hiddenMine": "Votes hidden in your To do",
-        "hiddenTheirs": "Votes hidden in reviewers' To do",
+        "hiddenMine": "Votes hidden until you vote",
+        "hiddenTheirs": "Votes hidden until each reviewer votes",
         "visible": "Votes visible to all",
         "visibleFinished": "Votes visible now it is finished",
         "conflictsGoTo": "Conflicts go to {who}",
@@ -8751,10 +8758,11 @@
       "moreFor": "More for {name}",
       "addPerson": "Add a person",
       "findPerson": "Find a person, or type an email",
-      "nobodyByName": "Nobody else in this workspace by that name. Type an email address to invite someone.",
+      "nobodyByName": "Nobody else in this workspace by that name.",
       "alreadyInvited": "They are invited already",
       "alreadyOn": "They are already on this screening",
-      "nobodyElse": "Nobody else in this workspace to add. Type an email address to invite someone.",
+      "nobodyElse": "Nobody else in this workspace to add.",
+      "inviteHint": "Type an email address to invite someone.",
       "invite": "Invite",
       "onAlready": "{effort, select, true {{name} is on it already at that effort} other {{name} is on it already}}",
       "confirm": {
@@ -8801,7 +8809,7 @@
       "empty": {
         "arriving": "Papers are on their way",
         "arrivingSays": "{reviewer, select, true {They show here as they arrive from the sources. You can start screening as soon as the first are in.} other {They show here as they arrive from the sources.}}",
-        "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {It waits for papers. Add a source, and its papers go to the reviewers.}}",
+        "noPaper": "{sources, select, true {The sources held no paper that can be screened.} other {{canChange, select, true {Add a source to give the reviewers papers.} other {Papers come once a source is added.}}}}",
         "toSources": "{sources, select, true {See the sources} other {Add a source}}"
       },
       "progress": {
@@ -8994,7 +9002,7 @@
         "showLast": "Show the last {count, number}",
         "seeEvery": "See every check, {count, number} in all",
         "atStart": "At the start",
-        "startedWith": "{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}",
+        "startedWith": "{sources, plural, =0 {No sources} other {{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}}}",
         "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
       },
       "flow": {
@@ -9013,8 +9021,7 @@
     "papers": {
       "notSaved": "That wasn't saved. Try again.",
       "noPapers": {
-        "gathering": "Papers are on their way. They show here as they arrive.",
-        "none": "This screening has no papers yet."
+        "gathering": "Papers are on their way. They show here as they arrive."
       },
       "sort": {
         "peopleShut": "This screening hides other people's votes on the papers you have yet to vote on, and this order would give them away",
@@ -9035,6 +9042,7 @@
       },
       "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
       "votedToast": "Voted {decision} on {count, plural, one {# paper} other {# papers}}",
+      "votedSince": "{count, plural, one {# was voted on since, and keeps that vote} other {# were voted on since, and keep those votes}}",
       "settledToast": "Settled {count, number} as {result}",
       "undo": "Undo",
       "filter": {
@@ -9092,6 +9100,7 @@
         "all": "{count, plural, other {Select all #}}",
         "voteAs": "{count, plural, one {Vote on # waiting for you as} other {Vote on # waiting for you as}}",
         "notYours": "{count, plural, one {# other isn't waiting for your vote} other {# others aren't waiting for your vote}}",
+        "noneYours": "{count, plural, one {This paper isn't waiting for your vote} other {None of these # is waiting for your vote}}",
         "settleAs": "{count, plural, other {Settle # in conflict as}}",
         "ris": "RIS file, for a reference manager",
         "csvSeen": "CSV file, with the votes you can see",
@@ -9179,6 +9188,7 @@
         "overrideSays": "What you pick replaces the result the votes gave. The votes stay on record. Reopen removes what you picked, and the votes decide the result again.",
         "yetToVote": "{who, select, you {You have yet to vote. What you pick settles the paper without that vote, and takes it off your list.} one {{names} has yet to vote. What you pick settles the paper without that vote, and takes it off their list.} withYou {{names} have yet to vote. What you pick settles the paper without those votes, and takes it off your lists.} other {{names} have yet to vote. What you pick settles the paper without those votes, and takes it off their lists.}}",
         "cancel": "Cancel",
+        "takeBack": "Take back my vote",
         "afterYouVote": "After you vote"
       }
     },
@@ -9396,7 +9406,7 @@
       },
       "shut": {
         "finished": "{canChange, select, true {This screening is finished, so no more votes are cast. Reopen it to vote again.} other {This screening is finished, so no more votes are cast.}}",
-        "left": "This paper left the screening with its source. Its votes stay on record and count for nothing",
+        "left": "This paper left the screening with its source. The votes on it stay on record and count for nothing",
         "settler": "{you, select, true {You settle conflicts on this screening. You can read them here.} other {{name} settles conflicts on this screening. You can read them here.}}"
       },
       "through": {

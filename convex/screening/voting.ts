@@ -31,16 +31,17 @@ function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
   if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
-const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()) };
+const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by a selection's Undo: only while it is still the one that selection cast. */ onlyIf: v.optional(decisionValidator) };
 
 /** One person's vote on one paper, or their vote taken back. The paper is stamped: whoever calls wakes the worker once for all it cast. */
-async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
+async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyIf }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyIf?: "include" | "maybe" | "exclude"; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
+  if (onlyIf && (mine?.status !== "cast" || mine.decision !== onlyIf)) return false;
   if (decision === null) {
     // Taken back: the place is theirs again to vote from.
     if (mine?.status !== "cast") return;
@@ -80,19 +81,25 @@ export const vote = workspaceMutation({
 export const VOTE_MANY = 100;
 
 /**
- * Casts the person's own vote on several papers of a screening they review, the same vote on each, up to 100 at a
- * time.
+ * Casts the person's own vote on a selection of a screening's papers, the same vote on each, up to 100 at a time:
+ * only on the papers that still wait for it, never over a vote cast since. `decision: null` with `onlyIf` takes back
+ * the votes a selection cast, where each is still that decision. Returns the papers it changed.
  */
 export const voteMany = workspaceMutation({
-  args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: decisionValidator, reason: v.optional(v.string()), note: v.optional(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, actor, { jobId, paperIds, ...same }) => {
+  args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()), onlyIf: v.optional(decisionValidator) },
+  returns: v.array(v.id("screeningResults")),
+  handler: async (ctx, actor, { jobId, paperIds, decision, onlyIf, ...same }) => {
     if (paperIds.length > VOTE_MANY) throw createError("VALIDATION_ERROR", `Vote on up to ${VOTE_MANY} papers at a time.`);
+    if (decision === null && !onlyIf) throw createError("VALIDATION_ERROR", "Say which vote to take back.");
     const voter = await requireReviewer(ctx, actor, jobId);
+    const changed: Id<"screeningResults">[] = [];
     // A paper of the selection that left with its source is passed over: the others are voted on.
-    for (const paperId of new Set(paperIds)) if (!(await ctx.db.get("screeningResults", paperId))?.withdrawn) await cast(ctx, voter, { ...same, paperId });
+    for (const paperId of new Set(paperIds)) {
+      if ((await ctx.db.get("screeningResults", paperId))?.withdrawn) continue;
+      if ((await cast(ctx, voter, { ...same, paperId, decision, ...(decision === null ? { onlyIf } : { onlyWaiting: true }) })) !== false) changed.push(paperId);
+    }
     await bookkeepLater(ctx);
-    return null;
+    return changed;
   },
 });
 

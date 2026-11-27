@@ -69,7 +69,7 @@ const effectSays = ({ t }: EffectsSay): Record<string, (one: Line) => string> =>
 /** Where a change opens: the papers a check brought, the setting it changed, the reviewers, or the paper it is about. */
 export function changeOpens(id: string, row: Logged, canChange: boolean): string | undefined {
   switch (row.code) {
-    case "started": return papersHref(id);
+    case "started": return line(row, "sources")?.count ? papersHref(id) : undefined;
     case "checked":
     case "scheduledCheck": { const check = line(row, "check")?.detail; return check && line(row, "joined") ? papersHref(id, { added: check }) : undefined; }
     case "reviewerAdded":

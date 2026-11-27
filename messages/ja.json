@@ -5069,6 +5069,11 @@
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",
       "open": "開く",
       "openFailed": "開けませんでした",
+      "invitations": "招待",
+      "accept": "承諾",
+      "decline": "{name}への招待を辞退",
+      "declined": "{name}への招待を辞退しました",
+      "answerFailed": "うまくいきませんでした。もう一度お試しください。",
       "goneTitle": "このリンクはもう使えません",
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
@@ -7871,7 +7876,7 @@
       "more": "ほか {count, number} 件",
       "activity": {
         "started": "スクリーニングを開始しました",
-        "startedWith": "{sources, plural, other {取得元 # 件}}、担当: {who}",
+        "startedWith": "{sources, plural, =0 {{who}向け} other {{sources, plural, other {取得元 # 件}}、担当: {who}}}",
         "renamed": "名前を {name} に変更しました",
         "finished": "スクリーニングを完了にしました",
         "unsettled": "{count, plural, other {論文 # 件は結果が確定していませんでした}}",
@@ -7936,6 +7941,8 @@
       "send": {
         "open": "メールで送る",
         "title": "{count, plural, other {このファイル # 件を送る}}",
+        "which": "送るファイル",
+        "text": "テキスト",
         "to": "宛先",
         "toPlaceholder": "colleague@example.org",
         "note": "メモ（任意）",
@@ -8527,14 +8534,14 @@
         "add": "{you, select, true {自分をフィルターに加える} other {{name} をフィルターに加える}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "レビュアーの未投票の論文では人の投票を非表示",
-        "peopleHiddenMine": "未投票の論文では人の投票を非表示",
+        "peopleHiddenTheirs": "各レビュアーが投票するまで人の票は非表示",
+        "peopleHiddenMine": "投票するまで人の票は非表示",
         "advice": "モデルの投票は参考です",
         "title": "論文の結果の確定方法",
         "eachPaper": "各論文に{who, select, both {{people, plural, other {# 人}}と{models, plural, other {モデル # 個}}} people {{people, plural, other {# 人}}} other {{models, plural, other {モデル # 個}}}}",
         "noReviewer": "レビュアーはまだいません",
-        "hiddenMine": "未投票の論文では投票を非表示",
-        "hiddenTheirs": "レビュアーの未投票の論文では投票を非表示",
+        "hiddenMine": "投票するまで票は非表示",
+        "hiddenTheirs": "各レビュアーが投票するまで票は非表示",
         "visible": "投票は全員に表示",
         "visibleFinished": "完了したため投票を表示",
         "conflictsGoTo": "不一致は {who} へ",
@@ -8751,10 +8758,11 @@
       "moreFor": "{name} のその他の操作",
       "addPerson": "人を追加",
       "findPerson": "人を探すか、メールアドレスを入力",
-      "nobodyByName": "このワークスペースにその名前の人はほかにいません。招待するにはメールアドレスを入力してください。",
+      "nobodyByName": "このワークスペースにその名前の人はほかにいません。",
       "alreadyInvited": "この人はすでに招待されています",
       "alreadyOn": "この人はすでにこのスクリーニングに参加しています",
-      "nobodyElse": "このワークスペースに追加できる人はほかにいません。招待するにはメールアドレスを入力してください。",
+      "nobodyElse": "このワークスペースに追加できる人はほかにいません。",
+      "inviteHint": "招待するにはメールアドレスを入力してください。",
       "invite": "招待",
       "onAlready": "{effort, select, true {{name} はその推論の強さですでに参加しています} other {{name} はすでに参加しています}}",
       "confirm": {
@@ -8801,7 +8809,7 @@
       "empty": {
         "arriving": "論文を取得中です",
         "arrivingSays": "{reviewer, select, true {取得元から届いた論文がここに表示されます。最初の論文が届いたらすぐにスクリーニングを始められます。} other {取得元から届いた論文がここに表示されます。}}",
-        "noPaper": "{sources, select, true {取得元にスクリーニングできる論文はありませんでした。} other {論文を待っています。取得元を追加すると、その論文がレビュアーに届きます。}}",
+        "noPaper": "{sources, select, true {取得元にスクリーニングできる論文はありませんでした。} other {{canChange, select, true {ソースを追加すると、レビュアーに論文が届きます。} other {ソースが追加されると論文が届きます。}}}}",
         "toSources": "{sources, select, true {取得元を見る} other {取得元を追加}}"
       },
       "progress": {
@@ -8994,7 +9002,7 @@
         "showLast": "直近 {count, number} 件を表示",
         "seeEvery": "すべての確認を見る、計 {count, number} 件",
         "atStart": "開始時",
-        "startedWith": "{sources, plural, other {取得元 # 件}}から{known, select, true {{papers, plural, other {論文 # 件}}} other {論文}}",
+        "startedWith": "{sources, plural, =0 {ソースなし} other {{sources, plural, other {取得元 # 件}}から{known, select, true {{papers, plural, other {論文 # 件}}} other {論文}}}}",
         "finished": "{every, select, day {完了している間は確認しません。再開すると再び毎日確認します} week {完了している間は確認しません。再開すると再び毎週確認します} other {完了している間は確認しません。再開すると再び毎月確認します}}"
       },
       "flow": {
@@ -9013,8 +9021,7 @@
     "papers": {
       "notSaved": "保存できませんでした。もう一度お試しください。",
       "noPapers": {
-        "gathering": "論文を取得中です。届いたものからここに表示されます。",
-        "none": "このスクリーニングにはまだ論文がありません。"
+        "gathering": "論文を取得中です。届いたものからここに表示されます。"
       },
       "sort": {
         "peopleShut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかの人の投票を非表示にしています。この並び順ではそれが分かってしまいます",
@@ -9035,6 +9042,7 @@
       },
       "settledBy": "{you, select, true {あなたが判定} other {{name} が判定}}",
       "votedToast": "{count, number} 件に{decision}で投票しました",
+      "votedSince": "{count, plural, other {#件はその間に投票され、その投票が残ります}}",
       "settledToast": "{count, number} 件を{result}と判定しました",
       "undo": "取り消す",
       "filter": {
@@ -9092,6 +9100,7 @@
         "all": "{count, plural, other {# 件すべてを選択}}",
         "voteAs": "{count, plural, other {あなたを待つ # 件に投票}}",
         "notYours": "{count, plural, other {ほかの # 件はあなたの投票を待っていません}}",
+        "noneYours": "{count, plural, other {選んだ#件はどれもあなたの投票を待っていません}}",
         "settleAs": "{count, plural, other {不一致 # 件を判定:}}",
         "ris": "RIS ファイル（文献管理ソフト用）",
         "csvSeen": "CSV ファイル（あなたが見られる投票を含む）",
@@ -9179,6 +9188,7 @@
         "overrideSays": "あなたの選択が、投票で決まった結果に置き換わります。投票は記録に残ります。再開するとあなたの選択は取り消され、再び投票で結果が決まります。",
         "yetToVote": "{who, select, you {あなたはまだ投票していません。あなたの選択でこの投票なしに結果が確定し、この論文はあなたの一覧から外れます。} one {{names} はまだ投票していません。あなたの選択でこの投票なしに結果が確定し、この論文はその人の一覧から外れます。} withYou {{names} はまだ投票していません。あなたの選択でこれらの投票なしに結果が確定し、この論文はあなたたちの一覧から外れます。} other {{names} はまだ投票していません。あなたの選択でこれらの投票なしに結果が確定し、この論文はその人たちの一覧から外れます。}}",
         "cancel": "キャンセル",
+        "takeBack": "投票を取り消す",
         "afterYouVote": "投票した後"
       }
     },

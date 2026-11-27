@@ -67,6 +67,21 @@ export function OverviewPage() {
   return <Overview open={open} onExport={exportTo} />;
 }
 
+/** A screening with no papers, on every page of it: why, and where its sources are added for whoever may add them. */
+export function NoPapers({ open }: { open: Open }) {
+  const t = useTranslations("screening.overview");
+  const words = useWords();
+  const sources = String(open.screening.sources.length > 0);
+  return (
+    <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+      <p className="text-sm font-medium">{words.t("empty.all")}</p>
+      {/* No source, or sources that held nothing it can screen: Settings shows which, and what each left out. */}
+      <p className="max-w-md text-sm text-muted-foreground">{t("empty.noPaper", { sources, canChange: String(open.canChange) })}</p>
+      {open.canChange ? <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(open.screening.id, "papers")}>{t("empty.toSources", { sources })}</NextLink></Button> : null}
+    </div>
+  );
+}
+
 function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, total } = open;
   const read = useFigures(screening.id);
@@ -81,16 +96,7 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
       </div>
     );
   }
-  if (!total) {
-    return (
-      <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-        <p className="text-sm font-medium">{words.t("empty.all")}</p>
-        {/* No source, or sources that held nothing it can screen: Settings shows which, and what each left out. */}
-        <p className="max-w-md text-sm text-muted-foreground">{t("empty.noPaper", { sources: String(screening.sources.length > 0) })}</p>
-        {open.canChange ? <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id, "papers")}>{t("empty.toSources", { sources: String(screening.sources.length > 0) })}</NextLink></Button> : null}
-      </div>
-    );
-  }
+  if (!total) return <NoPapers open={open} />;
 
   return (
     <div className="@container/overview space-y-8 p-4 sm:p-6">
@@ -1076,7 +1082,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
               {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
-              {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length || 1 }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
+              {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>
           </div>
         </div>

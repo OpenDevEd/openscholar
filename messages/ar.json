@@ -5070,6 +5070,11 @@
       "pointCredits": "العمل الذي تشغّله عليه يستخدم أرصدتك",
       "open": "فتح",
       "openFailed": "تعذّر فتحه",
+      "invitations": "الدعوات",
+      "accept": "قبول",
+      "decline": "رفض الدعوة إلى {name}",
+      "declined": "رُفضت الدعوة إلى {name}",
+      "answerFailed": "لم يتم ذلك. حاول مرة أخرى.",
       "goneTitle": "لم يعد هذا الرابط مفتوحًا",
       "goneDetail": "اطلب من الشخص الذي شاركه أن يشاركه مرة أخرى",
       "otherTitle": "أُرسلت هذه الدعوة إلى عنوان آخر",
@@ -7872,7 +7877,7 @@
       "more": "{count, number} أخرى",
       "activity": {
         "started": "بدأ الفرز",
-        "startedWith": "{sources, plural, zero {# مصدر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}، يراجعها {who}",
+        "startedWith": "{sources, plural, =0 {لـ {who}} other {{sources, plural, zero {# مصدر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}، يراجعها {who}}}",
         "renamed": "أعاد تسميته إلى {name}",
         "finished": "عَلّم الفرز على أنه منتهٍ",
         "unsettled": "{count, plural, zero {لم تُحسم # ورقة} one {لم تُحسم ورقة واحدة} two {لم تُحسم ورقتان} few {لم تُحسم # أوراق} many {لم تُحسم # ورقة} other {لم تُحسم # ورقة}}",
@@ -7937,6 +7942,8 @@
       "send": {
         "open": "أرسل بالبريد الإلكتروني",
         "title": "{count, plural, one {أرسل هذا الملف} other {أرسل هذه الملفات (#)}}",
+        "which": "الملفات المراد إرسالها",
+        "text": "نص",
         "to": "إلى",
         "toPlaceholder": "colleague@example.org",
         "note": "ملاحظة إن شئت",
@@ -8528,14 +8535,14 @@
         "add": "{you, select, true {أضف نفسك إلى المرشح} other {أضف {name} إلى المرشح}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "أصوات الأشخاص مخفية في «المطلوب» لدى المراجعين",
-        "peopleHiddenMine": "أصوات الأشخاص مخفية في «المطلوب» لديك",
+        "peopleHiddenTheirs": "أصوات الأشخاص مخفية حتى يصوّت كل مراجع",
+        "peopleHiddenMine": "أصوات الأشخاص مخفية حتى تصوّت",
         "advice": "أصوات النماذج للاستئناس",
         "title": "طريقة حسم الورقة",
         "eachPaper": "{who, select, both {{people, plural, zero {# شخص} one {شخص واحد} two {شخصان} few {# أشخاص} many {# شخصًا} other {# شخص}} و{models, plural, zero {# نموذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}}} people {{people, plural, zero {# شخص} one {شخص واحد} two {شخصان} few {# أشخاص} many {# شخصًا} other {# شخص}}} other {{models, plural, zero {# نموذج} one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}}}} على كل ورقة",
         "noReviewer": "لا مراجع بعد",
-        "hiddenMine": "الأصوات مخفية في «المطلوب» لديك",
-        "hiddenTheirs": "الأصوات مخفية في «المطلوب» لدى المراجعين",
+        "hiddenMine": "الأصوات مخفية حتى تصوّت",
+        "hiddenTheirs": "الأصوات مخفية حتى يصوّت كل مراجع",
         "visible": "الأصوات مرئية للجميع",
         "visibleFinished": "الأصوات مرئية الآن بعد انتهائه",
         "conflictsGoTo": "تذهب التعارضات إلى {who}",
@@ -8752,10 +8759,11 @@
       "moreFor": "المزيد لـ {name}",
       "addPerson": "إضافة شخص",
       "findPerson": "ابحث عن شخص، أو اكتب بريدًا إلكترونيًا",
-      "nobodyByName": "لا أحد آخر بهذا الاسم في مساحة العمل هذه. اكتب عنوان بريد إلكتروني لدعوة شخص.",
+      "nobodyByName": "لا أحد آخر بهذا الاسم في مساحة العمل هذه.",
       "alreadyInvited": "هذا الشخص مدعو بالفعل",
       "alreadyOn": "هذا الشخص مضاف إلى هذا الفرز بالفعل",
-      "nobodyElse": "لا أحد آخر في مساحة العمل هذه لإضافته. اكتب عنوان بريد إلكتروني لدعوة شخص.",
+      "nobodyElse": "لا أحد آخر في مساحة العمل هذه لإضافته.",
+      "inviteHint": "اكتب عنوان بريد إلكتروني لدعوة شخص.",
       "invite": "دعوة",
       "onAlready": "{effort, select, true {{name} مُضاف بالفعل بهذا الجهد} other {{name} مُضاف بالفعل}}",
       "confirm": {
@@ -8802,7 +8810,7 @@
       "empty": {
         "arriving": "الأوراق في الطريق",
         "arrivingSays": "{reviewer, select, true {تظهر هنا فور وصولها من المصادر. ويمكنك بدء الفرز فور وصول أولاها.} other {تظهر هنا فور وصولها من المصادر.}}",
-        "noPaper": "{sources, select, true {لم تحتوِ المصادر على أي ورقة يمكن فرزها.} other {ينتظر هذا الفرز الأوراق. أضف مصدرًا، فتذهب أوراقه إلى المراجعين.}}",
+        "noPaper": "{sources, select, true {لم تحتوِ المصادر على أي ورقة يمكن فرزها.} other {{canChange, select, true {أضف مصدرًا لتعطي المراجعين أوراقًا.} other {تصل الأوراق حين يُضاف مصدر.}}}}",
         "toSources": "{sources, select, true {اعرض المصادر} other {أضف مصدرًا}}"
       },
       "progress": {
@@ -8995,7 +9003,7 @@
         "showLast": "اعرض آخر {count, number}",
         "seeEvery": "اعرض كل عمليات التحقق، {count, number} إجمالًا",
         "atStart": "في البداية",
-        "startedWith": "{known, select, true {{papers, plural, zero {# ورقة} one {ورقة واحدة} two {ورقتان} few {# أوراق} many {# ورقة} other {# ورقة}}} other {أوراق}} من {sources, plural, zero {# مصدر} one {مصدر واحد} two {مصدرين} few {# مصادر} many {# مصدرًا} other {# مصدر}}",
+        "startedWith": "{sources, plural, =0 {لا مصادر} other {{known, select, true {{papers, plural, zero {# ورقة} one {ورقة واحدة} two {ورقتان} few {# أوراق} many {# ورقة} other {# ورقة}}} other {أوراق}} من {sources, plural, zero {# مصدر} one {مصدر واحد} two {مصدرين} few {# مصادر} many {# مصدرًا} other {# مصدر}}}}",
         "finished": "{every, select, day {لا تحقق ما دام منتهيًا. أعد فتحه ليعود التحقق كل يوم} week {لا تحقق ما دام منتهيًا. أعد فتحه ليعود التحقق كل أسبوع} other {لا تحقق ما دام منتهيًا. أعد فتحه ليعود التحقق كل شهر}}"
       },
       "flow": {
@@ -9014,8 +9022,7 @@
     "papers": {
       "notSaved": "لم يُحفظ ذلك. حاول مرة أخرى.",
       "noPapers": {
-        "gathering": "الأوراق في الطريق. تظهر هنا فور وصولها.",
-        "none": "ليس في هذا الفرز أوراق بعد."
+        "gathering": "الأوراق في الطريق. تظهر هنا فور وصولها."
       },
       "sort": {
         "peopleShut": "يخفي هذا الفرز أصوات الأشخاص الآخرين على الأوراق التي لم تصوّت عليها بعد، وهذا الترتيب سيكشفها",
@@ -9036,6 +9043,7 @@
       },
       "settledBy": "{you, select, true {حسمتها أنت} other {حسمها {name}}}",
       "votedToast": "صوّتّ بـ{decision} على {count, number}",
+      "votedSince": "{count, plural, one {صُوّت على # منذ ذلك الحين، ويبقى ذلك الصوت} other {صُوّت على # منذ ذلك الحين، وتبقى تلك الأصوات}}",
       "settledToast": "حُسمت {count, number} بنتيجة {result}",
       "undo": "تراجع",
       "filter": {
@@ -9093,6 +9101,7 @@
         "all": "{count, plural, other {تحديد الكل (#)}}",
         "voteAs": "{count, plural, other {صوّت على الـ# التي تنتظرك بـ}}",
         "notYours": "{count, plural, other {# غيرها لا تنتظر صوتك}}",
+        "noneYours": "{count, plural, one {هذه الورقة لا تنتظر صوتك} other {لا ورقة من هذه الأوراق الـ# تنتظر صوتك}}",
         "settleAs": "{count, plural, other {حسم الـ# المتعارضة بنتيجة}}",
         "ris": "ملف RIS، لمدير المراجع",
         "csvSeen": "ملف CSV، مع الأصوات التي تستطيع رؤيتها",
@@ -9180,6 +9189,7 @@
         "overrideSays": "ما تختاره يحل محل النتيجة التي أعطتها الأصوات. وتبقى الأصوات في السجل. وإعادة الفتح تزيل ما اخترته، فتحسم الأصوات النتيجة من جديد.",
         "yetToVote": "{who, select, you {لم تصوّت بعد. ما تختاره يحسم الورقة دون ذلك الصوت، ويزيلها من قائمتك.} one {لم يصوّت {names} بعد. ما تختاره يحسم الورقة دون ذلك الصوت، ويزيلها من قائمته.} withYou {لم يصوّت {names} بعد. ما تختاره يحسم الورقة دون تلك الأصوات، ويزيلها من قوائمكم.} other {لم يصوّت {names} بعد. ما تختاره يحسم الورقة دون تلك الأصوات، ويزيلها من قوائمهم.}}",
         "cancel": "إلغاء",
+        "takeBack": "اسحب صوتي",
         "afterYouVote": "بعد أن تصوّت"
       }
     },

@@ -13,6 +13,7 @@ import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
 import { placeGuests, readAgain, reviewersOf, sourcesOf, touched } from "./dealing";
 import { readOn, startCheck } from "./gathering";
+import { firstCheck } from "./dealing";
 import { logChange } from "./log";
 import { EVERY_MS } from "./screenings";
 
@@ -51,6 +52,14 @@ export const checkNow = workspaceMutation({
  * Reads a source that couldn't be read on from where it stopped. In a look under way it is read in its turn; otherwise
  * the first look goes on, or a new look starts, so what it brings counts where the screening's other papers do.
  */
+/** A source set to be read again is read: by the look under way, in its turn, or by the look the screening started with while that still runs, or by a check of its own. A finished screening reopens by its own check (`checked`). */
+async function readInTurn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
+  if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return;
+  const [first, last] = await Promise.all([firstCheck(ctx, job._id), ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first()]);
+  if (last && last._id === first?._id && job.finishedAt === undefined) await readOn(ctx, job, by);
+  else await startCheck(ctx, job, by, job.totalPapers);
+}
+
 export const readSourceAgain = workspaceMutation({
   args: { sourceId: v.id("screeningSources") },
   returns: v.null(),
@@ -62,12 +71,7 @@ export const readSourceAgain = workspaceMutation({
     // One that failed before its reading began begins again; one that failed part way goes on from its place. A community's records are listed again first: the list a look keeps is dropped when it ends.
     const begun = source.set.kind !== "evidenceLibrary" && (source.snapshot || source.total !== undefined || source.read);
     await ctx.db.patch("screeningSources", sourceId, { state: begun ? "reading" : "waiting", failure: undefined });
-    // A look under way reads it in its turn: never a second one beside it.
-    if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
-    const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
-    // A screening that is finished reopens by a check of its own (`checked`): the look it started with goes on only while it runs.
-    if (last && last.from === 0 && job.finishedAt === undefined) await readOn(ctx, job, actor.userId);
-    else await startCheck(ctx, job, actor.userId, job.totalPapers);
+    await readInTurn(ctx, job, actor.userId);
     return null;
   },
 });
@@ -89,22 +93,18 @@ export const doisOf = internalQuery({
  * DOI found this time joins the screening, and the list it read before goes.
  */
 export const swapDois = internalMutation({
-  args: { sourceId: v.id("screeningSources"), was: v.id("_storage"), file: v.id("_storage"), userId: v.id("users"), workspaceId: v.id("workspaces") },
+  args: { sourceId: v.id("screeningSources"), was: v.id("_storage"), file: v.id("_storage"), from: v.optional(v.string()), to: v.optional(v.string()), userId: v.id("users"), workspaceId: v.id("workspaces") },
   returns: v.null(),
-  handler: async (ctx, { sourceId, was, file, ...actor }) => {
+  handler: async (ctx, { sourceId, was, file, from, to, ...actor }) => {
     const source = await ctx.db.get("screeningSources", sourceId);
     if (!source || source.removedAt !== undefined || source.set.kind !== "dois") throw createError("NOT_FOUND", "This list of DOIs isn't in the screening any more.");
     const job = await requireMember(ctx, actor, source.jobId);
     // Another correction was saved since this one read the list: this one would undo it, so it asks to be made again.
     if (source.set.file !== was) throw createError("CONFLICT", "This list was just corrected. Correct the DOI again.");
     // ponytail: the list it read before stays in storage. A copy of the screening may read the same file; delete it once nothing names it if storage ever matters.
-    await ctx.db.patch("screeningSources", sourceId, { set: { kind: "dois", file }, ...readAgain(source) });
-    // A look under way reads it in its turn: never a second one beside it.
-    if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
-    const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
-    // A screening that is finished reopens by a check of its own (`checked`): the look it started with goes on only while it runs.
-    if (last && last.from === 0 && job.finishedAt === undefined) await readOn(ctx, job, actor.userId);
-    else await startCheck(ctx, job, actor.userId, job.totalPapers);
+    // A list named by its first DOI is named by that DOI corrected.
+    await ctx.db.patch("screeningSources", sourceId, { set: { kind: "dois", file }, ...(from && to && source.name.includes(from) ? { name: source.name.replace(from, to) } : {}), ...readAgain(source) });
+    await readInTurn(ctx, job, actor.userId);
     return null;
   },
 });
@@ -132,7 +132,8 @@ export const due = internalMutation({
 
 /** What a check that has ended leaves behind: its note in the screening's activity, an email to the people the new papers went to, and a finished screening open again. */
 export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check: Doc<"screeningChecks">) {
-  if (check.from === 0) return;
+  // The look it started with says nothing: it is the screening starting. A later look from no papers (one that started empty) is a check like any other, and reopens it.
+  if ((await firstCheck(ctx, job._id))?._id === check._id) return;
   const now = Date.now();
   if (check.added && job.finishedAt !== undefined) {
     await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now) });

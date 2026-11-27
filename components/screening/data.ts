@@ -374,7 +374,8 @@ export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[],
 };
 /** Whether someone settles a screening's conflicts: the one person its rule names, as every page says. */
 export const resolves = (screening: Pick<Screening, "rule">, id: string) => screening.rule.resolver === id;
-export const nameOn = (screening: Pick<Screening, "reviewers" | "people">, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? SOMEONE;
+/** Someone on a screening by name, or `someone` for one whose account is gone: in English for a file, in the page's words on a page (./words.ts). */
+export const nameOn = (screening: { reviewers: Array<{ id: string; name: string }>; people: Record<string, { name: string } | undefined> }, id: string, someone = SOMEONE) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? someone;
 export const peopleOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 

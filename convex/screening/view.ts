@@ -22,7 +22,7 @@ import { readsPdfs } from "../../lib/assistant/files";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, inWhole, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn, wholePass } from "./dealing";
+import { dealable, firstCheck, inWhole, invitationsTo, laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf, waitsOn, wholePass } from "./dealing";
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
 import { askedWhereValidator, ruleValidator, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
@@ -124,8 +124,8 @@ async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
 }
 
 /** What a screening's models are doing, and the screening whose models read first where its own wait their turn. */
-async function modelsNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewers: ReviewerView[], progress: Doc<"screeningJobProgress"> | null, check: Doc<"screeningChecks"> | null) {
-  if (check) return { state: check.from === 0 ? ("gathering" as const) : ("checking" as const) };
+async function modelsNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewers: ReviewerView[], progress: Doc<"screeningJobProgress"> | null, check: Doc<"screeningChecks"> | null, starting: boolean) {
+  if (check) return { state: starting ? ("gathering" as const) : ("checking" as const) };
   if (job.finishedAt !== undefined) return { state: null };
   const models = reviewers.filter((one) => one.kind === "model" && one.left === undefined);
   // Paused models are paused whether or not a paper waits for them: the next one that arrives will.
@@ -164,10 +164,11 @@ async function theirs(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
 
 /** The summary of a screening for someone who may see it. */
 export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, { job, member, reviewer }: Standing): Promise<Summary> {
-  const [rows, progress, check, creator, resolver] = await Promise.all([
+  const [rows, progress, check, first, creator, resolver] = await Promise.all([
     reviewersOf(ctx, job._id),
     progressRow(ctx as QueryCtx, job._id),
     ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first(),
+    firstCheck(ctx, job._id),
     ctx.db.get("users", job.createdBy),
     job.rule ? ctx.db.get("users", job.rule.resolver) : null,
   ]);
@@ -180,7 +181,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   const total = papersOf(job, progress, check);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
   const canResolve = job.rule?.resolver === actor.userId;
-  const { state, ahead } = await modelsNow(ctx, job, reviewers, progress, check);
+  const { state, ahead } = await modelsNow(ctx, job, reviewers, progress, check, check !== null && check._id === first?._id);
   const waits = await waitsOn(ctx, job, actor.userId, reviewer, progress);
   return {
     id: job._id,
@@ -208,7 +209,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     models: state,
     ...(ahead ? { ahead } : {}),
     criteria: job.criteria?.length ?? 0,
-    ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check.from === 0 } } : {}),
+    ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check._id === first?._id } } : {}),
     activeAt: job.activeAt ?? job.updatedAt,
   };
 }
@@ -515,8 +516,8 @@ export const figuresAction = defineUserQuery({
       // How far two reviewers agree is how they voted, for someone who still has papers to vote on.
       pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers, reviewers, (await invitationsTo(ctx, jobId)).length) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
       recent: Object.fromEntries(recent),
-      startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
-      checks: { later: later.length, listed: checks.filter((check) => check.from !== 0 && check.state !== "running").length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },
+      startedWith: checks[0]?.added ?? 0,
+      checks: { later: later.length, listed: checks.slice(1).filter((check) => check.state !== "running").length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0), unread: later.filter((check) => (check.unread?.length ?? 0) > 0).length },
       // What the methods paragraph says was changed: the settings, and who reviews.
       changes: saves.filter((row) => CHANGED.has(row.code ?? "")).length,
       changedParts: [...new Set(saves.flatMap((row) => (row.code === "settings" ? (row.more ?? []).flatMap((line) => (line.code === "part" && line.detail ? [line.detail] : [])) : CHANGED.has(row.code ?? "") ? ["reviewers"] : [])))].slice(0, 12),
@@ -611,17 +612,18 @@ export const checksAction = defineUserQuery({
   returns: paginationResultValidator(checkValidator),
   run: async (ctx, actor, { jobId, paginationOpts }) => {
     if (!(await standingOn(ctx, actor, jobId))) return { page: [], isDone: true, continueCursor: "" };
-    const read = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) });
+    const [read, first] = await Promise.all([ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) }), firstCheck(ctx, jobId)]);
+    const isFirst = (check: Doc<"screeningChecks">) => check._id === first?._id;
     const people = new Map<Id<"users">, Person>();
     for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, personOf(user, check.by)); }
     const stand = async (check: Doc<"screeningChecks">) => {
-      if (check.from === 0 || !check.added || check.added > CHECK_COUNTED) return undefined;
+      if (isFirst(check) || !check.added || check.added > CHECK_COUNTED) return undefined;
       const papers = await ctx.db.query("screeningResults").withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", check._id)).take(CHECK_COUNTED);
       const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
       for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
       return counts;
     };
-    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(check.unread?.length ? { unread: check.unread } : {}), ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: isFirst(check), found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(check.unread?.length ? { unread: check.unread } : {}), ...(counts ? { counts } : {}), ...(isFirst(check) || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
   },
 });
 export const checks = userQuery(checksAction);

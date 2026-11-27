@@ -23,12 +23,14 @@ import {
   activeReviewers,
   bareOf,
   castOf,
+  type Criterion,
   failedLabel,
   growing,
   keptOf,
   leftOf,
   listed,
   modelsOf,
+  type Rule,
   nameOn,
   num,
   numberWord,
@@ -125,12 +127,12 @@ export const everyPaper = (convex: ConvexReactClient, args: ListArgs) => allOf<P
 /** The columns of the papers file, each with what it holds. The file's rows, the guide in the dialog and the guide in the whole record are made from this one list. */
 export const PAPER_GUIDE = {
   paper_id: "The paper's id in this screening. A paper has the same id in every file.",
-  doi: "Its DOI, where it has one.",
-  title: "Its title.",
-  authors: "Its authors, separated by semicolons.",
+  doi: "The paper's DOI, where it has one.",
+  title: "The title.",
+  authors: "The authors, separated by semicolons.",
   year: "The year it was published.",
   journal: "Where it was published.",
-  abstract: "Its abstract, as the reviewers read it.",
+  abstract: "The abstract, as the reviewers read it.",
   read_as: "What its reviewers read. Abstract, or PDF for a paper with no abstract that was screened as its own PDF.",
   file_name: "For a paper read from a PDF dropped into the screening, the name of that file.",
   source: "The source that brought it into the screening.",
@@ -495,6 +497,9 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const english: EffectsSay = { words: wordsOf({ t: createTranslator({ locale: "en-GB", messages, namespace: "screening.words" }), format: createFormatter({ locale: "en-GB" }) }), t: createTranslator({ locale: "en-GB", messages, namespace: "screening.effects" }) };
   const rows = voteRows(screening, papers);
   const hidden = { votes: rows.filter((row) => row.kept).length, papers: new Set(rows.flatMap((row) => (row.kept ? [row.paper.id] : []))).size };
+  // A rule and a criterion, said one way wherever the file says them: as they stand now, and in each version of the history.
+  const ruleOut = (rule: Rule) => ({ people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: !modelsOf(screening).length ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !hidesVotes(rule, hidingReaders(screening, out.invited)) ? "At any time, since one person reads each paper and the AI models' votes are advice" : advisedIn(screening, out.invited) ? "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote" : "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" });
+  const criterionOut = (criterion: Omit<Criterion, "addedAt">, [yes, no, unclear]: readonly number[]) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear } });
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
   return {
@@ -509,15 +514,12 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       started_at: iso(screening.createdAt),
       finished_at: screening.finishedAt ? iso(screening.finishedAt) : null,
       checks_for_new_papers: screening.living ? { how_often: EVERY_LABEL[screening.living.every], next: iso(screening.living.next) } : null,
-      rule: { people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: !modelsOf(screening).length ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !hidesVotes(rule, hidingReaders(screening, out.invited)) ? "At any time, since one person reads each paper and the AI models' votes are advice" : advisedIn(screening, out.invited) ? "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote" : "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" },
+      rule: ruleOut(rule),
       scoring: { points_needed_for_each_star: scoring.stars },
       included_papers_go_to: destination.kind === "none" ? null : { kind: destination.kind, name: collectionName(screening), collection_id: destination.kind === "new" ? null : (destination.collection ?? null), excluded_papers_removed_from_it: destination.prune },
       counts,
     },
-    criteria: criteria.map((criterion, i) => {
-      const [yes, no, unclear] = scoring.points[criterion.key] ?? [0, 0, 0];
-      return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
-    }),
+    criteria: criteria.map((criterion, i) => ({ number: i + 1, ...criterionOut(criterion, scoring.points[criterion.key] ?? [0, 0, 0]), added_at: since(criterion.addedAt) })),
     // Criteria taken off: votes and reasons from before still name them by key.
     retired_criteria: screening.retired.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must })),
     // Someone invited who hasn't joined is waited for as a reviewer: counted, since papers can wait for them.
@@ -531,8 +533,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       from: iso(one.at),
       // Null where nobody made the change by hand: who settles conflicts passed on when they left.
       by: one.by,
-      rule: { people_on_each_paper: one.rule.each === "all" ? "Everyone" : one.rule.each, settled_when: SETTLE_LABEL[one.rule.settle], models_votes: one.rule.settle === "one" ? "Advice on papers a person has" : one.rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: one.rule.settle === "one" ? null : nameOn(screening, one.rule.resolver), other_votes_seen: one.rule.blind === "after" ? "After they vote" : "At any time" },
-      criteria: one.criteria.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null })),
+      rule: ruleOut({ ...one.rule, each: one.rule.each === "all" ? "all" : `${one.rule.each}`, resolver: one.rule.resolver as string, models: one.rule.models ?? "vote" }),
+      criteria: one.criteria.map((criterion) => criterionOut(criterion, [criterion.points.yes, criterion.points.no, criterion.points.unclear])),
     })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

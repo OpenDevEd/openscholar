@@ -23,7 +23,7 @@ import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type Search
 import { actorIn } from "../workspaces/actor";
 import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, dealable, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
+import { countDealt, dealable, dealNew, firstCheck, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
 import { progressRow } from "./bookkeeping";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
@@ -489,7 +489,7 @@ export const end = internalMutation({
  * one it has goes on where it ended, so none of its papers counts as one a later check brought.
  */
 export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
-  const check = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).first();
+  const check = await firstCheck(ctx, job._id);
   if (!check) return void (await startCheck(ctx, job, by, 0));
   if (check.state === "running") return;
   await ctx.db.patch("screeningChecks", check._id, { state: "running", endedAt: undefined, beat: Date.now() });

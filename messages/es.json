@@ -5070,6 +5070,11 @@
       "pointCredits": "Lo que ejecute sobre él usa sus créditos",
       "open": "Abrir",
       "openFailed": "No se pudo abrir",
+      "invitations": "Invitaciones",
+      "accept": "Aceptar",
+      "decline": "Rechazar la invitación a {name}",
+      "declined": "Invitación a {name} rechazada",
+      "answerFailed": "No se pudo hacer. Inténtelo de nuevo.",
       "goneTitle": "Este enlace ya no está abierto",
       "goneDetail": "Pida a quien lo compartió que lo vuelva a compartir",
       "otherTitle": "Esta invitación se envió a otra dirección",
@@ -7872,7 +7877,7 @@
       "more": "{count, number} más",
       "activity": {
         "started": "Empezó el cribado",
-        "startedWith": "{sources, plural, one {# fuente} other {# fuentes}}, para {who}",
+        "startedWith": "{sources, plural, =0 {Para {who}} other {{sources, plural, one {# fuente} other {# fuentes}}, para {who}}}",
         "renamed": "Lo renombró como {name}",
         "finished": "Marcó el cribado como terminado",
         "unsettled": "{count, plural, one {# artículo no estaba resuelto} other {# artículos no estaban resueltos}}",
@@ -7937,6 +7942,8 @@
       "send": {
         "open": "Enviar por correo",
         "title": "{count, plural, one {Enviar este archivo} other {Enviar estos # archivos}}",
+        "which": "Archivos para enviar",
+        "text": "Texto",
         "to": "Para",
         "toPlaceholder": "colega@example.org",
         "note": "Una nota, si quiere",
@@ -8528,14 +8535,14 @@
         "add": "{you, select, true {Añadirse al filtro} other {Añadir a {name} al filtro}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "Votos de personas ocultos en los Pendientes de los revisores",
-        "peopleHiddenMine": "Votos de personas ocultos en sus Pendientes",
+        "peopleHiddenTheirs": "Votos de personas ocultos hasta que vote cada revisor",
+        "peopleHiddenMine": "Votos de personas ocultos hasta que usted vote",
         "advice": "Los votos de los modelos son consejo",
         "title": "Cómo se resuelve un artículo",
         "eachPaper": "{who, select, both {{people, plural, one {# persona} other {# personas}} y {models, plural, one {# modelo} other {# modelos}}} people {{people, plural, one {# persona} other {# personas}}} other {{models, plural, one {# modelo} other {# modelos}}}} en cada artículo",
         "noReviewer": "Todavía no hay revisores",
-        "hiddenMine": "Votos ocultos en sus Pendientes",
-        "hiddenTheirs": "Votos ocultos en los Pendientes de los revisores",
+        "hiddenMine": "Votos ocultos hasta que usted vote",
+        "hiddenTheirs": "Votos ocultos hasta que vote cada revisor",
         "visible": "Votos visibles para todos",
         "visibleFinished": "Votos visibles ahora que ha terminado",
         "conflictsGoTo": "Los conflictos van a {who}",
@@ -8752,10 +8759,11 @@
       "moreFor": "Más para {name}",
       "addPerson": "Añadir una persona",
       "findPerson": "Busque una persona o escriba un correo",
-      "nobodyByName": "Nadie más en este espacio de trabajo tiene ese nombre. Escriba una dirección de correo para invitar a alguien.",
+      "nobodyByName": "Nadie más en este espacio de trabajo tiene ese nombre.",
       "alreadyInvited": "Esta persona ya está invitada",
       "alreadyOn": "Esta persona ya está en este cribado",
-      "nobodyElse": "No queda nadie más en este espacio de trabajo para añadir. Escriba una dirección de correo para invitar a alguien.",
+      "nobodyElse": "No queda nadie más en este espacio de trabajo para añadir.",
+      "inviteHint": "Escriba una dirección de correo para invitar a alguien.",
       "invite": "Invitar",
       "onAlready": "{effort, select, true {{name} ya participa con ese esfuerzo} other {{name} ya participa}}",
       "confirm": {
@@ -8802,7 +8810,7 @@
       "empty": {
         "arriving": "Los artículos están en camino",
         "arrivingSays": "{reviewer, select, true {Aparecen aquí a medida que llegan de las fuentes. Puede empezar a cribar en cuanto lleguen los primeros.} other {Aparecen aquí a medida que llegan de las fuentes.}}",
-        "noPaper": "{sources, select, true {Las fuentes no tenían ningún artículo que se pueda cribar.} other {Espera artículos. Añada una fuente y sus artículos irán a los revisores.}}",
+        "noPaper": "{sources, select, true {Las fuentes no tenían ningún artículo que se pueda cribar.} other {{canChange, select, true {Añada una fuente para dar artículos a los revisores.} other {Los artículos llegan cuando se añade una fuente.}}}}",
         "toSources": "{sources, select, true {Ver las fuentes} other {Añadir una fuente}}"
       },
       "progress": {
@@ -8995,7 +9003,7 @@
         "showLast": "Mostrar las últimas {count, number}",
         "seeEvery": "Ver todas las comprobaciones, {count, number} en total",
         "atStart": "Al inicio",
-        "startedWith": "{known, select, true {{papers, plural, one {# artículo} other {# artículos}}} other {Artículos}} de {sources, plural, one {# fuente} other {# fuentes}}",
+        "startedWith": "{sources, plural, =0 {Sin fuentes} other {{known, select, true {{papers, plural, one {# artículo} other {# artículos}}} other {Artículos}} de {sources, plural, one {# fuente} other {# fuentes}}}}",
         "finished": "{every, select, day {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada día} week {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada semana} other {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada mes}}"
       },
       "flow": {
@@ -9014,8 +9022,7 @@
     "papers": {
       "notSaved": "No se guardó. Inténtelo de nuevo.",
       "noPapers": {
-        "gathering": "Los artículos están en camino. Aparecen aquí a medida que llegan.",
-        "none": "Este cribado todavía no tiene artículos."
+        "gathering": "Los artículos están en camino. Aparecen aquí a medida que llegan."
       },
       "sort": {
         "peopleShut": "Este cribado oculta los votos de las demás personas en los artículos que usted aún no ha votado, y este orden los delataría",
@@ -9036,6 +9043,7 @@
       },
       "settledBy": "{you, select, true {Resuelto por usted} other {Resuelto por {name}}}",
       "votedToast": "Votó {decision} en {count, plural, one {# artículo} other {# artículos}}",
+      "votedSince": "{count, plural, one {# recibió un voto mientras tanto y lo conserva} other {# recibieron un voto mientras tanto y lo conservan}}",
       "settledToast": "{count, number} resueltos como {result}",
       "undo": "Deshacer",
       "filter": {
@@ -9093,6 +9101,7 @@
         "all": "{count, plural, other {Seleccionar los #}}",
         "voteAs": "{count, plural, one {Votar # que le espera como} other {Votar los # que le esperan como}}",
         "notYours": "{count, plural, one {# otro no espera su voto} other {# otros no esperan su voto}}",
+        "noneYours": "{count, plural, one {Este artículo no espera su voto} other {Ninguno de estos # espera su voto}}",
         "settleAs": "{count, plural, one {Resolver # en conflicto como} other {Resolver # en conflicto como}}",
         "ris": "Archivo RIS, para un gestor de referencias",
         "csvSeen": "Archivo CSV, con los votos que usted puede ver",
@@ -9180,6 +9189,7 @@
         "overrideSays": "Lo que usted elija sustituye el resultado que dieron los votos. Los votos quedan registrados. Reabrir quita lo que eligió, y los votos vuelven a decidir el resultado.",
         "yetToVote": "{who, select, you {Usted aún no ha votado. Lo que elija resuelve el artículo sin ese voto y lo quita de su lista.} one {{names} aún no ha votado. Lo que usted elija resuelve el artículo sin ese voto y lo quita de su lista.} withYou {{names} aún no han votado. Lo que usted elija resuelve el artículo sin esos votos y lo quita de sus listas.} other {{names} aún no han votado. Lo que usted elija resuelve el artículo sin esos votos y lo quita de sus listas.}}",
         "cancel": "Cancelar",
+        "takeBack": "Retirar mi voto",
         "afterYouVote": "Después de que vote"
       }
     },

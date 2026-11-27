@@ -10,6 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
+import { MAX_ACCOUNTS_PER_EMAIL } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
@@ -46,6 +47,11 @@ export const addAction = defineUserMutation({
     const [sharer, person] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("users", personId)]);
     if (!sharer || person?.state !== "active") throw createError("NOT_FOUND", "Person not found");
     if (await holds(ctx, shared, person)) throw createError("CONFLICT", "They're in this workspace, so they have it already.");
+    // A guest it is shared with already only changes role, however they came to have it.
+    if (await grantOf(ctx, shared.id, person._id)) {
+      await give(ctx, shared, person, role, actor);
+      return null;
+    }
     // Never a stranger by ID: someone in one of the sharer's organizations.
     const mine = new Set((await readMemberOrganizations(ctx, sharer)).map(({ organization }) => organization._id));
     if (!(await readMemberOrganizations(ctx, person)).some(({ organization }) => mine.has(organization._id))) throw createError("FORBIDDEN", "Invite people outside your organizations by email.");
@@ -141,12 +147,14 @@ export const roomForAssistant = assistantQuery(roomAction);
 
 export const listAction = defineUserQuery({
   path: "sharing/guests:list",
-  description: "Lists the guests of one of the workspace's items, a page at a time, in the order they were given it: people outside the workspace, each with what they may do (`viewer` or `editor`).",
-  args: { ...kindAndId, paginationOpts: paginationOptsValidator },
+  description: "Lists the guests of one of the workspace's items, a page at a time, in the order they were given it: people outside the workspace, each with what they may do (`viewer` or `editor`). Given an `email`, only the guest with that address, if there is one.",
+  args: { ...kindAndId, email: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ userId: v.id("users"), name: v.string(), email: v.string(), imageUrl: v.optional(v.string()), role: guestRoleValidator })),
-  run: async (ctx, actor, { kind, id, paginationOpts }) => {
+  run: async (ctx, actor, { kind, id, email, paginationOpts }) => {
     const shared = await sharedIn(ctx, actor, kind, id);
-    const read = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", shared.id)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) });
+    const read = email === undefined
+      ? await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", shared.id)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) })
+      : { page: (await Promise.all((await ctx.db.query("users").withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase())).take(MAX_ACCOUNTS_PER_EMAIL)).map((user) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", shared.id).eq("userId", user._id)).unique()))).filter((grant) => grant !== null), isDone: true, continueCursor: "" };
     const page = await Promise.all(read.page.filter(shares).map(async ({ userId, role }) => {
       const person = await ctx.db.get("users", userId);
       return person ? [{ userId, name: personName(person), email: person.email, ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}), role }] : [];
@@ -159,12 +167,14 @@ export const listForAssistant = assistantQuery(listAction);
 
 export const invitedAction = defineUserQuery({
   path: "sharing/guests:invited",
-  description: "Lists the invitations to one of the workspace's items that haven't been answered, a page at a time: each one's address, what it would let them do, and when it expires.",
-  args: { ...kindAndId, paginationOpts: paginationOptsValidator },
+  description: "Lists the invitations to one of the workspace's items that haven't been answered, a page at a time: each one's address, what it would let them do, and when it expires. Given an `email`, only the invitation to that address, if there is one.",
+  args: { ...kindAndId, email: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ email: v.string(), role: guestRoleValidator, expiresAt: v.number(), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
-  run: async (ctx, actor, { kind, id, paginationOpts }) => {
+  run: async (ctx, actor, { kind, id, email, paginationOpts }) => {
     const shared = await sharedIn(ctx, actor, kind, id);
-    const read = await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", shared.id).eq("state", "pending")).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) });
+    const read = email === undefined
+      ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", shared.id).eq("state", "pending")).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) })
+      : { page: (await ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", shared.id).eq("email", email.trim().toLowerCase())).take(GUESTS_PAGE_MAX)).filter((one) => one.state === "pending"), isDone: true, continueCursor: "" };
     return { ...read, page: read.page.filter(shares).map(({ email, role, expiresAt, delivery }) => ({ email, role, expiresAt, delivery })) };
   },
 });

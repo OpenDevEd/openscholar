@@ -64,9 +64,13 @@ export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screenin
 
 /** Checks of its sources looked through for the last that brought papers. */
 const CHECKS_LOOKED = 20;
+/** The look a screening started with: its first check, whatever it found. One started with no source finds nothing, and the look that reads its first source later is a check like any other. */
+export const firstCheck = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) => ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first();
 /** A screening's latest checks for new papers that have ended, the last first. The first look in its sources is the screening starting, and is none of them. */
-export const laterChecks = async (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) =>
-  (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)).filter((check) => check.state === "done" && check.from > 0);
+export async function laterChecks(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) {
+  const [first, last] = await Promise.all([firstCheck(ctx, jobId), ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)]);
+  return last.filter((check) => check.state === "done" && check._id !== first?._id);
+}
 
 /** What each of a screening's models can be given, by its row or by whatever names it before it has one: whether it takes a PDF as a file, and the tokens one call to it holds. */
 export type Reads = Map<string, { files: boolean; room?: number }>;
@@ -86,16 +90,26 @@ type Readable = Pick<Doc<"screeningResults">, "abstract" | "file" | "pages">;
 export const teamFor = <Team extends { people: string[]; models: string[] }>(team: Team, paper: Readable, reads: Reads): Team =>
   paper.abstract || !paper.file ? team : { ...team, models: team.models.filter((id) => readsPdfOf(reads.get(id), paper.pages ?? 0)) };
 
-/** Questions put to one person on one screening that its pages count and open, and how many open ones are looked through for them: papers that left with their source are passed over first. */
+/** Questions put to one person on one screening that its pages count and open, and how many open ones are looked through for them, a hundred at a time: papers that left with their source are passed over. */
 const ASKED_SHOWN = 50;
-const ASKED_LOOKED = 100;
+const ASKED_STEP = 100;
+const ASKED_LOOKED = 500;
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
 export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
-  const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_LOOKED);
-  // A paper that left with its source keeps its question for when it comes back, and asks nothing while it is out.
-  const papers = [...new Set(open.map((message) => message.resultId))];
-  const out = await Promise.all(papers.map(async (id) => Boolean((await ctx.db.get("screeningResults", id))?.withdrawn)));
-  return papers.filter((_, at) => !out[at]).slice(0, ASKED_SHOWN);
+  const papers: Id<"screeningResults">[] = [];
+  const seen = new Set<Id<"screeningResults">>();
+  let after = -1;
+  for (let looked = 0; looked < ASKED_LOOKED && papers.length < ASKED_SHOWN; looked += ASKED_STEP) {
+    const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true).gt("_creationTime", after)).take(ASKED_STEP);
+    const fresh = [...new Set(open.map((message) => message.resultId))].filter((id) => !seen.has(id));
+    fresh.forEach((id) => seen.add(id));
+    // A paper that left with its source keeps its question for when it comes back, and asks nothing while it is out.
+    const out = await Promise.all(fresh.map(async (id) => Boolean((await ctx.db.get("screeningResults", id))?.withdrawn)));
+    papers.push(...fresh.filter((_, at) => !out[at]));
+    if (open.length < ASKED_STEP) break;
+    after = open[open.length - 1]._creationTime;
+  }
+  return papers.slice(0, ASKED_SHOWN);
 }
 
 /** Where a question put to someone is opened for them to answer. */

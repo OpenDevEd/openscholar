@@ -93,6 +93,8 @@ export const say = workspaceMutation({
     if (!words || words.length > SCREENING_TEXT.message) throw createError("VALIDATION_ERROR", "Write up to 4,000 characters.");
     if (to) {
       if (to === actor.userId) throw createError("VALIDATION_ERROR", "Ask someone else.");
+      // A paper that left with its source asks nothing of anyone (`askedOf`): what is written about it is for everyone.
+      if (place.paper.withdrawn) throw createError("VALIDATION_ERROR", "This paper left the screening with its source. Write to everyone.");
       const asked = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", to)).first();
       if (job.rule?.resolver !== to && (!asked || asked.left !== undefined)) throw createError("VALIDATION_ERROR", "Only someone on this screening can be asked.");
       // Nobody is asked about a paper whose discussion is kept from them until they vote on it: they couldn't read the question.

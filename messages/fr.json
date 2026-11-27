@@ -5069,6 +5069,11 @@
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",
       "open": "Ouvrir",
       "openFailed": "Impossible de l'ouvrir",
+      "invitations": "Invitations",
+      "accept": "Accepter",
+      "decline": "Refuser l'invitation à {name}",
+      "declined": "Invitation à {name} refusée",
+      "answerFailed": "Cela n'a pas abouti. Réessayez.",
       "goneTitle": "Ce lien n'est plus ouvert",
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
@@ -7871,7 +7876,7 @@
       "more": "{count, number} de plus",
       "activity": {
         "started": "A démarré le criblage",
-        "startedWith": "{sources, plural, one {# source} other {# sources}}, pour {who}",
+        "startedWith": "{sources, plural, =0 {Pour {who}} other {{sources, plural, one {# source} other {# sources}}, pour {who}}}",
         "renamed": "L'a renommé en {name}",
         "finished": "A marqué le criblage comme terminé",
         "unsettled": "{count, plural, one {# article n'était pas tranché} other {# articles n'étaient pas tranchés}}",
@@ -7936,6 +7941,8 @@
       "send": {
         "open": "Envoyer par e-mail",
         "title": "{count, plural, one {Envoyer ce fichier} other {Envoyer ces # fichiers}}",
+        "which": "Fichiers à envoyer",
+        "text": "Texte",
         "to": "À",
         "toPlaceholder": "collegue@example.org",
         "note": "Un mot, si vous voulez",
@@ -8527,14 +8534,14 @@
         "add": "{you, select, true {Vous ajouter au filtre} other {Ajouter {name} au filtre}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "Votes des personnes masqués dans la liste À faire des évaluateurs",
-        "peopleHiddenMine": "Votes des personnes masqués dans votre liste À faire",
+        "peopleHiddenTheirs": "Votes des personnes masqués jusqu'au vote de chaque évaluateur",
+        "peopleHiddenMine": "Votes des personnes masqués jusqu'à votre vote",
         "advice": "Les votes des modèles servent d'avis",
         "title": "Comment un article est tranché",
         "eachPaper": "{who, select, both {{people, plural, one {# personne} other {# personnes}} et {models, plural, one {# modèle} other {# modèles}}} people {{people, plural, one {# personne} other {# personnes}}} other {{models, plural, one {# modèle} other {# modèles}}}} sur chaque article",
         "noReviewer": "Pas encore d'évaluateur",
-        "hiddenMine": "Votes masqués dans votre liste À faire",
-        "hiddenTheirs": "Votes masqués dans la liste À faire des évaluateurs",
+        "hiddenMine": "Votes masqués jusqu'à votre vote",
+        "hiddenTheirs": "Votes masqués jusqu'au vote de chaque évaluateur",
         "visible": "Votes visibles par tous",
         "visibleFinished": "Votes visibles maintenant qu'il est terminé",
         "conflictsGoTo": "Désaccords confiés à {who}",
@@ -8751,10 +8758,11 @@
       "moreFor": "Plus pour {name}",
       "addPerson": "Ajouter une personne",
       "findPerson": "Trouvez une personne ou saisissez une adresse e-mail",
-      "nobodyByName": "Personne d’autre de ce nom dans cet espace de travail. Saisissez une adresse e-mail pour inviter quelqu’un.",
+      "nobodyByName": "Personne d’autre de ce nom dans cet espace de travail.",
       "alreadyInvited": "Cette personne est déjà invitée",
       "alreadyOn": "Cette personne fait déjà partie de ce tri",
-      "nobodyElse": "Personne d'autre à ajouter dans cet espace de travail. Saisissez une adresse e-mail pour inviter quelqu'un.",
+      "nobodyElse": "Personne d'autre à ajouter dans cet espace de travail.",
+      "inviteHint": "Saisissez une adresse e-mail pour inviter quelqu’un.",
       "invite": "Inviter",
       "onAlready": "{effort, select, true {{name} y participe déjà avec cet effort} other {{name} y participe déjà}}",
       "confirm": {
@@ -8801,7 +8809,7 @@
       "empty": {
         "arriving": "Les articles arrivent",
         "arrivingSays": "{reviewer, select, true {Ils s'affichent ici à mesure qu'ils arrivent des sources. Vous pouvez commencer le criblage dès l'arrivée des premiers.} other {Ils s'affichent ici à mesure qu'ils arrivent des sources.}}",
-        "noPaper": "{sources, select, true {Les sources ne contenaient aucun article pouvant être criblé.} other {Il attend des articles. Ajoutez une source, et ses articles vont aux évaluateurs.}}",
+        "noPaper": "{sources, select, true {Les sources ne contenaient aucun article pouvant être criblé.} other {{canChange, select, true {Ajoutez une source pour donner des articles aux évaluateurs.} other {Les articles arrivent dès qu'une source est ajoutée.}}}}",
         "toSources": "{sources, select, true {Voir les sources} other {Ajouter une source}}"
       },
       "progress": {
@@ -8994,7 +9002,7 @@
         "showLast": "Afficher les {count, number} dernières",
         "seeEvery": "Voir toutes les vérifications, {count, number} au total",
         "atStart": "Au départ",
-        "startedWith": "{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}",
+        "startedWith": "{sources, plural, =0 {Aucune source} other {{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}}}",
         "finished": "{every, select, day {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque jour} week {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque semaine} other {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque mois}}"
       },
       "flow": {
@@ -9013,8 +9021,7 @@
     "papers": {
       "notSaved": "L'enregistrement a échoué. Réessayez.",
       "noPapers": {
-        "gathering": "Les articles arrivent. Ils s'affichent ici à mesure qu'ils arrivent.",
-        "none": "Ce criblage n'a pas encore d'articles."
+        "gathering": "Les articles arrivent. Ils s'affichent ici à mesure qu'ils arrivent."
       },
       "sort": {
         "peopleShut": "Ce criblage masque les votes des autres personnes sur les articles où vous n'avez pas encore voté, et cet ordre les révélerait",
@@ -9035,6 +9042,7 @@
       },
       "settledBy": "{you, select, true {Tranché par vous} other {Tranché par {name}}}",
       "votedToast": "Vote {decision} sur {count, plural, one {# article} other {# articles}}",
+      "votedSince": "{count, plural, one {# a reçu un vote entre-temps et le garde} other {# ont reçu un vote entre-temps et le gardent}}",
       "settledToast": "{count, number} tranchés comme {result}",
       "undo": "Annuler",
       "filter": {
@@ -9092,6 +9100,7 @@
         "all": "{count, plural, other {Sélectionner les #}}",
         "voteAs": "{count, plural, one {Voter sur l’article qui vous attend comme} other {Voter sur les # qui vous attendent comme}}",
         "notYours": "{count, plural, one {# autre n’attend pas votre vote} other {# autres n’attendent pas votre vote}}",
+        "noneYours": "{count, plural, one {Cet article n'attend pas votre vote} other {Aucun de ces # n'attend votre vote}}",
         "settleAs": "{count, plural, one {Trancher l'article en désaccord comme} other {Trancher les # en désaccord comme}}",
         "ris": "Fichier RIS, pour un gestionnaire de références",
         "csvSeen": "Fichier CSV, avec les votes que vous voyez",
@@ -9179,6 +9188,7 @@
         "overrideSays": "Ce que vous choisissez remplace le résultat donné par les votes. Les votes restent consignés. Rouvrir retire ce que vous avez choisi, et les votes décident de nouveau du résultat.",
         "yetToVote": "{who, select, you {Vous n'avez pas encore voté. Ce que vous choisissez tranche l'article sans ce vote et le retire de votre liste.} one {{names} n'a pas encore voté. Ce que vous choisissez tranche l'article sans ce vote et le retire de sa liste.} withYou {{names} n'avez pas encore voté. Ce que vous choisissez tranche l'article sans ces votes et le retire de vos listes.} other {{names} n'ont pas encore voté. Ce que vous choisissez tranche l'article sans ces votes et le retire de leurs listes.}}",
         "cancel": "Annuler",
+        "takeBack": "Retirer mon vote",
         "afterYouVote": "Après votre vote"
       }
     },

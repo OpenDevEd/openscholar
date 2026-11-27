@@ -434,8 +434,11 @@ export function ScreeningForm({ id }: { id?: string }) {
     // Sources that come back to what they were before (a range widened again, a source put back) are read again: the screening that read them then is gone, replaced by the one read since. So what is kept under a key is asked for again whenever the key comes back, and the same sources answer with the same screening.
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
+  // A DOI corrected in the list changes a source the server has changed already (convex/screening/held.ts `correctDoi`): what was read carries on over it, so the rows, Start and the list being corrected hold still.
+  const [carried, setCarried] = useState<{ from: string; to: string; read: NonNullable<typeof readAhead.data> } | null>(null);
+  const carries = carried !== null && held === carried.to && (settled === carried.from || (settled === held && !readAhead.data));
   // What was read is of the sources as they are now: after a change, the rows wait for the next read.
-  const early = settled === held ? (readAhead.data ?? null) : null;
+  const early = carries ? carried.read : settled === held ? (readAhead.data ?? null) : null;
   const earlyRead = useOpenScreening(early?.jobId ?? "")?.screening.sources;
   /** A source's row on the server, where the server reads it: a running screening's own, or the early read's. */
   const rowOf = (source: Source): { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources"> } | null => {
@@ -909,7 +912,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const whoCounts = [joined.length ? words.count("people", joined.length) : "", invited ? t("summary.invited", { count: invited }) : "", models.length ? words.count("models", models.length) : ""].filter(Boolean);
   // `unset`: a part left empty that the screening can start without. It gets no tick, which would read as done.
   const summary: Array<{ id: string; label: string; value: string; problem: boolean; unset?: boolean; aside?: ReactNode }> = [
-    { id: "papers", label: t("part.papers"), value: papers ? t("summary.papers", { state: upTo ? "upTo" : reading ? "soFar" : "none", papers, sources: draft.sources.length }) : reading ? t("block.reading") : t("summary.noPapers"), problem: !papers },
+    { id: "papers", label: t("part.papers"), value: papers ? t("summary.papers", { state: upTo ? "upTo" : reading ? "soFar" : "none", papers, sources: draft.sources.length }) : reading ? t("block.reading") : t("summary.noPapers"), problem: false, unset: !papers && !reading },
     { id: "criteria", label: t("part.criteria"), value: draft.criteria.length ? t("summary.criteria", { count: draft.criteria.length, musts }) : t("summary.noCriteria"), problem: needsCriteria, unset: !draft.criteria.length },
     {
       id: "reviewers",
@@ -1136,7 +1139,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {open === "left" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
                                       {/* Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own. */}
-                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} dois={source.kind === "dois"} onList={own ? undefined : (file) => patchSource(source.id, { set: { kind: "dois", file } })} /> : null}
+                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} dois={source.kind === "dois"} onList={own ? undefined : (file, from, to) => {
+                                        const patch = { set: { kind: "dois" as const, file }, ...(source.name.includes(from) ? { name: source.name.replace(from, to) } : {}) };
+                                        if (early) setCarried({ from: held, to: JSON.stringify(drafted.map((one) => sourceOf(one.id === source.id ? { ...one, ...patch } : one))), read: early });
+                                        patchSource(source.id, patch);
+                                      }} /> : null}
                                     </div>
                                   ) : open === "merged" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
@@ -1922,7 +1929,7 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
           // The source that brought the paper this record is the same as: another one, or this one where it lists the paper more than once.
           const from = row.paper?.sourceId === sourceId ? t("papers.mergedSame") : row.paper ? t("papers.mergedFrom", { source: sources.find((one) => one.id === row.paper!.sourceId)?.name ?? t("papers.mergedElsewhere") }) : t("papers.mergedGone");
           return (
-            <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
+            <li key={row.id} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
               <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
               {row.paper && open ? <LinkChip href={papersHref(open, { paper: row.paper.id })} className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></LinkChip> : <Chip className="max-w-64 shrink-0 self-start"><span className="truncate">{from}</span></Chip>}
             </li>
@@ -1936,18 +1943,27 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
   );
 }
 /** A DOI the screening found no record of: put right where it was mistyped, or tried again as it is. The list is read again from its start, and a DOI found this time joins the screening. */
-function CorrectDoi({ sourceId, doi, onList }: { sourceId: Id<"screeningSources">; doi: string; onList?: (file: Id<"_storage">) => void }) {
+function CorrectDoi({ sourceId, doi, onList }: { sourceId: Id<"screeningSources">; doi: string; onList?: (file: Id<"_storage">, from: string, to: string) => void }) {
   const t = useTranslations("screening.form");
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const correct = useWorkspaceAction(api.screening.held.correctDoi);
-  const send = () => {
+  const send = (to: string) => {
     setBusy(true);
-    void correct({ sourceId, from: doi, to: (text ?? doi).trim() }).then((file) => { onList?.(file); setText(null); toast(t("papers.doiAgain")); }, (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")))).finally(() => setBusy(false));
+    void correct({ sourceId, from: doi, to: to.trim() }).then((file) => { onList?.(file, doi, to.trim()); setText(null); toast(t("papers.doiAgain")); }, (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")))).finally(() => setBusy(false));
   };
-  if (text === null) return <Button variant="ghost" size="sm" className="h-7 shrink-0 self-start text-xs" onClick={() => setText(doi)}><PenLine />{t("papers.correctDoi")}</Button>;
+  // A DOI the index has no record of yet may have one by now: it is tried again as it is, or corrected first.
+  if (text === null) {
+    return (
+      <span className="flex shrink-0 gap-1 self-start">
+        <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={busy} onClick={() => send(doi)}>{busy ? <Spinner className="size-3.5" /> : <RefreshCw />}{t("papers.tryAgain")}</Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setText(doi)}><PenLine />{t("papers.correctDoi")}</Button>
+      </span>
+    );
+  }
+  // The editor takes a line of its own under the DOI it corrects, whatever the width.
   return (
-    <form className="flex w-full items-center gap-2 max-sm:basis-full" onSubmit={(event) => { event.preventDefault(); send(); }}>
+    <form className="flex basis-full items-center gap-2" onSubmit={(event) => { event.preventDefault(); send(text); }}>
       <Input autoFocus value={text} onChange={(event) => setText(event.target.value)} aria-label={t("papers.correctDoiFor", { doi })} className="h-8 min-w-0 flex-1 px-2 text-sm" />
       <Button type="submit" variant="outline" size="sm" className="h-8 shrink-0" disabled={busy || !text.trim()}>{busy ? <Spinner className="size-3.5" /> : <RefreshCw />}{t("papers.tryAgain")}</Button>
       <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setText(null)}>{t("papers.cancel")}</Button>
@@ -1955,7 +1971,7 @@ function CorrectDoi({ sourceId, doi, onList }: { sourceId: Id<"screeningSources"
   );
 }
 /** What one of a running screening's sources held and didn't take, a page at a time, each with why. */
-function LeftOut({ jobId, sourceId, total, dois = false, onList }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** A list of DOIs: one that wasn't found can be corrected, or tried again. */ dois?: boolean; /** The list a correction kept, for a screening still being set up, whose form starts it with that list. */ onList?: (file: Id<"_storage">) => void }) {
+function LeftOut({ jobId, sourceId, total, dois = false, onList }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** A list of DOIs: one that wasn't found can be corrected, or tried again. */ dois?: boolean; /** The list a correction kept, for a screening still being set up, whose form starts it with that list. */ onList?: (file: Id<"_storage">, from: string, to: string) => void }) {
   const t = useTranslations("screening.form");
   const words = useWords();
   const rows = useCursorPageAt("records", api.screening.view.leftOut, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);

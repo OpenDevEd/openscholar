@@ -188,7 +188,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // A change to its rule or its criteria is a version of them from now on, which the whole record lists.
   if (JSON.stringify(job.rule) !== JSON.stringify(saved.rule) || JSON.stringify(job.criteria ?? []) !== JSON.stringify(saved.criteria ?? [])) await keepVersion(ctx, saved, actor.userId);
 
-  for (const { reviewer, discard } of plan.leaving) await takeOff(ctx, saved, reviewer, discard);
+  for (const { reviewer, discard } of plan.leaving) await takeOff(ctx, saved, reviewer, discard, actor.userId);
   for (const { userId } of plan.joining) {
     const person = await ctx.db.get("users", userId);
     if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");

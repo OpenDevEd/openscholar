@@ -5070,6 +5070,11 @@
       "pointCredits": "O trabalho que executar nele usa os seus créditos",
       "open": "Abrir",
       "openFailed": "Não foi possível abrir",
+      "invitations": "Convites",
+      "accept": "Aceitar",
+      "decline": "Recusar o convite para {name}",
+      "declined": "Convite para {name} recusado",
+      "answerFailed": "Não foi possível. Tente novamente.",
       "goneTitle": "Esta ligação já não está aberta",
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
@@ -7872,7 +7877,7 @@
       "more": "mais {count, number}",
       "activity": {
         "started": "Iniciou a triagem",
-        "startedWith": "{sources, plural, one {# fonte} other {# fontes}}, para {who}",
+        "startedWith": "{sources, plural, =0 {Para {who}} other {{sources, plural, one {# fonte} other {# fontes}}, para {who}}}",
         "renamed": "Mudou o nome para {name}",
         "finished": "Marcou a triagem como terminada",
         "unsettled": "{count, plural, one {# artigo não ficou decidido} other {# artigos não ficaram decididos}}",
@@ -7937,6 +7942,8 @@
       "send": {
         "open": "Enviar por e-mail",
         "title": "{count, plural, one {Enviar este arquivo} other {Enviar estes # arquivos}}",
+        "which": "Ficheiros a enviar",
+        "text": "Texto",
         "to": "Para",
         "toPlaceholder": "colega@example.org",
         "note": "Uma nota, se quiser",
@@ -8528,14 +8535,14 @@
         "add": "{you, select, true {Adicionar-se ao filtro} other {Adicionar {name} ao filtro}}"
       },
       "rule": {
-        "peopleHiddenTheirs": "Votos das pessoas ocultos no Por fazer dos revisores",
-        "peopleHiddenMine": "Votos das pessoas ocultos no seu Por fazer",
+        "peopleHiddenTheirs": "Votos das pessoas ocultos até cada revisor votar",
+        "peopleHiddenMine": "Votos das pessoas ocultos até votar",
         "advice": "Os votos dos modelos são conselho",
         "title": "Como um artigo é decidido",
         "eachPaper": "{who, select, both {{people, plural, one {# pessoa} other {# pessoas}} e {models, plural, one {# modelo} other {# modelos}}} people {{people, plural, one {# pessoa} other {# pessoas}}} other {{models, plural, one {# modelo} other {# modelos}}}} em cada artigo",
         "noReviewer": "Ainda sem revisor",
-        "hiddenMine": "Votos ocultos no seu Por fazer",
-        "hiddenTheirs": "Votos ocultos no Por fazer dos revisores",
+        "hiddenMine": "Votos ocultos até votar",
+        "hiddenTheirs": "Votos ocultos até cada revisor votar",
         "visible": "Votos visíveis para todos",
         "visibleFinished": "Votos visíveis agora que está terminada",
         "conflictsGoTo": "Os conflitos vão para {who}",
@@ -8752,10 +8759,11 @@
       "moreFor": "Mais para {name}",
       "addPerson": "Adicionar uma pessoa",
       "findPerson": "Encontre uma pessoa ou escreva um email",
-      "nobodyByName": "Mais ninguém neste espaço de trabalho tem esse nome. Escreva um endereço de e-mail para convidar alguém.",
+      "nobodyByName": "Mais ninguém neste espaço de trabalho tem esse nome.",
       "alreadyInvited": "Esta pessoa já foi convidada",
       "alreadyOn": "Esta pessoa já está nesta triagem",
-      "nobodyElse": "Não há mais ninguém neste espaço de trabalho para adicionar. Escreva um endereço de email para convidar alguém.",
+      "nobodyElse": "Não há mais ninguém neste espaço de trabalho para adicionar.",
+      "inviteHint": "Escreva um endereço de e-mail para convidar alguém.",
       "invite": "Convidar",
       "onAlready": "{effort, select, true {{name} já está nela com esse esforço} other {{name} já está nela}}",
       "confirm": {
@@ -8802,7 +8810,7 @@
       "empty": {
         "arriving": "Os artigos estão a caminho",
         "arrivingSays": "{reviewer, select, true {Aparecem aqui à medida que chegam das fontes. Pode começar a triagem assim que chegarem os primeiros.} other {Aparecem aqui à medida que chegam das fontes.}}",
-        "noPaper": "{sources, select, true {As fontes não tinham nenhum artigo que possa ser triado.} other {Espera por artigos. Adicione uma fonte e os artigos dela vão para os revisores.}}",
+        "noPaper": "{sources, select, true {As fontes não tinham nenhum artigo que possa ser triado.} other {{canChange, select, true {Adicione uma fonte para dar artigos aos revisores.} other {Os artigos chegam quando uma fonte é adicionada.}}}}",
         "toSources": "{sources, select, true {Ver as fontes} other {Adicionar uma fonte}}"
       },
       "progress": {
@@ -8995,7 +9003,7 @@
         "showLast": "Mostrar as últimas {count, number}",
         "seeEvery": "Ver todas as verificações, {count, number} no total",
         "atStart": "No início",
-        "startedWith": "{known, select, true {{papers, plural, one {# artigo} other {# artigos}}} other {Artigos}} de {sources, plural, one {# fonte} other {# fontes}}",
+        "startedWith": "{sources, plural, =0 {Sem fontes} other {{known, select, true {{papers, plural, one {# artigo} other {# artigos}}} other {Artigos}} de {sources, plural, one {# fonte} other {# fontes}}}}",
         "finished": "{every, select, day {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todos os dias} week {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todas as semanas} other {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todos os meses}}"
       },
       "flow": {
@@ -9014,8 +9022,7 @@
     "papers": {
       "notSaved": "Não foi guardado. Tente novamente.",
       "noPapers": {
-        "gathering": "Os artigos estão a caminho. Aparecem aqui à medida que chegam.",
-        "none": "Esta triagem ainda não tem artigos."
+        "gathering": "Os artigos estão a caminho. Aparecem aqui à medida que chegam."
       },
       "sort": {
         "peopleShut": "Esta triagem oculta os votos das outras pessoas nos artigos em que ainda não votou, e esta ordem revelá-los-ia",
@@ -9036,6 +9043,7 @@
       },
       "settledBy": "{you, select, true {Decidido por si} other {Decidido por {name}}}",
       "votedToast": "Votou {decision} em {count, plural, one {# artigo} other {# artigos}}",
+      "votedSince": "{count, plural, one {# recebeu um voto entretanto e mantém-no} other {# receberam um voto entretanto e mantêm-no}}",
       "settledToast": "{count, number} decididos como {result}",
       "undo": "Anular",
       "filter": {
@@ -9093,6 +9101,7 @@
         "all": "{count, plural, other {Selecionar todos os #}}",
         "voteAs": "{count, plural, one {Votar # que espera por você como} other {Votar os # que esperam por você como}}",
         "notYours": "{count, plural, one {# outro não espera seu voto} other {# outros não esperam seu voto}}",
+        "noneYours": "{count, plural, one {Este artigo não espera o seu voto} other {Nenhum destes # espera o seu voto}}",
         "settleAs": "{count, plural, other {Decidir # em conflito como}}",
         "ris": "Ficheiro RIS, para um gestor de referências",
         "csvSeen": "Ficheiro CSV, com os votos que pode ver",
@@ -9180,6 +9189,7 @@
         "overrideSays": "O que escolher substitui o resultado que os votos deram. Os votos ficam registados. Reabrir retira o que escolheu, e os votos voltam a decidir o resultado.",
         "yetToVote": "{who, select, you {Ainda não votou. O que escolher decide o artigo sem esse voto e retira-o da sua lista.} one {{names} ainda não votou. O que escolher decide o artigo sem esse voto e retira-o da lista dessa pessoa.} withYou {{names} ainda não votaram. O que escolher decide o artigo sem esses votos e retira-o das vossas listas.} other {{names} ainda não votaram. O que escolher decide o artigo sem esses votos e retira-o das listas dessas pessoas.}}",
         "cancel": "Cancelar",
+        "takeBack": "Retirar o meu voto",
         "afterYouVote": "Depois de votar"
       }
     },

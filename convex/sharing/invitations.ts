@@ -4,7 +4,7 @@
  * old. Whoever accepts must have the invited address verified on their account, which Clerk
  * confirms (./mail.ts).
  */
-import { makeFunctionReference } from "convex/server";
+import { makeFunctionReference, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -75,14 +75,14 @@ export const expire = internalMutation({
 /** What an invitation's email says, or null once it no longer waits or its item is gone. */
 export const readDelivery = internalQuery({
   args: { invitationId: v.id("itemInvitations") },
-  returns: v.union(v.null(), v.object({ email: v.string(), kind: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string() })),
+  returns: v.union(v.null(), v.object({ email: v.string(), kind: sharedKindValidator, word: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string() })),
   handler: async (ctx, { invitationId }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
     if (!invitation || !shares(invitation) || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const shared = await invitedTo(ctx, invitation);
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     if (!shared || !inviter) return null;
-    return { email: invitation.email, kind: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId) };
+    return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId) };
   },
 });
 
@@ -221,3 +221,27 @@ export const getAction = defineUserQuery({
 });
 export const get = userQuery(getAction);
 export const getForAssistant = assistantQuery(getAction);
+
+export const waitingAction = defineUserQuery({
+  path: "sharing/invitations:waiting",
+  description: "The invitations to items that wait for the person's answer, sent to any address of theirs, the newest first: each one's ID, the item's kind, ID and name, what it lets them do, who sent it and the workspace the item is in. Given a `kind`, only those to that kind of item. Answer one with `sharing/invitations:respond`.",
+  args: { kind: v.optional(sharedKindValidator) },
+  // All of them, as one page: an address holds a few at most.
+  returns: paginationResultValidator(v.object({ invitationId: v.id("itemInvitations"), kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator })),
+  run: async (ctx, { userId }, { kind }) => {
+    const reader = await ctx.db.get("users", userId);
+    if (!reader) return { page: [], isDone: true, continueCursor: "" };
+    // An address holds at most MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL waiting, to anything: all of them are one read.
+    const waiting = (await Promise.all(addressesOf(reader).map((email) => ctx.db.query("itemInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).order("desc").take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL))))
+      .flat().filter((invitation) => (!kind || invitation.kind === kind) && invitation.expiresAt > Date.now()).sort((a, b) => b._creationTime - a._creationTime);
+    const page = (await Promise.all(waiting.map(async (invitation) => {
+      if (!shares(invitation)) return [];
+      const [shared, inviter] = await Promise.all([invitedTo(ctx, invitation), ctx.db.get("users", invitation.invitedBy)]);
+      if (!shared) return [];
+      return [{ invitationId: invitation._id, kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role, by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) }, from: await workspaceFrom(ctx, shared.workspaceId) }];
+    }))).flat();
+    return { page, isDone: true, continueCursor: "" };
+  },
+});
+export const waiting = userQuery(waitingAction);
+export const waitingForAssistant = assistantQuery(waitingAction);

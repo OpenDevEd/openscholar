@@ -30,8 +30,6 @@ import { useWords } from "./words";
 import type { Pdfs } from "@/lib/pricing/estimate";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
-/** The people shared with from outside and the invitations looked through for an address typed. */
-const SHARED_LOOKED = 50;
 export function AddPerson({ exclude, screening, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   const words = useWords();
@@ -53,11 +51,11 @@ export function AddPerson({ exclude, screening, onPick, children }: { exclude: s
   // Someone typed as an address who is a member is added as that member, never invited. One already on it, or invited to it, is said to be.
   const known = email ? found?.page.find((person) => person.email.toLowerCase() === email) : undefined;
   const member = known && !exclude.includes(known.id) ? known : undefined;
-  // The people it is shared with from outside and its invitations, as the People dialog reads them.
-  const shared = inWorkspace(workspaceId, screening && (open || near) ? { kind: "screening" as const, id: screening } : "skip");
-  const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: SHARED_LOOKED });
-  const invitations = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: SHARED_LOOKED });
-  const sharedRead = !screening || (guests.status !== "LoadingFirstPage" && invitations.status !== "LoadingFirstPage");
+  // Whoever it is shared with from outside, or invited to it, under the address typed: looked up by it, however many guests it has.
+  const shared = inWorkspace(workspaceId, screening && email && open ? { kind: "screening" as const, id: screening, email } : "skip");
+  const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: 1 });
+  const invitations = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: 1 });
+  const sharedRead = !screening || !email || (guests.status !== "LoadingFirstPage" && invitations.status !== "LoadingFirstPage");
   const invitedAlready = email !== null && (exclude.includes(`invite:${email}`) || invitations.results.some((one) => one.email.toLowerCase() === email));
   // Someone it is shared with from outside is added as that guest, never invited: already a reviewer, they are said to be on it.
   const guest = email === null ? undefined : guests.results.find((one) => one.email.toLowerCase() === email);
@@ -89,7 +87,7 @@ export function AddPerson({ exclude, screening, onPick, children }: { exclude: s
                 ))}
               </div>
             ) : null}
-            <CommandEmpty>{email || found === undefined ? null : text.trim() ? t("nobodyByName") : t("nobodyElse")}</CommandEmpty>
+            <CommandEmpty>{email || found === undefined ? null : <><span className="block font-medium">{text.trim() ? t("nobodyByName") : t("nobodyElse")}</span><span className="mt-1 block text-muted-foreground">{t("inviteHint")}</span></>}</CommandEmpty>
             {left.length ? (
               <CommandGroup heading={words.t("person.member")} className={cn("transition-opacity", stale && "opacity-60")}>
                 {left.map((person) => (

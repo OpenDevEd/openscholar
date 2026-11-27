@@ -170,10 +170,10 @@ export const correctDoi = workspaceAction({
     if (!now) throw createError("VALIDATION_ERROR", "That isn't a DOI. A DOI starts with 10. and has a slash.");
     const file: Id<"_storage"> = await ctx.runQuery(internal.screening.living.doisOf, { sourceId, userId: actor.userId, workspaceId: actor.workspaceId });
     const dois = (await textOf(ctx, file)).split("\n").filter(Boolean);
-    // The DOI takes the place of the one it corrects, and is in the list once.
-    const kept = [...new Set(dois.map((doi) => (doi === was ? now : doi)))];
+    // The DOI takes the place of the one it corrects, in the same place: each DOI of the list is known by where it stands, so nothing after it moves. One that is now there twice is read as a duplicate.
+    const kept = dois.map((doi) => (doi === was ? now : doi));
     const next = was === now ? file : await ctx.storage.store(new Blob([kept.join("\n")], { type: "text/plain" }));
-    await ctx.runMutation(internal.screening.living.swapDois, { sourceId, was: file, file: next, userId: actor.userId, workspaceId: actor.workspaceId });
+    await ctx.runMutation(internal.screening.living.swapDois, { sourceId, was: file, file: next, ...(was && was !== now ? { from: was, to: now } : {}), userId: actor.userId, workspaceId: actor.workspaceId });
     return next;
   },
 });
@@ -258,8 +258,8 @@ export async function handedPapers(ctx: ActionCtx, source: Held, from: number, t
       const paper = known ?? (record && fromRecord(record, paperKey({ source: "upload", file: `${set.file}.${from + at}` })));
       return paper ? [{ ...paper, record: String(from + at) }] : [];
     });
-    // A DOI is in the list once (`keepDois`): it names what is left out of it, so a step given twice leaves it out once.
-    return { papers, left: dois.filter((doi) => !found.has(doi) && !elsewhere.has(doi)).map((doi) => ({ name: doi, why: "record" as const, key: doi })) };
+    // A DOI names what is left out of it, so one there twice (a correction to a DOI already in the list) is left out once.
+    return { papers, left: [...new Set(dois.filter((doi) => !found.has(doi) && !elsewhere.has(doi)))].map((doi) => ({ name: doi, why: "record" as const, key: doi })) };
   }
   const kept = source.resume ? await ctx.storage.get(source.resume as Id<"_storage">) : null;
   if (!kept) throw createError("NOT_FOUND", "This file's records are gone. Add it again.");
