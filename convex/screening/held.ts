@@ -156,6 +156,28 @@ export const keepDois = workspaceAction({
   },
 });
 
+/**
+ * Corrects a DOI of a pasted list that the screening couldn't find, or tries it again as it is (`to` the same): the
+ * list is kept anew with it, and its source is read again from its start (./living.ts `swapDois`).
+ */
+export const correctDoi = workspaceAction({
+  args: { sourceId: v.id("screeningSources"), from: v.string(), to: v.string() },
+  // The list the source reads now, which the form that is starting the screening takes in place of the one it had.
+  returns: v.id("_storage"),
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  handler: async (ctx, actor, { sourceId, from, to }): Promise<Id<"_storage">> => {
+    const [was, now] = [normalDoi(from), normalDoi(to)];
+    if (!now) throw createError("VALIDATION_ERROR", "That isn't a DOI. A DOI starts with 10. and has a slash.");
+    const file: Id<"_storage"> = await ctx.runQuery(internal.screening.living.doisOf, { sourceId, userId: actor.userId, workspaceId: actor.workspaceId });
+    const dois = (await textOf(ctx, file)).split("\n").filter(Boolean);
+    // The DOI takes the place of the one it corrects, and is in the list once.
+    const kept = [...new Set(dois.map((doi) => (doi === was ? now : doi)))];
+    const next = was === now ? file : await ctx.storage.store(new Blob([kept.join("\n")], { type: "text/plain" }));
+    await ctx.runMutation(internal.screening.living.swapDois, { sourceId, was: file, file: next, userId: actor.userId, workspaceId: actor.workspaceId });
+    return next;
+  },
+});
+
 /** Who a source is read as, and the model that reads a PDF's own first pages, with what it costs, whether it takes a PDF as a file, and what the workspace has. */
 export const reader = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces") },

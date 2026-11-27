@@ -8221,6 +8221,11 @@
         "questionPlaceholder": "Por exemplo, «As refeições escolares melhoram a aprendizagem no ensino básico?»"
       },
       "papers": {
+        "correctDoi": "Corrigir",
+        "correctDoiFor": "O DOI {doi}, como deve ser",
+        "tryAgain": "Tentar de novo",
+        "cancel": "Cancelar",
+        "doiAgain": "A lista é lida de novo. Um DOI encontrado desta vez entra na triagem",
         "wholeSource": "lê a fonte inteira",
         "fromAll": "lê todos os {total, number} na fonte",
         "fromRange": "lê os artigos {first} a {last} dos {total, number} na fonte",
@@ -9020,6 +9025,7 @@
         "byPlaceLabel": "Pela ordem de atribuição"
       },
       "settledBy": "{you, select, true {Decidido por si} other {Decidido por {name}}}",
+      "votedToast": "Votou {decision} em {count, plural, one {# artigo} other {# artigos}}",
       "settledToast": "{count, number} decididos como {result}",
       "undo": "Anular",
       "filter": {
@@ -9075,6 +9081,8 @@
         "selected": "{count, plural, one {# selecionado} other {# selecionados}}",
         "everyPage": "Selecionar todas as páginas",
         "all": "{count, plural, other {Selecionar todos os #}}",
+        "voteAs": "{count, plural, one {Votar # que espera por você como} other {Votar os # que esperam por você como}}",
+        "notYours": "{count, plural, one {# outro não espera seu voto} other {# outros não esperam seu voto}}",
         "settleAs": "{count, plural, other {Decidir # em conflito como}}",
         "ris": "Ficheiro RIS, para um gestor de referências",
         "csvSeen": "Ficheiro CSV, com os votos que pode ver",

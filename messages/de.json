@@ -8221,6 +8221,11 @@
         "questionPlaceholder": "Etwa „Verbessert Schulessen das Lernen in Grundschulen?“"
       },
       "papers": {
+        "correctDoi": "Korrigieren",
+        "correctDoiFor": "Die DOI {doi}, wie sie sein soll",
+        "tryAgain": "Erneut versuchen",
+        "cancel": "Abbrechen",
+        "doiAgain": "Die Liste wird erneut gelesen. Eine DOI, die diesmal gefunden wird, kommt ins Screening",
         "wholeSource": "liest die ganze Quelle",
         "fromAll": "liest alle {total, number} in der Quelle",
         "fromRange": "liest Artikel {first} bis {last} der {total, number} in der Quelle",
@@ -9020,6 +9025,7 @@
         "byPlaceLabel": "In der Reihenfolge der Zuweisung"
       },
       "settledBy": "{you, select, true {Von Ihnen entschieden} other {Von {name} entschieden}}",
+      "votedToast": "{count, plural, one {# Artikel} other {# Artikel}} mit {decision} abgestimmt",
       "settledToast": "{count, number} als {result} entschieden",
       "undo": "Rückgängig",
       "filter": {
@@ -9075,6 +9081,8 @@
         "selected": "{count, plural, other {# ausgewählt}}",
         "everyPage": "Alle Seiten auswählen",
         "all": "{count, plural, other {Alle # auswählen}}",
+        "voteAs": "{count, plural, other {Über # wartende abstimmen als}}",
+        "notYours": "{count, plural, one {# weiterer wartet nicht auf Ihre Stimme} other {# weitere warten nicht auf Ihre Stimme}}",
         "settleAs": "{count, plural, other {# im Konflikt entscheiden als}}",
         "ris": "RIS-Datei, für ein Literaturverwaltungsprogramm",
         "csvSeen": "CSV-Datei, mit den Stimmen, die Sie sehen können",

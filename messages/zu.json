@@ -8220,6 +8220,11 @@
         "questionPlaceholder": "Njengokuthi “Ingabe ukudla kwasesikoleni kuthuthukisa ukufunda ezikoleni zamabanga aphansi?”"
       },
       "papers": {
+        "correctDoi": "Lilungise",
+        "correctDoiFor": "I-DOI {doi}, njengoba kufanele ibe",
+        "tryAgain": "Zama futhi",
+        "cancel": "Khansela",
+        "doiAgain": "Uhlu lufundwa futhi. I-DOI etholakala kulokhu ijoyina ukuhlunga",
         "wholeSource": "ifunda wonke umthombo",
         "fromAll": "ifunda wonke angu-{total, number} emthonjeni",
         "fromRange": "ifunda amaphepha {first} kuya ku-{last} kwangu-{total, number} emthonjeni",
@@ -9019,6 +9024,7 @@
         "byPlaceLabel": "Njengoba enikeziwe"
       },
       "settledBy": "{you, select, true {Kuxazululwe nguwe} other {Kuxazululwe ngu-{name}}}",
+      "votedToast": "Uvotile {decision} ku-{count, number}",
       "settledToast": "Kuxazululwe {count, number} njengokuthi {result}",
       "undo": "Hlehlisa",
       "filter": {
@@ -9074,6 +9080,8 @@
         "selected": "{count, plural, other {# akhethiwe}}",
         "everyPage": "Khetha wonke amakhasi",
         "all": "{count, plural, other {Khetha onke angu-#}}",
+        "voteAs": "{count, plural, other {Vota ku-# akulindile njengo}}",
+        "notYours": "{count, plural, other {Amanye angu-# awalindile ivoti lakho}}",
         "settleAs": "{count, plural, other {Xazulula # angqubuzanayo njengokuthi}}",
         "ris": "Ifayela le-RIS, lomphathi wezinkomba",
         "csvSeen": "Ifayela le-CSV, elinamavoti ongawabona",
