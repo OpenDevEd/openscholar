@@ -8846,6 +8846,7 @@
         "doneIn": "大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后完成"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, other {# 位受邀审阅人加入后即可比较}}",
         "reading": "正在阅读",
         "creditsSpent": "已用 {credits, plural, other {# 积分}}",
         "done": "已完成",

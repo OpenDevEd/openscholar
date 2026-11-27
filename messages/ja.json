@@ -8846,6 +8846,7 @@
         "doneIn": "約 {weeks, plural, =0 {{days, plural, other {# 日}}} other {# 週間}}で完了"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, other {招待した # 人が参加すると比較できます}}",
         "reading": "読み取り中",
         "creditsSpent": "{credits, plural, other {# クレジット使用}}",
         "done": "完了",

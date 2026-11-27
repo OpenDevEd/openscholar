@@ -8847,6 +8847,7 @@
         "doneIn": "Termina dentro de cerca de {weeks, plural, =0 {{days, plural, =1 {um dia} other {# dias}}} one {# semana} other {# semanas}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Comparado quando o revisor convidado aderir} other {Comparado quando os # revisores convidados aderirem}}",
         "reading": "A ler",
         "creditsSpent": "{credits, plural, one {# crédito gasto} other {# créditos gastos}}",
         "done": "Terminado",

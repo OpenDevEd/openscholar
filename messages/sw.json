@@ -8847,6 +8847,7 @@
         "doneIn": "Atamaliza baada ya takriban {weeks, plural, =0 {{days, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Italinganishwa mkaguzi aliyealikwa akijiunga} other {Italinganishwa wakaguzi # walioalikwa wakijiunga}}",
         "reading": "Inasoma",
         "creditsSpent": "{credits, plural, one {Krediti # imetumika} other {Krediti # zimetumika}}",
         "done": "Amemaliza",

@@ -8847,6 +8847,7 @@
         "doneIn": "Fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {Vergleich, sobald die eingeladene Person beitritt} other {Vergleich, sobald die # eingeladenen Personen beitreten}}",
         "reading": "Liest",
         "creditsSpent": "{credits, plural, one {# Credit} other {# Credits}} ausgegeben",
         "done": "Fertig",

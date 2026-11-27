@@ -8846,6 +8846,7 @@
         "doneIn": "लगभग {weeks, plural, =0 {{days, plural, =1 {एक दिन} other {# दिन}}} one {# सप्ताह} other {# सप्ताह}} में पूरा"
       },
       "row": {
+        "untilInvitedJoin": "{count, plural, one {आमंत्रित समीक्षक के जुड़ने पर तुलना होगी} other {# आमंत्रित समीक्षकों के जुड़ने पर तुलना होगी}}",
         "reading": "पढ़ रहा है",
         "creditsSpent": "{credits, plural, one {# क्रेडिट खर्च} other {# क्रेडिट खर्च}}",
         "done": "पूरा",
