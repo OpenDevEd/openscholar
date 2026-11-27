@@ -128,7 +128,7 @@ export function ScreenPage() {
 }
 
 function Screen({ open }: { open: Open }) {
-  const { screening, toDo, conflicts } = open;
+  const { screening } = open;
   const t = useTranslations("screening.screen");
   const pieces = useTranslations("screening.pieces");
   const words = useWords();
@@ -237,6 +237,13 @@ function Screen({ open }: { open: Open }) {
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);
+  // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
+  const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
+  if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
+  const since = history.slice(base.at);
+  // A first vote on a paper takes it off To do; settling a paper that was in conflict takes it off Conflicts. Changing a vote or a settled result moves neither.
+  const toDo = Math.max(0, open.toDo - since.filter((one) => !one.resolved && one.queue === "todo" && one.before === null).length);
+  const conflicts = Math.max(0, open.conflicts - since.filter((one) => one.resolved && one.paper.result === "conflict").length);
   const last = history.findLast((one) => one.queue === queue) ?? null;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // The criterion being looked at on the open paper: the words marked for it stand out in the abstract, and Y, N and U answer it. It belongs to its paper, so another paper starts with none.
