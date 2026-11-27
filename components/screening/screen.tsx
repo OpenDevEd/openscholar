@@ -284,7 +284,7 @@ function Screen({ open }: { open: Open }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; queue: Queue; at: number }>>([]);
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
@@ -344,7 +344,8 @@ function Screen({ open }: { open: Open }) {
     }
     // Settling, what stood before is kept too: Undo puts back a settlement changed, as the drawer's does, not only one made.
     const settled = settledOf(paper);
-    const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, settledBefore: resolving && settled.resolvedBy ? settled : null, queue, at: Date.now() };
+    // Undo puts back only what you did: a settlement someone else made is theirs, and saving it again would put it in your name (the drawer's `mayUndo` is the same rule).
+    const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, settledBefore: resolving && settled.resolvedBy ? settled : null, mayUndo: !resolving || !settled.resolvedBy || settled.resolvedBy === open.me, queue, at: Date.now() };
     setHistory((all) => [...all, cast]);
     // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
     const refused = (error: unknown) => {
@@ -393,7 +394,7 @@ function Screen({ open }: { open: Open }) {
     else decideOn(decision, reason);
   };
   const undo = () => {
-    if (!last) return;
+    if (!last?.mayUndo) return;
     if (last.resolved) (last.settledBefore ? open.resolve(last.paper.id, last.settledBefore.final ?? null, last.settledBefore.note, last.settledBefore.reason) : open.resolve(last.paper.id, null)).catch(failed);
     else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null).catch(failed);
     openIt(last.paper);
@@ -642,7 +643,7 @@ function Screen({ open }: { open: Open }) {
 
   // What the reviewers say to each other about it, wherever its votes show. Drawn with the votes, in whichever of their two places is on the page.
   // Drawn twice, one for each width, with one draft between them: a window made narrower shows what was being written.
-  const discussion = paper && visible ? <div data-discussion><Discussion open={open} paper={paper} draft={talks[paper.id]} onDraft={(next) => setTalks((all) => ({ ...all, [paper.id]: next }))} /></div> : null;
+  const discussion = paper && visible ? <div data-discussion><Discussion open={open} paper={paper} draft={talks[paper.id]} onDraft={(update) => setTalks((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? { text: "", asking: null }) }))} /></div> : null;
   // Where the others' votes are still hidden, what they wrote is too, and the rule stands in its place.
   const noDiscussion = paper && !discussion ? <DiscussionShut open={open} /> : null;
   const said = paper?.messages ?? 0;
@@ -1127,7 +1128,7 @@ function Screen({ open }: { open: Open }) {
                   <div className="flex min-w-0 items-center gap-2">
                     {/* Named as the last one: it is about the paper before, not the one open. */}
                     <span className="flex shrink-0 items-center gap-1.5"><Named name={last.resolved ? t("bar.lastSettledAs") : t("bar.lastVote")}><span className="font-medium text-foreground">{last.resolved ? words.result(last.decision) : words.decision(last.decision)}</span></Named>{last.noted ? <Chip icon={PenLine} className="h-5 px-1.5">{t("note.label")}</Chip> : null}</span>
-                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />{t("bar.undo")}<Kbd className="pointer-coarse:hidden">Z</Kbd></Button>
+                    {last.mayUndo ? <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />{t("bar.undo")}<Kbd className="pointer-coarse:hidden">Z</Kbd></Button> : null}
                   </div>
                   {lastReason || last.paper.id !== paper.id || madeConflict || differ ? (
                     <div className="flex min-w-0 items-center gap-2">

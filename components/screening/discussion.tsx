@@ -60,7 +60,7 @@ const LINES = 50;
 /** What is being written on a paper, and to whom: held by the page where it draws the discussion in two places (Screen, by width), so both show the same draft. */
 export type DiscussionDraft = { text: string; asking: string | null };
 
-export function Discussion({ open, paper, draft: given, onDraft }: { open: Open; paper: Paper; draft?: DiscussionDraft; onDraft?: (next: DiscussionDraft) => void }) {
+export function Discussion({ open, paper, draft: given, onDraft }: { open: Open; paper: Paper; draft?: DiscussionDraft; /** Changes the draft from what it is at that moment, wherever it was last written. */ onDraft?: (update: (now: DiscussionDraft) => DiscussionDraft) => void }) {
   const { screening } = open;
   const t = useTranslations("screening.list");
   const { ago, firstName, t: shared } = useWords();
@@ -73,13 +73,8 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const draft = given ?? own;
   const setDraft = onDraft ?? setOwn;
   const { text, asking } = draft;
-  // What is in the field now, for a send that fails after the person has gone on writing: the line that wasn't sent comes back without taking their place.
-  const typed = useRef(text);
-  const setText = (next: string) => {
-    typed.current = next;
-    setDraft({ ...draft, text: next });
-  };
-  const setAsking = (next: string | null) => setDraft({ ...draft, asking: next });
+  const setText = (next: string) => setDraft((now) => ({ ...now, text: next }));
+  const setAsking = (next: string | null) => setDraft((now) => ({ ...now, asking: next }));
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
   const last = said.at(-1);
@@ -97,7 +92,7 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const send = () => {
     const words = text.trim();
     if (!words) return;
-    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(typed.current.trim() ? `${words}\n\n${typed.current}` : words); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
+    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setDraft((now) => ({ ...now, text: now.text.trim() ? `${words}\n\n${now.text}` : words })); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };
