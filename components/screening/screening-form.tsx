@@ -1442,7 +1442,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </RuleRow>
               <RuleRow name={t("decided.settledBy")} help={<Help title={t("decided.conflictsTitle")}>{t("decided.conflictsHelp")}</Help>}>
                 {!conflicts ? (
-                  <Chip icon={Check}>{draft.rule.settle === "one" ? t("decided.noConflicts") : t("decided.oneVoteEach")}</Chip>
+                  <Chip icon={Check} className={SENTENCE_CHIP}>{draft.rule.settle === "one" ? t("decided.noConflicts") : t("decided.oneVoteEach")}</Chip>
                 ) : joined.length ? (
                   <Select value={joined.some((person) => person.id === draft.rule.resolver) ? draft.rule.resolver : joined[0]!.id} onValueChange={(next) => set({ rule: { ...draft.rule, resolver: next } })}>
                     <SelectTrigger aria-label={t("decided.whoSettles")} className="h-8 w-56 rounded-full px-3.5 text-xs"><SelectValue /></SelectTrigger>
@@ -1724,11 +1724,14 @@ function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKee
 }
 
 /** One choice of the rule: its name and "?" on the left, and the choice on the right with a live figure beside it where there is one. */
+/** A chip that holds a sentence: on a narrow screen it wraps inside the row, its icon on the first line, rather than running past the edge. */
+const SENTENCE_CHIP = "h-auto min-h-6 shrink items-start whitespace-normal py-1 [&>svg]:mt-px";
+
 function RuleRow({ name, help, detail, children }: { name: string; help: ReactNode; detail?: string; children: ReactNode }) {
   return (
     <div className="flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
       <p className="flex min-w-48 flex-1 items-center gap-1 text-sm font-medium">{name}{help}</p>
-      {detail ? <Chip>{detail}</Chip> : null}
+      {detail ? <Chip className={SENTENCE_CHIP}>{detail}</Chip> : null}
       {children}
     </div>
   );

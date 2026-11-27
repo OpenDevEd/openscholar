@@ -1234,6 +1234,23 @@ function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: {
 }
 
 /** Each reviewer's answer to each criterion, and their vote: who said what. */
+/**
+ * Brings what just opened into view above the vote bar, by its own measure. The browser's scrollIntoView stops at the
+ * table's sideways scroller, which shows it whole already, and on a phone the page never moved: the passage opened
+ * behind the bar. It moves whatever scrolls up and down around it, never so far that the top leaves the view.
+ */
+function revealOverBar(node: HTMLElement) {
+  let scroller: Element | null = node.parentElement;
+  while (scroller && !(/(auto|scroll)/.test(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight)) scroller = scroller.parentElement;
+  const page = !scroller || scroller === document.body || scroller === document.documentElement;
+  const view = page ? { top: 0, bottom: window.innerHeight } : scroller!.getBoundingClientRect();
+  const bar = [...document.querySelectorAll<HTMLElement>("[data-action-bar]")].find((one) => one.getClientRects().length)?.getBoundingClientRect();
+  const floor = Math.min(view.bottom, bar && bar.top > view.top ? bar.top : view.bottom) - 12;
+  const box = node.getBoundingClientRect();
+  const by = Math.min(box.bottom - floor, box.top - view.top - (view.bottom - view.top) / 4);
+  if (by > 0) (page ? window : scroller!).scrollBy({ top: by, behavior: "smooth" });
+}
+
 export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, settled = false, passage }: {
   criteria: Criterion[];
   cast: Array<{ reviewer: Reviewer; vote?: Vote; failed?: boolean; /** They voted, and how is kept from the person looking. */ hidden?: boolean }>;
@@ -1295,7 +1312,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
             {/* The passage opens under its own row. It takes the grid's width and never widens it. It has no margin of its own, so closed it takes no room at all. */}
             <AnimatePresence initial={false}>
               {passage && shown?.criterion === criterion.key ? (
-                <motion.div ref={opened} key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} onAnimationComplete={() => opened.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })} className="col-span-full my-0! overflow-hidden [contain:inline-size] max-lg:scroll-mb-48">
+                <motion.div ref={opened} key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} onAnimationComplete={() => opened.current && revealOverBar(opened.current)} className="col-span-full my-0! overflow-hidden [contain:inline-size]">
                   <div className="py-[7px]">{passage}</div>
                 </motion.div>
               ) : null}
