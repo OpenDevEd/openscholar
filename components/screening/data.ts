@@ -106,7 +106,10 @@ export type SourceRead = { state: "waiting" | "reading" | "done" | "failed"; fai
 export type Source = {
   id: string;
   kind: SourceKind;
+  /** In the reader's language where it has no name of its own (`untitled`): a search with no words is "No query". */
   name: string;
+  /** It has no name of its own, so it is saved with none and every reader names it in their own language. */
+  untitled?: boolean;
   detail: string;
   total: number;
   scope: "all" | "range";

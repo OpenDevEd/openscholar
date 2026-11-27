@@ -93,13 +93,13 @@ const OFFER_PAGE = 5;
 /** Collections one page of the places included papers can go holds. */
 const DESTINATION_PAGE = 6;
 /** Something a tab offers to add: what the server reads it from, the name its list gave it, and how many papers that list counted. `ref` tells two apart where they share a name. */
-type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[] };
+type Offer = { ref: string; name: string; detail: string; total: number; set: NonNullable<Source["set"]>; filters?: string[]; questions?: string[]; /** Named for the reader, with no name of its own (./data.ts `Source`). */ untitled?: boolean };
 /** A list read a page at a time, as its pager needs it. */
 /** A saved search as something to add, with the questions its own page screens with. */
 /** A saved search as a source to add. One run with no words, on its filters alone, is named "No query", as the History page names it. */
-const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `search:${search.id}`, name: search.query.trim() || noQuery, detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
+const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `search:${search.id}`, name: search.query.trim() || noQuery, ...(search.query.trim() ? {} : { untitled: true }), detail: "", total: search.count, set: { kind: "search", searchId: search.id }, questions: search.screeningQuestions.map((one) => one.question) });
 /** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
-const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
+const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, ...(offer.untitled ? { untitled: true } : {}), detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
 /** A criterion made from a question as it was written. */
 const criterionFrom = (question: string, more: { short?: string; terms?: string[] } = {}): Criterion => ({ key: `new:${hash(question)}`, text: question, short: more.short ?? shortOf(question), must: true, terms: more.terms ?? [], addedAt: Date.now() });
 
@@ -138,7 +138,7 @@ const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.
 const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : taken(source));
 /** A source the server hasn't read yet, as its row shows it. */
 const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
-const sourceOf = (source: Source) => ({ set: source.set as never, name: source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
+const sourceOf = (source: Source) => ({ set: source.set as never, name: source.untitled ? "" : source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
 const saveToOf = (say: Say, screening: Screening) =>
   screening.destination.kind === "community" && screening.destination.community
     ? screening.destination.community.collection === "new"
@@ -382,7 +382,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
       const name = rowLabel(handed.row);
-      return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, detail: t("inLibrary", { name: handed.library.name }), total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
+      return { ...start, name: name.slice(0, 200), sources: [sourceFrom({ ref: `evidenceLibrary:${rowKey(handed.row)}`, name, ...(handed.row.what === "search" && !handed.row.label ? { untitled: true } : {}), detail: t("inLibrary", { name: handed.library.name }), total: handed.row.records, set: setOfRow(handed.row) as Offer["set"] })], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied) return start;
     // A copy takes the papers the one it copies took: the same part of each source. Whoever votes on that one from outside its workspace is not on the copy: a screening is shared with a guest once it exists (`guestsLeft`).

@@ -15,7 +15,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCredits, type Pdfs } from "@/lib/pricing/estimate";
 import { modelsProgress, twinsNamed, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import type { useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
 import { useWords, type Words } from "./words";
 
@@ -112,12 +112,13 @@ function toReviewer(row: Summary["reviewers"][number]): Reviewer {
 
 const toWorkspace = (workspace: Summary["workspace"]): Workspace => ({ id: workspace.id, kind: workspace.kind, name: workspace.name, ...(workspace.slug ? { slug: workspace.slug } : {}), ...(workspace.imageUrl ? { imageUrl: workspace.imageUrl } : {}), ...(workspace.colour ? { colour: workspace.colour } : {}) });
 
-function toSource(source: View["sources"][number]): Source {
+function toSource(source: View["sources"][number], noQuery: string): Source {
   const total = source.total ?? source.read;
   return {
     id: source.id,
     kind: source.set.kind,
-    name: source.name,
+    name: source.name || noQuery,
+    ...(source.name ? {} : { untitled: true }),
     detail: source.detail ?? "",
     ...(source.facts?.length ? { filters: source.facts } : {}),
     total,
@@ -132,10 +133,10 @@ function toSource(source: View["sources"][number]): Source {
 }
 
 /** Reviewers as a file names them, in English: someone whose account is gone as the server says it, and one model at two efforts by each effort. */
-const FILE_NAMES: Pick<Words, "modelAtEffort" | "person"> = { person: (name) => name, modelAtEffort: (name, effort) => `${name}, ${effort} effort` };
+const FILE_NAMES: Pick<Words, "modelAtEffort" | "person"> & { noQuery: string } = { person: (name) => name, modelAtEffort: (name, effort) => `${name}, ${effort} effort`, noQuery: "No query" };
 
 /** The screening in the shape its pages share. */
-function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">): Screening {
+function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person"> & { noQuery: string }): Screening {
   const criteria: Criterion[] = view.criteria.map(({ key, text, short, must, note, terms, addedAt, changedAt }) => ({ key, text, short, must, terms, addedAt, ...(changedAt ? { changedAt } : {}), ...(note ? { note } : {}) }));
   const people: Record<string, Person> = { [view.createdBy.id]: { ...view.createdBy, name: words.person(view.createdBy.name) }, [view.resolver.id]: { ...view.resolver, name: words.person(view.resolver.name) } };
   const grows = view.sources.filter((source) => source.removedAt === undefined && GROWS.includes(source.set.kind));
@@ -147,7 +148,7 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">)
     ...(view.finishedAt === undefined ? {} : { finishedAt: view.finishedAt }),
     ...(view.paused ? { paused: true } : {}),
     question: view.question ?? "",
-    sources: view.sources.filter((source) => source.removedAt === undefined).map(toSource),
+    sources: view.sources.filter((source) => source.removedAt === undefined).map((source) => toSource(source, words.noQuery)),
     criteria,
     retired: view.retired,
     reviewers: toReviewers(view.reviewers, words),
@@ -175,7 +176,8 @@ export function useOpenScreening(id: string) {
   // With no screening named there is none to read: the form that starts a new one asks for the one it copies only where it copies one.
   const view = useProtectedQuery(api.screening.view.get, inWorkspace(useWorkspace(), id ? { jobId } : "skip")).data;
   const words = useWords();
-  const screening = useMemo(() => (view ? toScreening(view, words) : null), [view, words]);
+  const noQuery = useTranslations("common")("noQuery");
+  const screening = useMemo(() => (view ? toScreening(view, { ...words, noQuery }) : null), [view, words, noQuery]);
   // The same screening with its reviewers named as a file names them: a file's words are English whoever takes it out (./export.ts).
   const filed = useMemo(() => (view ? toScreening(view, FILE_NAMES) : null), [view]);
   const vote = useWorkspaceMutation(api.screening.voting.vote);

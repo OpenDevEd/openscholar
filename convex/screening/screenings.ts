@@ -299,7 +299,8 @@ export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, us
   if (first !== undefined && (!Number.isSafeInteger(first) || first < 1)) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (last !== undefined && (!Number.isSafeInteger(last) || last < (first ?? 1))) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if ((await sourcesOf(ctx, jobId)).length >= MAX_SOURCE_ROWS) throw createError("VALIDATION_ERROR", "This screening has had as many sources as one can have. Start another screening for more.");
-  return await ctx.db.insert("screeningSources", { jobId, set, name: name.trim().slice(0, SCREENING_TEXT.name) || "Papers", ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(facts?.length ? { facts: facts.slice(0, SOURCE_FACTS).map((fact) => fact.trim().slice(0, 120)).filter(Boolean) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
+  return await ctx.db.insert("screeningSources", { jobId, set, // A source with no name of its own (a search with no words) is saved with none: each reader's page names it in their language.
+    name: name.trim().slice(0, SCREENING_TEXT.name), ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(facts?.length ? { facts: facts.slice(0, SOURCE_FACTS).map((fact) => fact.trim().slice(0, 120)).filter(Boolean) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
 }
 
 /**
