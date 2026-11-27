@@ -147,7 +147,8 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                       const i = at + (canInvite ? 1 : 0);
                       return <Suggestion key={candidate.key} active={i === active} onHover={() => setActive(i)} onPick={() => choose(i)} avatar={candidate.avatar} name={candidate.name} detail={candidate.detail} />;
                     })}
-                    {choices === 0 && !adding.more ? <li className="px-2.5 py-2 text-sm text-muted-foreground">{t("noCandidates")}</li> : null}
+                    {/* With the guest places full, nobody from outside can be invited: the list says why, not to type an email. */}
+                    {choices === 0 && !adding.more ? <li className="px-2.5 py-2 text-sm text-muted-foreground">{adding.outsideFull ?? t("noCandidates")}</li> : null}
                     {/* A page looks through only so many people, so more may follow even after an empty one. */}
                     {adding.more ? (
                       <li>

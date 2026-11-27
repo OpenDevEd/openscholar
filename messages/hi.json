@@ -5080,7 +5080,8 @@
       "otherTitle": "यह निमंत्रण किसी दूसरे पते पर भेजा गया था",
       "otherDetail": "अगर इस खाते में वह पता भी है तो इसे खोलें, या उस पते से साइन इन करें जिस पर यह भेजा गया था",
       "pointScreening": "{models, select, true {वोट देना मुफ़्त है। स्क्रीनिंग के AI मॉडलों का भुगतान {name} करता है।} other {वोट देना मुफ़्त है।}}",
-      "pointLooking": "इसे देखना मुफ़्त है"
+      "pointLooking": "इसे देखना मुफ़्त है",
+      "finishedVote": "पूरा चिह्नित है। फिर से खुलने पर आप वोट दे सकेंगे"
     },
     "notEmails": "{count, plural, one {यह ईमेल पता नहीं है: {values}. संगठन बनाने के लिए इसे ठीक करें या हटाएँ।} other {ये ईमेल पते नहीं हैं: {values}. संगठन बनाने के लिए इन्हें ठीक करें या हटाएँ।}}",
     "asRole": "{role} के रूप में",
@@ -8313,6 +8314,7 @@
         "checksAll": "{count, plural, one {स्रोत देखती है} other {सभी # स्रोत देखती है}}",
         "checksSome": "{count, plural, other {# स्रोतों में से {growing} देखती है}}",
         "nextCheck": "अगली जाँच {day}",
+        "finished": "पूरा चिह्नित रहने तक कोई जाँच नहीं",
         "firstCheck": "पहली जाँच {day}",
         "firstOnSave": "सहेजते ही पहली जाँच",
         "perNew": "{pdf, select, true {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}, PDF के रूप में पढ़ने पर ज़्यादा} other {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}}}",

@@ -5081,7 +5081,8 @@
       "otherTitle": "Este convite foi enviado para outro endereço",
       "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado",
       "pointScreening": "{models, select, true {Votar é grátis. {name} paga os modelos de IA da triagem.} other {Votar é grátis.}}",
-      "pointLooking": "Vê-lo é grátis"
+      "pointLooking": "Vê-lo é grátis",
+      "finishedVote": "Marcado como concluído. Pode votar quando for reaberto"
     },
     "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
     "asRole": "como {role}",
@@ -8314,6 +8315,7 @@
         "checksAll": "{count, plural, one {Verifica a fonte} other {Verifica todas as # fontes}}",
         "checksSome": "{count, plural, other {Verifica {growing} das # fontes}}",
         "nextCheck": "Próxima verificação {day}",
+        "finished": "Sem verificações enquanto estiver marcado como concluído",
         "firstCheck": "Primeira verificação {day}",
         "firstOnSave": "Primeira verificação assim que isto for guardado",
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artigo novo, mais se for lido como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artigo novo}}",

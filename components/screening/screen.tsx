@@ -46,7 +46,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead, rtl } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
@@ -287,7 +287,7 @@ function Screen({ open }: { open: Open }) {
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number }>>([]);
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number; pending?: Promise<unknown> }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
@@ -362,9 +362,11 @@ function Screen({ open }: { open: Open }) {
     const gap = history.length ? (Date.now() - history.at(-1)!.at) / 1000 : Infinity;
     if (gap < 300) setKept({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
     const stamped = (at: number | null) => { if (at !== null) (cast as { saved?: number }).saved = at; };
-    if (resolving) open.resolve(paper.id, decision, note, reason).then(stamped, refused);
-    // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
-    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).then(stamped, refused);
+    // Undo waits for this save's answer, so it always names the moment it took back.
+    (cast as { pending?: Promise<unknown> }).pending = resolving
+      ? open.resolve(paper.id, decision, note, reason).then(stamped, refused)
+      // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
+      : open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).then(stamped, refused);
     // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
     const fromSheet = tablet && reasonSheet !== null;
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
@@ -412,8 +414,12 @@ function Screen({ open }: { open: Open }) {
     // What it puts back is stamped anew: the step before it on the same paper names that moment, so a second Undo still works.
     const earlier = history.findLast((one) => one !== last && one.paper.id === last.paper.id && one.resolved === last.resolved);
     const restamp = (at: number | null) => { if (at !== null && earlier) earlier.saved = at; };
-    if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
-    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, last.saved === undefined ? {} : { onlyAt: last.saved }).then(restamp, failed);
+    void (last.pending ?? Promise.resolve()).then(() => {
+      // A save the server refused was never made: there is nothing to take back.
+      if (last.saved === undefined) return;
+      if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
+      else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then(restamp, failed);
+    });
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
   };
@@ -453,8 +459,9 @@ function Screen({ open }: { open: Open }) {
         else setListing((now) => !now);
       }
       else if (key === "?") setKeysOpen(true);
-      else if (key === "arrowright" || key === "j" || key === "s") go(at + 1);
-      else if (key === "arrowleft" || key === "k") go(at - 1);
+      // The arrows go the way the Next and Previous buttons point: in a right-to-left language, Next is on the left.
+      else if (key === (rtl() ? "arrowleft" : "arrowright") || key === "j" || key === "s") go(at + 1);
+      else if (key === (rtl() ? "arrowright" : "arrowleft") || key === "k") go(at - 1);
       else return;
       event.preventDefault();
     },
@@ -1089,7 +1096,7 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input dir="auto" maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
                         <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
@@ -1218,7 +1225,7 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
         ? [Hourglass, t("empty.onTheirWay"), null]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
         // Papers given out to someone else under a rule of so many people on each: said, so an empty To do isn't a fault.
-        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), next: open.screening.finishedAt ? "none" : open.screening.living ? "living" : open.canChange ? "move" : "none" }) : null]
+        : !yours ? [ListChecks, open.screening.living && !open.screening.finishedAt ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), next: open.screening.finishedAt ? "none" : open.screening.living ? "living" : open.canChange ? "move" : "none" }) : null]
         // A finished screening takes no vote: the papers it left without theirs are said, not passed off as voted on.
         : open.screening.finishedAt && yours > voted + closed ? [CircleCheck, t("empty.finished"), t("empty.unvoted", { count: yours - voted - closed })]
         : !closed ? [CircleCheck, t("empty.allVoted"), null]

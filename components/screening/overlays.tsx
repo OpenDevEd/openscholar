@@ -200,7 +200,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         }}
       />
       <ConfirmChange
-        open={over === "stopEmails" || (emailsLink === "off" && state.emails && (state.isReviewer || state.canResolve))}
+        open={over === "stopEmails" || (emailsLink === "off" && state.emails && (state.isReviewer || state.canResolve || state.guest === "editor"))}
         title={t("stopEmails.title")}
         confirm={t("stopEmails.confirm")}
         cancel={t("stopEmails.cancel")}
@@ -211,8 +211,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
       </ConfirmChange>
       {/* The link in an email that turns them off, followed when they are off already: it says so, with the way to have them again, never a page that does nothing. */}
       {(() => {
-        // Someone still on it can have them again. Anyone else gets none from it, whatever an old email offered.
-        const receives = state.isReviewer || state.canResolve;
+        // Someone still on it can have them again, a guest given it to vote on while it is finished among them. Anyone else gets none from it, whatever an old email offered.
+        const receives = state.isReviewer || state.canResolve || state.guest === "editor";
         return (
           <ConfirmChange
             open={emailsLink === "off" && !(state.emails && receives)}

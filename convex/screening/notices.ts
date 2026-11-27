@@ -47,11 +47,13 @@ export const context = internalQuery({
     const finished = job?.finishedAt !== undefined;
     if (!job || (finished && about !== "joined") || user?.state !== "active" || row?.off) return null;
     // Only to someone who can still open it: in its workspace, or a guest it is shared with.
-    if (!(await actorIn(ctx, user, job.workspaceId)) && !(await grantOf(ctx, job._id, userId))) return null;
+    const inside = Boolean(await actorIn(ctx, user, job.workspaceId));
+    if (!inside && !(await grantOf(ctx, job._id, userId))) return null;
     const workspace = await ctx.db.get("workspaces", job.workspaceId);
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
     // A member opens it in its workspace, and a guest in their own.
-    const member = organization ? Boolean(await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active")).first()) : false;
+    // A member opens it in its workspace, and a guest in their own: membership was read just above.
+    const member = Boolean(organization) && inside;
     const progress = await progressRow(ctx, jobId);
     const reviewer = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first();
     const on = reviewer && reviewer.left === undefined ? reviewer : null;

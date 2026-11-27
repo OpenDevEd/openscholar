@@ -4,6 +4,7 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { nameHas } from "@/lib/screening/rules";
 import { collectionHref } from "@/lib/library/links";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useDeferredValue, useState } from "react";
@@ -11,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Building2, Check, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, MessageSquare, Search, SearchX, Share2, Unlink, UserRound, X, type AppIcon } from "@/components/icons";
+import { Building2, Check, CircleCheck, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, MessageSquare, Search, SearchX, Share2, Unlink, UserRound, X, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -76,7 +77,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
   const rows = loading ? kept : results;
   // The invitations come with the page, from the first frame: the rows never move down for them.
   const invitations = useWaitingInvitations(initial?.invitations);
-  const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle.toLowerCase())));
+  const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && nameHas(row.name, needle));
   const kinds = (Object.keys(SHARED_KINDS) as SharedKind[]).filter((one) => counts?.[one]);
 
   return (
@@ -318,6 +319,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
         <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{invitation.kind === "screening" ? t("pointOwnScreening") : t("pointOwn")}</Point>
         {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
         <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? (invitation.role === "editor" ? t("pointScreening", { name: invitation.from.name, models: String(invitation.models) }) : t("pointLooking")) : t("pointCredits")}</Point>
+        {invitation.kind === "screening" && invitation.role === "editor" && invitation.finished ? <Point lead={<Tile icon={CircleCheck} tint="#34d399" className="size-8" />}>{t("finishedVote")}</Point> : null}
       </ul>
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}
@@ -346,8 +348,8 @@ export function WaitingInvitations({ rows, kind, text = "" }: { rows: WaitingInv
   const router = useRouter();
   const respond = useWorkspaceAction(api.sharing.invitations.respond);
   const [answering, setAnswering] = useState<string | null>(null);
-  const needle = text.trim().toLowerCase();
-  const shown = (rows ?? []).filter((row) => (!kind || row.kind === kind) && (!needle || row.name.toLowerCase().includes(needle)));
+  // Matched as the lists match their own rows: every word, in any order.
+  const shown = (rows ?? []).filter((row) => (!kind || row.kind === kind) && nameHas(row.name, text.trim()));
   if (!shown.length) return null;
   const answer = (row: WaitingInvitation, accept: boolean) => {
     setAnswering(row.invitationId);
@@ -381,6 +383,8 @@ export function WaitingInvitations({ rows, kind, text = "" }: { rows: WaitingInv
             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span className="flex min-w-0 items-center gap-1.5"><IdentityAvatar name={row.by.name} imageUrl={row.by.imageUrl} className="size-4" /><span>{t(`sharedOne.${row.kind}`, { name: row.by.name })}</span></span>
               <GuestChips from={row.from} role={row.role} votes={row.kind === "screening"} />
+              {/* As its email says: a finished screening takes votes once it is reopened. */}
+              {row.kind === "screening" && row.role === "editor" && row.finished ? <span>{t("finishedVote")}</span> : null}
             </span>
           </div>
           <div className="ms-auto flex shrink-0 items-center gap-1">

@@ -272,6 +272,8 @@ export type RetiredCriterion = Pick<Criterion, "key" | "text" | "short" | "must"
 /** The criteria a reason can name: the screening's, and the ones taken off that a result kept through the change was excluded for. */
 export const reasonCriteria = (screening: Pick<Screening, "criteria" | "retired">): RetiredCriterion[] => [...screening.criteria, ...screening.retired];
 export type Screening = {
+  /** In Settings, the invitations to take back on Save: kept with the other unsaved changes. */
+  uninviting?: string[];
   id: Id<"screeningJobs">;
   /** Criteria taken off, which reasons kept from before still name. */
   retired: RetiredCriterion[];
@@ -426,3 +428,6 @@ export function collectionName(screening: Pick<Screening, "destination" | "name"
   // A collection there already is, in the workspace or in a community, has the name it has there.
   return to.name || null;
 }
+
+/** Whether the page reads right to left: the arrow keys then go the way its mirrored chevrons point. */
+export const rtl = () => typeof document !== "undefined" && document.documentElement.dir === "rtl";

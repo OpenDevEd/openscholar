@@ -152,8 +152,7 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
   // Questions put to them wait no more: they can't answer from here now. What was written stays on each paper.
-  // ponytail: the first 200 open questions to them; a reviewer asked more than that on one screening keeps the rest open.
-  if (reviewer.userId) for (const message of await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", job._id).eq("to", reviewer.userId!).eq("open", true)).take(200)) await ctx.db.patch("screeningMessages", message._id, { open: undefined });
+  if (reviewer.userId) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: reviewer.userId });
   const rule = job.rule;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
@@ -296,6 +295,18 @@ export const guestChanged = internalMutation({
   },
 });
 
+/** Closes the questions put to someone on one screening, a step at a time, once they can no longer answer them there. What was written stays on each paper. */
+export const closeQuestions = internalMutation({
+  args: { jobId: v.id("screeningJobs"), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { jobId, userId }) => {
+    const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(STEP);
+    for (const message of open) await ctx.db.patch("screeningMessages", message._id, { open: undefined });
+    if (open.length === STEP) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId });
+    return null;
+  },
+});
+
 /**
  * Takes someone who left an organization off its screenings: their votes stay and count, and the papers that waited
  * for them go to the others (`takeOff`). One the screening is shared with as a guest who votes stays on it.
@@ -318,6 +329,21 @@ export const memberLeft = internalMutation({
       await takeOff(ctx, job, reviewer, false);
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.memberLeft, { organizationId, clerkUserId, cursor: page.continueCursor });
+    else {
+      // The screenings they settle conflicts on, reviewer or not, pass to someone who can still open them: a person reviewing it, else whoever made it.
+      for (const status of ["processing", "completed"] as const) {
+        for (const job of await ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", person._id).eq("status", status)).take(STEP)) {
+          // One the screening is shared with to vote on still opens it, and still settles its conflicts.
+          if (job.workspaceId !== workspace._id || !job.rule || (await grantOf(ctx, job._id, person._id))?.role === "editor") continue;
+          const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one.kind === "person" && one.userId && one.userId !== person._id).flatMap((one) => one.userId ?? []);
+          const maker = job.createdBy !== person._id ? job.createdBy : undefined;
+          const next = people[0] ?? maker;
+          if (!next) continue;
+          await ctx.db.patch("screeningJobs", job._id, { rule: { ...job.rule, resolver: people.includes(job.createdBy) ? job.createdBy : next } });
+          await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
+        }
+      }
+    }
     return null;
   },
 });
