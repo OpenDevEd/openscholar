@@ -64,7 +64,7 @@
   },
   "pdf": {
     "known": "In the index",
-    "file": "Read as its PDF",
+    "file": "Read from the PDF",
     "broken": "Doesn't open",
     "waiting": "Reading it"
   },

@@ -5156,7 +5156,8 @@
       "authorZA": "著者 Z-A",
       "titleAZ": "タイトル A-Z",
       "titleZA": "タイトル Z-A"
-    }
+    },
+    "pagerItems": "件のソース"
   },
   "fromLibrary": {
     "title": "{library} から",
@@ -7785,7 +7786,7 @@
       "model": {
         "startsLater": "{name} は論文が届いてから開始します",
         "nothingToRead": "{name} が読む論文は残っていません",
-        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{upTo, select, true {最大{count, plural, other {論文 # 件}}} other {{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}}}を読みます"
+        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{upTo, select, true {誰も先に確定しない未確定の論文のうち、今日は最大{count, plural, other {論文 # 件}}} other {{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}}}を読みます"
       },
       "person": {
         "invited": "{name} にメールで招待が届き、参加すると論文が割り当てられます",
@@ -7897,6 +7898,7 @@
         "scheduledFound": "定期確認で{count, plural, other {論文 # 件}}が見つかりました{allNew, select, true {} other {。そのうち新しいものは {added, number} 件です}}",
         "scheduledNone": "定期確認では新しい論文は見つかりませんでした",
         "known": "{count, plural, other {# 件}}はすでにスクリーニングにありました",
+        "leftOut": "{count, plural, other {# 件を除きました}}",
         "joined": "{count, plural, other {論文 # 件}}がスクリーニングに加わりました",
         "reopenedByCheck": "スクリーニングが再び開きました",
         "changed": "{parts}を変更しました",
@@ -8258,6 +8260,9 @@
         "noSearches": "保存した検索はまだありません。",
         "nothingHere": "まだ何もありません。",
         "pagerSources": "件",
+        "pagerSearches": "件",
+        "pagerCollections": "件",
+        "pagerScreenings": "件",
         "pagerLeftOut": "件",
         "pagerMerged": "件",
         "mergedFrom": "{source} の論文と同じ論文",
@@ -8284,7 +8289,7 @@
         "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",
         "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
         "addToCheck": "確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
-        "lastSpent": "これらのモデルでの前回の確認の論文{count, plural, other {# 件}}で約{spent, plural, other {# クレジット}}"
+        "lastSpent": "前回の確認で約{spent, plural, other {# クレジット}}、{count, plural, other {論文 # 件}}"
       },
       "criteria": {
         "helpTitle": "必須基準と望ましい基準",
@@ -8356,9 +8361,9 @@
         "votesSplit": "投票が分かれる",
         "help": "論文への投票がルールの求めるとおりに一致すれば、論文の結果が確定します。一致しなければ不一致になり、1 人が判定します。",
         "each": "各論文の担当人数",
-        "factModels": "モデルは未確定の論文をすべて読みます",
+        "factModels": "モデルはまだ確定していない論文を読みます",
         "factEveryone": "「全員」には後から参加する人も含まれます",
-        "eachHelp": "各モデルは、参加した時点で未確定の論文をすべて読みます。ここでは各論文に何人が投票するかを決めます。論文は、各人が読む件数がほぼ同じになるように割り当てられます。数を指定した場合、人が加わってもその数のままです。「全員」は、今いる人と後から参加する人を含む、スクリーニングの全員です。",
+        "eachHelp": "各モデルは、参加した時点でまだ確定していない論文を読みます。ここでは各論文に何人が投票するかを決めます。論文は、各人が読む件数がほぼ同じになるように割り当てられます。数を指定した場合、人が加わってもその数のままです。「全員」は、今いる人と後から参加する人を含む、スクリーニングの全員です。",
         "everyone": "全員",
         "onePerson": "最初の投票で決まるため 1 人",
         "modelVotes": "モデルの投票",
@@ -8535,7 +8540,7 @@
         "papersRead": "{of, plural, other {論文 # 件}}中 {done, number} 件を読み取り済み",
         "turnsTitle": "モデルは順番に読みます",
         "atATime": "{count, plural, other {同時に # 件}}",
-        "turnsHelp": "{workspace} のモデルは同時に{count, plural, other {論文 # 件}}を読むため、別のスクリーニングの読み取り中に開始したスクリーニングは、その完了を待ちます。その間も人は投票できます。",
+        "turnsHelp": "{personal, select, true {あなたのモデル} other {{workspace} のモデル}}は同時に{count, plural, other {論文 # 件}}を読むため、別のスクリーニングの読み取り中に開始したスクリーニングは、その完了を待ちます。その間も人は投票できます。",
         "modelReading": "<model>{name}</model> が読み取り中",
         "modelsReading": "{count, plural, other {モデル # 個が読み取り中}}",
         "read": "{of, number} 件中 {done, number} 件"
@@ -8585,7 +8590,9 @@
         "title": "{name} をレビュアーとして追加しますか？",
         "confirm": "レビュアーとして追加",
         "noCriteria": "モデルは基準に答えて投票しますが、このスクリーニングにはまだ基準がありません。このままでは、読んだ論文をすべて採用します。",
-        "addCriteria": "基準を追加"
+        "addCriteria": "基準を追加",
+        "noMustHave": "モデルが論文を除外するのは、必須基準を満たさない場合だけです。この中に必須基準はないため、読んだ論文をすべて採用することになります。",
+        "markMustHave": "基準を必須にする"
       },
       "takeOff": {
         "viewerTitle": "{name} の投票をやめさせますか？",
@@ -8614,7 +8621,7 @@
         "personalElse": "ほかの人は共有された場合だけ参加できます。レビュアーとしては論文を割り当てられて投票し、閲覧者としてはすべての論文とすべての投票を見られます。",
         "membersSee": "{workspace} のメンバーはこのスクリーニングを閲覧、変更できます。そのうちレビュアーの人は論文を割り当てられて投票します。",
         "outsideHas": "{workspace} の外の人は共有された場合だけ参加できます。レビュアーとしては論文を割り当てられて投票し、閲覧者としてはすべての論文とすべての投票を見られます。",
-        "modelToo": "{you, select, true {モデルもレビュアーです。未確定の論文をすべて読んで投票し、費用はあなたのクレジットから支払われます。} other {モデルもレビュアーです。未確定の論文をすべて読んで投票し、費用は {workspace} のクレジットから支払われます。}}",
+        "modelToo": "{you, select, true {モデルもレビュアーです。まだ確定していない論文を読んで投票し、費用はあなたのクレジットから支払われます。} other {モデルもレビュアーです。まだ確定していない論文を読んで投票し、費用はワークスペースのクレジットから支払われます。}}",
         "close": "閉じる",
         "addAs": "追加する役割",
         "finishedAdds": "このスクリーニングは完了しているため、ここで追加した人は閲覧できます。レビュアーを追加するには、再開するか、設定で追加してください。設定で追加した人は再開後に投票します。",
@@ -8741,7 +8748,9 @@
         "answerLabel": "{name} へのあなたの回答",
         "askLabel": "{name} へのあなたの質問",
         "allLabel": "あなたのメッセージ",
-        "send": "送信"
+        "send": "送信",
+        "earlier": "以前のメッセージを表示",
+        "loading": "ディスカッションを読み込み中"
       },
       "pdf": {
         "readAs": "{pages, plural, =0 {PDF から読み取り} other {PDF から読み取り、# ページ}}",
@@ -8791,7 +8800,7 @@
         "helpTitle": "論文の割り当て方",
         "eachOf": "各論文に{each, plural, other {{people, plural, other {# 人}}中 # 人}}が投票します",
         "everyPerson": "全員がすべての論文に投票します",
-        "modelsRead": "モデルは未確定の論文をすべて読みます",
+        "modelsRead": "モデルはまだ確定していない論文を読みます",
         "sharing": "{share, select, true {各人は論文の一部に投票します。} other {各人はすべての論文に投票します。}}{models, select, true {各モデルは未確定の論文と、追加された新しい論文を読みます。モデルが加わる前に結果が確定した論文は読みません。} other {}}",
         "pace": "各人の件数の下には、直近 3 日間のペースを保った場合に残りを終える時期が表示されます。",
         "reviewer": "レビュアー",
@@ -9073,8 +9082,8 @@
         "includedOnly": "点数は採用した論文にだけ表示",
         "mostCommon": "点数は最も多い回答から",
         "stars": "{points} 点から星 1〜{count, number} 個",
-        "says": "論文がその状態にある理由です。除外の原因になった基準、保留の論文で不明な基準、不一致の分かれ方、誰の投票を待っているかが表示されます。",
-        "points": "採用した論文には点数と星が表示されます。各基準は、最も多くのレビュアーが答えた回答から点数を得ます。「はい」は 1 点です。ただし、{canChange, select, true {スクリーニングの設定で変えている場合は別です} other {{workspace} のメンバーが変えている場合は別です}}。星は点数に従います。"
+        "says": "論文がその状態にある理由です。除外された理由（基準、重複、メモ、理由なし）、保留の論文で不明な基準、不一致の分かれ方、誰の投票を待っているかが表示されます。",
+        "points": "採用した論文には点数と星が表示されます。各基準は、最も多くのレビュアーが答えた回答から点数を得ます。「はい」は 1 点です。ただし、{canChange, select, true {スクリーニングの設定で変えている場合は別です} other {ワークスペースのメンバーが変えている場合は別です}}。星は点数に従います。"
       },
       "menu": {
         "papersVoted": "{you, select, true {あなたが{decision}に投票した論文} other {{name} が{decision}に投票した論文}}",
@@ -9306,7 +9315,7 @@
         "guidanceFact": "目安には、該当するものとしないものが書かれています",
         "markedFact": "マークする語は、基準が探す語です",
         "showsFact": "<mark>マーク</mark>要約での表示",
-        "helpAnswering": "回答は任意で、投票だけで足ります。必須基準に「いいえ」と答えると除外を示します。除外を選ぶと、回答でわかる場合を除き、どの基準を満たしていないかを尋ねます。",
+        "helpAnswering": "回答は任意で、投票だけで十分です。必須基準への「いいえ」は除外を示し、除外するとその基準が理由になります。それ以外の場合、除外では理由の有無だけを尋ねます。理由なし、重複、または自分で書くその他の理由です。",
         "helpReading": "各レビュアーが論文について答える質問と、その下にそれぞれの回答です。必須基準に「いいえ」があれば除外を示します。",
         "mustHave": "{answering, select, true {必須基準のため、「いいえ」は除外を示します。回答は任意で、投票にはなりません。} other {必須基準のため、「いいえ」は除外を示します。}}",
         "guidance": "目安",
@@ -9351,8 +9360,8 @@
       },
       "note": {
         "label": "メモ",
-        "settling": "記録用の理由（任意）",
-        "voting": "ほかの人へのメモ。投票と一緒に保存されます。特定の人への質問は、下のディスカッションに書いてください"
+        "settling": "記録用のメモ（任意）",
+        "voting": "ほかの人へのメモ（任意）"
       },
       "settle": {
         "title": "この不一致を判定",
@@ -9398,8 +9407,7 @@
         "help": "モデルは各回答の確信度を 0〜100% で示します。65% 未満なら、その回答に頼る前に要約を読んでください。",
         "unsure": "確信度は {sure, number, percent} だけ",
         "sure": "確信度 {sure, number, percent}"
-      },
-      "helpAnswering": "回答は任意で、投票だけで十分です。必須基準への「いいえ」は除外を示し、除外するとその基準が理由になります。それ以外の場合、除外では理由の有無だけを尋ねます。理由なし、重複、または自分で書くその他の理由です。"
+      }
     },
     "sources": {
       "add": "追加",

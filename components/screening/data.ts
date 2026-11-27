@@ -288,7 +288,15 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with
  * their votes kept. Every page that offers a settler, or says a paper settles on one vote, asks this.
  */
-export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => conflicts > 0 || (screening.rule.settle !== "one" && screening.reviewers.some((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0)) || canConflict(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
+export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => {
+  const { each } = readersOf(screening, pending);
+  // A model taken off with its votes kept still votes on the papers it read. A person taken off adds a vote only under "everyone"; with a set number, their kept vote holds their place on a paper.
+  const kept = screening.reviewers.filter((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0);
+  const keptModels = kept.filter((one) => one.kind === "model").length;
+  // Under "everyone", a person taken off keeps their vote beside every place still open, so their votes add to each paper's too.
+  const keptPeople = screening.rule.each === "all" ? kept.filter((one) => one.kind === "person").length : 0;
+  return conflicts > 0 || canConflict(screening.rule, each + keptPeople, modelsOf(screening).length + keptModels);
+};
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));
 /** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */

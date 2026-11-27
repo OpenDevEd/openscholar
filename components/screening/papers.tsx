@@ -43,7 +43,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { inOrder, growing, bylineOf, awaitedOn, splitsIn, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
 import { VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
@@ -152,12 +152,15 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const sort = open.keepsVotes && (place.sort === "split" || place.sort === "points") ? "added" : place.sort;
   // Where no paper can be in conflict and none is, there is no In conflict to filter by and no split to sort by.
   const splits = splitsIn(screening, open.counts.conflict, open.invited);
+  // Most split votes needs a paper with two votes on it: two people, or a person and a model, whatever their votes decide.
+  const twoVotes = splits || readersOf(screening, open.invited).each + modelsOf(screening).length > 1;
   const shownResults = RESULTS.filter((result) => result !== "conflict" || splits || filter === "conflict");
   /** Narrows or reorders the table. A list read another way is another list, which starts from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next);
   const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
   // Opening a paper and closing it are steps Back returns from. Going from one open paper to another changes the address in place.
-  const show = (paperId: string) => void setPlace({ paper: paperId }, opened ? { history: "replace" } : undefined);
+  // Each paper opened, by a click or a step, is a step in the browser's history: Back goes to the one that was open before.
+  const show = (paperId: string) => void setPlace({ paper: paperId });
   const close = () => void setPlace({ paper: null });
   // The other reviewers as one word: the list itself is a new one on every draw.
   const alsoKey = also.join(",");
@@ -238,9 +241,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // The step to the paper before or after the open one. Past the page's last paper is the next page's first, and before its first the last of the page before.
   const step = (by: 1 | -1) => {
     const next = at >= 0 ? shown[at + by] : undefined;
-    if (next) return void setPlace({ paper: next.id }, { history: "replace" });
+    if (next) return void setPlace({ paper: next.id });
     if (at < 0 || !(by === 1 ? listed.canNext : listed.canPrevious)) return;
-    void setPlace({ paper: by === 1 ? "first" : "last" }, { history: "replace" });
+    void setPlace({ paper: by === 1 ? "first" : "last" });
     (by === 1 ? listed.next : listed.previous)();
   };
   const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious), next: at >= 0 && (at < shown.length - 1 || listed.canNext) };
@@ -422,7 +425,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";

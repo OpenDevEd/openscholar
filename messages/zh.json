@@ -5156,7 +5156,8 @@
       "authorZA": "作者 Z-A",
       "titleAZ": "标题 A-Z",
       "titleZA": "标题 Z-A"
-    }
+    },
+    "pagerItems": "个来源"
   },
   "fromLibrary": {
     "title": "来自 {library}",
@@ -7785,7 +7786,7 @@
       "model": {
         "startsLater": "{name} 会在论文到达后开始",
         "nothingToRead": "{name} 没有剩余要读的论文",
-        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {最多 {count, plural, other {# 篇论文}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}"
+        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {没有人先定案的未定案论文，今天最多 {count, plural, other {# 篇}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}"
       },
       "person": {
         "invited": "{name} 会通过邮件收到邀请，加入后分到论文",
@@ -7897,6 +7898,7 @@
         "scheduledFound": "定期检查找到 {count, plural, other {# 篇论文}}{allNew, select, true {} other {，其中 {added, number} 篇是新的}}",
         "scheduledNone": "定期检查没有发现新论文",
         "known": "{count, plural, other {# 篇}}已在筛选中",
+        "leftOut": "{count, plural, other {# 篇被排除在外}}",
         "joined": "{count, plural, other {# 篇论文}}加入了筛选",
         "reopenedByCheck": "筛选已重新打开",
         "changed": "更改了{parts}",
@@ -8232,7 +8234,7 @@
         "allOfIt": "全部",
         "all": "{count, plural, =1 {这一篇论文} other {全部 # 篇论文}}",
         "inSource": "{count, plural, other {来源中有 # 篇}}",
-        "readAsPdf": "{count, plural, other {# 篇按 PDF 读取}}",
+        "readAsPdf": "{count, plural, other {# 篇从 PDF 读取}}",
         "duplicates": "{count, plural, other {已合并 # 个重复项}}",
         "rangeHeld": "第 {first} 至 {last} 篇论文已在本次筛选中并会保留，因此范围只能扩大。要移除它们，请移除该来源。",
         "checkedEvery": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
@@ -8258,6 +8260,9 @@
         "noSearches": "还没有保存的搜索。",
         "nothingHere": "这里还没有内容。",
         "pagerSources": "个来源",
+        "pagerSearches": "个搜索",
+        "pagerCollections": "个合集",
+        "pagerScreenings": "个筛选",
         "pagerLeftOut": "篇被排除在外",
         "pagerMerged": "个重复项",
         "mergedFrom": "与 {source} 中的一篇是同一篇论文",
@@ -8284,7 +8289,7 @@
         "perNew": "{pdf, select, true {每篇新论文 {credits, plural, other {# 积分}}，按 PDF 读取的更多} other {每篇新论文 {credits, plural, other {# 积分}}}}",
         "noneGrow": "这些来源都不会增加论文。添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
         "addToCheck": "添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
-        "lastSpent": "按这些模型，上次检查的 {count, plural, other {# 篇论文}}约需 {spent, plural, other {# 积分}}"
+        "lastSpent": "上次检查约 {spent, plural, other {# 积分}}，{count, plural, other {# 篇论文}}"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
@@ -8356,9 +8361,9 @@
         "votesSplit": "投票分歧",
         "help": "论文的投票符合规则要求的一致程度时，论文定案。不符合时就是冲突，由一个人裁决。",
         "each": "每篇论文的人数",
-        "factModels": "模型阅读每篇未定案的论文",
+        "factModels": "模型阅读仍未定案的论文",
         "factEveryone": "“所有人”涵盖之后加入的人",
-        "eachHelp": "每个模型都会阅读它加入时所有未定案的论文。这里设定每篇论文由几个人投票。论文会平均分配，每人阅读的数量大致相同。有人加入时，设定的数字保持不变。“所有人”指筛选中现在和以后的每个人。",
+        "eachHelp": "每个模型加入时都会阅读仍未定案的论文。这里设定每篇论文由几个人投票。论文会平均分配，每人阅读的数量大致相同。有人加入时，设定的数字保持不变。“所有人”指筛选中现在和以后的每个人。",
         "everyone": "所有人",
         "onePerson": "一人，因为第一票即决定结果",
         "modelVotes": "模型的投票",
@@ -8535,7 +8540,7 @@
         "papersRead": "已读取 {done, number} / {of, plural, other {# 篇论文}}",
         "turnsTitle": "模型轮流阅读",
         "atATime": "{count, plural, other {每次 # 篇论文}}",
-        "turnsHelp": "{workspace} 的模型每次读取 {count, plural, other {# 篇论文}}，因此在另一个筛选正在阅读时开始的筛选需要等待。在此期间人员可以投票。",
+        "turnsHelp": "{personal, select, true {你的模型} other {{workspace} 的模型}}每次读取 {count, plural, other {# 篇论文}}，因此在另一个筛选正在阅读时开始的筛选需要等待。在此期间人员可以投票。",
         "modelReading": "<model>{name}</model> 正在阅读",
         "modelsReading": "{count, plural, other {# 个模型正在阅读}}",
         "read": "{done, number} / {of, number}"
@@ -8585,7 +8590,9 @@
         "title": "将 {name} 添加为审核人？",
         "confirm": "添加为审核人",
         "noCriteria": "模型通过回答标准来投票，而此筛选还没有标准。它会让读到的每篇论文入选。",
-        "addCriteria": "添加标准"
+        "addCriteria": "添加标准",
+        "noMustHave": "模型只会因论文不满足某条必要条件而排除它，而这些标准都不是必要条件。它会让读到的每篇论文入选。",
+        "markMustHave": "将某条标准设为必要条件"
       },
       "takeOff": {
         "viewerTitle": "停止 {name} 投票？",
@@ -8614,7 +8621,7 @@
         "personalElse": "其他人只有在以审核人或查看者身份共享给他们后才能访问。审核人会分到论文并投票，查看者能看到所有论文和所有投票。",
         "membersSee": "{workspace} 的成员能看到并更改此筛选。其中的审核人会分到论文并投票。",
         "outsideHas": "{workspace} 以外的人只有在以审核人或查看者身份共享给他们后才能访问。审核人会分到论文并投票，查看者能看到所有论文和所有投票。",
-        "modelToo": "{you, select, true {模型也是审核人。它阅读每篇未定案的论文并投票，用你的积分付费。} other {模型也是审核人。它阅读每篇未定案的论文并投票，用 {workspace} 的积分付费。}}",
+        "modelToo": "{you, select, true {模型也是审核人。它阅读仍未定案的论文并投票，用你的积分付费。} other {模型也是审核人。它阅读仍未定案的论文并投票，用工作区的积分付费。}}",
         "close": "关闭",
         "addAs": "添加人员为",
         "finishedAdds": "此筛选已完成，因此在这里添加的人可以查看它。要添加审核人，请重新打开它，或在设置中添加，他们会在筛选重新打开后投票。",
@@ -8741,10 +8748,12 @@
         "answerLabel": "你给 {name} 的回答",
         "askLabel": "你向 {name} 提的问题",
         "allLabel": "你的消息",
-        "send": "发送"
+        "send": "发送",
+        "earlier": "显示更早的消息",
+        "loading": "正在读取讨论"
       },
       "pdf": {
-        "readAs": "{pages, plural, =0 {按 PDF 读取} other {按 PDF 读取，# 页}}",
+        "readAs": "{pages, plural, =0 {从 PDF 读取} other {从 PDF 读取，# 页}}",
         "openTab": "在新标签页中打开 PDF",
         "onItsWay": "PDF 正在路上",
         "cantShow": "此 PDF 无法在这里显示。请在新标签页中打开。"
@@ -8791,7 +8800,7 @@
         "helpTitle": "论文如何分配",
         "eachOf": "{each, plural, other {{people, plural, other {# 人}}中有 # 人}}对每篇论文投票",
         "everyPerson": "每个人对每篇论文投票",
-        "modelsRead": "模型阅读每篇未定案的论文",
+        "modelsRead": "模型阅读仍未定案的论文",
         "sharing": "{share, select, true {每个人对一部分论文投票。} other {每个人对每篇论文投票。}}{models, select, true {每个模型阅读仍未定案的论文，以及新加入的论文。在它加入之前已定案的论文会被跳过。} other {}}",
         "pace": "每个人的数字下方显示的是：如果保持最近三天的速度，他们完成剩余论文的时间。",
         "reviewer": "审核人",
@@ -9073,8 +9082,8 @@
         "includedOnly": "仅入选论文有分数",
         "mostCommon": "分数取自最常见的答案",
         "stars": "{points} 分对应 1 到 {count, number} 星",
-        "says": "论文为何处于当前状态。可能是排除它的标准、待定论文不确定的标准、冲突如何分歧，或它在等谁的投票。",
-        "points": "入选论文显示其分数和星级。每条标准按多数审核人给出的答案计分。答“是”得 1 分，除非{canChange, select, true {筛选的设置另有规定} other {{workspace} 的成员另有设定}}。星级随分数而定。"
+        "says": "论文为何处于当前状态。可能是它被排除的原因（某条标准、重复、备注或没有原因）、待定论文不确定的标准、冲突如何分歧，或它在等谁的投票。",
+        "points": "入选论文显示其分数和星级。每条标准按多数审核人给出的答案计分。答“是”得 1 分，除非{canChange, select, true {筛选的设置另有规定} other {工作区的成员另有设定}}。星级随分数而定。"
       },
       "menu": {
         "papersVoted": "{you, select, true {你投了{decision}的论文} other {{name} 投了{decision}的论文}}",
@@ -9306,7 +9315,7 @@
         "guidanceFact": "说明写明哪些算、哪些不算",
         "markedFact": "标记词是标准要查找的词",
         "showsFact": "<mark>标记的</mark>词在摘要中的样子",
-        "helpAnswering": "回答是可选的，只投票就够了。对必要条件答“否”会指向排除，选择排除时会问你不满足哪一条，除非你的答案已经说明。",
+        "helpAnswering": "回答是可选的，只投票就够了。必需标准答“否”会指向排除，排除时该标准就是理由。否则，排除只会询问是否有理由，即无理由、重复，或你写下的其他理由。",
         "helpReading": "每位审核人对一篇论文回答的问题，以及每个问题下他们的答案。对必要条件答“否”会指向排除。",
         "mustHave": "{answering, select, true {这是必要条件，因此答“否”会指向排除。回答是可选的，不算作你的投票。} other {这是必要条件，因此答“否”会指向排除。}}",
         "guidance": "说明",
@@ -9351,8 +9360,8 @@
       },
       "note": {
         "label": "备注",
-        "settling": "原因，供记录（可选）",
-        "voting": "写给其他人的备注，随你的投票保存。想问其中某个人的问题，请写在下方的讨论中"
+        "settling": "供记录的备注（可选）",
+        "voting": "写给其他人的备注（可选）"
       },
       "settle": {
         "title": "裁决此冲突",
@@ -9398,8 +9407,7 @@
         "help": "模型为每个答案给出 0 到 100% 的把握度。低于 65% 时，请先阅读摘要再依赖该答案。",
         "unsure": "把握度只有 {sure, number, percent}",
         "sure": "把握度 {sure, number, percent}"
-      },
-      "helpAnswering": "回答是可选的，只投票就够了。必需标准答“否”会指向排除，排除时该标准就是理由。否则，排除只会询问是否有理由，即无理由、重复，或你写下的其他理由。"
+      }
     },
     "sources": {
       "add": "添加",
@@ -9462,7 +9470,7 @@
         "read": "已读取 {read, number} / {total, number}",
         "inIndex": "<n>{count, number}</n> 个在索引中",
         "knownNoAbstract": "在索引中，无摘要",
-        "fileWithPages": "按 PDF 读取，{count, plural, other {# 页}}",
+        "fileWithPages": "从 PDF 读取，{count, plural, other {# 页}}",
         "list": "此来源的 PDF",
         "pager": "个 PDF",
         "loading": "正在加载 PDF"
@@ -9490,8 +9498,8 @@
         "notConnected": "Zotero 未连接",
         "connectWhy": "连接后即可从你的 Zotero 文库和 Zotero 群组中选择。",
         "connect": "连接 Zotero",
-        "withSubCollections": "包括其子合集",
-        "aboutUnder": "包括其子合集约 {count, number} 个",
+        "withSubCollections": "包括子合集",
+        "aboutUnder": "包括子合集约 {count, number} 个",
         "library": "Zotero 文库",
         "findGroup": "查找群组",
         "yours": "你的",
@@ -9586,7 +9594,7 @@
       },
       "pdf": {
         "known": "在索引中",
-        "file": "按 PDF 读取",
+        "file": "从 PDF 读取",
         "broken": "无法打开",
         "waiting": "正在读取"
       },

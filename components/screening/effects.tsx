@@ -126,7 +126,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
       if (!reads) lines.push({ text: after.gathered !== undefined ? t("model.startsLater", { name: reviewer.name }) : t("model.nothingToRead", { name: reviewer.name }), section: "reviewers" });
       else {
         // As advice, or under "first vote decides", a model skips a paper its people settle first: the count is the most it reads.
-        const read = { name: reviewer.name, all: String(reads === total), count: reads, upTo: String(after.rule.settle === "one" || modelsAdvise(after.rule, readersOf(after).each, modelsOf(after).length)) };
+        const read = { name: reviewer.name, all: String(reads === total), count: reads, upTo: String(modelsAdvise(after.rule, readersOf(after).each, modelsOf(after).length)) };
         lines.push({ text: t("model.reads", { ...read, when: starts }), done: t("model.reads", { ...read, when: "done" }), kind: "cost", credits: readingOf(after, reviewer.model!, reads), section: "reviewers" });
       }
     }

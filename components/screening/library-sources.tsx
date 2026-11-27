@@ -19,6 +19,7 @@ import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
 import { ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { faceOf } from "@/components/workspaces/run-by";
@@ -334,9 +335,9 @@ export function LibrarySources({
             {!state.loaded || !library ? (
               <ListRowsSkeleton rows={PAGE} height={ROW} label={tc("loading")} className={LIST} />
             ) : read?.problem && !(filter === "all" && here.length) ? (
-              <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{t(read.problem === "outdated" ? "outdated" : "unread", { library: library.name })}</p>
+              <p className={cn(LIST, "px-4 py-6 text-center text-sm text-muted-foreground")}>{t(read.problem === "outdated" ? "outdated" : "unread", { library: library.name })}</p>
             ) : shown.length === 0 ? (
-              <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{needle ? t("empty.found") : t(`empty.${filter}`, { library: library.name })}</p>
+              <p className={cn(LIST, "px-4 py-6 text-center text-sm text-muted-foreground")}>{needle ? t("empty.found") : t(`empty.${filter}`, { library: library.name })}</p>
             ) : (
               <div className={LIST} role={many ? "group" : "radiogroup"} aria-label={t("kind")}>
                 {shown.map((row) => (
@@ -358,10 +359,11 @@ export function LibrarySources({
             )}
           </div>
           </AutoHeight>
-          {pages > 1 ? <PageStepper page={at} pageCount={pages} canPrevious={at > 1} canNext={at < pages} onPrevious={() => setPage(at - 1)} onNext={() => setPage(at + 1)} /> : null}
+          {/* Paged as the other source tabs are, with the range it shows and how many there are. */}
+          {pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={at} itemLabel={t("pagerItems")} steps={{ canPrevious: at > 1, canNext: at < pages, onPrevious: () => setPage(at - 1), onNext: () => setPage(at + 1), offset: (at - 1) * PAGE, shown: shown.length, total: rows.length, pageCount: pages }} /> : null}
         </>
       ) : (
-        <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{ts("noSets.evidenceLibrary")}</p>
+        <p className={cn(LIST, "px-4 py-6 text-center text-sm text-muted-foreground")}>{ts("noSets.evidenceLibrary")}</p>
       )}
     </div>
   );

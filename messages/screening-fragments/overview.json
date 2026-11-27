@@ -37,7 +37,7 @@
     "helpTitle": "How papers are shared out",
     "eachOf": "{each, plural, one {# of the {people, plural, other {# people}} votes} other {# of the {people, plural, other {# people}} vote}} on each paper",
     "everyPerson": "Every person votes on every paper",
-    "modelsRead": "Models read every open paper",
+    "modelsRead": "Models read the papers still open",
     "sharing": "{share, select, true {Each person votes on a share of the papers.} other {Each person votes on every paper.}}{models, select, true { Each model reads the papers still open, and new ones as they are added. It skips a paper that was settled before it joined.} other {}}",
     "pace": "Under a person's count is when they get through what they have left, if they keep the pace of their last three days.",
     "reviewer": "Reviewer",

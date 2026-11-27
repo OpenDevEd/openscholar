@@ -5156,7 +5156,8 @@
       "authorZA": "Umbhali Z-A",
       "titleAZ": "Isihloko A-Z",
       "titleZA": "Isihloko Z-A"
-    }
+    },
+    "pagerItems": "imithombo"
   },
   "fromLibrary": {
     "title": "Kusuka ku-{library}",
@@ -7785,7 +7786,7 @@
       "model": {
         "startsLater": "{name} iqala uma amaphepha esefikile",
         "nothingToRead": "{name} ayisenawo amaphepha okufunda",
-        "reads": "{name} ifunda {upTo, select, true {kuze kufike {count, plural, one {# iphepha} other {# amaphepha}}} other {{all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}"
+        "reads": "{name} ifunda {upTo, select, true {amaphepha avulekile okungekho muntu owaxazulula kuqala, {count, plural, one {# iphepha} other {# amaphepha}} namuhla} other {{all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}"
       },
       "person": {
         "invited": "{name} uthola isimemo nge-imeyili, kanye namaphepha uma esejoyinile",
@@ -7897,6 +7898,7 @@
         "scheduledFound": "Ukuhlola okuhleliwe kuthole {count, plural, one {# iphepha} other {# amaphepha}}{allNew, select, true {} other {, angu-{added, number} kuwo amasha}}",
         "scheduledNone": "Ukuhlola okuhleliwe akutholanga maphepha amasha",
         "known": "{count, plural, one {# belisevele} other {# abesevele}} ekuskrinini",
+        "leftOut": "{count, plural, one {# lishiywe ngaphandle} other {# ashiywe ngaphandle}}",
         "joined": "{count, plural, one {# iphepha lijoyine} other {# amaphepha ajoyine}} ukuskrini",
         "reopenedByCheck": "Ukuskrini kuvulekile futhi",
         "changed": "Kushintshwe {parts}",
@@ -8232,7 +8234,7 @@
         "allOfIt": "Konke",
         "all": "{count, plural, one {Iphepha elilodwa} other {Onke amaphepha angu-#}}",
         "inSource": "{count, plural, other {# emthonjeni}}",
-        "readAsPdf": "{count, plural, one {# lifundwe njenge-PDF yalo} other {# afundwe njengama-PDF}}",
+        "readAsPdf": "{count, plural, one {# lifundwe ku-PDF} other {# afundwe kuma-PDF}}",
         "duplicates": "{count, plural, one {# ikhophi ihlanganisiwe} other {# amakhophi ahlanganisiwe}}",
         "rangeHeld": "Amaphepha {first} kuya ku-{last} asevele akulokhu kuskrini futhi ahlala kukho, ngakho ububanzi bungakhuliswa kuphela. Ukuze uwakhiphe, susa umthombo.",
         "checkedEvery": "{every, select, day {Kuhlolwa nsuku zonke} week {Kuhlolwa masonto onke} other {Kuhlolwa njalo ngenyanga}}",
@@ -8258,6 +8260,9 @@
         "noSearches": "Azikho izisesho ezigciniwe okwamanje.",
         "nothingHere": "Akukho lutho lapha okwamanje.",
         "pagerSources": "imithombo",
+        "pagerSearches": "izisesho",
+        "pagerCollections": "amaqoqo",
+        "pagerScreenings": "ukuskrini",
         "pagerLeftOut": "ashiywe ngaphandle",
         "pagerMerged": "amakhophi",
         "mergedFrom": "Iphepha elifanayo nelinye elivela ku-{source}",
@@ -8284,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha, ngaphezulu uma lifundwa njenge-PDF} other {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha}}",
         "noneGrow": "Ayikho kule mithombo ethola amaphepha. Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
         "addToCheck": "Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
-        "lastSpent": "Cishe {spent, plural, one {ikhredithi engu-#} other {amakhredithi angu-#}} ngamaphepha okuhlola kokugcina angu-{count, plural, one {#} other {#}} ngalawa mamodeli"
+        "lastSpent": "Cishe {spent, plural, one {ikhredithi engu-#} other {amakhredithi angu-#}} ekuhloleni kokugcina, {count, plural, one {# iphepha} other {# amaphepha}}"
       },
       "criteria": {
         "helpTitle": "Imfuneko nokuhle ukuba nakho",
@@ -8356,9 +8361,9 @@
         "votesSplit": "Amavoti ayehlukana",
         "help": "Iphepha lixazululwa uma amavoti alo evumelana njengoba umthetho ucela. Uma engavumelani, liyangqubuzana, futhi umuntu oyedwa uyalixazulula.",
         "each": "Abantu ephepheni ngalinye",
-        "factModels": "Amamodeli afunda wonke amaphepha avulekile",
+        "factModels": "Amamodeli afunda amaphepha asavulekile",
         "factEveryone": "Bonke kufaka abantu abajoyina kamuva",
-        "eachHelp": "Yonke imodeli ifunda wonke amaphepha avulekile uma ijoyina. Lokhu kumisa ukuthi bangaki abantu abavota kulelo nalelo. Amaphepha ahlukaniswa ukuze umuntu ngamunye afunde cishe inani elifanayo. Inombolo emisiwe ihlala injalo njengoba abantu bejoyina. Bonke kusho wonke umuntu okulokhu kuskrini, manje nakamuva.",
+        "eachHelp": "Yonke imodeli ifunda amaphepha asavulekile uma ijoyina. Lokhu kumisa ukuthi bangaki abantu abavota kulelo nalelo. Amaphepha ahlukaniswa ukuze umuntu ngamunye afunde cishe inani elifanayo. Inombolo emisiwe ihlala injalo njengoba abantu bejoyina. Bonke kusho wonke umuntu okulokhu kuskrini, manje nakamuva.",
         "everyone": "Bonke",
         "onePerson": "Umuntu oyedwa, ngoba ivoti lokuqala yilo elinqumayo",
         "modelVotes": "Amavoti amamodeli",
@@ -8535,7 +8540,7 @@
         "papersRead": "{done, number} kwa-{of, plural, one {# iphepha} other {# amaphepha}} afundiwe",
         "turnsTitle": "Amamodeli ayashintshana",
         "atATime": "{count, plural, one {# iphepha ngesikhathi} other {# amaphepha ngesikhathi}}",
-        "turnsHelp": "Amamodeli e-{workspace} afunda {count, plural, one {# iphepha} other {# amaphepha}} ngesikhathi, ngakho ukuskrini okuqalwe ngesikhathi okunye kusafunda kuyakulinda. Abantu bangavota okwamanje.",
+        "turnsHelp": "{personal, select, true {Amamodeli akho afunda} other {Amamodeli e-{workspace} afunda}} {count, plural, one {# iphepha} other {# amaphepha}} ngesikhathi, ngakho ukuskrini okuqalwe ngesikhathi okunye kusafunda kuyakulinda. Abantu bangavota okwamanje.",
         "modelReading": "<model>{name}</model> iyafunda",
         "modelsReading": "{count, plural, one {# imodeli iyafunda} other {# amamodeli ayafunda}}",
         "read": "{done, number} kwa-{of, number}"
@@ -8585,7 +8590,9 @@
         "title": "Engeza u-{name} njengombuyekezi?",
         "confirm": "Engeza njengombuyekezi",
         "noCriteria": "Imodeli ivota ngokuphendula imibandela, futhi lokhu kuskrini akukabi nayo. Ingafaka wonke amaphepha eyifundayo.",
-        "addCriteria": "Engeza imibandela"
+        "addCriteria": "Engeza imibandela",
+        "noMustHave": "Imodeli ikhipha iphepha kuphela uma lingayifinyeleli imfuneko, futhi ayikho kule mibandela eyimfuneko. Ingafaka wonke amaphepha eyifundayo.",
+        "markMustHave": "Yenza umbandela owodwa ube yimfuneko"
       },
       "takeOff": {
         "viewerTitle": "Misa u-{name} ukuthi avote?",
@@ -8614,7 +8621,7 @@
         "personalElse": "Noma ubani omunye unakho kuphela uma sekwabelwe yena, kungaba njengombuyekezi, othola amaphepha futhi avote, noma njengombukeli, obona wonke amaphepha nawo wonke amavoti.",
         "membersSee": "Amalungu e-{workspace} ayakubona lokhu kuskrini futhi angakushintsha. Lawo angababuyekezi athola amaphepha futhi avote kuwo.",
         "outsideHas": "Umuntu ongaphandle kwe-{workspace} unakho kuphela uma sekwabelwe yena, kungaba njengombuyekezi, othola amaphepha futhi avote, noma njengombukeli, obona wonke amaphepha nawo wonke amavoti.",
-        "modelToo": "{you, select, true {Imodeli nayo ingumbuyekezi. Ifunda wonke amaphepha avulekile futhi ivote, ikhokhelwa ngamakhredithi akho.} other {Imodeli nayo ingumbuyekezi. Ifunda wonke amaphepha avulekile futhi ivote, ikhokhelwa ngamakhredithi e-{workspace}.}}",
+        "modelToo": "{you, select, true {Imodeli nayo ingumbuyekezi. Ifunda amaphepha asavulekile futhi ivote, ikhokhelwa ngamakhredithi akho.} other {Imodeli nayo ingumbuyekezi. Ifunda amaphepha asavulekile futhi ivote, ikhokhelwa ngamakhredithi esikhala sokusebenzela.}}",
         "close": "Vala",
         "addAs": "Engeza abantu njengo-",
         "finishedAdds": "Lokhu kuskrini kuqediwe, ngakho abantu abengezwa lapha bangakubuka. Ukuze wengeze umbuyekezi, kuvule futhi, noma umengeze ezilungiselelweni, lapho ezovota khona uma sekuvulwe futhi.",
@@ -8741,10 +8748,12 @@
         "answerLabel": "Impendulo yakho ku-{name}",
         "askLabel": "Umbuzo wakho ku-{name}",
         "allLabel": "Umlayezo wakho",
-        "send": "Thumela"
+        "send": "Thumela",
+        "earlier": "Bonisa imilayezo yangaphambilini",
+        "loading": "Kufundwa ingxoxo"
       },
       "pdf": {
-        "readAs": "{pages, plural, =0 {Lifundwe njenge-PDF yalo} one {Lifundwe njenge-PDF yalo, # ikhasi} other {Lifundwe njenge-PDF yalo, # amakhasi}}",
+        "readAs": "{pages, plural, =0 {Lifundwe ku-PDF} one {Lifundwe ku-PDF, # ikhasi} other {Lifundwe ku-PDF, # amakhasi}}",
         "openTab": "Vula i-PDF kuthebhu entsha",
         "onItsWay": "I-PDF isendleleni",
         "cantShow": "Le PDF ayikwazi ukuboniswa lapha. Yivule kuthebhu entsha."
@@ -8791,7 +8800,7 @@
         "helpTitle": "Indlela amaphepha ahlukaniswa ngayo",
         "eachOf": "{each, plural, one {# {people, plural, other {kubantu abangu-#}} uvota} other {# {people, plural, other {kubantu abangu-#}} bavota}} ephepheni ngalinye",
         "everyPerson": "Wonke umuntu uvota kuwo wonke amaphepha",
-        "modelsRead": "Amamodeli afunda wonke amaphepha avulekile",
+        "modelsRead": "Amamodeli afunda amaphepha asavulekile",
         "sharing": "{share, select, true {Umuntu ngamunye uvota engxenyeni yamaphepha.} other {Umuntu ngamunye uvota kuwo wonke amaphepha.}}{models, select, true { Imodeli ngayinye ifunda amaphepha asavulekile, kanye namasha njengoba engezwa. Iyeqa iphepha elaxazululwa ngaphambi kokuthi ijoyine.} other {}}",
         "pace": "Ngaphansi kwesibalo somuntu yisikhathi azoqeda ngaso lokho asele nakho, uma egcina isivinini sezinsuku zakhe ezintathu zokugcina.",
         "reviewer": "Umbuyekezi",
@@ -9073,8 +9082,8 @@
         "includedOnly": "Amaphoyinti kumaphepha afakiwe kuphela",
         "mostCommon": "Amaphoyinti avela empendulweni evame kakhulu",
         "stars": "Izinkanyezi ezisuka ku-1 kuya ku-{count, number} ngamaphoyinti angu-{points}",
-        "says": "Ukuthi kungani iphepha limi lapho limi khona. Lokhu kungumbandela olikhiphile, lowo i-Mhlawumbe engacacile kuwo, indlela ukungqubuzana okwahlukana ngayo, noma ivoti likabani elililindile.",
-        "points": "Iphepha elifakiwe libonisa amaphoyinti alo nezinkanyezi. Umbandela ngamunye uthola amaphoyinti ngempendulo iningi lababuyekezi elayinikayo. U-yebo uthola u-1 ngaphandle uma {canChange, select, true {izilungiselelo zokuskrini zisho okunye} other {amalungu e-{workspace} emise okunye}}. Izinkanyezi zilandela amaphoyinti."
+        "says": "Ukuthi kungani iphepha limi lapho limi khona. Lokhu kuyisizathu sokukhishwa kwalo (umbandela, ikhophi, inothi noma akukho), umbandela i-Mhlawumbe engacacile kuwo, indlela ukungqubuzana okwahlukana ngayo, noma ivoti likabani elililindile.",
+        "points": "Iphepha elifakiwe libonisa amaphoyinti alo nezinkanyezi. Umbandela ngamunye uthola amaphoyinti ngempendulo iningi lababuyekezi elayinikayo. U-yebo uthola u-1 ngaphandle uma {canChange, select, true {izilungiselelo zokuskrini zisho okunye} other {amalungu esikhala sokusebenzela emise okunye}}. Izinkanyezi zilandela amaphoyinti."
       },
       "menu": {
         "papersVoted": "{you, select, true {Amaphepha owavote ngokuthi {decision}} other {Amaphepha {name} awavote ngokuthi {decision}}}",
@@ -9151,7 +9160,7 @@
         },
         "waiting": {
           "says": "Amamodeli aqala ngemuva kwa-<link>{name}</link>",
-          "row": "Ilinde ithuba layo"
+          "row": "Ilinde ithuba"
         }
       },
       "modelsReading": "Amamodeli ayafunda",
@@ -9306,7 +9315,7 @@
         "guidanceFact": "Isiqondiso sisho okubalwayo nokungabalwa",
         "markedFact": "Amagama amakiwe yilawo umbandela awafunayo",
         "showsFact": "<mark>Amakiwe</mark>Indlela avela ngayo esifingqweni",
-        "helpAnswering": "Ukuphendula akuphoqelekile, futhi ivoti lodwa lanele. U-Cha emfunekweni ukhomba ku-Khipha, futhi u-Khipha ubuza ukuthi yiyiphi ehlulekile ngaphandle uma izimpendulo zakho sezikusho.",
+        "helpAnswering": "Ukuphendula kungokuzikhethela, ivoti lodwa lanele. U-Cha embandeleni oyimpoqo ukhomba ku-Khipha, futhi lowo mbandela uyisizathu uma ukhipha. Uma kungenjalo u-Khipha ubuza kuphela ukuthi sikhona yini isizathu, asikho, okuphindiwe, noma esinye osibhalayo.",
         "helpReading": "Imibuzo umbuyekezi ngamunye ayiphendulayo ngephepha, futhi ngaphansi kwayo ngayinye indlela abayiphendule ngayo. U-Cha emfunekweni ukhomba ku-Khipha.",
         "mustHave": "{answering, select, true {Imfuneko, ngakho u-Cha ukhomba ku-Khipha. Izimpendulo azibophi futhi akuzona ivoti lakho.} other {Imfuneko, ngakho u-Cha ukhomba ku-Khipha.}}",
         "guidance": "Isiqondiso",
@@ -9351,8 +9360,8 @@
       },
       "note": {
         "label": "Inothi",
-        "settling": "Isizathu, serekhodi (uma uthanda)",
-        "voting": "Inothi labanye, eligcinwa nevoti lakho. Umbuzo oya komunye wabo ufakwa ku-Ingxoxo, ngezansi"
+        "settling": "Inothi lerekhodi (uma uthanda)",
+        "voting": "Inothi labanye (uma uthanda)"
       },
       "settle": {
         "title": "Xazulula lokhu kungqubuzana",
@@ -9398,8 +9407,7 @@
         "help": "Imodeli ilinganisa impendulo yayo ngayinye kusuka ku-0 kuya ku-100%. Ngaphansi kuka-65%, funda isifingqo ngaphambi kokuthi uthembele kuleyo mpendulo.",
         "unsure": "Iqiniseke ngo-{sure, number, percent} kuphela",
         "sure": "Iqiniseke ngo-{sure, number, percent}"
-      },
-      "helpAnswering": "Ukuphendula kungokuzikhethela, ivoti lodwa lanele. U-Cha embandeleni oyimpoqo ukhomba ku-Khipha, futhi lowo mbandela uyisizathu uma ukhipha. Uma kungenjalo u-Khipha ubuza kuphela ukuthi sikhona yini isizathu, asikho, okuphindiwe, noma esinye osibhalayo."
+      }
     },
     "sources": {
       "add": "Engeza",
@@ -9462,7 +9470,7 @@
         "read": "{read, number} kwa-{total, number} afundiwe",
         "inIndex": "<n>{count, number}</n> enkombeni",
         "knownNoAbstract": "Enkombeni, akukho sifingqo",
-        "fileWithPages": "Lifundwe njenge-PDF yalo, {count, plural, one {# ikhasi} other {# amakhasi}}",
+        "fileWithPages": "Lifundwe ku-PDF, {count, plural, one {# ikhasi} other {# amakhasi}}",
         "list": "Ama-PDF alo mthombo",
         "pager": "Ama-PDF",
         "loading": "Kulayishwa ama-PDF"
@@ -9490,8 +9498,8 @@
         "notConnected": "I-Zotero ayixhunyiwe",
         "connectWhy": "Yixhume ukuze ukhethe emtapweni wakho wolwazi we-Zotero nasemaqenjini e-Zotero.",
         "connect": "Xhuma i-Zotero",
-        "withSubCollections": "Namaqoqo ayo amancane",
-        "aboutUnder": "Cishe angu-{count, number} namaqoqo alo amancane",
+        "withSubCollections": "Namaqoqo amancane",
+        "aboutUnder": "Cishe angu-{count, number} namaqoqo amancane",
         "library": "Umtapo wolwazi we-Zotero",
         "findGroup": "Thola iqembu",
         "yours": "Okwakho",
@@ -9586,7 +9594,7 @@
       },
       "pdf": {
         "known": "Kunkomba",
-        "file": "Lifundwe njenge-PDF yalo",
+        "file": "Lifundwe ku-PDF",
         "broken": "Alivuleki",
         "waiting": "Liyafundwa"
       },

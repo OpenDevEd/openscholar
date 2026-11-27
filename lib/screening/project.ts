@@ -91,9 +91,9 @@ export function project(paper: PaperState, places: Place[], team: Team, rule: Pi
       now = on(list);
     }
   }
-  // Settled: the places nobody voted from are closed, and their people's queues let go of the paper. A model that hasn't read it yet doesn't either, where its vote would count for nothing and be paid for: under "first vote decides", and where its votes are advice on a paper its people settled.
+  // Settled: the places nobody voted from are closed, and their people's queues let go of the paper. A model that hasn't read it yet doesn't either, where its vote would count for nothing and be paid for: under "first vote decides", where its votes are advice on a paper its people settled, and on a paper a person settled by hand.
   const advised = rule.models === "advice" && list.some((place) => place.kind === "person" && place.status !== "discarded");
-  const closed = isFinal(now) ? list.filter((place) => place.status === "waiting" && (place.kind === "person" || rule.settle === "one" || advised)) : [];
+  const closed = isFinal(now) ? list.filter((place) => place.status === "waiting" && (place.kind === "person" || rule.settle === "one" || advised || paper.resolved !== undefined)) : [];
   return { result: now, places: list.map((place) => (closed.includes(place) ? { ...place, status: "closed" as const } : place)), made, gone, reopened, closed };
 }
 
