@@ -22,7 +22,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
-import { seesVotes } from "@/lib/screening/rules";
+import { advisory, seesVotes } from "@/lib/screening/rules";
 import { activeReviewers, blindOf, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
 import { Help, Section, ShutChip, ShutNote, StateChip } from "./pieces";
 import type { Open } from "./store";
@@ -82,8 +82,11 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   // Who can be asked: the people still on the screening who vote on this paper or have written about it here, and the person who settles its conflicts. Someone taken off keeps their vote and their words here and can't be asked about them.
   const on = new Set(activeReviewers(screening).filter((one) => one.kind === "person").map((one) => one.id));
   // Someone whose own vote on it still waits can't read its discussion while votes stay hidden: they are asked once they can read the question.
+  // As the server reads it (convex/screening/dealing.ts `seesPaper`): where the models only advise, the one person on a paper reads it before voting.
   const yetToRead = !seesVotes(screening.rule.blind, paper.result, "waiting", Boolean(screening.finishedAt));
-  const people = [...new Set([...paper.cast.filter((one) => !(yetToRead && !one.vote && !one.hidden && !one.failed)).map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me).flatMap((id) => personIn(screening, id) ?? []);
+  const kindOf = (id: string) => screening.reviewers.find((one) => one.id === id)?.kind;
+  const alone = (id: string) => advisory(screening.rule) && !paper.cast.some((one) => one.reviewer !== id && kindOf(one.reviewer) === "person");
+  const people = [...new Set([...paper.cast.filter((one) => !(yetToRead && !one.vote && !one.hidden && !one.failed && !alone(one.reviewer))).map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me).flatMap((id) => personIn(screening, id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
   // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
   const waiting = waitingQuestions(said);
