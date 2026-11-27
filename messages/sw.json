@@ -8389,7 +8389,7 @@
         "whoSettles": "Nani anaamua mgongano",
         "seeVotes": "Wakaguzi wanaona kura nyingine",
         "seeingTitle": "Kuona kura nyingine",
-        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote.",
+        "seeingHelp": "Baada ya kupiga kura kunamzuia mkaguzi asiathiriwe. Kila mmoja anaona kura nyingine kwenye makala akishaipigia kura, au ikishaamuliwa. Kura za modeli ambazo ni ushauri tu zinaonekana kabla ya hapo. Yeyote asiyepigia kura makala anaona kura zake wakati wowote. Kiwango ambacho wakaguzi wanakubaliana, na jinsi kila mmoja alivyopiga kura kwa jumla, huonekana kwa mkaguzi pale ambapo hakuna makala inayosubiri kura yake.",
         "after": "Baada ya kupiga kura",
         "always": "Wakati wowote",
         "withVotes": "{count, plural, one {Na kura # kwenye makala, kwa mfano} other {Na kura # kwenye makala, kwa mfano}}",

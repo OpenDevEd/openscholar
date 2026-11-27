@@ -8389,7 +8389,7 @@
         "whoSettles": "Quién resuelve un conflicto",
         "seeVotes": "Los revisores ven los demás votos",
         "seeingTitle": "Ver los demás votos",
-        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Los votos de los modelos que son solo consejo se ven antes. Quien no vota un artículo ve sus votos en cualquier momento.",
+        "seeingHelp": "Después de votar evita que un revisor se deje influir. Cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Los votos de los modelos que son solo consejo se ven antes. Quien no vota un artículo ve sus votos en cualquier momento. Cuánto coinciden los revisores, y cómo votó cada uno en total, se muestra a un revisor cuando ningún artículo espera ya su voto.",
         "after": "Después de votar",
         "always": "En cualquier momento",
         "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",

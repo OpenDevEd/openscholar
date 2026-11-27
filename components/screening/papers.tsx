@@ -1051,7 +1051,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
           <ShutNote by="reviewer">{screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
-            <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
+            <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.resolvedBy === open.me ? screen("votes.settledBy", { you: "true", name: "" }) : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
             {buttons("vote")}
             {/* Changing a vote can be let go, as the override can: the vote stands as it was. */}
             {mine && reasonFor !== "vote" ? <Button variant="ghost" size="sm" className="w-full" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); }}>{t("panel.cancel")}</Button> : null}

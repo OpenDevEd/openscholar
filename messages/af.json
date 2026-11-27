@@ -8389,7 +8389,7 @@
         "whoSettles": "Wie ’n konflik beslis",
         "seeVotes": "Beoordelaars sien die ander stemme",
         "seeingTitle": "Hoe ander stemme gesien word",
-        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd.",
+        "seeingHelp": "Nadat hulle stem keer dat ’n beoordelaar beïnvloed word. Elkeen sien die ander stemme op ’n artikel sodra hulle daarop gestem het, of sodra dit beslis is. Modelle se stemme wat net advies is, wys al voor dit. Enigiemand wat nie op ’n artikel stem nie, sien sy stemme enige tyd. Hoe ver die beoordelaars saamstem, en hoe elkeen oor die algemeen gestem het, wys vir ’n beoordelaar sodra geen artikel meer op hulle stem wag nie.",
         "after": "Nadat hulle stem",
         "always": "Enige tyd",
         "withVotes": "{count, plural, one {Met # stem op ’n artikel, byvoorbeeld} other {Met # stemme op ’n artikel, byvoorbeeld}}",

@@ -8389,7 +8389,7 @@
         "whoSettles": "Quem resolve um conflito",
         "seeVotes": "Os revisores veem os outros votos",
         "seeingTitle": "Ver os outros votos",
-        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento.",
+        "seeingHelp": "«Depois de votar» evita que um revisor seja influenciado. Cada um vê os outros votos num artigo depois de votar nele, ou quando o artigo fica decidido. Os votos dos modelos que são apenas conselho aparecem antes disso. Quem não vota num artigo vê os votos a qualquer momento. Até que ponto os revisores concordam, e como cada um votou no total, aparece a um revisor quando nenhum artigo espera já o seu voto.",
         "after": "Depois de votar",
         "always": "A qualquer momento",
         "withVotes": "{count, plural, one {Com # voto num artigo, por exemplo} other {Com # votos num artigo, por exemplo}}",

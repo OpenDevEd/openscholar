@@ -8389,7 +8389,7 @@
         "whoSettles": "Wer einen Konflikt entscheidet",
         "seeVotes": "Reviewer sehen die anderen Stimmen",
         "seeingTitle": "Andere Stimmen sehen",
-        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit.",
+        "seeingHelp": "Nach der eigenen Stimme schützt einen Reviewer vor Beeinflussung. Jeder sieht die anderen Stimmen zu einem Artikel, sobald er darüber abgestimmt hat oder der Artikel entschieden ist. Stimmen von Modellen, die nur als Empfehlung gelten, sind schon vorher sichtbar. Wer über einen Artikel nicht abstimmt, sieht seine Stimmen jederzeit. Wie weit die Reviewer übereinstimmen und wie jeder insgesamt gestimmt hat, sieht ein Reviewer, sobald kein Artikel mehr auf seine Stimme wartet.",
         "after": "Nach der eigenen Stimme",
         "always": "Jederzeit",
         "withVotes": "{count, plural, one {Zum Beispiel mit # Stimme zu einem Artikel} other {Zum Beispiel mit # Stimmen zu einem Artikel}}",

@@ -8388,7 +8388,7 @@
         "whoSettles": "Who settles a conflict",
         "seeVotes": "Reviewers see the other votes",
         "seeingTitle": "Seeing other votes",
-        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time.",
+        "seeingHelp": "After they vote keeps a reviewer from being swayed. Each sees the other votes on a paper once they have voted on it, or once it is settled. Models' votes that are advice only show before then. Anyone who doesn't vote on a paper sees its votes at any time. How far the reviewers agree, and how each voted overall, shows to a reviewer once no paper waits for their vote.",
         "after": "After they vote",
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",

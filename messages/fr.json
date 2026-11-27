@@ -8388,7 +8388,7 @@
         "whoSettles": "Qui tranche un désaccord",
         "seeVotes": "Les évaluateurs voient les autres votes",
         "seeingTitle": "Voir les autres votes",
-        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment.",
+        "seeingHelp": "Après leur vote évite qu'un évaluateur soit influencé. Chacun voit les autres votes sur un article une fois qu'il a voté dessus, ou une fois l'article tranché. Les votes des modèles qui ne servent que d'avis s'affichent avant. Quiconque ne vote pas sur un article voit ses votes à tout moment. Le niveau d'accord entre les évaluateurs, et la façon dont chacun a voté dans l'ensemble, s'affichent pour un évaluateur dès qu'aucun article n'attend plus son vote.",
         "after": "Après leur vote",
         "always": "À tout moment",
         "withVotes": "{count, plural, one {Avec # vote sur un article, par exemple} other {Avec # votes sur un article, par exemple}}",

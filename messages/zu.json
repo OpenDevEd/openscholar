@@ -8388,7 +8388,7 @@
         "whoSettles": "Ubani oxazulula ukungqubuzana",
         "seeVotes": "Ababuyekezi babona amanye amavoti",
         "seeingTitle": "Ukubona amanye amavoti",
-        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Amavoti amamodeli ayiseluleko kuphela ayabonakala ngaphambi kwalokho. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini.",
+        "seeingHelp": "Ngemuva kokuthi bevotile kuvimbela umbuyekezi ukuthi athonywe. Ngamunye ubona amanye amavoti ephepheni uma esevotile kulo, noma uma selixazululiwe. Amavoti amamodeli ayiseluleko kuphela ayabonakala ngaphambi kwalokho. Noma ubani ongavoti ephepheni ubona amavoti alo noma nini. Ukuthi ababuyekezi bavumelana kangakanani, nokuthi ngamunye wavota kanjani sekukonke, kubonakala kumbuyekezi lapho kungasekho phepha elilinde ivoti lakhe.",
         "after": "Ngemuva kokuthi bevotile",
         "always": "Noma nini",
         "withVotes": "{count, plural, one {Nevoti elilodwa elingu-# ephepheni, isibonelo} other {Namavoti angu-# ephepheni, isibonelo}}",
