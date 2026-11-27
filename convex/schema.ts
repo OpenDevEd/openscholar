@@ -1844,6 +1844,9 @@ export default defineSchema({
 
   // A person's settings on one screening: its emails turned off.
   // `conflictsAt`: when they were last told conflicts wait for them, which is at most once a day.
+  // What a screening's rule and criteria were from a moment on: a row when it starts and one for each change to them,
+  // so a paper's result can be read against the rule that settled it (the whole record lists them).
+  screeningVersions: defineTable({ jobId: v.id("screeningJobs"), at: v.number(), by: v.optional(v.id("users")), rule: ruleValidator, criteria: capped(v.array(criterionValidator), MAX_QUESTIONS) }).index("by_job_and_at", ["jobId", "at"]),
   screeningNotices: defineTable({ jobId: v.id("screeningJobs"), userId: v.id("users"), off: v.boolean(), conflictsAt: v.optional(v.number()) }).index("by_job_and_user", ["jobId", "userId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because
