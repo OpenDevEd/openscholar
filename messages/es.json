@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "El consejo de los modelos se ve antes de votar",
-        "seeingNothing": "Con una persona en cada artículo, todos los votos se ven",
+        "seeingNothing": "El consejo de los modelos se ve antes de votar. Con una persona en cada artículo, todos los votos se ven",
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",
         "votesSplit": "Los votos se dividen",

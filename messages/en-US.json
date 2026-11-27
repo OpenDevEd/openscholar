@@ -8358,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "The models' advice shows before a vote",
-        "seeingNothing": "Every vote shows with one person on each paper",
+        "seeingNothing": "The models' advice shows before a vote. Every vote shows with one person on each paper",
         "votesAgree": "Votes agree",
         "settled": "Settled",
         "votesSplit": "Votes split",

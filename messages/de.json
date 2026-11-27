@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "Der Rat der Modelle ist vor der Stimme sichtbar",
-        "seeingNothing": "Mit einer Person pro Artikel ist jede Stimme sichtbar",
+        "seeingNothing": "Der Rat der Modelle ist vor der Stimme sichtbar. Mit einer Person pro Artikel ist jede Stimme sichtbar",
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",

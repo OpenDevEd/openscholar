@@ -8358,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "模型的建议在投票前显示",
-        "seeingNothing": "每篇论文只有一人，所有投票都可见",
+        "seeingNothing": "模型的建议在投票前显示。每篇论文只有一人，所有投票都可见",
         "votesAgree": "投票一致",
         "settled": "定案",
         "votesSplit": "投票分歧",

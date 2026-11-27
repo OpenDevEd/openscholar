@@ -8359,7 +8359,7 @@
       },
       "decided": {
         "seeingAdvice": "Ushauri wa modeli unaonekana kabla ya kupiga kura",
-        "seeingNothing": "Kila kura inaonekana kukiwa na mtu mmoja kwenye kila makala",
+        "seeingNothing": "Ushauri wa modeli unaonekana kabla ya kupiga kura. Kila kura inaonekana kukiwa na mtu mmoja kwenye kila makala",
         "votesAgree": "Kura zinakubaliana",
         "settled": "Imeamuliwa",
         "votesSplit": "Kura zinatofautiana",
