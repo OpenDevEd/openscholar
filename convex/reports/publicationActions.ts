@@ -31,12 +31,12 @@ export const save = action({
       if (asked.crossref.mode === "off") asked.zenodo.defaultIdentifierPolicy = "mint-zenodo";
       asked.crossref.suffixNamespace = asked.crossref.suffixNamespace.trim().toLowerCase();
       const previous: PublicationSecrets = kept.encryptedCredentials ? JSON.parse(decrypt(kept.encryptedCredentials, encryptionKey)) : {};
-      const keptCustom = kept.encryptedCustomCredentials ? { ...(kept.customAccounts?.crossref && { crossref: kept.customAccounts.crossref }), credentials: JSON.parse(decrypt(kept.encryptedCustomCredentials, encryptionKey)) as PublicationSecrets } : undefined;
+      const keptCustom = kept.encryptedCustomCredentials ? { ...(kept.customAccounts?.crossref && { crossref: kept.customAccounts.crossref }), ...(kept.customAccounts?.docidEmail && { docidEmail: kept.customAccounts.docidEmail }), credentials: JSON.parse(decrypt(kept.encryptedCustomCredentials, encryptionKey)) as PublicationSecrets } : undefined;
       const { settings, credentials, custom } = await verifiedPublication({ settings: asked, credentials: args.credentials }, { settings: kept.settings, credentials: previous, ...(keptCustom && { custom: keptCustom }) }, { namespace: NAMESPACE });
       await ctx.runMutation(internal.reports.publication.saveVerified, {
         settings,
         encryptedCredentials: encrypt(JSON.stringify(credentials), encryptionKey),
-        customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId },
+        customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId, ...(custom.docidEmail && { docidEmail: custom.docidEmail }), docidPassword: !!custom.credentials.docidPassword },
         encryptedCustomCredentials: encrypt(JSON.stringify(custom.credentials), encryptionKey),
         expectedUpdatedAt: args.expectedUpdatedAt,
       });

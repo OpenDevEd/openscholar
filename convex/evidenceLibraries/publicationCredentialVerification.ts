@@ -167,24 +167,24 @@ function sandboxValue(name: string) {
  * when none is typed. Throws, saving nothing, when a provider refuses.
  */
 /** The own accounts kept so far: as stored, or, from before they were kept apart, the ones in use if they were custom. */
-/** DOCiD's API: production, unless the deployment names another, such as its demo (https://docid-demo.africapidalliance.org) on shared dev. */
-const docidEndpoint = () => process.env.DOCID_ENDPOINT?.trim() || "https://docid.africapidalliance.org";
-export const docidClient = () =>
-  new DocidApiClient({ endpoint: docidEndpoint(), fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
+/** DOCiD's API: its demo for the sandbox, or DOCiD itself. */
+const docidEndpoint = (sandbox: boolean) => (sandbox ? "https://docid-demo.africapidalliance.org" : "https://docid.africapidalliance.org");
+export const docidClient = (sandbox: boolean) =>
+  new DocidApiClient({ endpoint: docidEndpoint(sandbox), fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
 
 
 /**
  * Signs in to DOCiD and reads the lists its deposits take ids from. The resource types are only the ones the account
  * may use: DOCiD filters them by its category, and an account it hasn't allowed any gets none.
  */
-export async function docidLists(email: string, password: string) {
-  return readDocidLists((await docidClient().signIn({ email, password })).token);
+export async function docidLists(email: string, password: string, sandbox: boolean) {
+  return readDocidLists((await docidClient(sandbox).signIn({ email, password })).token, sandbox);
 }
 
 /** The lists `docidLists` reads, for an account already signed in. */
-export async function readDocidLists(token: string) {
+export async function readDocidLists(token: string, sandbox: boolean) {
   const read = async (list: string, name: string) => {
-    const response = await fetch(`${docidEndpoint()}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
+    const response = await fetch(`${docidEndpoint(sandbox)}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`DOCiD answered ${response.status} when asked for its ${list.replaceAll("-", " ")}.`);
     const rows = (await response.json()) as Array<Record<string, unknown>>;
     return rows.flatMap((row) => (typeof row.id === "number" && typeof row[name] === "string" ? [{ id: row.id, name: (row[name] as string).trim() }] : [])).slice(0, DOCID_OPTIONS_MAX);
@@ -193,7 +193,7 @@ export async function readDocidLists(token: string) {
   return { resourceTypes, publicationTypes, funderTypes };
 }
 
-export type KeptCustom = { crossref?: CustomCrossref; credentials: PublicationSecrets };
+export type KeptCustom = { crossref?: CustomCrossref; docidEmail?: string; credentials: PublicationSecrets };
 const CUSTOM_CROSSREF = ["prefix", "depositorName", "email", "registrant"] as const;
 
 export async function verifiedPublication(
@@ -219,13 +219,14 @@ export async function verifiedPublication(
   // replaces them.
   const before: KeptCustom = kept.custom ?? {
     ...(kept.settings?.crossref.mode === "custom" && { crossref: Object.fromEntries(CUSTOM_CROSSREF.map((key) => [key, kept.settings!.crossref[key]])) as CustomCrossref }),
+    ...(kept.settings?.docid?.mode === "custom" && { docidEmail: kept.settings.docid.email }),
     credentials: {
       ...(kept.settings?.zenodo.mode === "custom" && { zenodoToken: kept.credentials.zenodoToken }),
       ...(kept.settings?.crossref.mode === "custom" && { crossrefLoginId: kept.credentials.crossrefLoginId, crossrefPassword: kept.credentials.crossrefPassword }),
       ...(kept.settings?.docid?.mode === "custom" && { docidPassword: kept.credentials.docidPassword }),
     },
   };
-  const custom: KeptCustom = { ...(before.crossref && { crossref: before.crossref }), credentials: { ...before.credentials } };
+  const custom: KeptCustom = { ...(before.crossref && { crossref: before.crossref }), ...(before.docidEmail && { docidEmail: before.docidEmail }), credentials: { ...before.credentials } };
   const credentials: PublicationSecrets = {};
   if (settings.zenodo.mode === "sandbox")
     credentials.zenodoToken = sandboxValue("ZENODO_SANDBOX_TOKEN");
@@ -251,13 +252,20 @@ export async function verifiedPublication(
     custom.credentials.crossrefPassword = credentials.crossrefPassword =
       asked.credentials.crossrefPassword || before.credentials.crossrefPassword;
   }
+  if (settings.docid?.mode === "sandbox") {
+    settings.docid.email = sandboxValue("DOCID_SANDBOX_EMAIL");
+    credentials.docidPassword = sandboxValue("DOCID_SANDBOX_PASSWORD");
+  }
   if (settings.docid?.mode === "custom") {
-    settings.docid.email = settings.docid.email.trim();
+    custom.docidEmail = settings.docid.email = settings.docid.email.trim() || before.docidEmail || "";
     custom.credentials.docidPassword = credentials.docidPassword = asked.credentials.docidPassword || before.credentials.docidPassword;
   }
   // Switching a registrar off forgets its own account too: off is how an admin removes stored credentials.
   if (settings.zenodo.mode === "off") delete custom.credentials.zenodoToken;
-  if (settings.docid?.mode !== "custom") delete custom.credentials.docidPassword;
+  if (!settings.docid || settings.docid.mode === "off") {
+    delete custom.credentials.docidPassword;
+    delete custom.docidEmail;
+  }
   if (settings.crossref.mode === "off") {
     delete custom.credentials.crossrefLoginId;
     delete custom.credentials.crossrefPassword;
@@ -276,11 +284,11 @@ export async function verifiedPublication(
       credentials.crossrefPassword!,
       settings.crossref.mode === "sandbox",
     );
-  if (settings.docid?.mode === "custom") {
+  if (settings.docid && settings.docid.mode !== "off") {
     const { email } = settings.docid;
     if (!email || !credentials.docidPassword) throw new Error("Give the email and password of the DOCiD account.");
     // Signing in checks the account; its lists are kept, as each deposit finds its types in them.
-    settings.docid.options = await docidLists(email, credentials.docidPassword);
+    settings.docid.options = await docidLists(email, credentials.docidPassword, settings.docid.mode === "sandbox");
   }
   return { settings, credentials, custom };
 }

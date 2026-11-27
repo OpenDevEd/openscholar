@@ -75,7 +75,7 @@ export const verifyAndSave = action({
             JSON.stringify(credentials),
             encryptionKey,
           ),
-          customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId },
+          customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId, ...(custom.docidEmail && { docidEmail: custom.docidEmail }), docidPassword: !!custom.credentials.docidPassword },
           encryptedCustomCredentials: encrypt(JSON.stringify(custom.credentials), encryptionKey),
           expectedUpdatedAt: args.expectedUpdatedAt,
           verifiedAt: Date.now(),

@@ -6520,6 +6520,7 @@
       "registration": "DOI पंजीकरण",
       "zenodoSandbox": "Zenodo परीक्षण परिवेश",
       "crossrefSandbox": "Crossref परीक्षण परिवेश",
+      "docidSandbox": "DOCiD परीक्षण परिवेश",
       "off": "बंद",
       "zenodoHint": "हर रिपोर्ट का PDF संग्रहित करता है।",
       "crossrefHint": "हर रिपोर्ट को आपके उपसर्ग के तहत DOI मिलता है। बंद होने पर प्रकाशन रुक जाता है: अकेले Zenodo अभी किसी रिपोर्ट को उसका DOI नहीं दे सकता।",

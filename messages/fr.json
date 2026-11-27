@@ -6520,6 +6520,7 @@
       "registration": "Enregistrement des DOI",
       "zenodoSandbox": "Bac à sable Zenodo",
       "crossrefSandbox": "Bac à sable Crossref",
+      "docidSandbox": "Bac à sable DOCiD",
       "off": "Désactivé",
       "zenodoHint": "Archive le PDF de chaque rapport.",
       "crossrefHint": "Chaque rapport reçoit un DOI sous votre préfixe. Désactivé, la publication s'arrête : Zenodo seul ne peut pas encore donner son DOI à un rapport.",

@@ -135,7 +135,7 @@ function SettingsView({ settings, autumn, intake }: { settings: Settings; /** Au
     return refused ? (toast.error(refused), Promise.resolve(false)) : save({ series: part }, saved);
   };
 
-  const { zenodo, crossref } = settings.publication;
+  const { zenodo, crossref, docid } = settings.publication;
   const registers = canRegister(settings.publication, settings.identifiers);
   const sampleDoi = crossrefDoiOf(settings.publication, "R100015");
   const reader = cardOf(settings.metadataModel, settings.metadataEffort);
@@ -195,6 +195,7 @@ function SettingsView({ settings, autumn, intake }: { settings: Settings; /** Au
           <span className="flex flex-wrap items-center justify-end gap-2">
             {zenodo.mode !== "off" ? <StatusChip tone={zenodo.mode === "sandbox" ? "warning" : "success"}>{zenodo.mode === "sandbox" ? t("zenodoSandbox") : "Zenodo"}</StatusChip> : null}
             {crossref.mode !== "off" ? <StatusChip tone={crossref.mode === "sandbox" ? "warning" : "success"}>{crossref.mode === "sandbox" ? t("crossrefSandbox") : "Crossref"}</StatusChip> : null}
+            {docid && docid.mode !== "off" ? <StatusChip tone={docid.mode === "sandbox" ? "warning" : "success"}>{docid.mode === "sandbox" ? t("docidSandbox") : "DOCiD"}</StatusChip> : null}
             {registers ? null : <StatusChip tone="neutral">{t("off")}</StatusChip>}
           </span>
         }
