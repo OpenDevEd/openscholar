@@ -65,7 +65,8 @@ export const readSourceAgain = workspaceMutation({
     // A look under way reads it in its turn: never a second one beside it.
     if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
     const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
-    if (last && last.from === 0) await readOn(ctx, job, actor.userId);
+    // A screening that is finished reopens by a check of its own (`checked`): the look it started with goes on only while it runs.
+    if (last && last.from === 0 && job.finishedAt === undefined) await readOn(ctx, job, actor.userId);
     else await startCheck(ctx, job, actor.userId, job.totalPapers);
     return null;
   },
@@ -88,18 +89,21 @@ export const doisOf = internalQuery({
  * DOI found this time joins the screening, and the list it read before goes.
  */
 export const swapDois = internalMutation({
-  args: { sourceId: v.id("screeningSources"), file: v.id("_storage"), userId: v.id("users"), workspaceId: v.id("workspaces") },
+  args: { sourceId: v.id("screeningSources"), was: v.id("_storage"), file: v.id("_storage"), userId: v.id("users"), workspaceId: v.id("workspaces") },
   returns: v.null(),
-  handler: async (ctx, { sourceId, file, ...actor }) => {
+  handler: async (ctx, { sourceId, was, file, ...actor }) => {
     const source = await ctx.db.get("screeningSources", sourceId);
     if (!source || source.removedAt !== undefined || source.set.kind !== "dois") throw createError("NOT_FOUND", "This list of DOIs isn't in the screening any more.");
     const job = await requireMember(ctx, actor, source.jobId);
-    if (source.set.file !== file) await ctx.storage.delete(source.set.file);
+    // Another correction was saved since this one read the list: this one would undo it, so it asks to be made again.
+    if (source.set.file !== was) throw createError("CONFLICT", "This list was just corrected. Correct the DOI again.");
+    // ponytail: the list it read before stays in storage. A copy of the screening may read the same file; delete it once nothing names it if storage ever matters.
     await ctx.db.patch("screeningSources", sourceId, { set: { kind: "dois", file }, ...readAgain(source) });
     // A look under way reads it in its turn: never a second one beside it.
     if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return null;
     const last = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first();
-    if (last && last.from === 0) await readOn(ctx, job, actor.userId);
+    // A screening that is finished reopens by a check of its own (`checked`): the look it started with goes on only while it runs.
+    if (last && last.from === 0 && job.finishedAt === undefined) await readOn(ctx, job, actor.userId);
     else await startCheck(ctx, job, actor.userId, job.totalPapers);
     return null;
   },

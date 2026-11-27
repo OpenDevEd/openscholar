@@ -162,17 +162,19 @@ export const keepDois = workspaceAction({
  */
 export const correctDoi = workspaceAction({
   args: { sourceId: v.id("screeningSources"), from: v.string(), to: v.string() },
-  returns: v.null(),
-  handler: async (ctx, actor, { sourceId, from, to }) => {
+  // The list the source reads now, which the form that is starting the screening takes in place of the one it had.
+  returns: v.id("_storage"),
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  handler: async (ctx, actor, { sourceId, from, to }): Promise<Id<"_storage">> => {
     const [was, now] = [normalDoi(from), normalDoi(to)];
     if (!now) throw createError("VALIDATION_ERROR", "That isn't a DOI. A DOI starts with 10. and has a slash.");
-    const file = await ctx.runQuery(internal.screening.living.doisOf, { sourceId, userId: actor.userId, workspaceId: actor.workspaceId });
+    const file: Id<"_storage"> = await ctx.runQuery(internal.screening.living.doisOf, { sourceId, userId: actor.userId, workspaceId: actor.workspaceId });
     const dois = (await textOf(ctx, file)).split("\n").filter(Boolean);
     // The DOI takes the place of the one it corrects, and is in the list once.
     const kept = [...new Set(dois.map((doi) => (doi === was ? now : doi)))];
     const next = was === now ? file : await ctx.storage.store(new Blob([kept.join("\n")], { type: "text/plain" }));
-    await ctx.runMutation(internal.screening.living.swapDois, { sourceId, file: next, userId: actor.userId, workspaceId: actor.workspaceId });
-    return null;
+    await ctx.runMutation(internal.screening.living.swapDois, { sourceId, was: file, file: next, userId: actor.userId, workspaceId: actor.workspaceId });
+    return next;
   },
 });
 

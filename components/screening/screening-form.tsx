@@ -1136,7 +1136,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {open === "left" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
                                       {/* Each row says why it was left out, and the section's "?" says the rule: the list needs no words of its own. */}
-                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} dois={source.kind === "dois"} /> : null}
+                                      {rowOf(source) ? <LeftOut {...rowOf(source)!} total={leftOut} dois={source.kind === "dois"} onList={own ? undefined : (file) => patchSource(source.id, { set: { kind: "dois", file } })} /> : null}
                                     </div>
                                   ) : open === "merged" ? (
                                     <div className="pb-4 ps-16 pe-4 max-sm:ps-4">
@@ -1936,14 +1936,14 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
   );
 }
 /** A DOI the screening found no record of: put right where it was mistyped, or tried again as it is. The list is read again from its start, and a DOI found this time joins the screening. */
-function CorrectDoi({ sourceId, doi }: { sourceId: Id<"screeningSources">; doi: string }) {
+function CorrectDoi({ sourceId, doi, onList }: { sourceId: Id<"screeningSources">; doi: string; onList?: (file: Id<"_storage">) => void }) {
   const t = useTranslations("screening.form");
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const correct = useWorkspaceAction(api.screening.held.correctDoi);
   const send = () => {
     setBusy(true);
-    void correct({ sourceId, from: doi, to: (text ?? doi).trim() }).then(() => { setText(null); toast(t("papers.doiAgain")); }, (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")))).finally(() => setBusy(false));
+    void correct({ sourceId, from: doi, to: (text ?? doi).trim() }).then((file) => { onList?.(file); setText(null); toast(t("papers.doiAgain")); }, (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")))).finally(() => setBusy(false));
   };
   if (text === null) return <Button variant="ghost" size="sm" className="h-7 shrink-0 self-start text-xs" onClick={() => setText(doi)}><PenLine />{t("papers.correctDoi")}</Button>;
   return (
@@ -1955,7 +1955,7 @@ function CorrectDoi({ sourceId, doi }: { sourceId: Id<"screeningSources">; doi: 
   );
 }
 /** What one of a running screening's sources held and didn't take, a page at a time, each with why. */
-function LeftOut({ jobId, sourceId, total, dois = false }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** A list of DOIs: one that wasn't found can be corrected, or tried again. */ dois?: boolean }) {
+function LeftOut({ jobId, sourceId, total, dois = false, onList }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** A list of DOIs: one that wasn't found can be corrected, or tried again. */ dois?: boolean; /** The list a correction kept, for a screening still being set up, whose form starts it with that list. */ onList?: (file: Id<"_storage">) => void }) {
   const t = useTranslations("screening.form");
   const words = useWords();
   const rows = useCursorPageAt("records", api.screening.view.leftOut, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
@@ -1969,7 +1969,7 @@ function LeftOut({ jobId, sourceId, total, dois = false }: { jobId: Id<"screenin
             {/* A title is read in full here: this list is where someone finds out what was left out. */}
             <p className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere] max-sm:basis-full">{row.name}</p>
             <StateChip tone="warning" icon={FileX} className="shrink-0 self-start">{words.t(`leftWhy.${row.why}`)}</StateChip>
-            {dois && row.why === "record" ? <CorrectDoi sourceId={sourceId} doi={row.name} /> : null}
+            {dois && row.why === "record" ? <CorrectDoi sourceId={sourceId} doi={row.name} onList={onList} /> : null}
           </li>
         ))}
       </ul>
