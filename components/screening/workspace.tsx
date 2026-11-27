@@ -189,8 +189,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open?.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
         { id: "papers", label: t("tabs.papers"), icon: Table2, href: papersHref(id), detail: open ? <span className="tabular-nums text-muted-foreground">{words.num(open.total)}</span> : <span aria-hidden className="invisible tabular-nums">0</span> },
         // Only someone who may change it has its settings.
-        // On a phone's strip the unsaved sign stands alone, so the four tabs keep their room.
-        ...(!open || open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs"><span className="@max-[30rem]/strip:sr-only">{t("tabs.unsaved")}</span></StateChip> : undefined }] : []),
+        // On a phone's strip the unsaved sign stands alone, so the four tabs keep their room: it stays where the tabs' own icons go.
+        ...(!open || open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" className="h-5 px-1.5 text-2xs"><PenLine aria-hidden className="size-3 shrink-0 inline-block!" /><span className="@max-[30rem]/strip:sr-only">{t("tabs.unsaved")}</span></StateChip> : undefined }] : []),
       ]}
     />
   );
@@ -289,7 +289,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const first = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : (others[0] ?? null))) : null;
   const narrowedTo = first ? [first, ...others.filter((one) => one !== first)] : [];
   const faceHref = (reviewer: Reviewer) => {
-    if (view !== "papers") return reviewerHref(id, reviewer);
+    if (view !== "papers") return reviewerHref(id, reviewer) ?? papersHref(id, { reviewer: reviewer.id });
     const now = narrowedTo.includes(reviewer.id) ? narrowedTo.filter((one) => one !== reviewer.id) : [...narrowedTo, reviewer.id];
     const next = new URLSearchParams(search);
     // One reviewer's kind of vote stays only while they are still the only one.
@@ -485,7 +485,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
   const row = cn("flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6", tone.panel);
   const icon = cn("size-4 shrink-0", tone.ink);
-  const modelLink = (model: Reviewer) => <NextLink key={model.id} href={reviewerHref(id, model)} className={INLINE_LINK}>{model.name}</NextLink>;
+  const modelLink = (model: Reviewer) => <NextLink key={model.id} href={reviewerHref(id, model) ?? papersHref(id, { reviewer: model.id })} className={INLINE_LINK}>{model.name}</NextLink>;
   // Their names as a list, each a link.
   const models = (list: Reviewer[]) => format.list(list.map(modelLink), { type: "conjunction" });
   if (kind === "arrived" && open.latest) {
@@ -582,7 +582,7 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
     return worded(reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: (chunks) => chunks }) : t("banner.modelsReading", { count: reading.length }), t("banner.read", { done: read.done, of: read.of }),
       <Chip className="shrink-0 whitespace-nowrap">
         <AiIcon working className="size-3.5 shrink-0" />
-        <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={reviewerHref(screening.id, reading[0]!)} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
+        <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={reviewerHref(screening.id, reading[0]!) ?? papersHref(screening.id, { reviewer: reading[0]!.id })} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
         <span className={figures}>{t("banner.read", { done: read.done, of: read.of })}</span>
       </Chip>
     );

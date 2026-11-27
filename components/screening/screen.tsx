@@ -282,6 +282,8 @@ function Screen({ open }: { open: Open }) {
   };
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
+  const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
@@ -333,7 +335,7 @@ function Screen({ open }: { open: Open }) {
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
     // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note. What the field shows is what is saved: a note is never dropped out of sight.
-    const note = (notes[paper.id] ?? savedNote(paper)).trim() || undefined;
+    const note = (notes[noteKey(paper.id)] ?? savedNote(paper)).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
       // The sheet steps back before the note opens, so Back from the note leaves the paper as it was.
@@ -382,7 +384,7 @@ function Screen({ open }: { open: Open }) {
   const press = (decision: Decision) => {
     if (!paper || !mayDecide || (advanced.current?.paper === paper.id && Date.now() - advanced.current.at < 500)) return;
     // Excluding asks why, unless your own answers or a note already say (lib/screening/rules.ts `givenReason`).
-    const reason = decision === "exclude" ? givenReason(criteria, { ...mine?.answers, ...answers[paper.id] }, notes[paper.id] ?? savedNote(paper), resolving) : undefined;
+    const reason = decision === "exclude" ? givenReason(criteria, { ...mine?.answers, ...answers[paper.id] }, notes[noteKey(paper.id)] ?? savedNote(paper), resolving) : undefined;
     // On a phone the reasons are a sheet, a step of its own: the paper under it is named first, so Back from the sheet, or from the paper after it, comes back to this one.
     if (reason === null && tablet && !picked) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setReasonFor(paper.id));
     else if (reason === null) setReasonFor(paper.id);
@@ -493,7 +495,7 @@ function Screen({ open }: { open: Open }) {
   const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? t("bar.underMinute") : minutes < 90 ? t("bar.minutes", { minutes }) : t("bar.hours", { hours: Math.round(minutes / 60) })) : null;
   // Dragging the paper casts a vote only where a vote is still to cast, on a screen that is touched.
   const swipeable = tablet && answering && mayDecide && !mine && Boolean(paper) && writing !== paper?.id;
-  const hasNote = Boolean(paper && (notes[paper.id] ?? savedNote(paper)).trim());
+  const hasNote = Boolean(paper && (notes[noteKey(paper.id)] ?? savedNote(paper)).trim());
   // The note's field is open when it was asked for, when it holds a note, and always for the reason a conflict is settled with.
   // Undo takes back what was last done here: a reviewer's vote, or the decision of whoever settles a conflict.
   const undoSays = t("shortcuts.undo", { settling: String(resolving) });
@@ -1028,10 +1030,10 @@ function Screen({ open }: { open: Open }) {
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <ReasonNoteField value={notes[paper.id] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [paper.id]: text }))} />
+                  <ReasonNoteField value={notes[noteKey(paper.id)] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: text }))} />
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
+                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[noteKey(paper.id)]?.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
                   </div>
                 </form>
               ) : (
@@ -1057,8 +1059,8 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[paper.id] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                        <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
                   </AutoHeight>

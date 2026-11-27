@@ -59,14 +59,14 @@ import { cn } from "@/lib/utils";
 import { advisory, EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceHref, useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, hidingReaders, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
 import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
+import { settleMeans, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -537,6 +537,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Someone invited by email reads papers once they have joined.
   // Who the rule can put on a paper: the people on it and the ones invited by email, those a running screening's invitations wait for among them.
   const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
+  // Whose votes a reviewer may be kept from, counting people taken off whose votes stay (./data.ts `hidingReaders`).
+  const hiding = hidingReaders(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
   const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
@@ -1485,7 +1487,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Segmented label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
-              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: words.t(`settle.means.${rule}`), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
+              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, saved ? (open?.invited ?? []) : []), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
                 <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
@@ -1507,10 +1509,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, each) ? { detail: t("decided.seeingAdvice") } : {})}>
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, hiding) ? { detail: t("decided.seeingAdvice") } : {})}>
                 {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
                 {/* Whether the choice could hide anything at all, asked as if votes were hidden until one votes: under At any time nothing is hidden either way. */}
-                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, each) ? (
+                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, hiding) ? (
                   <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
                 ) : (
                   <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />

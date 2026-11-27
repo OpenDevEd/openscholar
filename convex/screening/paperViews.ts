@@ -324,6 +324,8 @@ export const listAction = defineUserQuery({
       };
       return await searchPage((page) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(page), paginationOpts.cursor, options.numItems, async (paper) => {
         if (!keeps(paper) || !holdsAll(paper, needle) || (settler && paper.resolved?.by !== settler)) return null;
+        // The papers that wait for their vote, as the list without a search reads them: a place closed by a paper settled without it waits for nothing.
+        if (of && voted === "none" && (await votesOf(ctx, paper._id)).find((vote) => vote.reviewerId === of._id)?.status !== "waiting") return null;
         const [row] = await withVotes([paper]);
         return row && theirs(row) ? row : null;
       });

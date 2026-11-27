@@ -1044,7 +1044,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who={words.t("you")} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{t("panel.youVoted", { decision: words.decision(mine.decision) })}{mine.reason ? <ReasonChip reason={mine.reason} criteria={reasonCriteria(screening)} className="min-w-0 shrink" /> : null}</span>
-              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", mine?.note ?? ""); }}>{t("panel.changeIt")}</Button>}
+              {finished ? null : <Button variant="ghost" size="xs" onClick={() => { setDeciding("vote"); setNote("vote", noteOf("vote")); }}>{t("panel.changeIt")}</Button>}
             </div>
           </section>
         ) : finished ? (
