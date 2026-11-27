@@ -8186,7 +8186,8 @@
         "noCriteria": "Hakuna vigezo",
         "invited": "{count, plural, other {# wamealikwa}}",
         "nobody": "Bado hakuna mtu",
-        "decided": "{you, select, true {{rule}, na wewe unaamua migongano} other {{rule}, na {name} anaamua migongano}}"
+        "decided": "{you, select, true {{rule}, na wewe unaamua migongano} other {{rule}, na {name} anaamua migongano}}",
+        "withAdvice": "{decided}, kura za AI zikiwa ushauri"
       },
       "filledFrom": "Imejazwa kutoka <b>{name}</b>",
       "openIt": "Ifungue",
@@ -9268,6 +9269,7 @@
       },
       "votes": {
         "title": "Kura za kila mtu",
+        "titleAdvice": "Kura na ushauri wa AI",
         "forSettler": "{you, select, true {Kwa ajili yako kuamua} other {Kwa ajili ya {name} kuamua}}",
         "waitingFrom": "kutoka kwa {names}",
         "more": "{count, plural, other {# zaidi}}",

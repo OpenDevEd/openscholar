@@ -339,14 +339,15 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       </span>
       {/* On a phone the chips are four lines: the Overview shows them, and the other pages keep the one line with the "?" that says the same. */}
       <div className={cn("min-w-0 max-sm:order-last max-sm:basis-full", view !== "overview" && "max-sm:hidden")}>
-      <FadeRow scrolls scrollbar="none" className="flex items-center gap-2 max-sm:flex-wrap">
+      {/* They wrap onto a second line rather than scroll out of sight: what each chip says is the rule. */}
+      <div className="flex flex-wrap items-center gap-2">
         <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
         <Chip icon={Check}>{facts.when}</Chip>
         {facts.advice ? <Chip icon={AiIcon}>{facts.advice}</Chip> : null}
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
         {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}
-      </FadeRow>
+      </div>
       </div>
       {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>{t("change")}</NextLink></Button> : null}
     </div>

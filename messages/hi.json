@@ -8185,7 +8185,8 @@
         "noCriteria": "कोई मानदंड नहीं",
         "invited": "{count, plural, other {# आमंत्रित}}",
         "nobody": "अभी कोई नहीं",
-        "decided": "{you, select, true {{rule}, और मतभेद आप सुलझाते हैं} other {{rule}, और मतभेद {name} सुलझाते हैं}}"
+        "decided": "{you, select, true {{rule}, और मतभेद आप सुलझाते हैं} other {{rule}, और मतभेद {name} सुलझाते हैं}}",
+        "withAdvice": "{decided}, AI वोट सलाह के रूप में"
       },
       "filledFrom": "<b>{name}</b> से भरा गया",
       "openIt": "इसे खोलें",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "सभी के वोट",
+        "titleAdvice": "वोट और AI सलाह",
         "forSettler": "{you, select, true {आपके सुलझाने के लिए} other {{name} के सुलझाने के लिए}}",
         "waitingFrom": "{names} से",
         "more": "{count, plural, other {# और}}",

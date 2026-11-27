@@ -8185,7 +8185,8 @@
         "noCriteria": "没有标准",
         "invited": "{count, plural, other {已邀请 # 人}}",
         "nobody": "还没有人",
-        "decided": "{you, select, true {{rule}，由你裁决冲突} other {{rule}，由 {name} 裁决冲突}}"
+        "decided": "{you, select, true {{rule}，由你裁决冲突} other {{rule}，由 {name} 裁决冲突}}",
+        "withAdvice": "{decided}，AI 投票仅作建议"
       },
       "filledFrom": "已从 <b>{name}</b> 填入",
       "openIt": "打开",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "所有人的投票",
+        "titleAdvice": "投票与 AI 建议",
         "forSettler": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
         "waitingFrom": "等待 {names}",
         "more": "{count, plural, other {另外 # 人}}",

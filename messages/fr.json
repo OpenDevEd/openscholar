@@ -8185,7 +8185,8 @@
         "noCriteria": "Aucun critère",
         "invited": "{count, plural, one {# invité} other {# invités}}",
         "nobody": "Personne pour l'instant",
-        "decided": "{you, select, true {{rule}, et vous tranchez les désaccords} other {{rule}, et {name} tranche les désaccords}}"
+        "decided": "{you, select, true {{rule}, et vous tranchez les désaccords} other {{rule}, et {name} tranche les désaccords}}",
+        "withAdvice": "{decided}, avec les votes de l'IA comme avis"
       },
       "filledFrom": "Rempli à partir de <b>{name}</b>",
       "openIt": "L'ouvrir",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "Les votes de chacun",
+        "titleAdvice": "Votes et avis de l'IA",
         "forSettler": "{you, select, true {À trancher par vous} other {À trancher par {name}}}",
         "waitingFrom": "de {names}",
         "more": "{count, plural, other {# de plus}}",

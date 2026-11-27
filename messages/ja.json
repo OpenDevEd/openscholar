@@ -8185,7 +8185,8 @@
         "noCriteria": "基準なし",
         "invited": "{count, plural, other {招待中 # 人}}",
         "nobody": "まだいません",
-        "decided": "{you, select, true {{rule}、不一致はあなたが判定} other {{rule}、不一致は {name} が判定}}"
+        "decided": "{you, select, true {{rule}、不一致はあなたが判定} other {{rule}、不一致は {name} が判定}}",
+        "withAdvice": "{decided}、AI の投票は助言として扱う"
       },
       "filledFrom": "<b>{name}</b> から入力しました",
       "openIt": "開く",
@@ -9267,6 +9268,7 @@
       },
       "votes": {
         "title": "全員の投票",
+        "titleAdvice": "投票と AI の助言",
         "forSettler": "{you, select, true {あなたが判定} other {{name} が判定}}",
         "waitingFrom": "{names} の投票待ち",
         "more": "{count, plural, other {ほか # 人}}",

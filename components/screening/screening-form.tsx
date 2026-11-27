@@ -840,7 +840,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" }), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (draft.rule.models === "advice" && models.length ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 

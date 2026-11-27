@@ -8186,7 +8186,8 @@
         "noCriteria": "لا معايير",
         "invited": "{count, plural, zero {# مدعو} one {مدعو واحد} two {مدعوان} few {# مدعوين} many {# مدعوًا} other {# مدعو}}",
         "nobody": "لا أحد بعد",
-        "decided": "{you, select, true {{rule}، وأنت تحسم التعارضات} other {{rule}، و{name} يحسم التعارضات}}"
+        "decided": "{you, select, true {{rule}، وأنت تحسم التعارضات} other {{rule}، و{name} يحسم التعارضات}}",
+        "withAdvice": "{decided}، وأصوات الذكاء الاصطناعي نصيحة فقط"
       },
       "filledFrom": "مُعبّأ من <b>{name}</b>",
       "openIt": "افتحه",
@@ -9268,6 +9269,7 @@
       },
       "votes": {
         "title": "أصوات الجميع",
+        "titleAdvice": "الأصوات ونصيحة الذكاء الاصطناعي",
         "forSettler": "{you, select, true {لتحسمه أنت} other {ليحسمه {name}}}",
         "waitingFrom": "من {names}",
         "more": "{count, plural, other {# أخرى}}",

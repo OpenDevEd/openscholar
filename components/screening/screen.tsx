@@ -43,7 +43,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, modelsOf, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
@@ -577,7 +577,8 @@ function Screen({ open }: { open: Open }) {
   // Everyone's votes on the open paper. It is drawn in one of two places: under the paper from a laptop's width, and after your answers under it, where one column has to put the questions before the others' votes.
   const everyonesVotes = paper ? (
                     <Section
-                      title={t("votes.title")}
+                      // As advice the models' votes settle nothing on a paper you have: the heading says so.
+                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && modelsOf(screening).length ? t("votes.titleAdvice") : t("votes.title")}
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
@@ -871,7 +872,7 @@ function Screen({ open }: { open: Open }) {
 
       {paper ? (
         /* The vote stays at the foot of the window: under the panes from a laptop's width, where it is the workbench's last row. From 1400px it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under that the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
-        <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 lg:shrink-0">
+        <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0">
           <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES, folded && BAR_FOLDED)}>
             {/* Where you are */}
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
