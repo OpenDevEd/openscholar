@@ -69,7 +69,7 @@ const LINKING_WORDS = new Set(["and", "of", "the", "for", "in", "at"]);
 const telling = (words: string) => words.split(" ").filter((word) => word && !LINKING_WORDS.has(word));
 const institutionWords = (name: string) => telling(organisationName(name));
 /** The same words with their accents: ORCID's affiliation search reads "montreal" and "montréal" as different words. */
-const queryWords = (name: string) => telling(name.normalize("NFC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim());
+const queryWords = (name: string) => telling(name.normalize("NFC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim());
 
 /**
  * Whether an institution on an ORCID record is the one a PDF printed: the record's name holds every word of the

@@ -48,5 +48,8 @@ describe("matchOrcid", () => {
     vi.stubGlobal("fetch", fetched);
     await matchOrcid("Example Author", ["Université de Montréal"]);
     expect(fetched.mock.calls[0]![0].searchParams.get("q")).toContain("affiliation-org-name:(+université +de +montréal)");
+    // A vowel sign is part of its word, not a break in it.
+    await matchOrcid("Example Author", ["दिल्ली विश्वविद्यालय"]);
+    expect(fetched.mock.calls[1]![0].searchParams.get("q")).toContain("affiliation-org-name:(+दिल्ली +विश्वविद्यालय)");
   });
 });
