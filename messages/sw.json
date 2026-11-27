@@ -6903,6 +6903,7 @@
           "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
           "nothingOff": "{code} haipunguzi bei ya kuchapisha ripoti.",
           "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu.",
+          "codeUsed": "Tayari umetumia {code}.",
           "applyFirst": "Tumia msimbo, au uufute, ili kuwasha.",
           "typeFirst": "Andika msimbo kwanza."
         },

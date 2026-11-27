@@ -647,6 +647,8 @@ export default defineSchema({
   })
     .index("by_workspaceId_and_state", ["workspaceId", "state"])
     .index("by_reportId", ["reportId"])
+    // A person's by the code they used, which an event's code is checked against (reports/activation.ts `usedCode`). Kept in capitals.
+    .index("by_by_and_code_and_state", ["by", "code", "state"])
     // The latest that count against a limit on new reports (reports/intake.ts).
     .index("by_state_and_at", ["state", "at"]),
 

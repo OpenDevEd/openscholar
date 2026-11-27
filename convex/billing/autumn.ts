@@ -226,6 +226,11 @@ export const autumn = {
     return call<{ list: AutumnFeature[] }>("features.list", {});
   },
 
+  /** The coupons made in Autumn, each with its promotion codes. */
+  coupons() {
+    return call<{ coupons: Array<{ id: string; promo_codes: Array<{ code: string }> }> }>("rewards.list", {});
+  },
+
   /** The customer, with its card only when `card` is set (Autumn asks Stripe for it), each subscription's plan when `plans` is, and its invoices when `invoices` is. */
   customer(customerId: string, data: { email?: string; name?: string; card?: boolean; plans?: boolean; invoices?: boolean } = {}) {
     const { card, plans, invoices, ...profile } = data;

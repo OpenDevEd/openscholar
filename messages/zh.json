@@ -6902,6 +6902,7 @@
           "unknownCode": "{code} 不是我们认识的代码，或已用完。",
           "nothingOff": "{code} 不能减免发布报告的费用。",
           "codeTooLong": "这个代码太长，不可能是我们的代码。",
+          "codeUsed": "您已经使用过 {code}。",
           "applyFirst": "请使用该优惠码或将其清除，然后再激活。",
           "typeFirst": "请先输入代码。"
         },

@@ -31,7 +31,7 @@ const TOP_UP = "publication_top_up";
 /** Stripe's page for a payment with no saved card, as Autumn answers it: its address carries the session's id. */
 const CHECKOUT = "https://checkout.stripe.example/c/pay/cs_test_a1B2c3";
 /** The share each code takes off what a card buys. */
-const OFF: Record<string, number> = { HALFOFF: 0.5, FREEDOI: 1 };
+const OFF: Record<string, number> = { HALFOFF: 0.5, FREEDOI: 1, AFEW26: 1 };
 
 /**
  * Autumn and Stripe as the action reaches them. The customer's publication balance holds `monthly` dollars that refill
@@ -65,6 +65,8 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
     if (stripeCurrency && url.includes("api.stripe.com/v1/customers/")) return Response.json({ id: "cus_test", currency: stripeCurrency, balance: -Math.round(credit * 100) });
     if (url.startsWith("https://api.stripe.com")) return Response.json({ id: "in_late", status: "paid", total: stripeTotal, amount_due: Math.max(0, stripeTotal - credit * 100), currency: "usd", payments: { data: [] } });
     const path = url.split("/v1/")[1]!;
+    // AFEW26 is an event's code: its reward's id starts event_.
+    if (path === "rewards.list") return Response.json({ coupons: [{ id: "activation_free", promo_codes: [{ code: "FREEDOI" }] }, { id: "event_afew_2026", promo_codes: [{ code: "AFEW26" }] }], feature_grants: [] });
     const key = (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"];
     const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; feature_id?: string; required_balance?: number; lock?: { lock_id: string }; lock_id?: string; action?: string; discounts?: Array<{ promotion_code: string }>; invoice_mode?: unknown; redirect_mode?: string; checkout_session_params?: { saved_payment_method_options?: unknown }; customize?: { items?: Array<{ price?: { amount: number; billing_units: number } }> }; feature_quantities?: Array<{ feature_id: string; quantity: number }>; balance_id?: string; add_to_balance?: number };
     const quantity = body.feature_quantities?.[0]?.quantity ?? 0;
@@ -690,6 +692,27 @@ describe("activating a report", () => {
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(await activations(world)).toMatchObject([{ state: "live", code: "FREEDOI", charge: { total: 0 } }]);
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 0, byCredit: 0, byCard: 0, code: "FREEDOI" } });
+  });
+
+  it("takes an event's code once per person, and any other code every time", async () => {
+    const world = await setup();
+    // A report a day, as the author's plan starts.
+    const report = async () => {
+      vi.setSystemTime(Date.now() + 86_400_000);
+      return await checked(world, [passed("byline")]);
+    };
+    const [first, second, third] = [await report(), await report(), await report()];
+    autumnStub({});
+    const free = (key: string, code: string) => world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, code, expect: 0 });
+    expect(await free(first.key, "AFEW26")).toEqual({ live: true });
+    const used = { data: expect.objectContaining({ code: "VALIDATION_ERROR", reason: "codeUsed" }) };
+    // Typed in any case, as Stripe takes it.
+    await expect(world.author.action(api.reports.activation.quoteCode, { workspaceId: world.own, code: "afew26", amount: 10 })).rejects.toMatchObject(used);
+    await expect(free(second.key, "AFEW26")).rejects.toMatchObject(used);
+    expect(await row(world.t, second.key)).not.toMatchObject({ status: "live" });
+    expect(await free(second.key, "FREEDOI")).toEqual({ live: true });
+    expect(await free(third.key, "FREEDOI")).toEqual({ live: true });
+    vi.unstubAllGlobals();
   });
 
   it("keeps a charge whose payment the bank refused to confirm as refused, voiding its invoice, so Activate starts afresh", async () => {

@@ -124,7 +124,7 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 
 /** Why a promotion code or a payment was refused, as the server names it, so the page says it in its own language. */
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string; currency?: string } | undefined) : undefined);
-const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
+const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong", "codeUsed"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 /**
  * The report's bill under its cover, from the moment it is signed: what its licence costs, and what that comes to with

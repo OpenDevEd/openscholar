@@ -6903,6 +6903,7 @@
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
           "nothingOff": "{code} neem niks af van die prys om ’n verslag te publiseer nie.",
           "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
+          "codeUsed": "Jy het {code} reeds gebruik.",
           "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer.",
           "typeFirst": "Tik eers 'n kode."
         },
