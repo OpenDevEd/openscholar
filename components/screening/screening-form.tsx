@@ -57,7 +57,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
 import { advisory, EVERY_MS, hidesVotes, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
-import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useWorkspaceHref, useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { bringsPdfs, keptOf, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, splitsIn, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
@@ -70,7 +70,7 @@ import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help,
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
-import { searchHistory } from "./address";
+import { searchHistory, leaveBehind, useOpenInAddress } from "./address";
 import { useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -199,6 +199,9 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     ...(recheck ? { recheck: true } : {}),
   };
 }
+
+/** The Discard question, open in the address (./address.ts). */
+const DISCARD_OPEN = ["edits"] as const;
 
 /** Where a source can be read as it stands, in a new tab: a search runs again, a collection opens where it lives, a screening opens its included papers. A file or pasted DOIs have nowhere to open. */
 function sourceLink(source: Pick<Source, "set">): { href: string; where: "search" | "library" | "collection" | "screening" | "zotero" } | null {
@@ -333,6 +336,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const effectsSay = { words, t: effects };
   const say = { words, t, effects: effectsSay };
   const router = useWorkspaceRouter();
+  // A source's own page, in the workspace this screening is in: a bare path would open the person's own workspace.
+  const hrefHere = useWorkspaceHref();
   const convex = useConvex();
   const workspaceId = usePageWorkspace();
   const here = useCurrentWorkspace();
@@ -438,7 +443,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   });
   // What the last save did, shown under Changes until the next edit.
   const [lastSave, setLastSave] = useState<{ edits: Edit[]; lines: EffectLine[]; moves: Move[] } | null>(null);
+  // Asking before unsaved changes are thrown away: a step in the history, as any dialog over the page is, so Back closes it (./address.ts). It lists the changes there are, and is open only while there are some: Forward to it after a discard opens nothing. What it last listed is kept only for its closing, so the list doesn't empty while it fades.
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
+  const [asksDiscard, setAsksDiscard] = useOpenInAddress("discard", DISCARD_OPEN);
   const [busy, setBusy] = useState(false);
   // Why the server wouldn't start it, said in the bar beside the button: a toast would sit over the button itself.
   const [refused, setRefused] = useState<string | null>(null);
@@ -743,10 +750,12 @@ export function ScreeningForm({ id }: { id?: string }) {
       if (voters && !votersMissing) await resume({ jobId, quiet: true }).catch(() => showStyledToast("error", t("toast.modelsHeld")));
       flushSync(() => setSent(draft));
       keep(key, () => undefined);
-      // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
+      // The form, every step taken in it, is left out of the way back: Back from the new screening returns to the page before the form, never to a form already sent (./address.ts `leaveBehind`).
       // It opens at its top. Left to the router, the page scrolled to where its tabs begin, under the sticky header, with its progress cut off.
-      router.replace(overviewHref(jobId), { scroll: false });
-      window.scrollTo({ top: 0 });
+      leaveBehind(window.location.pathname, (how) => {
+        router[how](overviewHref(jobId), { scroll: false });
+        window.scrollTo({ top: 0 });
+      });
     } catch (error) {
       setRefused(getErrorMessage(error, t("toast.notStarted")));
       setBusy(false);
@@ -887,7 +896,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -972,7 +981,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         const busy = source.read?.state === "reading" || source.read?.state === "waiting" ? t("papers.readingIt") : null;
                         const stopped = source.read?.state === "failed";
                         const itemsLabel = leftOut ? t("papers.leftOutCount", { count: leftOut }) : null;
-                        const link = sourceLink(source);
+                        const found = sourceLink(source);
+                        const link = found && { ...found, href: found.href.startsWith("/") ? hrefHere(found.href) : found.href };
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own were duplicates: papers another source already had, or that it lists twice itself.
                         const grew = grown(source);
                         const grewDoubled = (source.updates ?? []).reduce((sum, update) => sum + update.duplicates, 0);
@@ -990,10 +1000,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // The part of it that is read, which is also where that is changed: offered while it is being read too.
                         const range = baseTotal(source) > 1 ? (
                                         <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : t("papers.fromAll", { total: baseTotal(source) })}
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}
                                           <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
                                         </button>
-                                      ) : <span className="text-muted-foreground">{t("papers.fromAll", { total: baseTotal(source) })}</span>;
+                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
@@ -1019,7 +1029,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     </TooltipHint>
                                   ) : null}
                                 </div>
-                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div> : (
+                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? (
+                                  <>
+                                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div>
+                                    {/* The bar's line, held while the source is read, so the row keeps its height when its figures arrive and nothing under it moves. */}
+                                    <div aria-hidden className="h-4" />
+                                  </>
+                                ) : (
                                   <>
                                     {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. */}
                                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
@@ -1036,7 +1052,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         <div aria-hidden className="flex h-1.5 w-full gap-px overflow-hidden rounded-full sm:w-64">
                                           <span className="bg-primary/70" style={{ flexGrow: keptOf(source) }} />
                                           {doubled ? <span className="bg-foreground/15" style={{ flexGrow: doubled }} /> : null}
-                                          {leftOut ? <span className="bg-foreground/40" style={{ flexGrow: leftOut }} /> : null}
+                                          {leftOut ? <span className="bg-warning/60" style={{ flexGrow: leftOut }} /> : null}
                                         </div>
                                       ) : null}
                                         {doubled > 0 && taken(source) ? (
@@ -1071,10 +1087,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {stopped && !gone ? <p className="text-xs text-destructive">{source.read!.failure ?? t("papers.notSaved")}</p> : null}
                               </div>
                               {gone ? (
-                                <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
+                                <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
                               ) : (
                                 <>
-                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
+                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
                                   <TooltipHint label={t("papers.remove", { name: source.name })}>
                                     <Button variant="ghost" size="icon" className="size-8 shrink-0 self-start text-muted-foreground" aria-label={t("papers.remove", { name: source.name })} onClick={() => removeSource(source)}><Trash2 /></Button>
                                   </TooltipHint>
@@ -1681,15 +1697,15 @@ export function ScreeningForm({ id }: { id?: string }) {
             </span>
             {holdUp ? <Blocker block={holdUp} /> : null}
             <div className="ms-auto flex items-center gap-2">
-              <Button variant="ghost" onClick={() => setDiscarding(edits)}>{t("bar.discard")}</Button>
+              <Button variant="ghost" onClick={() => { setDiscarding(edits); setAsksDiscard("edits"); }}>{t("bar.discard")}</Button>
               <Button disabled={Boolean(holdUp) || counting || countFailed} onClick={save}><Check />{t("bar.save")}</Button>
             </div>
           </div>
         </ActionBar>
       ) : null}
-      <ConfirmChange open={discarding !== null} title={t("bar.discardTitle", { count: discarding?.length ?? 0 })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setDiscarding(null)} onConfirm={discard}>
+      <ConfirmChange open={asksDiscard !== null && edits.length > 0} title={t("bar.discardTitle", { count: (edits.length ? edits : (discarding ?? [])).length })} confirm={t("bar.discard")} cancel={t("bar.keepEditing")} variant="destructive" onClose={() => setAsksDiscard(null)} onConfirm={discard}>
         <ul className="space-y-1.5">
-          {discarding?.map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
+          {(edits.length ? edits : (discarding ?? [])).map((edit) => <li key={edit.text} className="flex items-start gap-2 text-sm"><PenLine aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />{edit.text}</li>)}
         </ul>
       </ConfirmChange>
     </>

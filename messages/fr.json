@@ -18,6 +18,7 @@
     "download": "Télécharger"
   },
   "common": {
+    "showingStartEndOnly": "Affichage des {label} {start}-{end}",
     "search": "Rechercher",
     "searchPapers": "Rechercher des articles",
     "home": "Accueil",
@@ -8216,6 +8217,7 @@
         "questionPlaceholder": "Par exemple « Les repas scolaires améliorent-ils l'apprentissage à l'école primaire ? »"
       },
       "papers": {
+        "wholeSource": "lit toute la source",
         "fromAll": "lit les {total, number} de la source",
         "fromRange": "lit les articles {first} à {last} des {total, number} de la source",
         "gives": "{count, plural, one {# article} other {# articles}}",
@@ -8355,7 +8357,7 @@
       },
       "decided": {
         "seeingAdvice": "L'avis des modèles s'affiche avant le vote",
-        "seeingNothing": "L'avis des modèles s'affiche avant le vote. Avec une seule personne par article, chaque vote est visible",
+        "seeingNothing": "Rien n'est masqué, car une seule personne lit chaque article. L'avis des modèles s'affiche avant le vote.",
         "votesAgree": "Votes concordants",
         "settled": "Tranché",
         "votesSplit": "Votes partagés",
@@ -8793,9 +8795,9 @@
         "merged": "{count, plural, one {# doublon fusionné} other {# doublons fusionnés}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# d'entre eux attend encore d'autres votes} other {# d'entre eux attendent encore d'autres votes}}",
         "votes": "{count, plural, =0 {Aucun vote de votre part} one {Votre vote} other {Vos # votes}}",
-        "voted": "{decision, select, include {{count, number} avec votre vote Inclure} maybe {{count, number} avec votre vote Peut-être} other {{count, number} avec votre vote Exclure}}",
-        "stillWait": "Voir lesquels attendent encore d'autres votes"
+        "voted": "{decision, select, include {{count, number} avec votre vote Inclure} maybe {{count, number} avec votre vote Peut-être} other {{count, number} avec votre vote Exclure}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {# évaluateur invité par e-mail, qui vote une fois le criblage rejoint et rouvert} other {# évaluateurs invités par e-mail, qui votent une fois le criblage rejoint et rouvert}}} other {{count, plural, one {# évaluateur invité par e-mail, qui vote après avoir rejoint le criblage} other {# évaluateurs invités par e-mail, qui votent après avoir rejoint le criblage}}}}",
@@ -8862,7 +8864,7 @@
         "noOtherPerson": "Aucune autre personne avec qui comparer",
         "noPeople": "Aucune personne avec qui comparer",
         "nothingYet": "Rien à comparer pour l'instant",
-        "agrees": "{share, number, percent}<muted>{person, select, true { même vote que les autres} other { même vote que les personnes}}</muted><all>, {count, plural, one {# vote comparé} other {# votes comparés}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { même vote que les autres} other { même vote que les personnes}}</muted>",
         "missedOf": "A voté Exclure sur {missed, number} des {included, number} inclus",
         "ofPairs": "sur {count, plural, one {# paire de votes} other {# paires de votes}}",
         "more": "Plus",

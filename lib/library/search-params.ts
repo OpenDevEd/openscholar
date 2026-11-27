@@ -44,6 +44,9 @@ export function parseLibrarySort(combined: LibrarySortCombined): {
   return { sortBy, sortOrder };
 }
 
+/** A collection as the Library shows it: every page that opens one links here. */
+export const collectionHref = (id: string) => `/library?col=${encodeURIComponent(id)}`;
+
 /**
  * Parser map for all library URL state parameters.
  *
@@ -58,9 +61,6 @@ export function parseLibrarySort(combined: LibrarySortCombined): {
  *
  * The page isn't in the URL: pages step by cursor, which a link can't replay.
  */
-/** A collection as the Library shows it: every page that opens one links here. */
-export const collectionHref = (id: string) => `/library?col=${encodeURIComponent(id)}`;
-
 export const librarySearchParams = {
   q: parseAsString.withDefault(""),
   sort: parseAsStringLiteral(librarySortCombinedValues).withDefault("savedAt:desc"),

@@ -3,6 +3,7 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
+import { leaveBehind } from "./address";
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
@@ -127,8 +128,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const open = read ?? null;
   // Changes to its settings that were started and not saved.
   const unsaved = useKept((kept) => Boolean(kept.drafts[id]));
-  // A deleted screening's page is left for good: Back does not return to it.
-  const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
+  // A deleted screening's pages are left for good: every one of them is out of the way back (./address.ts `leaveBehind`).
+  const overlays = useScreeningOverlays(open, { onDeleted: () => leaveBehind(window.location.pathname.replace(/\/(screen|papers|settings)$/, ""), (how) => router[how](SCREENINGS), (url) => /\/screening\/?$/.test(url.pathname)) });
   // A page opened by a link starts at its top; Back and Forward, and a link to a section, keep their place. The window's scroll is the outside system.
   // Before the page's own effects, so a page that then brings the item its link named into view has the last word.
   useLayoutEffect(() => {
@@ -553,17 +554,20 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   const t = useTranslations("screening.frame");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
-  const says = "@max-[34rem]/strip:sr-only";
+  const says = "@max-[48rem]/strip:sr-only";
   const figures = "tabular-nums text-muted-foreground";
+  // Where a narrow strip keeps only the sign and the figure, the words come back under the pointer.
+  const worded = (words: ReactNode, chip: ReactNode) => <TooltipHint label={words} onlyWhenClipped><span className="flex shrink-0">{chip}</span></TooltipHint>;
   if (kind === "checking" && screening.checking) {
-    return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.checking.says")}</span><span className={figures}>{t("banner.checked", { done: screening.checking.done, of: screening.checking.of })}</span></Chip>;
+    return worded(pieces("modelsSay.checking.says"), <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.checking.says")}</span><span className={figures}>{t("banner.checked", { done: screening.checking.done, of: screening.checking.of })}</span></Chip>);
   }
   if (kind === "gathering" && open.gathering) {
-    return <Chip icon={Search} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.gathering.says")}</span><span className={figures}>{t.rich("banner.counting", { of: open.gathering.of, done: () => <AnimatedNumber value={open.gathering!.done} /> })}</span></Chip>;
+    return worded(pieces("modelsSay.gathering.says"), <Chip icon={Search} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.gathering.says")}</span><span className={figures}>{t.rich("banner.counting", { of: open.gathering.of, done: () => <AnimatedNumber value={open.gathering!.done} /> })}</span></Chip>);
   }
   if (kind === "waiting" && open.waitingFor) {
     return (
-      <Chip icon={Clock} className="shrink-0 whitespace-nowrap">
+      // A sentence with a name in it: beside the tabs only where there is room for both, so the tabs are never pushed aside. The Overview says the same.
+      <Chip icon={Clock} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">
         <span>{pieces.rich("modelsSay.waiting.says", { name: open.waitingFor.name, link: (chunks) => <NextLink href={overviewHref(open.waitingFor!.id)} className={cn(INLINE_LINK, "inline-block max-w-40 truncate align-bottom")}>{chunks}</NextLink> })}</span>
         <Help title={t("banner.turnsTitle")} facts={<HelpFact icon={ListChecks}>{t("banner.atATime", { count: open.atOnce })}</HelpFact>}>
           {t("banner.turnsHelp", { workspace, personal: String(open.screening.workspace.kind === "personal"), count: open.atOnce })}
@@ -573,7 +577,7 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   if (kind === "reading") {
     const read = modelsRead(reading, total);
-    return (
+    return worded(reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: (chunks) => chunks }) : t("banner.modelsReading", { count: reading.length }),
       <Chip className="shrink-0 whitespace-nowrap">
         <AiIcon working className="size-3.5 shrink-0" />
         <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={papersHref(screening.id, { reviewer: reading[0]!.id })} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
@@ -581,7 +585,8 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
       </Chip>
     );
   }
-  if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</StateChip>;
+  // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
+  if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">{t("banner.nothing")}</Chip>;
+  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
   return null;
 }

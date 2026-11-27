@@ -116,7 +116,8 @@ function TooltipContent({
  * stays when there is no label, so a hint that comes and goes never remounts
  * its trigger. A disabled button fires no pointer events: wrap it in a span.
  * `onlyWhenClipped` opens it only while the trigger or something inside it
- * is cut off, for hints that repeat text to show it in full.
+ * is cut off, or hidden at this width, for hints that repeat text to show it
+ * in full.
  */
 function TooltipHint({
   label,
@@ -149,7 +150,9 @@ function isClipped(element: HTMLElement | null) {
   return [element, ...element.querySelectorAll<HTMLElement>("*")].some(
     (node) =>
       node.scrollWidth > node.clientWidth ||
-      node.scrollHeight > node.clientHeight
+      node.scrollHeight > node.clientHeight ||
+      // Words the trigger holds and doesn't draw at this width, such as a label shown only on wide screens.
+      (getComputedStyle(node).display === "none" && Boolean(node.textContent?.trim()))
   )
 }
 

@@ -39,3 +39,26 @@ it("counts a source's papers and a reviewer's by where they stand, follows a pap
   const left = (await counts("ann", { source }))!;
   expect(left.waiting + left.conflict).toBe(0);
 });
+
+it("keeps a paper another source still holds when the source it was kept under is taken out", async () => {
+  const made = await team(["ann"]);
+  const { workspaceId } = made;
+  const { jobId, papers } = await started(made, ["ann"], 2);
+  const first = papers[0]!.sourceId!;
+  await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "search", searchId: "another" }, name: "Another search" }] } });
+  await runAll(made.t, vi.runAllTimers);
+  // The second search held the first paper too: it was merged into the paper the first search brought.
+  const second = await made.t.run(async (ctx) => {
+    const other = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one._id !== first)!;
+    await ctx.db.insert("screeningMerged", { jobId, sourceId: other._id, name: "Paper 1", into: papers[0]!._id, paperKey: papers[0]!.paperKey, pass: other.pass ?? 0 });
+    await ctx.db.patch("screeningSources", other._id, { duplicates: other.duplicates + 1 });
+    return { id: other._id, taken: other.taken };
+  });
+  await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { removeSources: [first] } });
+  await runAll(made.t, vi.runAllTimers);
+  const [kept, gone, source] = await made.t.run(async (ctx) => [await ctx.db.get("screeningResults", papers[0]!._id), await ctx.db.get("screeningResults", papers[1]!._id), await ctx.db.get("screeningSources", second.id)] as const);
+  // The paper both held stays, as the second search's own; the one only the first held goes.
+  expect({ withdrawn: kept!.withdrawn ?? false, source: kept!.sourceId }).toEqual({ withdrawn: false, source: second.id });
+  expect(gone!.withdrawn).toBe(true);
+  expect(source!.taken).toBe(second.taken + 1);
+});

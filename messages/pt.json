@@ -18,6 +18,7 @@
     "download": "Transferir"
   },
   "common": {
+    "showingStartEndOnly": "A mostrar {label} {start}-{end}",
     "search": "Pesquisar",
     "searchPapers": "Pesquisar artigos",
     "home": "Início",
@@ -8217,6 +8218,7 @@
         "questionPlaceholder": "Por exemplo, «As refeições escolares melhoram a aprendizagem no ensino básico?»"
       },
       "papers": {
+        "wholeSource": "lê a fonte inteira",
         "fromAll": "lê todos os {total, number} na fonte",
         "fromRange": "lê os artigos {first} a {last} dos {total, number} na fonte",
         "gives": "{count, plural, one {# artigo} other {# artigos}}",
@@ -8356,7 +8358,7 @@
       },
       "decided": {
         "seeingAdvice": "O conselho dos modelos aparece antes do voto",
-        "seeingNothing": "O conselho dos modelos aparece antes do voto. Com uma pessoa em cada artigo, todos os votos ficam visíveis",
+        "seeingNothing": "Nada fica oculto, pois uma pessoa lê cada artigo. O conselho dos modelos aparece antes do voto.",
         "votesAgree": "Os votos concordam",
         "settled": "Decidido",
         "votesSplit": "Os votos dividem-se",
@@ -8794,9 +8796,9 @@
         "merged": "{count, plural, one {# duplicado fundido} other {# duplicados fundidos}}"
       },
       "yours": {
+        "stillWaitCount": "{count, plural, one {# deles ainda espera outros votos} other {# deles ainda esperam outros votos}}",
         "votes": "{count, plural, one {O seu # voto} other {Os seus # votos}}",
-        "voted": "{decision, select, include {{count, number} em que votou Incluir} maybe {{count, number} em que votou Talvez} other {{count, number} em que votou Excluir}}",
-        "stillWait": "Ver quais deles ainda esperam por outros votos"
+        "voted": "{decision, select, include {{count, number} em que votou Incluir} maybe {{count, number} em que votou Talvez} other {{count, number} em que votou Excluir}}"
       },
       "reviewers": {
         "invitedCount": "{finished, select, true {{count, plural, one {# revisor convidado por email, que vota depois de aderir e de a triagem ser reaberta} other {# revisores convidados por email, que votam depois de aderirem e de a triagem ser reaberta}}} other {{count, plural, one {# revisor convidado por email, que vota quando aderir} other {# revisores convidados por email, que votam quando aderirem}}}}",
@@ -8863,7 +8865,7 @@
         "noOtherPerson": "Não há outra pessoa para comparar",
         "noPeople": "Não há pessoas para comparar",
         "nothingYet": "Ainda nada para comparar",
-        "agrees": "{share, number, percent}<muted>{person, select, true { mesmo voto que os outros} other { mesmo voto que as pessoas}}</muted><all>, {count, plural, one {# voto comparado} other {# votos comparados}}</all>",
+        "agrees": "{share, number, percent}<muted>{person, select, true { mesmo voto que os outros} other { mesmo voto que as pessoas}}</muted>",
         "missedOf": "Votou Excluir em {missed, number} de {included, number} incluídos",
         "ofPairs": "de {count, plural, one {# par de votos} other {# pares de votos}}",
         "more": "Mais",

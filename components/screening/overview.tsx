@@ -96,10 +96,9 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
       <Progress open={open} onExport={onExport} />
       {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. The reviewers' table takes the page's width, with room for its columns. Under it the small facts stack beside the checks, two halves of a like height, and how far the reviewers agree takes a row of its own where there is a figure to show: no column stands empty beside a tall one. */}
       <Reviewers open={open} figures={read.figures} now={read.now} />
-      <div className="grid grid-cols-1 items-start gap-8 @4xl/overview:grid-cols-2">
-        <div className="min-w-0"><Facts open={open} /></div>
-        <div className="min-w-0"><Checks open={open} figures={read.figures} /></div>
-      </div>
+      {/* The small facts side by side in a row of their own, and the checks under them across the page: blocks of unlike heights never stand beside each other, so no column stands empty. */}
+      <Facts open={open} />
+      <Checks open={open} figures={read.figures} />
       <Agreement open={open} figures={read.figures} />
       <Flow open={open} figures={read.figures} onExport={onExport} />
     </div>
@@ -212,7 +211,8 @@ function Yours({ open }: { open: Open }) {
   const workspaceId = usePageWorkspace();
   // Where a paper waits for more votes than one: how many of the papers you voted on still wait for someone else's. The link to them shows only where there are some, so it never opens an empty list.
   const asked = Boolean(open.counts.waiting && !open.screening.finishedAt && splitsIn(open.screening, 0, open.invited));
-  const stillWaiting = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, asked ? { jobId: open.screening.id, reviewer: open.me } : "skip")).data?.waiting ?? 0;
+  const yourCounts = useProtectedQuery(api.screening.paperViews.counts, inWorkspace(workspaceId, asked ? { jobId: open.screening.id, reviewer: open.me } : "skip")).data;
+  const stillWaiting = yourCounts?.waiting ?? 0;
   const { screening } = open;
   const t = useTranslations("screening.overview");
   const mine = screening.reviewers.find((one) => one.id === open.me)?.tally;
@@ -233,7 +233,9 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {asked && stillWaiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground animate-in fade-in max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {/* Its line is held while the count is read, so nothing under it moves when it comes. */}
+      {asked && yourCounts === undefined ? <span aria-hidden className="invisible">{t("yours.stillWaitCount", { count: 0 })}</span> : null}
+      {asked && stillWaiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground animate-in fade-in")}>{t("yours.stillWaitCount", { count: stillWaiting })}</NextLink> : null}
     </div>
   );
 }
@@ -605,12 +607,14 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : t.rich("row.agrees", { share: agrees, count: compared, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span>, all: (chunks) => <span className="font-normal text-muted-foreground">{chunks}</span> })}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</p>
+        {/* How many pairs of votes the share rests on, a model's as a person's: a share of two votes reads as one. */}
+        {agrees !== null && reviewer.kind === "model" && included ? <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">{t("row.ofPairs", { count: compared })}</p> : null}
         {reviewer.kind === "model" && included ? (
           missed ? (
-            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block whitespace-nowrap text-xs tabular-nums ink-destructive")}>{t("row.missedOf", { missed, included })}</NextLink>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block text-xs tabular-nums ink-destructive")}>{t("row.missedOf", { missed, included })}</NextLink>
           ) : (
-            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{t("row.missedOf", { missed: 0, included })}</p>
+            <p className="text-xs tabular-nums text-muted-foreground">{t("row.missedOf", { missed: 0, included })}</p>
           )
         ) : agrees !== null ? (
           <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">{t("row.ofPairs", { count: compared })}</p>
@@ -748,7 +752,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
           {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
           <ScrollArea axis="x" shades className={cn(LIST, "@max-2xl/overview:hidden")}>
           <div className="p-4">
-            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
+            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, max-content) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
                 <NextLink key={reviewer.id} href={papersHref(screening.id, { reviewer: reviewer.id })} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
@@ -826,8 +830,9 @@ function Facts({ open }: { open: Open }) {
   const to = screening.destination;
   const collection = to.kind === "none" ? null : (words.collectionName(screening) || t("included.aCollection"));
   return (
-    <div className="space-y-6">
-      <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
+    <div className="grid grid-cols-1 items-start gap-6 @4xl/overview:grid-cols-3">
+      {/* Who started it has no heading of its own: in the row its card lines up with the cards under the others' headings (Section's heading, 2rem, and its gap). */}
+      <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm @4xl/overview:mt-11">
         <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
         <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? words.t("someone") }} you={screening.createdBy === open.me} className="font-medium" /></span>
         <span className="text-muted-foreground">{t("facts.startedIt", { ago: words.ago(screening.createdAt) })}</span>
@@ -849,7 +854,7 @@ function Facts({ open }: { open: Open }) {
             <p className="flex items-start gap-2 text-sm font-medium">
               <Folder className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               {/* The collection opens in the Library, where its papers are. */}
-              {to.collection ? <NextLink href={collectionHref(to.collection)} className={cn(INLINE_LINK, "line-clamp-2")}>{collection}</NextLink> : <span className="line-clamp-2">{collection}</span>}
+              {to.collection && open.canChange ? <NextLink href={collectionHref(to.collection)} className={cn(INLINE_LINK, "line-clamp-2")}>{collection}</NextLink> : <span className="line-clamp-2">{collection}</span>}
             </p>
           ) : (
             <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />{t("included.nowhereYet")}</p>
@@ -857,7 +862,7 @@ function Facts({ open }: { open: Open }) {
           {/* A community that refused or didn't answer: said where the papers were to go, until a later write gets through. */}
           {to.problem || to.pruneProblem ? <p className="flex items-start gap-2 text-sm ink-warning"><TriangleAlert className="mt-0.5 size-4 shrink-0" />{t("included.problem", { why: to.problem ?? to.pruneProblem!, adding: String(Boolean(to.problem)), name: collection ?? "" })}</p> : null}
           <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon} className="w-fit">
-            {t.rich("included.count", { count: counts.include, saved: String(Boolean(collection)), num: () => <AnimatedNumber value={counts.include} /> })}
+            {t.rich("included.count", { count: counts.include, saved: String(Boolean(collection) && !to.problem), num: () => <AnimatedNumber value={counts.include} /> })}
           </LinkChip>
         </Panel>
       </Section>
@@ -987,7 +992,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                           {/* Where the papers it added stand now. */}
                           {check.counts ? (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <ResultBar counts={check.counts} className="h-1.5 min-w-24 flex-1" />
+                              <ResultBar counts={check.counts} className="h-1.5 min-w-24 flex-1" counted />
                               <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                                 {RESULTS.filter((result) => check.counts![result]).map((result) => {
                                   const Icon = RESULT_ICON[result];
@@ -1002,7 +1007,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                       )}
                       {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
                       {/* The names under the chip, where a long search wraps instead of being cut off. */}
-                      {check.unread ? <LinkChip href={settingsHref(screening.id, "papers")} tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</LinkChip> : null}
+                      {check.unread ? <SettingsChip open={open} part="papers" tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</SettingsChip> : null}
                       {check.unread ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? []))}</p> : null}
                     </div>
                   </div>
@@ -1051,7 +1056,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const neutral = "bg-foreground/25";
   // `loading`: rows the figures bring, held as placeholders until they come.
   const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[]; loading?: number }> = [
-    { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
+    { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), ...(open.canChange ? { href: settingsHref(id, "papers") } : {}), fill: neutral })) },
     {
       title: t("flow.removed"),
       total: found - kept,

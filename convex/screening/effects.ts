@@ -14,7 +14,7 @@ import { isFinal, modelKey, seesVotes, showsEarly, type Decision, type Result } 
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, invitedTo, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
+import { dealable, invitedTo, keptByOthers, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -150,7 +150,10 @@ export const start = internalQuery({
     const job = await requireMember(ctx, { userId, workspaceId }, jobId);
     const plan = await planned(ctx, job, change);
     const progress = await progressRow(ctx, jobId);
-    const removed = (await sourcesOf(ctx, jobId)).filter((source) => change.removeSources?.includes(source._id) && source.removedAt === undefined).reduce((sum, source) => sum + source.taken, 0);
+    const all = await sourcesOf(ctx, jobId);
+    const leaving = all.filter((source) => change.removeSources?.includes(source._id) && source.removedAt === undefined);
+    // What another source still holds stays (./settings.ts `withdraw`): only the rest leave.
+    const removed = Math.max(0, leaving.reduce((sum, source) => sum + source.taken, 0) - (leaving.length ? await keptByOthers(ctx, all, new Set(leaving.map((source) => source._id))) : 0));
     const gone = new Set<Id<"screeningReviewers">>(plan.leaving.map(({ reviewer }) => reviewer._id));
     return {
       total: Math.max(0, papersOf(job, progress) - removed),
