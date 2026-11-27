@@ -986,6 +986,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                           const range: [number, number] = was.scope === "range" ? was.range : [1, Math.max(1, baseTotal(was))];
                           return { range, note: t("papers.rangeHeld", { first: words.num(range[0]), last: words.num(range[1]) }) };
                         };
+                        // The part of it that is read, which is also where that is changed: offered while it is being read too.
+                        const range = baseTotal(source) > 1 ? (
+                                        <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : t("papers.fromAll", { total: baseTotal(source) })}
+                                          <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
+                                        </button>
+                                      ) : <span className="text-muted-foreground">{t("papers.fromAll", { total: baseTotal(source) })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
@@ -1011,7 +1018,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     </TooltipHint>
                                   ) : null}
                                 </div>
-                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? <div className="flex"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip></div> : (
+                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div> : (
                                   <>
                                     {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. */}
                                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
@@ -1020,12 +1027,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : (
                                         <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
                                       )}
-                                      {baseTotal(source) > 1 ? (
-                                        <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : t("papers.fromAll", { total: baseTotal(source) })}
-                                          <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
-                                        </button>
-                                      ) : <span className="text-muted-foreground">{t("papers.fromAll", { total: baseTotal(source) })}</span>}
+                                      {range}
                                     </div>
                                     {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
