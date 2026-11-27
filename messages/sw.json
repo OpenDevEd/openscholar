@@ -8067,7 +8067,7 @@
         "copied": "Aya ya mbinu imenakiliwa",
         "failed": "Kivinjari chako hakikuruhusu ukurasa kunakili",
         "select": "Chagua aya na uinakili.",
-        "selected": "Aya imechaguliwa. Inakili kwa kibodi yako."
+        "selected": "Aya imechaguliwa, iko tayari uinakili."
       },
       "notLoaded": "Nafasi kazi bado haijapakia. Jaribu tena baada ya muda mfupi.",
       "notMade": "Faili haikuweza kutengenezwa. Jaribu tena."
@@ -8358,7 +8358,7 @@
         "addModel": "Ongeza modeli"
       },
       "decided": {
-        "seeingNothing": "Hakuna cha kuficha kukiwa na mtu mmoja kwenye kila makala",
+        "seeingNothing": "Kila kura inaonekana kukiwa na mtu mmoja kwenye kila makala",
         "votesAgree": "Kura zinakubaliana",
         "settled": "Imeamuliwa",
         "votesSplit": "Kura zinatofautiana",
@@ -8890,7 +8890,7 @@
         "kept": "Kiwango cha makubaliano ya wakaguzi kinaonekana ukishapigia kura kila makala yako. Kabla ya hapo kingefichua jinsi wengine walivyopiga kura.",
         "none": "Kiwango cha makubaliano ya wakaguzi kinaonekana hapa wawili kati yao wakishapigia kura makala zilezile.",
         "mean": "Wastani wa Cohen's kappa ya kila jozi",
-        "across": "0 si bora kuliko bahati, 1 ni makubaliano kamili. Kwenye {pairs, plural, one {jozi #} other {jozi #}} za wakaguzi, {range, select, true {makala {min, number} hadi {max, number} kila jozi} other {{min, plural, one {makala # kila jozi} other {makala # kila jozi}}}}",
+        "across": "0 si bora kuliko bahati, 1 ni makubaliano kamili. Kwenye {pairs, plural, one {jozi #} other {jozi #}} za wakaguzi, {range, select, true {makala {min, number} hadi {max, number} kila jozi} other {{min, plural, one {makala # kila jozi} other {makala # kila jozi}}}}.{left, plural, =0 {} one { Jozi nyingine ilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.} other { Jozi # nyingine zilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.}}",
         "splitMost": "Makala walizotofautiana nazo zaidi",
         "noneYet": "Bado hakuna",
         "cell": "{a} na {b}, kappa {kappa}, kura sawa kwenye {share, number, percent} ya {papers, plural, one {makala #} other {makala #}}"
@@ -9556,6 +9556,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {mkaguzi # aliyealikwa} other {wakaguzi # walioalikwa}}",
       "peopleHiddenUntilVote": "Kura za watu zimefichwa hadi upige kura",
       "votesWereHiddenSays": "Kura zilifichwa kwa mkaguzi kwenye makala zilizokuwa zikisubiri kura yake mwenyewe tu. Sasa kwa kuwa uchujaji umekamilika, kila kura inaonekana.",
       "votesHiddenPeopleSays": "Uchujaji huu unamficha mkaguzi kura za watu wengine kwenye makala ambazo bado zinasubiri kura yake mwenyewe tu. Kura za modeli ni ushauri, na zinaonekana wakati wowote.",
@@ -9663,6 +9664,8 @@
           "one": "Makala inaamuliwa na kura yake ya kwanza, kwa hivyo hakuna mgongano kamwe. Pale mtu anapopewa makala, kura ya mtu wa kwanza ndiyo inayoiamua. Kura ya modeli inaamua tu makala ambayo hakuna mtu aliyepewa."
         },
         "says": {
+          "single": "Inaamuliwa na kura moja",
+          "person": "Inaamuliwa na kura ya mtu mmoja",
           "all": "Inaamuliwa wote wakikubaliana",
           "most": "Inaamuliwa wengi wakikubaliana",
           "one": "Inaamuliwa na kura ya kwanza"

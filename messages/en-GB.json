@@ -9555,6 +9555,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# invited reviewer} other {# invited reviewers}}",
       "peopleHiddenUntilVote": "People's votes hidden until you vote",
       "votesWereHiddenSays": "Votes were hidden from a reviewer only on papers that waited for their own vote. Now the screening is finished, every vote shows.",
       "votesHiddenPeopleSays": "This screening hides other people's votes from a reviewer only on papers that still wait for that reviewer's own vote. The models' votes are advice, and show at any time.",

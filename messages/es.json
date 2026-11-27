@@ -8067,7 +8067,7 @@
         "copied": "Se copió el párrafo de métodos",
         "failed": "Su navegador no dejó que la página copiara",
         "select": "Seleccione el párrafo y cópielo.",
-        "selected": "El párrafo está seleccionado. Cópielo con el teclado."
+        "selected": "El párrafo está seleccionado, listo para que lo copie."
       },
       "notLoaded": "El espacio de trabajo aún no se ha cargado. Inténtelo de nuevo en un momento.",
       "notMade": "No se pudo crear el archivo. Inténtelo de nuevo."
@@ -8358,7 +8358,7 @@
         "addModel": "Añadir un modelo"
       },
       "decided": {
-        "seeingNothing": "Nada que ocultar con una persona en cada artículo",
+        "seeingNothing": "Con una persona en cada artículo, todos los votos se ven",
         "votesAgree": "Los votos coinciden",
         "settled": "Resuelto",
         "votesSplit": "Los votos se dividen",
@@ -8890,7 +8890,7 @@
         "kept": "El grado de acuerdo entre revisores aparece cuando haya votado todos sus artículos. Antes revelaría cómo votaron los demás.",
         "none": "El grado de acuerdo entre revisores aparece aquí cuando dos de ellos hayan votado los mismos artículos.",
         "mean": "Kappa de Cohen media por pares",
-        "across": "0 no es mejor que el azar, 1 es acuerdo total. Entre {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {de {min, number} a {max, number} artículos cada uno} other {{min, plural, one {# artículo cada uno} other {# artículos cada uno}}}}",
+        "across": "0 no es mejor que el azar, 1 es acuerdo total. Entre {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {de {min, number} a {max, number} artículos cada uno} other {{min, plural, one {# artículo cada uno} other {# artículos cada uno}}}}.{left, plural, =0 {} one { El otro par votó lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.} other { Los otros # pares votaron lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.}}",
         "splitMost": "Los artículos en que más discrepan",
         "noneYet": "Ninguno todavía",
         "cell": "{a} y {b}, kappa {kappa}, mismo voto en el {share, number, percent} de {papers, plural, one {# artículo} other {# artículos}}"
@@ -9556,6 +9556,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# revisor invitado} other {# revisores invitados}}",
       "peopleHiddenUntilVote": "Votos de personas ocultos hasta que vote",
       "votesWereHiddenSays": "Los votos se ocultaban a un revisor solo en los artículos que esperaban su propio voto. Ahora que el cribado ha terminado, se ven todos los votos.",
       "votesHiddenPeopleSays": "Este cribado oculta los votos de las demás personas a un revisor solo en los artículos que aún esperan el voto de ese revisor. Los votos de los modelos son consejo y se ven en cualquier momento.",
@@ -9663,6 +9664,8 @@
           "one": "Un artículo queda resuelto con su primer voto, así que nunca hay conflicto. Si una persona recibe el artículo, lo resuelve el voto de la primera persona. El voto de un modelo solo resuelve un artículo que no tiene ninguna persona."
         },
         "says": {
+          "single": "Resuelto con un voto",
+          "person": "Resuelto con el voto de una persona",
           "all": "Resuelto si todos están de acuerdo",
           "most": "Resuelto si la mayoría está de acuerdo",
           "one": "Resuelto con el primer voto"

@@ -8067,7 +8067,7 @@
         "copied": "Methodenabsatz kopiert",
         "failed": "Ihr Browser hat das Kopieren nicht erlaubt",
         "select": "Markieren Sie den Absatz und kopieren Sie ihn.",
-        "selected": "Der Absatz ist markiert. Kopieren Sie ihn mit der Tastatur."
+        "selected": "Der Absatz ist markiert und bereit zum Kopieren."
       },
       "notLoaded": "Der Arbeitsbereich ist noch nicht geladen. Versuchen Sie es gleich noch einmal.",
       "notMade": "Die Datei konnte nicht erstellt werden. Versuchen Sie es erneut."
@@ -8358,7 +8358,7 @@
         "addModel": "Modell hinzufügen"
       },
       "decided": {
-        "seeingNothing": "Mit einer Person pro Artikel gibt es nichts zu verbergen",
+        "seeingNothing": "Mit einer Person pro Artikel ist jede Stimme sichtbar",
         "votesAgree": "Stimmen einig",
         "settled": "Entschieden",
         "votesSplit": "Stimmen uneins",
@@ -8890,7 +8890,7 @@
         "kept": "Wie weit die Reviewer übereinstimmen, zeigt sich, sobald Sie über alle Ihre Artikel abgestimmt haben. Vorher würde es verraten, wie die anderen gestimmt haben.",
         "none": "Wie weit die Reviewer übereinstimmen, zeigt sich hier, sobald zwei von ihnen über dieselben Artikel abgestimmt haben.",
         "mean": "Mittleres paarweises Cohen's Kappa",
-        "across": "0 ist nicht besser als Zufall, 1 ist volle Übereinstimmung. Über {pairs, plural, one {# Paar} other {# Paare}} von Reviewern, {range, select, true {je {min, number} bis {max, number} Artikel} other {{min, plural, one {je # Artikel} other {je # Artikel}}}}",
+        "across": "0 ist nicht besser als Zufall, 1 ist volle Übereinstimmung. Über {pairs, plural, one {# Paar} other {# Paare}} von Reviewern, {range, select, true {je {min, number} bis {max, number} Artikel} other {{min, plural, one {je # Artikel} other {je # Artikel}}}}.{left, plural, =0 {} one { Das andere Paar hat bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.} other { Die anderen # Paare haben bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.}}",
         "splitMost": "Die Artikel, bei denen sie am meisten uneins sind",
         "noneYet": "Noch keine",
         "cell": "{a} und {b}, Kappa {kappa}, gleiche Stimme bei {share, number, percent} von {papers, plural, one {# Artikel} other {# Artikeln}}"
@@ -9556,6 +9556,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# eingeladene Person} other {# eingeladene Personen}}",
       "peopleHiddenUntilVote": "Stimmen von Personen verborgen, bis Sie abstimmen",
       "votesWereHiddenSays": "Stimmen waren vor einem Reviewer nur bei Artikeln verborgen, die auf dessen eigene Stimme warteten. Jetzt, da das Screening abgeschlossen ist, sind alle Stimmen sichtbar.",
       "votesHiddenPeopleSays": "Dieses Screening verbirgt die Stimmen anderer Personen vor einem Reviewer nur bei Artikeln, die noch auf dessen eigene Stimme warten. Die Stimmen der Modelle sind Empfehlungen und jederzeit sichtbar.",
@@ -9663,6 +9664,8 @@
           "one": "Ein Artikel wird durch die erste Stimme entschieden, es gibt also nie einen Konflikt. Bekommt eine Person den Artikel, entscheidet ihn die Stimme der ersten Person. Die Stimme eines Modells entscheidet nur einen Artikel, den keine Person hat."
         },
         "says": {
+          "single": "Entschieden durch eine Stimme",
+          "person": "Entschieden durch die Stimme einer Person",
           "all": "Entschieden, wenn alle einig sind",
           "most": "Entschieden, wenn die Mehrheit einig ist",
           "one": "Entschieden durch die erste Stimme"

@@ -8066,7 +8066,7 @@
         "copied": "Paragraphe de méthodes copié",
         "failed": "Votre navigateur n'a pas laissé la page copier",
         "select": "Sélectionnez le paragraphe et copiez-le.",
-        "selected": "Le paragraphe est sélectionné. Copiez-le avec votre clavier."
+        "selected": "Le paragraphe est sélectionné, prêt à être copié."
       },
       "notLoaded": "L'espace de travail n'est pas encore chargé. Réessayez dans un instant.",
       "notMade": "Le fichier n'a pas pu être créé. Réessayez."
@@ -8357,7 +8357,7 @@
         "addModel": "Ajouter un modèle"
       },
       "decided": {
-        "seeingNothing": "Rien à masquer avec une seule personne par article",
+        "seeingNothing": "Avec une seule personne par article, chaque vote est visible",
         "votesAgree": "Votes concordants",
         "settled": "Tranché",
         "votesSplit": "Votes partagés",
@@ -8889,7 +8889,7 @@
         "kept": "Le degré d'accord des évaluateurs s'affiche une fois que vous avez voté sur tous vos articles. Avant, il trahirait les votes des autres.",
         "none": "Le degré d'accord des évaluateurs s'affiche ici dès que deux d'entre eux ont voté sur les mêmes articles.",
         "mean": "Kappa de Cohen moyen par paire",
-        "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}",
+        "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}.{left, plural, =0 {} one { L'autre paire a voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.} other { Les # autres paires ont voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.}}",
         "splitMost": "Les articles sur lesquels ils divergent le plus",
         "noneYet": "Aucun pour l'instant",
         "cell": "{a} et {b}, kappa {kappa}, même vote sur {share, number, percent} de {papers, plural, one {# article} other {# articles}}"
@@ -9555,6 +9555,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# personne invitée} other {# personnes invitées}}",
       "peopleHiddenUntilVote": "Votes des personnes masqués jusqu'à votre vote",
       "votesWereHiddenSays": "Les votes n'étaient masqués à un évaluateur que sur les articles qui attendaient son propre vote. Maintenant que le criblage est terminé, tous les votes sont visibles.",
       "votesHiddenPeopleSays": "Ce criblage masque les votes des autres personnes à un évaluateur uniquement sur les articles qui attendent encore son propre vote. Les votes des modèles servent d'avis et restent visibles à tout moment.",
@@ -9662,6 +9663,8 @@
           "one": "Un article est tranché par le premier vote reçu, il n'y a donc jamais de désaccord. Quand un article est confié à une personne, c'est le vote de la première personne qui le tranche. Le vote d'un modèle ne tranche qu'un article qu'aucune personne n'a."
         },
         "says": {
+          "single": "Tranché par un seul vote",
+          "person": "Tranché par le vote d'une seule personne",
           "all": "Tranché quand tous sont d'accord",
           "most": "Tranché quand la majorité est d'accord",
           "one": "Tranché par le premier vote"

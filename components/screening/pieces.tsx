@@ -727,7 +727,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
-  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === OTHER_REASON ? t("anotherReason") : words.reason(reason, criteria)}</>;
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{asked && reason === NO_REASON ? t("noReason") : reason === OTHER_REASON && asked ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const question = asked ? questionOf(reason, criteria, "label") : undefined;
   return (

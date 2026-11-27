@@ -8066,7 +8066,7 @@
         "copied": "已复制方法段落",
         "failed": "你的浏览器不允许页面复制",
         "select": "请选中段落并复制。",
-        "selected": "段落已选中。请用键盘复制。"
+        "selected": "段落已选中，可以复制了。"
       },
       "notLoaded": "工作区尚未加载完成。请稍后再试。",
       "notMade": "文件未能生成，请重试。"
@@ -8357,7 +8357,7 @@
         "addModel": "添加模型"
       },
       "decided": {
-        "seeingNothing": "每篇论文只有一人，无需隐藏投票",
+        "seeingNothing": "每篇论文只有一人，所有投票都可见",
         "votesAgree": "投票一致",
         "settled": "定案",
         "votesSplit": "投票分歧",
@@ -8889,7 +8889,7 @@
         "kept": "你对自己的所有论文投票后才会显示审核人的一致程度。在此之前显示会暴露其他人的投票。",
         "none": "有两位审核人对同样的论文投票后，这里会显示他们的一致程度。",
         "mean": "两两 Cohen's kappa 的平均值",
-        "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}",
+        "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}。{left, plural, =0 {} other {其余 # 对在每篇论文上都投了同样的票，这种情况下无法计算 kappa。}}",
         "splitMost": "分歧最大的论文",
         "noneYet": "暂无",
         "cell": "{a} 与 {b}，kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
@@ -9555,6 +9555,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, other {# 位受邀审阅人}}",
       "peopleHiddenUntilVote": "你投票后才显示人员的投票",
       "votesWereHiddenSays": "此前只有在论文等待某位审核人自己投票时，才会向其隐藏投票。现在筛选已完成，所有投票均可见。",
       "votesHiddenPeopleSays": "对于仍在等待某位审核人投票的论文，此筛选会向该审核人隐藏其他人员的投票。模型的投票仅作参考，随时可见。",
@@ -9662,6 +9663,8 @@
           "one": "论文由第一票定案，因此不会出现冲突。如果论文分配给了人员，由第一位人员的投票定案。模型的投票只会让没有分配给任何人的论文定案。"
         },
         "says": {
+          "single": "由一票定案",
+          "person": "由一人的投票定案",
           "all": "全体一致时定案",
           "most": "多数一致时定案",
           "one": "由第一票定案"

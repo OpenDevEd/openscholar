@@ -27,22 +27,21 @@ export const screeningCriteriaSchema = z.object({
       z.object({
         question: z.string().describe('A screening question that is specific and answerable with yes or no.'),
         short: z.string().describe('A name of two to four words for what the question checks, such as "Randomised trial" or "Adults 18 to 65". Never the first words of the question itself.'),
+        // The counts asked for are said, not enforced: a model that gives nine words or eleven questions has still written them, and the extra are cut below (`toWrittenCriteria`). A refused answer would fail the whole press.
         terms: z
           .array(z.string())
-          .max(8)
           .describe('Up to eight words or short phrases a reader would look for in an abstract to answer the question, spelled as an abstract would spell them.'),
       })
     )
-    .min(1)
-    .max(10),
+    .describe('One to ten questions. None where the existing questions already cover the research question.'),
 })
 
 /** Written criteria as a screening keeps them: the question, a short name within its length, and the words to mark. */
 export const toWrittenCriteria = (criteria: z.infer<typeof screeningCriteriaSchema>['criteria']) => ({
-  criteria: criteria.map((one) => ({
+  criteria: criteria.slice(0, 10).map((one) => ({
     text: one.question.trim(),
     short: shortOf(one.short.trim() || one.question),
-    terms: one.terms.map((term) => term.trim()).filter(Boolean),
+    terms: one.terms.map((term) => term.trim()).filter(Boolean).slice(0, 8),
   })),
 })
 

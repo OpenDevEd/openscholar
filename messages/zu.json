@@ -8066,7 +8066,7 @@
         "copied": "Isigaba sezindlela sikopishiwe",
         "failed": "Isiphequluli sakho asivumelanga ikhasi ukuthi likopishe",
         "select": "Khetha isigaba bese usikopisha.",
-        "selected": "Isigaba sikhethiwe. Sikopishe ngekhibhodi yakho."
+        "selected": "Isigaba sikhethiwe, silungele ukuthi usikopishe."
       },
       "notLoaded": "Isikhala sokusebenzela asikalayishi. Zama futhi emzuzwini.",
       "notMade": "Ifayela alikwazanga ukwenziwa. Zama futhi."
@@ -8357,7 +8357,7 @@
         "addModel": "Engeza imodeli"
       },
       "decided": {
-        "seeingNothing": "Akukho okufanele kufihlwe uma kunomuntu oyedwa ephepheni ngalinye",
+        "seeingNothing": "Wonke amavoti ayabonakala uma kunomuntu oyedwa ephepheni ngalinye",
         "votesAgree": "Amavoti ayavumelana",
         "settled": "Kuxazululiwe",
         "votesSplit": "Amavoti ayehlukana",
@@ -8889,7 +8889,7 @@
         "kept": "Ukuthi ababuyekezi bavumelana kangakanani kuvela uma usuvote kuwo wonke amaphepha akho. Ngaphambi kwalokho kungadalula indlela abanye abavote ngayo.",
         "none": "Ukuthi ababuyekezi bavumelana kangakanani kuvela lapha uma ababili babo sebevote kumaphepha afanayo.",
         "mean": "Isilinganiso se-Cohen's kappa samapheya",
-        "across": "U-0 akangcono kunethuba, u-1 ukuvumelana okuphelele. Kuwo wonke {pairs, plural, one {# ipheya} other {# amapheya}} wababuyekezi, {range, select, true {amaphepha angu-{min, number} kuya ku-{max, number} ngalinye} other {{min, plural, one {# iphepha ngalinye} other {# amaphepha ngalinye}}}}",
+        "across": "U-0 akangcono kunethuba, u-1 ukuvumelana okuphelele. Kuwo wonke {pairs, plural, one {# ipheya} other {# amapheya}} wababuyekezi, {range, select, true {amaphepha angu-{min, number} kuya ku-{max, number} ngalinye} other {{min, plural, one {# iphepha ngalinye} other {# amaphepha ngalinye}}}}.{left, plural, =0 {} one { Elinye ipheya livote ngendlela efanayo kuwo wonke amaphepha, ngakho i-kappa ayikwazi ukubalwa.} other { Amanye amapheya angu-# avote ngendlela efanayo kuwo wonke amaphepha, ngakho i-kappa ayikwazi ukubalwa.}}",
         "splitMost": "Amaphepha abangavumelani kakhulu ngawo",
         "noneYet": "Akukabikho okwamanje",
         "cell": "{a} no-{b}, kappa {kappa}, ivoti elifanayo ku-{share, number, percent} kwa-{papers, plural, one {# iphepha} other {# amaphepha}}"
@@ -9555,6 +9555,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {umbuyekezi # omenyiwe} other {ababuyekezi abangu-# abamenyiwe}}",
       "peopleHiddenUntilVote": "Amavoti abantu afihliwe uze uvote",
       "votesWereHiddenSays": "Amavoti ayefihlelwe umbuyekezi kuphela kumaphepha ayelinde ivoti lakhe. Manje njengoba ukuskrini sekuqediwe, wonke amavoti ayabonakala.",
       "votesHiddenPeopleSays": "Lokhu kuskrini kufihlela umbuyekezi amavoti abanye abantu kuphela kumaphepha asalinde ivoti lalowo mbuyekezi. Amavoti amamodeli ayiseluleko, futhi ayabonakala noma nini.",
@@ -9662,6 +9663,8 @@
           "one": "Iphepha lixazululwa yivoti lokuqala kulo, ngakho akukaze kube khona ukungqubuzana. Lapho umuntu enikwe iphepha, ivoti lomuntu wokuqala yilo elilixazululayo. Ivoti lemodeli lixazulula kuphela iphepha okungekho muntu onalo."
         },
         "says": {
+          "single": "Lixazululwa yivoti elilodwa",
+          "person": "Lixazululwa yivoti lomuntu oyedwa",
           "all": "Lixazululwa uma bonke bevumelana",
           "most": "Lixazululwa uma iningi livumelana",
           "one": "Lixazululwa yivoti lokuqala"

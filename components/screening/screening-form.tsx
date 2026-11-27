@@ -663,7 +663,9 @@ export function ScreeningForm({ id }: { id?: string }) {
       written.criteria.forEach((one) => addCriterion(one.text, { short: one.short, terms: one.terms }));
       if (!written.criteria.length) toast(t("toast.nothingWritten"));
     } catch (error) {
-      showStyledToast("error", getErrorMessage(error, t("toast.notWritten")));
+      // What the provider said is for the logs: the person is told what happened and what to do.
+      console.error("[screening] Criteria couldn't be written", getErrorMessage(error, ""));
+      showStyledToast("error", t("toast.notWritten"));
     } finally {
       setWriting(false);
     }

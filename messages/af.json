@@ -8067,7 +8067,7 @@
         "copied": "Die metodeparagraaf is gekopieer",
         "failed": "Jou blaaier het nie die bladsy toegelaat om te kopieer nie",
         "select": "Kies die paragraaf en kopieer dit.",
-        "selected": "Die paragraaf is gekies. Kopieer dit met jou sleutelbord."
+        "selected": "Die paragraaf is gekies en gereed om te kopieer."
       },
       "notLoaded": "Die werkruimte het nog nie gelaai nie. Probeer oor ’n oomblik weer.",
       "notMade": "Die lêer kon nie gemaak word nie. Probeer weer."
@@ -8358,7 +8358,7 @@
         "addModel": "Voeg ’n model by"
       },
       "decided": {
-        "seeingNothing": "Niks om te versteek met een persoon op elke artikel nie",
+        "seeingNothing": "Elke stem is sigbaar met een persoon op elke artikel",
         "votesAgree": "Stemme stem ooreen",
         "settled": "Beslis",
         "votesSplit": "Stemme verdeel",
@@ -8890,7 +8890,7 @@
         "kept": "Hoe ver die beoordelaars saamstem, verskyn sodra jy op elkeen van jou artikels gestem het. Voor dit sou dit verklap hoe die ander gestem het.",
         "none": "Hoe ver die beoordelaars saamstem, verskyn hier sodra twee van hulle op dieselfde artikels gestem het.",
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
-        "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}",
+        "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}.{left, plural, =0 {} one { Die ander paar het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.} other { Die ander # pare het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.}}",
         "splitMost": "Die artikels waaroor hulle die meeste verskil het",
         "noneYet": "Nog geen",
         "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
@@ -9556,6 +9556,7 @@
       }
     },
     "words": {
+      "invitedWaiting": "{count, plural, one {# genooide beoordelaar} other {# genooide beoordelaars}}",
       "peopleHiddenUntilVote": "Mense se stemme versteek totdat jy stem",
       "votesWereHiddenSays": "Stemme was vir ’n beoordelaar net versteek op artikels wat vir hul eie stem gewag het. Noudat die siftering klaar is, wys elke stem.",
       "votesHiddenPeopleSays": "Hierdie siftering versteek ander mense se stemme vir ’n beoordelaar net op artikels wat nog vir daardie beoordelaar se eie stem wag. Die modelle se stemme is advies en wys enige tyd.",
@@ -9663,6 +9664,8 @@
           "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie. Waar ’n persoon die artikel kry, beslis die eerste persoon se stem dit. ’n Model se stem beslis net ’n artikel wat geen persoon het nie."
         },
         "says": {
+          "single": "Beslis deur een stem",
+          "person": "Beslis deur een persoon se stem",
           "all": "Beslis wanneer almal saamstem",
           "most": "Beslis wanneer die meeste saamstem",
           "one": "Beslis deur die eerste stem"
