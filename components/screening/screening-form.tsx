@@ -436,10 +436,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const setDraft = (next: Screening | ((now: Screening) => Screening)) => {
     if (!origin) return;
     setLastSave(null);
-    // An edit taken back leaves nothing unsaved: a draft that says what is saved is no draft.
+    // An edit taken back leaves nothing unsaved: a draft that says what is saved, or a new form back to blank, is no draft.
     keep(key, (now) => {
       const made = typeof next === "function" ? next(now ?? origin) : next;
-      return saved && settingsOf(saved) === settingsOf(made) ? undefined : made;
+      return settingsOf(origin) === settingsOf(made) ? undefined : made;
     });
   };
   const [kind, setKind] = useState<Kind>(fromHandoff && !id ? "evidenceLibrary" : "search");
