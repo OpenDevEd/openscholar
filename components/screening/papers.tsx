@@ -328,8 +328,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   const conflictsPicked = pickedPapers.filter((one) => one.result === "conflict");
   // The picked papers that wait for the person's own vote: what a vote on the selection is cast on. The rest, voted already, kept from them or not theirs, are left out, and the bar says how many.
-  const waitsOnMe = (one: Paper) => !one.withdrawn && one.cast.some((place) => place.reviewer === open.me && !place.vote && !place.hidden && !place.failed);
-  const votablePicked = open.isReviewer && !screening.finishedAt ? pickedPapers.filter(waitsOnMe) : [];
+  // Read from the papers as they stand now, never from the selection's copies: a vote cast in the drawer since leaves the paper out.
+  const waitsOnMe = (one: Paper) => !one.withdrawn && one.mine && one.cast.some((place) => place.reviewer === open.me && !place.vote && !place.hidden && !place.failed);
+  const votablePicked = open.isReviewer && !screening.finishedAt ? pickedPapers.map((one) => listed.items.find((now) => now.id === one.id) ?? one).filter(waitsOnMe) : [];
   // Many papers are settled a few at a time: hundreds of saves at once would each wait on the others.
   // Each save's outcome is kept: what is said, and what Undo takes back, is only what the server took.
   const each = async (papers: Paper[], save: (paper: Paper) => Promise<unknown>) => {
@@ -354,7 +355,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     const voting = votablePicked;
     // As settling does: the selection goes at once, and the papers the server refuses come back picked.
     setPicked([]);
-    const { saved, refused } = await each(voting, (one) => open.vote(one.id, { decision, ...(why?.reason ? { reason: why.reason } : {}), ...(why?.note ? { note: why.note } : {}) }));
+    // Only the papers the vote went on: one voted on since is left as it is, and Undo never touches it.
+    const cast: Paper[] = [];
+    const { refused } = await each(voting, async (one) => { if (await open.vote(one.id, { decision, ...(why?.reason ? { reason: why.reason } : {}), ...(why?.note ? { note: why.note } : {}) }, { onlyWaiting: true })) cast.push(one); });
+    const saved = cast;
     if (refused) setPicked(voting.filter((one) => !saved.includes(one)));
     if (refused) notSaved(t, refused);
     if (saved.length) toast(t("votedToast", { count: saved.length, decision: words.decision(decision) }), { action: { label: t("undo"), onClick: () => void each(saved, (one) => open.vote(one.id, null)).then(({ refused: again }) => again && notSaved(t, again)) } });

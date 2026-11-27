@@ -31,15 +31,16 @@ function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
   if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
-const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()) };
+const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()) };
 
 /** One person's vote on one paper, or their vote taken back. The paper is stamped: whoever calls wakes the worker once for all it cast. */
-async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note }: { paperId: Id<"screeningResults">; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
+async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
+  if (onlyWaiting && mine?.status !== "waiting") return false;
   if (decision === null) {
     // Taken back: the place is theirs again to vote from.
     if (mine?.status !== "cast") return;
@@ -66,11 +67,12 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
  */
 export const vote = workspaceMutation({
   args: voteArgs,
-  returns: v.null(),
+  // Whether the vote was cast: one on a selection (`onlyWaiting`) is left where a vote was cast since.
+  returns: v.boolean(),
   handler: async (ctx, actor, args) => {
-    await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined });
+    const done = (await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined })) !== false;
     await bookkeepLater(ctx);
-    return null;
+    return done;
   },
 });
 
