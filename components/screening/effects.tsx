@@ -182,6 +182,8 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   const hiding = after.rule.blind === "after";
   if ((before.rule.models !== after.rule.models) && modelsOf(after).length && after.rule.settle !== "one") lines.push({ text: after.rule.models === "advice" ? t(hiding ? "modelVotes.adviceSeen" : "modelVotes.advice") : t(hiding ? "modelVotes.voteHidden" : "modelVotes.vote"), section: "decided" });
   if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? t("blind.never") : advisory(after.rule) && modelsOf(after).length ? t("blind.untilVotedAdvice") : t("blind.untilVoted"), section: "decided" });
+  // A paper's discussion is kept with its votes: a reviewer reads it when they may see them.
+  if (before.rule.blind !== after.rule.blind && after.rule.blind === "after") lines.push({ text: t("blind.discussion"), section: "decided" });
 
   const had = new Set(before.criteria.map((criterion) => criterion.key));
   const fresh = after.criteria.filter((criterion) => !had.has(criterion.key));
@@ -190,6 +192,8 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
     if (read > 0) lines.push({ text: t("criteria.modelsAnswerNew", { count: fresh.length }), kind: "cost", credits: read, section: "criteria" });
     if (activeReviewers(after).some((reviewer) => reviewer.kind === "person")) lines.push({ text: t("criteria.votesStand", { count: fresh.length }), section: "criteria" });
   }
+  // A model's vote is worked out from its answers under the criteria as they stand: a must-have taken off, or one that changes kind, can turn its votes, said once.
+  if (hasModels && before.criteria.some((criterion) => { const now = after.criteria.find((one) => one.key === criterion.key); return now ? now.must !== criterion.must : criterion.must; })) lines.push({ text: t("criteria.modelsFollow"), section: "criteria" });
   for (const criterion of before.criteria) {
     const now = after.criteria.find((one) => one.key === criterion.key);
     // A line speaks of the models only on a screening that has some.

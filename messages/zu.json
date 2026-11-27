@@ -7821,15 +7821,17 @@
       "blind": {
         "untilVotedAdvice": "Umbuyekezi ubona amavoti abanye abantu ephepheni uma esevotile kulo noma selixazululiwe. Amavoti amamodeli ayabonakala ngaphambi kwalokho, njengeseluleko",
         "never": "Wonke umuntu ubona onke amavoti njengoba efakwa",
-        "untilVoted": "Umbuyekezi ubona amanye amavoti ephepheni uma esevotile kulo noma selixazululiwe"
+        "untilVoted": "Umbuyekezi ubona amanye amavoti ephepheni uma esevotile kulo noma selixazululiwe",
+        "discussion": "Ingxoxo yephepha ivela kumbuyekezi ngesikhathi esifanayo"
       },
       "criteria": {
         "modelsAnswerNew": "Amamodeli aphendula {count, plural, one {umbandela omusha} other {imibandela emisha}} kumaphepha avulekile asewafundile",
         "votesStand": "Amavoti abantu ahlala enjalo, ngoba afakwa ngaphambi {count, plural, one {kwalo mbandela} other {kwale mibandela}}",
-        "modelsStop": "Amamodeli ayeka ukuphendula u-{name}. Amavoti asevele efakiwe ahlala enjalo",
+        "modelsStop": "Amamodeli ayeka ukuphendula u-{name}. Amavoti abantu asevele efakiwe ahlala enjalo",
         "noLongerAsked": "U-{name} akasabuzwa. Amavoti asevele efakiwe ahlala enjalo",
         "becomesMust": "U-{name} uba yimfuneko. Kusukela manje u-cha kuwo ukhomba ku-Khipha. Amavoti abantu kumaphepha asavulekile ayahlala, futhi ayadlulela ku-Vota futhi",
-        "becomesNice": "U-{name} uba okuhle ukuba nakho. Kusukela manje u-cha kuwo akasakhombi ku-Khipha. Amavoti asevele efakiwe ahlala enjalo",
+        "becomesNice": "U-{name} uba okuhle ukuba nakho. Kusukela manje u-cha kuwo akasakhombi ku-Khipha. Amavoti abantu asevele efakiwe ahlala enjalo",
+        "modelsFollow": "Amavoti amamodeli alandela izimpendulo zawo ngokwemibandela njengoba injalo manje, ngakho amanye angashintsha",
         "writeQuestion": "Bhala umbuzo wombandela ngaphambi kokugcina",
         "modelsReworded": "Amamodeli aphendula u-{name} obhalwe kabusha kumaphepha awafundayo kusukela manje",
         "reviewersReworded": "Ababuyekezi baphendula u-{name} obhalwe kabusha kusukela manje. Amavoti asevele efakiwe ahlala enjalo",
@@ -8320,6 +8322,7 @@
         "guidanceFor": "Isiqondiso sombandela {n}",
         "guidancePlaceholder": "Njengokuthi \"Izikole zamabanga aphansi kuphela, hhayi amanyuvesi\"",
         "wordsFor": "Amagama okumakwa ombandela {n}",
+        "wordsFull": "Kugcinwa amagama angu-{count} okuqala kuphela",
         "wordsPlaceholder": "Amagama anokhefana phakathi kwawo",
         "is": "Umbandela {n} ngu-",
         "must": "Imfuneko",
@@ -8733,7 +8736,8 @@
       "moreFor": "Okwengeziwe kwe-{name}",
       "addPerson": "Engeza umuntu",
       "findPerson": "Thola umuntu, noma ubhale i-imeyili",
-      "nobodyByName": "Akekho kulesi sikhala sokusebenzela onalelo gama. Bhala ikheli le-imeyili ukuze umeme umuntu.",
+      "nobodyByName": "Akekho omunye kule ndawo yokusebenza onalelo gama. Thayipha ikheli le-imeyili ukuze umeme othile.",
+      "alreadyInvited": "Lo muntu usevele umenyiwe",
       "alreadyOn": "Lo muntu usevele ukulokhu kuhlunga",
       "nobodyElse": "Akekho omunye kulesi sikhala sokusebenzela ongamengeza. Bhala ikheli le-imeyili ukuze umeme umuntu.",
       "invite": "Mema",
@@ -8850,6 +8854,7 @@
         "doneAfter": "<b>Bonke bazoqeda cishe {afterWeeks, plural, =0 {{afterDays, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}</b>{same, select, true {<muted>, njengamanje</muted>} other {<muted>, lapho manje kucishe kube {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {wusuku olulodwa} other {yizinsuku ezingu-#}}} one {yiviki elilodwa} other {ngamaviki angu-#}}</muted>}}",
         "startsAt": "Kuqala esibalweni esishiya bobabili benamaphepha alinganayo. Kuhamba amaphepha asezansi kakhulu {you, select, true {emgqeni wakho} other {emgqeni ka-{name}}}. Amavoti asevele efakiwe ahlala lapho ekhona.",
         "hasAll": "{takerYou, select, true {Usevele unawo} other {{taker} usevele unawo}} wonke amaphepha {giverYou, select, true {akho} other {ka-{giver}}}.",
+        "noneNear": "{takerYou, select, true {Usunawo} other {U-{taker} usenawo}} wonke amaphepha asekugcineni kolayini {giverYou, select, true {wakho} other {ka-{giver}}}, uhlangothi ukuhambisa okuthatha kulo amaphepha.",
         "nobodyElse": "Akekho omunye ongahanjiselwa amaphepha.",
         "doneIn": "Kuqedwa cishe {weeks, plural, =0 {{days, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}"
       },
@@ -8973,8 +8978,6 @@
         "nothingNew": "Akukho okusha",
         "showLast": "Bonisa okokugcina okungu-{count, number}",
         "seeEvery": "Bona konke ukuhlola, kukonke {count, number}",
-        "later": "Okwakamuva",
-        "earlier": "Okwangaphambili",
         "atStart": "Ekuqaleni",
         "startedWith": "{known, select, true {{papers, plural, one {# iphepha} other {# amaphepha}}} other {Amaphepha}} avela ku-{sources, plural, one {# umthombo} other {# imithombo}}",
         "finished": "{every, select, day {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe nsuku zonke} week {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe masonto onke} other {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe njalo ngenyanga}}"
@@ -9268,6 +9271,7 @@
       "queue": {
         "readFurther": "Funda okwengeziwe",
         "noMatchYet": "Awekho amaphepha afundwe kuze kube manje afanayo",
+        "leftWithSource": "Amaphepha alapha asuke ekuhlungeni nomthombo wawo",
         "label": "Umugqa",
         "todo": "Okusazokwenziwa",
         "again": "Vota futhi",

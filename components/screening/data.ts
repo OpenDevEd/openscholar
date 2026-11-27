@@ -135,7 +135,7 @@ export type Source = {
 /** What finds the words the criteria mark in a text, each with whatever ending the text gives it ("programme" marks "programmes" too). Splitting a text by it leaves the marked words at the odd places. Null with no word to find. */
 export function termsPattern(terms: string[]) {
   const words = [...new Set(terms)].filter(Boolean).sort((a, b) => b.length - a.length);
-  return words.length ? new RegExp(`\\b((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\w*)`, "gi") : null;
+  return words.length ? new RegExp(`(?<![\\p{L}\\p{N}])((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})[\\p{L}\\p{N}]*)`, "giu") : null;
 }
 
 /** Why a paper that was found isn't screened. */

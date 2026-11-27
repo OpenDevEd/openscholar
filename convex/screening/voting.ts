@@ -18,6 +18,8 @@ import { decisionValidator, SCREENING_TEXT, voteAnswersValidator } from "./valid
 async function paperOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, resultId: Id<"screeningResults">) {
   const paper = await ctx.db.get("screeningResults", resultId);
   if (paper?.jobId !== jobId) throw createError("NOT_FOUND", "Paper not found");
+  // A paper whose source was taken out is in the screening no more: nobody votes on it or settles it.
+  if (paper.withdrawn) throw createError("CONFLICT", "This paper left the screening with its source.");
   return paper;
 }
 

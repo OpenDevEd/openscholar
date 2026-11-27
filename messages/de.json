@@ -7822,15 +7822,17 @@
       "blind": {
         "untilVotedAdvice": "Ein Reviewer sieht die Stimmen der anderen Personen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist. Die Stimmen der Modelle sind schon vorher als Empfehlung sichtbar",
         "never": "Alle sehen jede Stimme, sobald sie abgegeben ist",
-        "untilVoted": "Ein Reviewer sieht die anderen Stimmen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist"
+        "untilVoted": "Ein Reviewer sieht die anderen Stimmen zu einem Artikel, sobald er selbst darüber abgestimmt hat oder der Artikel entschieden ist",
+        "discussion": "Die Diskussion zu einem Artikel wird einem Reviewer im selben Moment sichtbar"
       },
       "criteria": {
         "modelsAnswerNew": "Die Modelle beantworten {count, plural, one {das neue Kriterium} other {die neuen Kriterien}} bei den offenen Artikeln, die sie gelesen haben",
         "votesStand": "Die Stimmen der Personen bleiben, wie sie sind, da sie vor {count, plural, one {diesem Kriterium} other {diesen Kriterien}} abgegeben wurden",
-        "modelsStop": "Die Modelle beantworten {name} nicht mehr. Bereits abgegebene Stimmen bleiben, wie sie sind",
+        "modelsStop": "Die Modelle beantworten {name} nicht mehr. Bereits abgegebene Stimmen von Personen bleiben, wie sie sind",
         "noLongerAsked": "{name} wird nicht mehr gefragt. Bereits abgegebene Stimmen bleiben, wie sie sind",
         "becomesMust": "{name} wird ein Muss-Kriterium. Ab jetzt deutet ein Nein darauf auf Ausschließen. Die Stimmen der Personen zu den noch offenen Artikeln bleiben und kommen zu Neu abstimmen",
-        "becomesNice": "{name} wird ein Kann-Kriterium. Ab jetzt deutet ein Nein darauf nicht mehr auf Ausschließen. Bereits abgegebene Stimmen bleiben, wie sie sind",
+        "becomesNice": "{name} wird ein Kann-Kriterium. Ab jetzt deutet ein Nein darauf nicht mehr auf Ausschließen. Bereits abgegebene Stimmen von Personen bleiben, wie sie sind",
+        "modelsFollow": "Die Stimmen der Modelle folgen ihren Antworten nach den Kriterien, wie sie jetzt sind, und können sich daher ändern",
         "writeQuestion": "Schreiben Sie vor dem Speichern die Frage des Kriteriums",
         "modelsReworded": "Die Modelle beantworten das umformulierte Kriterium {name} bei den Artikeln, die sie ab jetzt lesen",
         "reviewersReworded": "Die Reviewer beantworten ab jetzt das umformulierte Kriterium {name}. Bereits abgegebene Stimmen bleiben, wie sie sind",
@@ -8321,6 +8323,7 @@
         "guidanceFor": "Hinweise für Kriterium {n}",
         "guidancePlaceholder": "Etwa „Nur Grundschulen, keine Universitäten“",
         "wordsFor": "Zu markierende Wörter für Kriterium {n}",
+        "wordsFull": "Nur die ersten {count} Wörter werden behalten",
         "wordsPlaceholder": "Wörter, durch Kommas getrennt",
         "is": "Kriterium {n} ist",
         "must": "Muss-Kriterium",
@@ -8734,7 +8737,8 @@
       "moreFor": "Mehr für {name}",
       "addPerson": "Person hinzufügen",
       "findPerson": "Person finden oder E-Mail eingeben",
-      "nobodyByName": "Niemand in diesem Arbeitsbereich heißt so. Geben Sie eine E-Mail-Adresse ein, um jemanden einzuladen.",
+      "nobodyByName": "Sonst heißt niemand in diesem Arbeitsbereich so. Geben Sie eine E-Mail-Adresse ein, um jemanden einzuladen.",
+      "alreadyInvited": "Diese Person ist schon eingeladen",
       "alreadyOn": "Diese Person ist schon in diesem Screening",
       "nobodyElse": "Sonst niemand in diesem Arbeitsbereich zum Hinzufügen. Geben Sie eine E-Mail-Adresse ein, um jemanden einzuladen.",
       "invite": "Einladen",
@@ -8851,6 +8855,7 @@
         "doneAfter": "<b>Alle fertig in etwa {afterWeeks, plural, =0 {{afterDays, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}</b>{same, select, true {<muted>, so wie jetzt</muted>} other {<muted>, jetzt sind es etwa {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {ein Tag} other {# Tage}}} one {# Woche} other {# Wochen}}</muted>}}",
         "startsAt": "Es beginnt bei der Zahl, mit der beide gleich viele Artikel haben. Es gehen die Artikel ganz unten in {you, select, true {Ihrer Warteschlange} other {der Warteschlange von {name}}}. Bereits abgegebene Stimmen bleiben, wo sie sind.",
         "hasAll": "{takerYou, select, true {Sie haben} other {{taker} hat}} bereits alle Artikel von {giverYou, select, true {Ihnen} other {{giver}}}.",
+        "noneNear": "{takerYou, select, true {Sie haben schon} other {{taker} hat schon}} jeden Artikel am Ende {giverYou, select, true {Ihrer} other {der}} Warteschlange{giverYou, select, true {} other { von {giver}}}, dem Ende, von dem ein Verschieben Artikel nimmt.",
         "nobodyElse": "Es gibt niemanden sonst, an den Artikel verschoben werden können.",
         "doneIn": "Fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}"
       },
@@ -8974,8 +8979,6 @@
         "nothingNew": "Nichts Neues",
         "showLast": "Die letzten {count, number} anzeigen",
         "seeEvery": "Alle Abfragen ansehen, {count, number} insgesamt",
-        "later": "Spätere",
-        "earlier": "Frühere",
         "atStart": "Beim Start",
         "startedWith": "{known, select, true {{papers, plural, one {# Artikel} other {# Artikel}}} other {Artikel}} aus {sources, plural, one {# Quelle} other {# Quellen}}",
         "finished": "{every, select, day {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Tag abfragt} week {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jede Woche abfragt} other {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Monat abfragt}}"
@@ -9269,6 +9272,7 @@
       "queue": {
         "readFurther": "Weiterlesen",
         "noMatchYet": "Keiner der bisher gelesenen Artikel passt",
+        "leftWithSource": "Die Artikel hier haben das Screening mit ihrer Quelle verlassen",
         "label": "Warteschlange",
         "todo": "Offen",
         "again": "Neu abstimmen",

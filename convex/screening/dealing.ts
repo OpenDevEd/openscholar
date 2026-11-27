@@ -3,6 +3,7 @@
  * `screeningVotes`: so many of the people, taken in turn, and every model. This is the one place rows are made
  * for a paper, when it arrives and whenever the people, the models or the rule change.
  */
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
@@ -90,7 +91,10 @@ const ASKED_SHOWN = 50;
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
 export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) {
   const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(ASKED_SHOWN);
-  return [...new Set(open.map((message) => message.resultId))];
+  // A paper that left with its source keeps its question for when it comes back, and asks nothing while it is out.
+  const papers = [...new Set(open.map((message) => message.resultId))];
+  const out = await Promise.all(papers.map(async (id) => Boolean((await ctx.db.get("screeningResults", id))?.withdrawn)));
+  return papers.filter((_, at) => !out[at]);
 }
 
 /** Where a question put to someone is opened for them to answer. */
@@ -211,4 +215,17 @@ export function seesPaper(job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">
   const mine = me ? votes.find((vote) => vote.reviewerId === me) : undefined;
   const alone = advisory(job.rule!) && !votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== me && kindOf(vote.reviewerId) === "person");
   return alone || seesVotes(job.rule!.blind, result ?? "waiting", mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
+}
+
+/** The guests of a screening looked through as it reopens for reviewers it took on while finished: more than any plan lets it have. */
+const GUESTS_PLACED = 100;
+/**
+ * Whoever was given a screening to review while it was finished had no place on it then, or had left it: as it reopens,
+ * by Reopen or by a check that brings papers, each gets their place, and their papers with it (./reviewers.ts `guestChanged`).
+ */
+export async function placeGuests(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
+  const on = new Set((await reviewersOf(ctx, jobId)).flatMap((one) => (one.kind === "person" && one.left === undefined ? [one.userId] : [])));
+  for (const grant of await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", jobId)).take(GUESTS_PLACED)) {
+    if (grant.role === "editor" && !on.has(grant.userId)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.guestChanged, { item: jobId, userId: grant.userId });
+  }
 }

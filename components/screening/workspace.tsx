@@ -7,8 +7,6 @@ import { leaveBehind } from "./address";
 import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
-import { showStyledToast } from "@/components/ui/sonner";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
@@ -538,7 +536,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
           {words.ago(at) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at) })}
           <Help title={t("banner.finishedTitle")}>{t("banner.finishedHelp", { member: String(open.canChange), workspace })}</Help>
         </span>
-        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check().catch((error) => showStyledToast("error", getErrorMessage(error, t("failed"))))}><RefreshCw />{t("checkReopens")}</Button> : null}
+        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw />{t("checkReopens")}</Button> : null}
         {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />{t("reopen")}</Button> : null}
       </div>
     );

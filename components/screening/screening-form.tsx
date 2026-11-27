@@ -67,7 +67,7 @@ import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText
 import { useScreeningsCrumb, overviewHref, papersHref, reviewerHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
-import { settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
+import { SENTENCE_CHIP, settleMeans, settleSays, Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK, SEARCH_PILL } from "./pieces";
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
@@ -660,19 +660,26 @@ export function ScreeningForm({ id }: { id?: string }) {
   const addCriterion = (question: string, more: { short?: string; terms?: string[] } = {}) =>
     setDraft((d) => {
       const clean = question.trim();
-      if (!clean || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
+      // However it comes, typed, imported, copied or written: never a question twice, never past the most a screening has.
+      if (!clean || d.criteria.length >= MAX_QUESTIONS || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
       const made = criterionFrom(clean, more);
       return withCriteria(d, [...d.criteria, made], { ...d.scoring.points, [made.key]: [1, 0, 0] });
     });
   // A patch can be worked out from the criterion as it stands when it applies, never from an earlier render: two keystrokes before a render must not read the first's.
   const patchCriterion = (criterionKey: string, patch: Partial<Criterion> | ((now: Criterion) => Partial<Criterion>)) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === criterionKey ? { ...criterion, ...(typeof patch === "function" ? patch(criterion) : patch) } : criterion)) }));
   // Another screening's criteria are read when they are asked for, and added to the ones here with their points.
+  // Several at once say so when the list has no room for all of them.
+  const addCriteria = (questions: { text: string; short?: string; terms?: string[] }[]) => {
+    if (questions.length > MAX_QUESTIONS - draft.criteria.length) toast(t("criteria.full", { count: MAX_QUESTIONS }));
+    questions.forEach((one) => addCriterion(one.text, { ...(one.short ? { short: one.short } : {}), ...(one.terms ? { terms: one.terms } : {}) }));
+  };
   const copyCriteria = async (one: { id: Id<"screeningJobs"> }) => {
     if (!workspaceId) return;
     const other = await convex.query(api.screening.view.get, { workspaceId, jobId: one.id });
     if (!other) return;
+    if (other.criteria.filter((criterion) => !draft.criteria.some((own) => own.text.toLowerCase() === criterion.text.toLowerCase())).length > MAX_QUESTIONS - draft.criteria.length) toast(t("criteria.full", { count: MAX_QUESTIONS }));
     setDraft((d) => {
-      const mine = other.criteria.filter((criterion) => !d.criteria.some((own) => own.text === criterion.text));
+      const mine = other.criteria.filter((criterion) => !d.criteria.some((own) => own.text.toLowerCase() === criterion.text.toLowerCase())).slice(0, Math.max(0, MAX_QUESTIONS - d.criteria.length));
       return withCriteria(d, [...d.criteria, ...mine.map(({ key: theirs, text: question, short, must, note, terms }) => ({ key: `new:${hash(question)}:${theirs}`, text: question, short, must, terms, addedAt: Date.now(), ...(note ? { note } : {}) }))], { ...Object.fromEntries(mine.map((criterion) => [`new:${hash(criterion.text)}:${criterion.key}`, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), ...d.scoring.points });
     });
   };
@@ -683,7 +690,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     setWriting(true);
     try {
       const written = await writeQuestions({ researchQuestion: draft.question, existingQuestions: draft.criteria.map((criterion) => criterion.text) });
-      written.criteria.forEach((one) => addCriterion(one.text, { short: one.short, terms: one.terms }));
+      addCriteria(written.criteria);
       if (!written.criteria.length) toast(t("toast.nothingWritten"));
     } catch (error) {
       // What the provider said is for the logs: the person is told what happened and what to do.
@@ -1111,7 +1118,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => keepSource(source)}><Undo2 />{t("papers.keep")}</Button>
                               ) : (
                                 <>
-                                  {stopped && own ? <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: source.id as Id<"screeningSources"> }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
+                                  {stopped && (own || rowOf(source)) ? <Button variant="ghost" size="sm" className="h-8 shrink-0 self-start max-sm:ms-auto" onClick={() => void readSourceAgain({ sourceId: own ? (source.id as Id<"screeningSources">) : rowOf(source)!.sourceId }).catch(failed)}><RefreshCw />{t("papers.readAgain")}</Button> : null}
                                   <TooltipHint label={t("papers.remove", { name: source.name })}>
                                     <Button variant="ghost" size="icon" className="size-8 shrink-0 self-start text-muted-foreground" aria-label={t("papers.remove", { name: source.name })} onClick={() => removeSource(source)}><Trash2 /></Button>
                                   </TooltipHint>
@@ -1259,7 +1266,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               <span className="flex items-center gap-1">
                 <span className="flex flex-wrap items-center justify-end gap-1 @max-[40rem]/criteria:hidden">
                   {importable.length ? (
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => importable.forEach(({ question }) => addCriterion(question))}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => addCriteria(importable.map(({ question }) => ({ text: question })))}>
                       <ListChecks />{t("criteria.import", { count: importable.length, searches: importSearches })}
                     </Button>
                   ) : null}
@@ -1289,7 +1296,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground @[40rem]/criteria:hidden" aria-label={t("criteria.actions")}><MoreHorizontal /></Button></DropdownMenuTrigger>
                   </TooltipHint>
                   <DropdownMenuContent align="end" className="w-72">
-                    {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />{t("criteria.import", { count: importable.length, searches: importSearches })}</DropdownMenuItem> : null}
+                    {importable.length ? <DropdownMenuItem onSelect={() => addCriteria(importable.map(({ question }) => ({ text: question })))}><ListChecks />{t("criteria.import", { count: importable.length, searches: importSearches })}</DropdownMenuItem> : null}
                     {/* Why it can't be pressed goes under the label, and the icon stays on the label's line. */}
                     <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria} className="items-start"><span className="flex h-5 shrink-0 items-center"><AiIcon working={writing} /></span><span className="min-w-0 flex-1">{t("criteria.write")}<ButtonCredits credits={writeCredits} />{cantWrite ? <span className="block text-xs text-muted-foreground">{cantWrite}</span> : null}</span></DropdownMenuItem>
                     {copyable.length ? (
@@ -1801,8 +1808,6 @@ function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKee
 }
 
 /** One choice of the rule: its name and "?" on the left, and the choice on the right with a live figure beside it where there is one. */
-/** A chip that holds a sentence: on a narrow screen it wraps inside the row, its icon on the first line, rather than running past the edge. */
-const SENTENCE_CHIP = "h-auto min-h-6 shrink items-start whitespace-normal py-1 [&>svg]:mt-px";
 
 function RuleRow({ name, help, detail, children }: { name: string; help: ReactNode; detail?: string; children: ReactNode }) {
   return (
@@ -1855,9 +1860,15 @@ function Settler({ person, you }: { person: Person | undefined; you: boolean }) 
 function MarkedWords({ criterion, n, onChange }: { criterion: Criterion; n: number; onChange: (terms: string[]) => void }) {
   const [typing, setTyping] = useState<string | null>(null);
   const t = useTranslations("screening.form");
-  const read = (text: string) => [...new Set(text.split(",").map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
+  const words = (text: string) => [...new Set(text.split(",").map((term) => term.trim()).filter(Boolean))];
+  const read = (text: string) => words(text).slice(0, MAX_TERMS);
+  // Words past the most a criterion marks are said to be left out while they are typed, never dropped without a word.
+  const over = typing !== null && words(typing).length > MAX_TERMS;
   return (
-    <Textarea rows={1} value={typing ?? criterion.terms.join(", ")} onChange={(event) => { setTyping(event.target.value); onChange(read(event.target.value)); }} onBlur={() => setTyping(null)} aria-label={t("criteria.wordsFor", { n })} placeholder={t("criteria.wordsPlaceholder")} className="min-h-8 resize-none py-1.5 text-sm field-sizing-content" />
+    <span className="block space-y-1">
+      <Textarea rows={1} value={typing ?? criterion.terms.join(", ")} onChange={(event) => { setTyping(event.target.value); onChange(read(event.target.value)); }} onBlur={() => setTyping(null)} aria-label={t("criteria.wordsFor", { n })} placeholder={t("criteria.wordsPlaceholder")} className="min-h-8 resize-none py-1.5 text-sm field-sizing-content" aria-invalid={over || undefined} />
+      {over ? <span className="block text-xs text-destructive">{t("criteria.wordsFull", { count: MAX_TERMS })}</span> : null}
+    </span>
   );
 }
 

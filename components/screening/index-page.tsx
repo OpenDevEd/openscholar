@@ -105,7 +105,7 @@ export function ScreeningsIndex() {
   const pinned = sort === "you" && show !== "finished" && listed.page === 1 ? needs.filter((row) => show === "all" || !row.finishedAt) : [];
   const paged = show === "you" ? [] : listed.items.filter((row) => !(sort === "you" && show !== "finished" && waiting.has(row.id)));
   // Screenings shared from outside its workspace come on the first page, on top of its own: the pager counts them there.
-  const sharedShown = shared.filter((row) => !waiting.has(row.id) && (show === "all" || (show === "finished") === Boolean(row.finishedAt)));
+  const sharedShown = shared.filter((row) => !pinned.some((one) => one.id === row.id) && (show === "all" || (show === "finished") === Boolean(row.finishedAt)));
   const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? sharedShown : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
@@ -311,8 +311,8 @@ export function ScreeningsIndex() {
                 </ul>
                 )}
                 </AutoHeight>
-                {/* The total is the tabs' own count, with the screenings shared from outside, which the first page shows on top of its own; the pages are its own screenings'. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so no total is said there. */}
-                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset + (listed.page > 1 ? sharedShown.length : 0), shown: listed.items.length + (listed.page === 1 ? sharedShown.length : 0), ...(searched || runBy.by || !counts || !tally || sort === "you" ? {} : { total: show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all, pageCount: Math.max(1, Math.ceil((show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished) / PAGE)) }) }} /> : null}
+                {/* The total is the tabs' own count, with the screenings shared from outside, which the first page shows on top of its own; the pages are its own screenings'. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so neither a total nor a range is said there. */}
+                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset + (listed.page > 1 ? sharedShown.length : 0), shown: sort === "you" ? 0 : listed.items.length + (listed.page === 1 ? sharedShown.length : 0), ...(searched || runBy.by || !counts || !tally || sort === "you" ? {} : { total: show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all, pageCount: Math.max(1, Math.ceil((show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished) / PAGE)) }) }} /> : null}
               </>
             )}
             </AutoHeight>

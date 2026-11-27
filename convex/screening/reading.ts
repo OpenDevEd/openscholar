@@ -30,9 +30,9 @@ export const readPaper = internalAction({
   args: { voteId: v.id("screeningVotes") },
   returns: readingValidator,
   handler: async (ctx, { voteId }): Promise<typeof readingValidator.type> => {
-    const context = await ctx.runQuery(internal.screening.readings.context, { voteId });
-    // When the criteria were read for the model: its answers are to them as they were then, and are dated from then.
+    // When the criteria were read for the model, taken before they are read: a rewording that lands in between is after it, so the paper is read again (./readings.ts `done`).
     const askedAt = Date.now();
+    const context = await ctx.runQuery(internal.screening.readings.context, { voteId });
     if (!context?.go) return { read: false, why: "held" };
     if (!context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
     const pricing = { input: context.model.input, output: context.model.output, ...(context.model.long ? { long: context.model.long } : {}) };
