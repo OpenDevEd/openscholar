@@ -1217,14 +1217,17 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <Help title={t("living.title")} facts={<><HelpFact>{t("living.factFixed")}</HelpFact><HelpFact>{t("living.factEmail")}</HelpFact><HelpFact icon={Coins}>{t("living.factCharge")}</HelpFact></>}>{t("living.help")}</Help>
                     {changed("new-papers")}
                   </p>
-                  <Segmented
+                  {/* Where no source can gain papers there is nothing to check: no schedule is offered, and the line under says why. One already set can still be turned off. */}
+                  {draft.sources.length && !growing(draft).length && !draft.living ? null : <Segmented
                     label={t("living.check")}
                     value={draft.living?.every ?? "off"}
                     onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + EVERY_MS[next] } })}
                     options={[{ id: "off" as const, label: t("living.off") }, ...(["day", "week", "month"] as const).map((id) => ({ id, label: words.t(`every.${id}`) }))]}
-                  />
+                  />}
                 </div>
-                {draft.living ? (
+                {draft.sources.length && !growing(draft).length && !draft.living ? (
+                  <p className="bg-inset px-4 py-2.5 text-sm text-muted-foreground">{t("living.noneGrow")}</p>
+                ) : draft.living ? (
                   growing(draft).length ? (
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? t("living.checksAll", { count: draft.sources.length }) : t("living.checksSome", { count: draft.sources.length, growing: growing(draft).length })}</Chip>

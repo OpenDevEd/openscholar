@@ -8891,7 +8891,7 @@
         "none": "有两位审核人对同样的论文投票后，这里会显示他们的一致程度。",
         "mean": "两两 Cohen's kappa 的平均值",
         "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}。{left, plural, =0 {} other {其余 # 对在每篇论文上都投了同样的票，这种情况下无法计算 kappa。}}",
-        "splitMost": "分歧最大的论文",
+        "splitMost": "全部论文，分歧最大的在前",
         "noneYet": "暂无",
         "cell": "{a} 与 {b}，kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
       },

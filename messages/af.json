@@ -8892,7 +8892,7 @@
         "none": "Hoe ver die beoordelaars saamstem, verskyn hier sodra twee van hulle op dieselfde artikels gestem het.",
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
         "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}.{left, plural, =0 {} one { Die ander paar het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.} other { Die ander # pare het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.}}",
-        "splitMost": "Die artikels waaroor hulle die meeste verskil het",
+        "splitMost": "Elke artikel, die mees verdeelde eerste",
         "noneYet": "Nog geen",
         "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
       },

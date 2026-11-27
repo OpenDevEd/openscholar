@@ -8892,7 +8892,7 @@
         "none": "A concordância entre os revisores aparece aqui quando dois deles tiverem votado nos mesmos artigos.",
         "mean": "Kappa de Cohen médio entre pares",
         "across": "0 não é melhor do que o acaso, 1 é concordância total. Em {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {{min, number} a {max, number} artigos cada} other {{min, plural, one {# artigo cada} other {# artigos cada}}}}.{left, plural, =0 {} one { O outro par votou da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.} other { Os outros # pares votaram da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.}}",
-        "splitMost": "Os artigos em que mais se dividem",
+        "splitMost": "Todos os artigos, os mais divididos primeiro",
         "noneYet": "Ainda nenhum",
         "cell": "{a} e {b}, kappa {kappa}, mesmo voto em {share, number, percent} de {papers, plural, one {# artigo} other {# artigos}}"
       },

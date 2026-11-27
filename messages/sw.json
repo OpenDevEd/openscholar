@@ -8892,7 +8892,7 @@
         "none": "Kiwango cha makubaliano ya wakaguzi kinaonekana hapa wawili kati yao wakishapigia kura makala zilezile.",
         "mean": "Wastani wa Cohen's kappa ya kila jozi",
         "across": "0 si bora kuliko bahati, 1 ni makubaliano kamili. Kwenye {pairs, plural, one {jozi #} other {jozi #}} za wakaguzi, {range, select, true {makala {min, number} hadi {max, number} kila jozi} other {{min, plural, one {makala # kila jozi} other {makala # kila jozi}}}}.{left, plural, =0 {} one { Jozi nyingine ilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.} other { Jozi # nyingine zilipiga kura ile ile kwenye kila makala, na hapo kappa haiwezi kuhesabiwa.}}",
-        "splitMost": "Makala walizotofautiana nazo zaidi",
+        "splitMost": "Makala zote, zenye tofauti zaidi kwanza",
         "noneYet": "Bado hakuna",
         "cell": "{a} na {b}, kappa {kappa}, kura sawa kwenye {share, number, percent} ya {papers, plural, one {makala #} other {makala #}}"
       },

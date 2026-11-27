@@ -8892,7 +8892,7 @@
         "none": "El grado de acuerdo entre revisores aparece aquí cuando dos de ellos hayan votado los mismos artículos.",
         "mean": "Kappa de Cohen media por pares",
         "across": "0 no es mejor que el azar, 1 es acuerdo total. Entre {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {de {min, number} a {max, number} artículos cada uno} other {{min, plural, one {# artículo cada uno} other {# artículos cada uno}}}}.{left, plural, =0 {} one { El otro par votó lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.} other { Los otros # pares votaron lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.}}",
-        "splitMost": "Los artículos en que más discrepan",
+        "splitMost": "Todos los artículos, los más divididos primero",
         "noneYet": "Ninguno todavía",
         "cell": "{a} y {b}, kappa {kappa}, mismo voto en el {share, number, percent} de {papers, plural, one {# artículo} other {# artículos}}"
       },

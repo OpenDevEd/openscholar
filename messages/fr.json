@@ -8891,7 +8891,7 @@
         "none": "Le degré d'accord des évaluateurs s'affiche ici dès que deux d'entre eux ont voté sur les mêmes articles.",
         "mean": "Kappa de Cohen moyen par paire",
         "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}.{left, plural, =0 {} one { L'autre paire a voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.} other { Les # autres paires ont voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.}}",
-        "splitMost": "Les articles sur lesquels ils divergent le plus",
+        "splitMost": "Tous les articles, les plus partagés d'abord",
         "noneYet": "Aucun pour l'instant",
         "cell": "{a} et {b}, kappa {kappa}, même vote sur {share, number, percent} de {papers, plural, one {# article} other {# articles}}"
       },

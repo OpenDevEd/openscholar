@@ -8891,7 +8891,7 @@
         "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
         "mean": "Mean pairwise Cohen's kappa",
         "across": "0 is no better than chance, 1 is full agreement. Across {pairs, plural, one {# pair} other {# pairs}} of reviewers, {range, select, true {{min, number} to {max, number} papers each} other {{min, plural, one {# paper each} other {# papers each}}}}.{left, plural, =0 {} one { The other pair voted one way on every paper, where kappa can't be worked out.} other { The other # pairs voted one way on every paper, where kappa can't be worked out.}}",
-        "splitMost": "The papers they split on most",
+        "splitMost": "Every paper, the most split first",
         "noneYet": "None yet",
         "cell": "{a} and {b}, kappa {kappa}, same vote on {share, number, percent} of {papers, plural, one {# paper} other {# papers}}"
       },
