@@ -8232,6 +8232,11 @@
         "questionPlaceholder": "Por ejemplo, «¿Mejoran los comedores escolares el aprendizaje en primaria?»"
       },
       "papers": {
+        "correctDoi": "Corregirlo",
+        "correctDoiFor": "El DOI {doi}, como debe ser",
+        "tryAgain": "Intentar de nuevo",
+        "cancel": "Cancelar",
+        "doiAgain": "La lista se lee de nuevo. Un DOI encontrado esta vez se une al cribado",
         "wholeSource": "lee toda la fuente",
         "fromAll": "lee los {total, number} de la fuente",
         "fromRange": "lee los artículos {first} a {last} de los {total, number} de la fuente",

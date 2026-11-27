@@ -8231,6 +8231,11 @@
         "questionPlaceholder": "例如“学校供餐能否改善小学生的学习？”"
       },
       "papers": {
+        "correctDoi": "更正",
+        "correctDoiFor": "应为的 DOI {doi}",
+        "tryAgain": "重试",
+        "cancel": "取消",
+        "doiAgain": "将重新读取该列表。这次找到的 DOI 会加入筛选",
         "wholeSource": "读取整个来源",
         "fromAll": "读取来源中全部 {total, number} 篇",
         "fromRange": "读取来源中 {total, number} 篇里的第 {first} 至 {last} 篇",

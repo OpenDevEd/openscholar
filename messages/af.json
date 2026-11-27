@@ -8232,6 +8232,11 @@
         "questionPlaceholder": "Soos “Verbeter skoolmaaltye leer in laerskole?”"
       },
       "papers": {
+        "correctDoi": "Korrigeer dit",
+        "correctDoiFor": "Die DOI {doi}, soos dit moet wees",
+        "tryAgain": "Probeer weer",
+        "cancel": "Kanselleer",
+        "doiAgain": "Die lys word weer gelees. ’n DOI wat hierdie keer gevind word, sluit by die keuring aan",
         "wholeSource": "lees die hele bron",
         "fromAll": "lees al {total, number} in die bron",
         "fromRange": "lees artikels {first} tot {last} van die {total, number} in die bron",

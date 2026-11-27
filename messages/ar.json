@@ -8232,6 +8232,11 @@
         "questionPlaceholder": "مثل «هل تحسّن الوجبات المدرسية التعلّم في المدارس الابتدائية؟»"
       },
       "papers": {
+        "correctDoi": "صحّحه",
+        "correctDoiFor": "معرّف DOI {doi} كما ينبغي أن يكون",
+        "tryAgain": "حاول مرة أخرى",
+        "cancel": "إلغاء",
+        "doiAgain": "تُقرأ القائمة من جديد. ينضم إلى الفرز أي DOI يُعثر عليه هذه المرة",
         "wholeSource": "يقرأ المصدر كله",
         "fromAll": "يقرأ كل الـ {total, number} في المصدر",
         "fromRange": "يقرأ الأوراق من {first} إلى {last} من أصل {total, number} في المصدر",

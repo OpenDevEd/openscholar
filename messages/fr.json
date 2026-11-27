@@ -8231,6 +8231,11 @@
         "questionPlaceholder": "Par exemple « Les repas scolaires améliorent-ils l'apprentissage à l'école primaire ? »"
       },
       "papers": {
+        "correctDoi": "Le corriger",
+        "correctDoiFor": "Le DOI {doi}, tel qu’il doit être",
+        "tryAgain": "Réessayer",
+        "cancel": "Annuler",
+        "doiAgain": "La liste est relue. Un DOI trouvé cette fois rejoint le tri",
         "wholeSource": "lit toute la source",
         "fromAll": "lit les {total, number} de la source",
         "fromRange": "lit les articles {first} à {last} des {total, number} de la source",
