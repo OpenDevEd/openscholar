@@ -7933,6 +7933,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Thumela nge-imeyili",
+        "title": "{count, plural, one {Thumela leli fayela} other {Thumela lawa mafayela angu-#}}",
+        "to": "Ku",
+        "toPlaceholder": "colleague@example.org",
+        "note": "Inothi, uma uthanda",
+        "says": "Amafayela anjengoba ubungawalanda, ngaphandle kwalokho okufihliwe kuwe. Izimpendulo zifika kuwe.",
+        "send": "Thumela",
+        "sent": "{count, plural, one {Ifayela lithunyelwe ku-{to}} other {Amafayela angu-# athunyelwe ku-{to}}}",
+        "failed": "Amafayela awathunyelwanga"
+      },
       "title": "Landa",
       "description": "Amaphepha, onke amavoti, umdwebo we-PRISMA, isigaba sezindlela kanye nerekhodi lonke",
       "tabsLabel": "Okufanele kukhishwe",

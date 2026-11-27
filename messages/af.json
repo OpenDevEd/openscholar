@@ -7934,6 +7934,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Stuur per e-pos",
+        "title": "{count, plural, one {Stuur hierdie lêer} other {Stuur hierdie # lêers}}",
+        "to": "Aan",
+        "toPlaceholder": "kollega@example.org",
+        "note": "’n Nota, as jy wil",
+        "says": "Die lêers is soos jy hulle sou aflaai, sonder wat vir jou versteek is. Antwoorde kom na jou.",
+        "send": "Stuur",
+        "sent": "{count, plural, one {Lêer na {to} gestuur} other {# lêers na {to} gestuur}}",
+        "failed": "Die lêers is nie gestuur nie"
+      },
       "title": "Voer uit",
       "description": "Die artikels, elke stem, die PRISMA-diagram, ’n metodeparagraaf en die hele rekord",
       "tabsLabel": "Wat om uit te voer",

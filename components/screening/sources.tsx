@@ -166,7 +166,7 @@ const PDFS_A_CALL = 50;
 const MB = 1024 * 1024;
 
 /** Sends a file to storage and answers with where it is kept. */
-function useUpload() {
+export function useUpload() {
   const t = useTranslations("screening.sources");
   const uploadUrl = useWorkspaceMutation(api.screening.held.uploadUrl);
   return async (body: Blob) => {

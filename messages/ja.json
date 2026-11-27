@@ -7933,6 +7933,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "メールで送る",
+        "title": "{count, plural, other {このファイル # 件を送る}}",
+        "to": "宛先",
+        "toPlaceholder": "colleague@example.org",
+        "note": "メモ（任意）",
+        "says": "ファイルはダウンロードするときと同じ内容で、あなたに非表示のものは含まれません。返信はあなたに届きます。",
+        "send": "送信",
+        "sent": "{count, plural, other {{to} に # 件のファイルを送りました}}",
+        "failed": "ファイルを送れませんでした"
+      },
       "title": "エクスポート",
       "description": "論文、すべての投票、PRISMA 図、方法の段落、記録全体",
       "tabsLabel": "エクスポートする内容",

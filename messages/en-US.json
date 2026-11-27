@@ -7933,6 +7933,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Send by email",
+        "title": "{count, plural, one {Send this file} other {Send these # files}}",
+        "to": "To",
+        "toPlaceholder": "colleague@example.org",
+        "note": "A note, if you like",
+        "says": "The files are as you would download them, with what is hidden from you left out. Replies come to you.",
+        "send": "Send",
+        "sent": "{count, plural, one {Sent the file to {to}} other {Sent # files to {to}}}",
+        "failed": "The files weren’t sent"
+      },
       "title": "Export",
       "description": "The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record",
       "tabsLabel": "What to export",

@@ -7934,6 +7934,17 @@
       }
     },
     "files": {
+      "send": {
+        "open": "Tuma kwa barua pepe",
+        "title": "{count, plural, one {Tuma faili hii} other {Tuma faili hizi #}}",
+        "to": "Kwa",
+        "toPlaceholder": "colleague@example.org",
+        "note": "Ujumbe, ukipenda",
+        "says": "Faili ni kama ungezipakua, bila kilichofichwa kwako. Majibu yanakuja kwako.",
+        "send": "Tuma",
+        "sent": "{count, plural, one {Faili imetumwa kwa {to}} other {Faili # zimetumwa kwa {to}}}",
+        "failed": "Faili hazikutumwa"
+      },
       "title": "Hamisha",
       "description": "Makala, kila kura, mchoro wa PRISMA, aya ya mbinu na kumbukumbu nzima",
       "tabsLabel": "Cha kuhamisha",
