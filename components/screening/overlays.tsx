@@ -281,12 +281,12 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
 function Credits({ cost, papers, wallet, onAddCredits }: { /** What reading those papers costs the model at most. */ cost: number; papers: number; wallet: number; onAddCredits: () => void }) {
   const t = useTranslations("screening.frame");
   const words = useWords();
-  if (cost <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{t("credits.inWorkspace", { credits: words.credits(wallet) })}</p>;
+  if (cost <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{t("credits.inWorkspace", { credits: words.creditsOf(wallet) })}</p>;
   const paid = Math.floor((papers * wallet) / cost);
   return (
     <Panel tone="warning" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl p-3">
       <Coins className="mt-0.5 size-4 shrink-0 self-start ink-warning" />
-      <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{t("credits.payFor", { some: String(paid > 0), credits: words.credits(wallet), paid, papers })}</p>
+      <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{t("credits.payFor", { some: String(paid > 0), credits: words.creditsOf(wallet), paid, papers })}</p>
       <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />{t("addCredits")}</NextLink></Button>
     </Panel>
   );

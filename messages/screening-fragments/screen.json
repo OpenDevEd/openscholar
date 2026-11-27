@@ -3,7 +3,7 @@
   "yourVote": "Your vote",
   "result": "Result",
   "answersDiffer": "Answers differ",
-  "nextAfter": "{settling, select, true {Next paper after each decision} other {Next paper after each vote}}",
+  "nextAfter": "{settling, select, true {Next paper after each one you settle} other {Next paper after each vote}}",
   "settleConflicts": "{settle, select, true {Settle {count, plural, one {# conflict} other {# conflicts}}} other {See {count, plural, one {# conflict} other {# conflicts}}}}",
   "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
   "queue": {
@@ -47,13 +47,13 @@
     "exclude": "Exclude, then say why",
     "next": "Next paper, without a vote",
     "previous": "Previous paper",
-    "undo": "{settling, select, true {Undo the last decision} other {Undo the last vote}}",
+    "undo": "{settling, select, true {Undo what you last settled} other {Undo the last vote}}",
     "queue": "Show or hide the queue",
     "keys": "Show these shortcuts"
   },
   "votes": {
     "title": "Everyone's votes",
-    "titleAdvice": "Votes and AI advice",
+    "titleAdvice": "Votes and the models' advice",
     "forSettler": "{you, select, true {For you to settle} other {For {name} to settle}}",
     "waitingFrom": "from {names}",
     "more": "{count, plural, other {# more}}",
@@ -65,7 +65,7 @@
     "pointsWhy": "Your answers point to <b>{points}</b>. You answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, which are must-haves} other {criterion {numbers}, a must-have}}. Your vote isn't cast yet.",
     "allMet": "Your answers point to <b>{points}</b>, since every must-have is met. Your vote isn't cast yet.",
     "againstLine": "You voted {voted}. Your answers point to <b>{points}</b>.",
-    "pointsLine": "Your answers point to <b>{points}</b>. Not cast yet."
+    "pointsLine": "Your answers point to <b>{points}</b>. Your vote isn't cast yet."
   },
   "paper": {
     "label": "Paper",
@@ -103,8 +103,8 @@
     "withNote": "Saved with a note",
     "nowInConflicts": "Now in Conflicts",
     "more": "More for this paper",
-    "dragRight": "Drag the paper right to include",
-    "dragLeft": "Drag it left to exclude",
+    "dragRight": "Drag the paper right to Include",
+    "dragLeft": "Drag it left to Exclude",
     "undo": "Undo",
     "alsoFailed": "{count, plural, other {and # more}}",
     "votedDifferently": "{count, plural, other {# voted differently}}"

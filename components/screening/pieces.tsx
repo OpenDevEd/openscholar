@@ -188,7 +188,7 @@ export const VOTES_SHUT = (t: T) => t("votesShut");
  * Sends a model back to the papers it couldn't read: the one control for it, wherever a failed read shows, with the
  * same words and the same price. Where the workspace can't pay for it, it is shut and says how many credits are missing.
  */
-export function RetryRead({ papers, cost, short, onRetry, variant = "outline", size = "xs", className }: { papers: number; /** In credits, as it is said. */ cost: string; /** The credits missing, as they are said, or nothing where there are enough. */ short?: string; onRetry: () => void; variant?: "default" | "outline"; size?: "xs" | "sm"; className?: string }) {
+export function RetryRead({ papers, cost, short, onRetry, variant = "outline", size = "xs", className }: { papers: number; /** In credits, as they are shown (`words.creditsOf`). */ cost: number; /** The credits missing, as they are shown, or nothing where there are enough. */ short?: number; onRetry: () => void; variant?: "default" | "outline"; size?: "xs" | "sm"; className?: string }) {
   const t = useTranslations("screening.pieces");
   return (
     <span className={cn("flex flex-wrap items-center gap-2", className)}>
@@ -198,7 +198,7 @@ export function RetryRead({ papers, cost, short, onRetry, variant = "outline", s
   );
 }
 /** What that control says, for a menu's row too. */
-export const retryLabel = (t: T, papers: number, cost: string) => t("retry", { papers: Math.max(1, papers), cost });
+export const retryLabel = (t: T, papers: number, cost: number) => t("retry", { papers: Math.max(1, papers), cost });
 
 /** A figure that opens the papers it counts: underlined at rest, so it is told apart from a figure that only says how many. */
 /** A name or a count inside a sentence that opens something: underlined where it stands, so it reads as a link before the pointer is on it. */

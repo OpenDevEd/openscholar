@@ -24,10 +24,10 @@
   "firstUse": {
     "noneHere": "No screenings in this workspace yet",
     "title": "Decide which papers belong in your review",
-    "text": "Bring papers from searches, collections or your own files, set your criteria, and screen them yourself, with colleagues, with AI models, or with any mix of the three."
+    "text": "Bring papers from searches, collections or your own files, set your criteria, and screen them yourself, with colleagues or with AI models."
   },
   "legend": {
-    "label": "What the colours of a bar mean",
+    "label": "What each part of a bar means",
     "settled": "Settled",
     "notYet": "Not yet"
   },
@@ -78,7 +78,7 @@
   },
   "discussion": {
     "title": "Discussion",
-    "about": "{models, select, true {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays on their Screening list until they answer. A model can't be asked. Press one of its marks in the table for the passage it read.} other {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays on their Screening list until they answer.}}",
+    "about": "{models, select, true {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer. A model can't be asked. Press one of its marks in the table for the passage it read.} other {Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question, and it stays under Needs you on their Screening page until they answer.}}",
     "blind": "This screening hides what is written about a paper from a reviewer only while the paper still waits for that reviewer's own vote.",
     "shut": "Reviewers talk a paper over here. It stays out of sight so it can't sway your vote.",
     "notSent": "That wasn't sent. Try again.",
@@ -89,7 +89,7 @@
     "whoFor": "Who it is for",
     "to": "To",
     "everyone": "Everyone",
-    "forOne": "For {name} to answer. Everyone who can see this paper's votes reads it, and it stays on {name}'s Screening list until then.",
+    "forOne": "For {name} to answer. Everyone who can see this paper's votes reads it, and it stays under Needs you on {name}'s Screening page until they answer.",
     "forAll": "Everyone who can see this paper's votes reads it. Pick a name to ask one person a question.",
     "answerPlaceholder": "Answer {name}",
     "askPlaceholder": "Ask {name} a question",
@@ -105,6 +105,6 @@
     "onItsWay": "The PDF is on its way",
     "cantShow": "This PDF can't be shown here. Open it in a new tab."
   },
-  "perPaper": "{credits} credits a paper",
+  "perPaper": "{credits, plural, one {# credit} other {# credits}} a paper",
   "pickerCost": "Credits a paper"
 }

@@ -81,7 +81,7 @@ export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
 /** What a model charges to read one paper, as every page says it. */
-export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => t("perPaper", { credits: words.credits(paperCredits(model)) });
+export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => t("perPaper", { credits: words.creditsOf(paperCredits(model)) });
 
 /**
  * What a screening's models are doing, worked out on the server in one place, so the list's row, the frame's notice,

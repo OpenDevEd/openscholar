@@ -10,7 +10,7 @@
     "title-desc": "Title, Z to A",
     "result": "Result",
     "newest": "Published, newest first",
-    "split": "Most disagreement",
+    "split": "Most split votes",
     "points": "Most points",
     "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away"
   },
@@ -29,7 +29,7 @@
     "anyVote": "Any vote",
     "noVote": "No vote",
     "settled": "Settled the result",
-    "decisions": "Decisions",
+    "decisions": "Settled",
     "added": "Added",
     "anyTime": "Any time",
     "atStart": "At the start",
@@ -127,8 +127,8 @@
   },
   "why": {
     "nobodyCanVote": "No reviewer can vote on it yet",
-    "waitingOnYou": "Waiting on you",
-    "waitingOn": "Waiting on",
+    "waitingOnYou": "Waiting for your vote",
+    "waitingOn": "Waiting for",
     "noVoteFrom": "No vote from"
   },
   "pointsOf": "{points, number} of {max, plural, one {# point} other {# points}}",
@@ -161,8 +161,8 @@
     "overrideTitle": "Overriding a result",
     "votesKept": "Votes kept",
     "canReopen": "Can be reopened",
-    "overrideSays": "Your decision replaces the result the votes gave. The votes stay on record. Reopen takes your decision away, and the votes decide the result again.",
-    "yetToVote": "{who, select, you {You have yet to vote. Your decision settles the paper without that vote, and takes it off your list.} one {{names} has yet to vote. Your decision settles the paper without that vote, and takes it off their list.} withYou {{names} have yet to vote. Your decision settles the paper without those votes, and takes it off your lists.} other {{names} have yet to vote. Your decision settles the paper without those votes, and takes it off their lists.}}",
+    "overrideSays": "What you pick replaces the result the votes gave. The votes stay on record. Reopen removes what you picked, and the votes decide the result again.",
+    "yetToVote": "{who, select, you {You have yet to vote. What you pick settles the paper without that vote, and takes it off your list.} one {{names} has yet to vote. What you pick settles the paper without that vote, and takes it off their list.} withYou {{names} have yet to vote. What you pick settles the paper without those votes, and takes it off your lists.} other {{names} have yet to vote. What you pick settles the paper without those votes, and takes it off their lists.}}",
     "cancel": "Cancel",
     "afterYouVote": "After you vote"
   }
