@@ -242,18 +242,6 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious), next: at >= 0 && (at < shown.length - 1 || listed.canNext) };
 
-  // The open paper's row is brought to the middle of the window where it is off the screen: after a link that opened it, or a step onto another page. A row already in view stays where it is. The window's scroll is the outside system.
-  useEffect(() => {
-    if (!opened || !inView) return;
-    // The table and the phone's list both carry the paper: the one that is drawn is its row.
-    const row = [...document.querySelectorAll<HTMLElement>(`[data-paper="${CSS.escape(opened)}"]`)].find((one) => one.getClientRects().length);
-    if (!row) return;
-    const box = row.getBoundingClientRect();
-    const covered = (row.closest("table")?.querySelector("thead") ?? document.querySelector("[data-sticky-page-header]"))?.getBoundingClientRect().bottom ?? 0;
-    if (box.top < covered || box.bottom > window.innerHeight) row.scrollIntoView({ block: "center" });
-    // Again when the table is put in another order or narrowed, which can move the row. Not on a search being typed or on papers arriving: the page would move under the person.
-  }, [opened, inView, listed.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]);
-
   // The keyboard is the outside system: J and K or the arrows step through the list.
   useEffect(() => {
     if (!opened) return;
@@ -271,17 +259,17 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   // The window's scroll is the outside system. The line under the page's header, in pixels: `top`'s scroll margin is that line and 1rem.
   const underHeader = () => parseFloat(getComputedStyle(top.current!).scrollMarginTop) - parseFloat(getComputedStyle(document.documentElement).fontSize);
-  // The paper opened or stepped to has its row in view, under the table's head, also after a step onto another page.
+  // The open paper's row is brought to the middle of what the page's header and the table's head leave of the window where it is out of view: after a link that opened it, a step onto another page, or another order or filter that moved it. A row already in view stays where it is. Not on a search being typed or on papers arriving: the page would move under the person.
   useLayoutEffect(() => {
-    if (!opened || !top.current) return;
-    const row = [...top.current.querySelectorAll<HTMLElement>(`[data-paper="${opened}"]`)].find((one) => one.getClientRects().length);
+    if (!opened || !inView || !top.current) return;
+    // The table and the phone's list both carry the paper: the one that is drawn is its row.
+    const row = [...top.current.querySelectorAll<HTMLElement>(`[data-paper="${CSS.escape(opened)}"]`)].find((one) => one.getClientRects().length);
     if (!row) return;
     const head = top.current.querySelector("thead");
     const line = underHeader() + (head?.getClientRects().length ? head.offsetHeight : 0);
     const box = row.getBoundingClientRect();
-    if (box.top < line) window.scrollBy(0, box.top - line);
-    else if (box.bottom > window.innerHeight) window.scrollBy(0, box.bottom - window.innerHeight);
-  }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when another paper opens
+    if (box.top < line || box.bottom > window.innerHeight) window.scrollBy(0, box.top - line - Math.max(0, (window.innerHeight - line - box.height) / 2));
+  }, [opened, inView, listed.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]); // eslint-disable-line react-hooks/exhaustive-deps -- underHeader reads the page as it is drawn
   const list = useRef<HTMLDivElement>(null);
 
   // A reviewer's column fits their first name under their face.
@@ -311,7 +299,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   };
   // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
-    if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, open.me, pickedPapers));
+    if (as === "csv") save(fileName({ ...open, screening: open.filed }, "selected-papers-votes", "csv", Date.now()), "text/csv", votesCsv(open.filed, pickedPapers));
     else save(fileName({ ...open, screening: open.filed }, "selected-papers", "ris", Date.now()), "application/x-research-info-systems", risOf(pickedPapers));
   };
 
@@ -485,7 +473,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       </div>
 
       {/* A filter by how someone else voted can't count the votes hidden from the person looking: it says how many it leaves out, as the Overview and the files do. */}
-      {blind && who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
+      {open.keepsVotes && who && who !== open.me && (DECISIONS as readonly string[]).includes(voted) ? <div className="px-4 pb-3 sm:px-6"><ShutNote by="vote">{t("hiddenLeftOut")}</ShutNote></div> : null}
       {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">

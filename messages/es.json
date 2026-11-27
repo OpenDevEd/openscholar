@@ -9576,8 +9576,7 @@
         "known": "En el índice",
         "file": "Leído como su PDF",
         "broken": "No se abre",
-        "waiting": "Leyéndolo",
-        "costsMore": "más por uno leído como su PDF"
+        "waiting": "Leyéndolo"
       },
       "removed": {
         "merged": "Duplicados fusionados",

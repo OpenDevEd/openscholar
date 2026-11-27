@@ -745,8 +745,8 @@ describe("jobs in workspaces (#650)", () => {
     expect(await asAlice.query(api.screening.queries.slots, { workspaceId: lab })).toMatchObject({ running: 4 });
     expect(await asAlice.query(api.screening.queries.slots, {})).toMatchObject({ running: 2 });
     // A job opened by its ID is open to anyone in its workspace, and to no one else.
-    expect(await asAlice.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).not.toBeNull();
-    expect(await asCarol.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).toBeNull();
+    expect(await asAlice.query(api.screening.queries.getScreeningJob, { jobId: bobs, workspaceId: lab })).not.toBeNull();
+    expect(await asCarol.query(api.screening.queries.getScreeningJob, { jobId: bobs })).toBeNull();
     // A colleague's screening is a source a member can pick: the check gets past whose it is, to what it holds.
     const asSource = (userId: Id<"users">, workspaceId: Id<"workspaces">) => t.query(internal.screening.start.check, { userId, workspaceId, set: { kind: "screening", jobId: bobs }, first: 1, last: 1, questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
     await expect(asSource(alice._id, lab)).rejects.toThrow(/no papers in that range/);

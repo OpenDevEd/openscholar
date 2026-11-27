@@ -602,9 +602,8 @@ export function CriterionText({ text, must }: { text: string; must: boolean }) {
  * What a rule does, shown on three made-up papers: the votes a paper might get, an arrow, and where
  * that leaves it. It stands in for a paragraph of explanation.
  */
-export function RuleExamples({ rule, people, models }: { rule: Rule; people: number; models: number }) {
+export function RuleExamples({ rule, each, models }: { rule: Rule; each: number; models: number }) {
   const t = useTranslations("screening.pieces");
-  const each = rule.each === "all" ? people : Math.min(Number(rule.each), people);
   const votes = Math.max(1, models + each);
   // The people's votes first, then the models': settled by the rule itself, as a real paper is.
   const row = (decisions: Array<Decision | null>): Result => settle(rule.settle, decisions.map((decision, at) => ({ kind: at < each ? ("person" as const) : ("model" as const), ...(decision ? { status: "cast" as const, decision, at } : { status: "waiting" as const }) })), rule.models);

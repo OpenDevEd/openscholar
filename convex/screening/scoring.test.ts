@@ -6,7 +6,6 @@ import {
   outcomeOf,
   scorePaper,
   tallied,
-  validateScoringConfig,
 } from "./scoring";
 
 describe("computeScore", () => {
@@ -193,87 +192,6 @@ describe("scorePaper", () => {
       noMinConfig
     );
     expect(result.qualified).toBe(true);
-  });
-});
-
-describe("validateScoringConfig", () => {
-  it("returns empty warnings for valid config", () => {
-    const config = {
-      rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 0 }],
-      starThresholds: [{ minScore: 0, stars: 3 }],
-    };
-    expect(validateScoringConfig(config)).toEqual([]);
-  });
-
-  it("warns about star values above 5", () => {
-    const config = {
-      rules: [],
-      starThresholds: [{ minScore: 0, stars: 7 }],
-    };
-    const warnings = validateScoringConfig(config);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0].type).toBe("star_out_of_range");
-  });
-
-  it("warns about non-integer star values", () => {
-    const config = {
-      rules: [],
-      starThresholds: [{ minScore: 0, stars: 2.5 }],
-    };
-    const warnings = validateScoringConfig(config);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0].type).toBe("star_out_of_range");
-  });
-
-  it("warns about negative star values", () => {
-    const config = {
-      rules: [],
-      starThresholds: [{ minScore: 0, stars: -1 }],
-    };
-    const warnings = validateScoringConfig(config);
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0].type).toBe("star_out_of_range");
-  });
-
-  it("warns about missing negative coverage when rules can produce negative scores", () => {
-    const config = {
-      rules: [
-        { questionKey: "q1", yesPoints: 2, noPoints: -3, nullPoints: 0 },
-      ],
-      starThresholds: [{ minScore: 0, stars: 2 }],
-    };
-    const warnings = validateScoringConfig(config);
-    expect(warnings.some((w) => w.type === "missing_negative_coverage")).toBe(
-      true
-    );
-  });
-
-  it("does not warn about negative coverage when thresholds cover negatives", () => {
-    const config = {
-      rules: [
-        { questionKey: "q1", yesPoints: 2, noPoints: -3, nullPoints: 0 },
-      ],
-      starThresholds: [{ minScore: -10, stars: 2 }],
-    };
-    const warnings = validateScoringConfig(config);
-    expect(warnings.some((w) => w.type === "missing_negative_coverage")).toBe(
-      false
-    );
-  });
-
-  it("returns multiple warnings when config has multiple issues", () => {
-    const config = {
-      rules: [
-        { questionKey: "q1", yesPoints: 2, noPoints: -1, nullPoints: 0 },
-      ],
-      starThresholds: [
-        { minScore: 0, stars: 7 },
-        { minScore: 6, stars: -2 },
-      ],
-    };
-    const warnings = validateScoringConfig(config);
-    // star_out_of_range for 7, star_out_of_range for -2, missing_negative_coverage
-    expect(warnings.length).toBeGreaterThanOrEqual(3);
   });
 });
 

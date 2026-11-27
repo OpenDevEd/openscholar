@@ -36,11 +36,6 @@ export interface ScoringResult {
   qualified: boolean;
 }
 
-export interface ConfigValidationWarning {
-  type: "star_out_of_range" | "missing_negative_coverage";
-  message: string;
-}
-
 // ---------------------------------------------------------------------------
 // Core scoring functions
 // ---------------------------------------------------------------------------
@@ -171,40 +166,3 @@ export function tallied(tallies: QuestionTally[] | undefined, keys: string[], an
 // Config validation (warnings, not errors -- engine works with any config)
 // ---------------------------------------------------------------------------
 
-/**
- * Validate scoring config and return warnings.
- * The scoring engine works with any config, but the UI should warn about
- * potential issues like out-of-range stars or missing negative coverage.
- */
-export function validateScoringConfig(
-  config: ScoringConfig
-): ConfigValidationWarning[] {
-  const warnings: ConfigValidationWarning[] = [];
-
-  // Check star values in 0-5 integer range
-  for (const t of config.starThresholds) {
-    if (t.stars < 0 || t.stars > 5 || !Number.isInteger(t.stars)) {
-      warnings.push({
-        type: "star_out_of_range",
-        message: `Star value ${t.stars} is outside valid 0-5 integer range`,
-      });
-    }
-  }
-
-  // Check for negative score coverage when rules can produce negatives
-  const canProduceNegative = config.rules.some(
-    (r) => r.yesPoints < 0 || r.noPoints < 0 || r.nullPoints < 0
-  );
-  const hasNegativeCoverage = config.starThresholds.some(
-    (t) => t.minScore < 0
-  );
-  if (canProduceNegative && !hasNegativeCoverage) {
-    warnings.push({
-      type: "missing_negative_coverage",
-      message:
-        "Scoring rules can produce negative scores but no threshold covers negative values",
-    });
-  }
-
-  return warnings;
-}

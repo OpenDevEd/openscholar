@@ -53,10 +53,10 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
-import { EVERY_MS, MAX_SOURCES, readersFor } from "@/lib/screening/rules";
+import { EVERY_MS, MAX_SOURCES, modelsAdvise } from "@/lib/screening/rules";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
+import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, readersOf, eachOf, GROWS, SHORT_NAME_LENGTH, baseTaken, baseTotal, growing, activeReviewers, defaultRule, defaultScoring, invitedReviewer, modelKey, modelReviewer, modelsOf, paperTotal, peopleOf, personReviewer, shortOf, taken, type Criterion, type Person, type Reviewer, type Screening, type Source, lookOf, inOrder, withTwins, isNamed } from "./data";
 import { useSharing } from "./dialogs";
 import { draftOf, useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
@@ -120,7 +120,7 @@ const criterionOf = (screening: Screening) => (criterion: Criterion) => {
   const [yes, no, unclear] = screening.scoring.points[criterion.key] ?? [1, 0, 0];
   return { ...(criterion.key.startsWith("new:") ? {} : { key: criterion.key }), text: criterion.text, short: criterion.short, must: criterion.must, ...(criterion.note?.trim() ? { note: criterion.note.trim() } : {}), terms: criterion.terms, points: { yes, no, unclear } };
 };
-const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: screening.rule.each === "all" ? ("all" as const) : Number(screening.rule.each), settle: screening.rule.settle, blind: screening.rule.blind, models: screening.rule.models, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
+const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: eachOf(screening.rule), settle: screening.rule.settle, blind: screening.rule.blind, models: screening.rule.models, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
 /** How long the form waits after the last change to a new screening's sources before the server reads them: a range being dragged, or a second source on its way, is one read and not several. */
 const SOURCES_SETTLE_MS = 1_200;
 /**
@@ -840,7 +840,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (draft.rule.models === "advice" && models.length && readers ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -1418,11 +1418,11 @@ export function ScreeningForm({ id }: { id?: string }) {
               <div className="space-y-2 bg-inset px-4 py-3">
                 {/* The examples show as many votes as a paper gets here. With nobody on it yet there are none to show. */}
                 {/* Someone invited by email is counted: the rule waits for their vote as for anyone's. */}
-                {models.length + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) ? (
+                {models.length + each ? (
                   <>
                     {/* As advice the models' votes show on the papers, but the people's are the ones the examples count. */}
-                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: (draft.rule.models === "advice" && readers && draft.rule.settle !== "one" ? 0 : models.length) + readersFor(draft.rule.each === "all" ? "all" : Number(draft.rule.each), readers) })}</p>
-                    <RuleExamples rule={draft.rule} people={readers} models={draft.rule.models === "advice" && readers && draft.rule.settle !== "one" ? 0 : models.length} />
+                    <p className="text-xs text-muted-foreground">{t("decided.withVotes", { count: (modelsAdvise(draft.rule, each, models.length) ? 0 : models.length) + each })}</p>
+                    <RuleExamples rule={draft.rule} each={each} models={modelsAdvise(draft.rule, each, models.length) ? 0 : models.length} />
                   </>
                 ) : <p className="text-xs text-muted-foreground">{t("decided.addReviewer")}</p>}
               </div>

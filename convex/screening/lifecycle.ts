@@ -1,8 +1,6 @@
 import type { WorkId } from "@convex-dev/workpool";
 import type { Doc } from "../_generated/dataModel";
 
-export const SCREENING_ACTIVE_JOB_STATUSES = ["processing"] as const;
-
 export const SCREENING_TERMINAL_JOB_STATUSES = [
   "completed",
   "cancelled",
@@ -17,14 +15,6 @@ export const SCREENING_TERMINAL_RESULT_STATUSES = [
 ] as const;
 
 type CancelableResultRow = Pick<Doc<"screeningResults">, "status" | "workId">;
-
-export function isActiveScreeningJobStatus(
-  status: Doc<"screeningJobs">["status"]
-): boolean {
-  return SCREENING_ACTIVE_JOB_STATUSES.includes(
-    status as (typeof SCREENING_ACTIVE_JOB_STATUSES)[number]
-  );
-}
 
 export function isTerminalScreeningJobStatus(
   status: Doc<"screeningJobs">["status"]

@@ -38,7 +38,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide } from "@/lib/screening/rules";
+import { decide, modelsAdvise } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -578,7 +578,7 @@ function Screen({ open }: { open: Open }) {
   const everyonesVotes = paper ? (
                     <Section
                       // As advice the models' votes settle nothing on a paper a person has: the heading says so on this paper's votes, never on a paper only models voted on.
-                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && cast.some((one) => one.reviewer.kind === "model") && cast.some((one) => one.reviewer.kind === "person") ? t("votes.titleAdvice") : t("votes.title")}
+                      title={modelsAdvise(screening.rule, cast.filter((one) => one.reviewer.kind === "person").length, cast.filter((one) => one.reviewer.kind === "model").length) ? t("votes.titleAdvice") : t("votes.title")}
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
