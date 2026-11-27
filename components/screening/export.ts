@@ -527,9 +527,10 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     // What its rule and criteria were from each moment on, the first first: a paper's result is read against the version in force at its settled_at. Changes made before these were kept are not in it.
     history: versions.map((one) => ({
       from: iso(one.at),
+      // Null where nobody made the change by hand: who settles conflicts passed on when they left.
       by: one.by,
-      rule: { people_on_each_paper: one.rule.each === "all" ? "Everyone" : one.rule.each, settled_when: SETTLE_LABEL[one.rule.settle], models_votes: one.rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: one.rule.settle === "one" ? null : nameOn(screening, one.rule.resolver), other_votes_seen: one.rule.blind === "after" ? "After they vote" : "At any time" },
-      criteria: one.criteria.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must })),
+      rule: { people_on_each_paper: one.rule.each === "all" ? "Everyone" : one.rule.each, settled_when: SETTLE_LABEL[one.rule.settle], models_votes: one.rule.settle === "one" ? "Advice on papers a person has" : one.rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: one.rule.settle === "one" ? null : nameOn(screening, one.rule.resolver), other_votes_seen: one.rule.blind === "after" ? "After they vote" : "At any time" },
+      criteria: one.criteria.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null })),
     })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.
     votes: rows.flatMap(({ paper, reviewer, vote }) => (vote ? [{

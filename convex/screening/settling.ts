@@ -187,7 +187,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if (now !== "waiting") counts[now]++;
     if (was === "exclude") reasons[paper.reason ?? NO_REASON] = (reasons[paper.reason ?? NO_REASON] ?? 1) - 1;
     if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
-    const patch = paper.withdrawn ? { result: undefined, outcome: undefined, qualified: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], qualified: now === "include", reason, score: points, stars, split, reopen: undefined, out: undefined, ...(paper.kept && carried === undefined ? { kept: undefined } : {}), ...(isFinal(now) && now !== was ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
+    const patch = paper.withdrawn ? { result: undefined, outcome: undefined, qualified: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], qualified: now === "include", reason, score: points, stars, split, reopen: undefined, out: undefined, ...(paper.kept && carried === undefined ? { kept: undefined } : {}), ...(isFinal(now) && (now !== was || paper.reopen === "recheck") ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);
     if (paper.withdrawn) continue;
     // Included papers go where the screening sends them, and one that ends excluded leaves the collection it came from, where that was asked.

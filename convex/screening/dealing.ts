@@ -231,7 +231,7 @@ export async function placeGuests(ctx: MutationCtx, jobId: Id<"screeningJobs">) 
   }
 }
 
-/** Keeps what a screening's rule and criteria are from now on, as a version of them the whole record lists. */
-export async function keepVersion(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
-  if (job.rule) await ctx.db.insert("screeningVersions", { jobId: job._id, at: Date.now(), by, rule: job.rule, criteria: job.criteria ?? [] });
+/** Keeps what a screening's rule and criteria are from now on, as a version of them the whole record lists. A change nobody made by hand (who settles conflicts passing on when they leave) has no one behind it. */
+export async function keepVersion(ctx: MutationCtx, job: Doc<"screeningJobs">, by?: Id<"users">) {
+  if (job.rule) await ctx.db.insert("screeningVersions", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), rule: job.rule, criteria: job.criteria ?? [] });
 }
