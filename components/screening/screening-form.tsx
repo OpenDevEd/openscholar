@@ -4,9 +4,9 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
-import { collectionHref } from "@/lib/library/search-params";
+import { collectionHref } from "@/lib/library/links";
 import { ButtonCredits } from "@/components/ui/button-credits";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -322,6 +322,10 @@ function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: 
   );
 }
 
+// A name is one line that wraps to show itself whole: Enter adds no line, and a pasted one is joined.
+const oneLine = (event: KeyboardEvent<HTMLTextAreaElement>) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) event.preventDefault(); };
+const unbroken = (text: string) => text.replace(/\s*\n\s*/g, " ");
+
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
   const tc = useTranslations("common");
@@ -565,7 +569,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
   // A model on it with nothing left to read that it can read: never while the change is counted, never one that is given no PDF it can't read, and never one only being added, which the lines under Changes speak for.
   // Never before the model has been given its papers: just after a save that adds it, it has none yet, and nothing read.
-  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && (model.tally?.dealt ?? 0) > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers && Boolean(saved?.reviewers.some((one) => one.id === model.id && !one.left));
+  // What a model has read stands for the screening as saved: a change still being counted doesn't take it away, and its cost takes its place once counted.
+  const allRead = (model: Reviewer) => !fresh && papers > 0 && (model.tally?.dealt ?? 0) > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers && Boolean(saved?.reviewers.some((one) => one.id === model.id && !one.left));
   // How much of what the models still cost is the papers they are sent as PDFs: said beside the PDFs' pages, where a price a paper times the papers falls short of the total.
   const pdfCost = models.reduce((sum, model) => sum + pdfReadingCredits(model.model!, ahead(model), pdfs), 0);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
@@ -576,6 +581,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const again = saved ? preview.again : 0;
   const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
+  // What the last check's papers cost is set by the models saved on the screening, not by an edit not yet saved; while its models are held, they read none of them yet.
+  const lastPerNew = saved && !saved.paused ? modelsOf(saved).reduce((sum, model) => sum + paperCredits(model.model!), 0) : 0;
   // A new paper from Zotero can come as its PDF, which a model is sent whole: the price of a new paper says so.
   const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!));
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
@@ -824,7 +831,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const nameField = (label: string, placeholder: string) => (
     <div className="flex flex-col gap-1.5 px-4 pb-3 ps-11">
       <label htmlFor="collection-name" className="text-xs font-medium text-muted-foreground">{label}</label>
-      <Input id="collection-name" value={draft.destination.name} onChange={(event) => set({ destination: { ...draft.destination, name: event.target.value } })} placeholder={placeholder} className="h-9 max-w-md bg-card text-sm" />
+      <Textarea id="collection-name" dir="auto" rows={1} value={draft.destination.name} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={placeholder} className="min-h-9 max-w-md resize-none bg-card py-2 text-sm field-sizing-content" />
     </div>
   );
   const another = { ...draft.destination, kind: "new" as const, name: "", collection: undefined };
@@ -858,7 +865,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2 px-4 pb-3 ps-11">
           <div className="flex min-w-48 max-w-md flex-1 flex-col gap-1.5">
             <label htmlFor="community-collection-name" className="text-xs font-medium text-muted-foreground">{t("goes.collectionName")}</label>
-            <Input id="community-collection-name" value={draft.destination.name} maxLength={LIBRARY_COLLECTION_NAME_MAX} onChange={(event) => set({ destination: { ...draft.destination, name: event.target.value } })} placeholder={communityCollectionName(say, { ...draft, destination: { ...draft.destination, name: "" } })} className="h-9 bg-card text-sm" />
+            <Textarea id="community-collection-name" dir="auto" rows={1} value={draft.destination.name} maxLength={LIBRARY_COLLECTION_NAME_MAX} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={communityCollectionName(say, { ...draft, destination: { ...draft.destination, name: "" } })} className="min-h-9 resize-none bg-card py-2 text-sm field-sizing-content" />
           </div>
           <label className="flex h-9 items-center gap-2 text-sm">
             <Lock className="size-3.5 text-muted-foreground" />
@@ -896,7 +903,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
     },
-    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.label.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(!conflicts ? words.t(`settle.label.${draft.rule.settle}`) : t("summary.decided", { rule: words.t(`settle.label.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
+    // The same words as the rule's chip on the screening's pages (./workspace.tsx), with who settles its conflicts.
+    { id: "decided", label: t("part.decided"), value: draft.rule.settle === "one" ? words.t("settle.says.one") : !conflicts ? (modelsAdvise(draft.rule, each, models.length) ? words.t("settle.says.person") : words.t("settle.says.single")) : (modelsAdvise(draft.rule, each, models.length) ? (decided: string) => t("summary.withAdvice", { decided }) : (decided: string) => decided)(t("summary.decided", { rule: words.t(`settle.says.${draft.rule.settle}`), you: String(!resolver || resolver.id === me), name: resolver ? words.firstName(resolver.name) : "" })), problem: false },
     { id: "goes-to", label: t("part.goesTo"), value: destinationName, problem: false },
   ];
 
@@ -933,7 +941,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">{t("name.label")}{changed("name")}</label>
-              <Input id="screening-name" value={draft.name} onChange={(event) => set({ name: event.target.value })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="h-10 text-base font-semibold placeholder:font-normal placeholder:text-muted-foreground" />
+              <Textarea id="screening-name" dir="auto" rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="flex h-5 items-center gap-1">
@@ -956,8 +964,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
                 <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip>
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
-                {saved ? (
+                {saved && papers ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
+                ) : saved ? (
+                  <Chip className="bg-primary/12 font-medium text-primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</Chip>
                 ) : (
                   <Chip className="bg-primary/12 font-medium text-primary">{t.rich("papers.toScreen", { n: () => <AnimatedNumber value={papers} /> })}</Chip>
                 )}
@@ -1006,13 +1016,15 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
+                            {/* What arrives once it is read (a line of counts under the bar on a phone, a chip) slides the row open rather than pushing the rows under it. */}
+                            <AutoHeight>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
                               <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-lg bg-foreground/[0.06] text-foreground"><Icon className="size-4" /></span>
                               <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-6rem)]">
                                 <div className="flex min-w-0 items-center gap-1">
                                   {gone ? (
                                     <p className="truncate text-sm font-medium text-muted-foreground line-through max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
-                                  ) : own ? (
+                                  ) : own && keptOf(source) ? (
                                     <NextLink href={papersHref(own, { source: source.id })} className={cn(INLINE_LINK, "truncate text-sm max-sm:line-clamp-2 max-sm:whitespace-normal")}>{source.name}</NextLink>
                                   ) : link ? (
                                     <a href={link.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 rounded text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
@@ -1023,23 +1035,19 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   ) : (
                                     <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   )}
-                                  {own && link && !gone ? (
+                                  {own && keptOf(source) > 0 && link && !gone ? (
                                     <TooltipHint label={t("where.open", { where: link.where })}>
                                       <a href={link.href} target="_blank" rel="noreferrer" aria-label={t("where.openNewTab", { where: link.where })} className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"><ExternalLink className="size-3.5" /></a>
                                     </TooltipHint>
                                   ) : null}
                                 </div>
-                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : busy ? (
+                                {gone ? <div className="flex"><StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip></div> : (
                                   <>
-                                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums"><Chip key="busy"><Spinner className="size-3" />{busy}</Chip>{range}</div>
-                                    {/* The bar's line, held while the source is read, so the row keeps its height when its figures arrive and nothing under it moves. */}
-                                    <div aria-hidden className="h-4" />
-                                  </>
-                                ) : (
-                                  <>
-                                    {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. */}
-                                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
-                                      {own ? (
+                                    {/* One line says what the source gives the screening and where it comes from: the papers it brings, the part of it taken (which is also where the range is changed), and what of that was merged or left out, each opening its list. While it is read, the same lines hold their height, so nothing under them moves when its figures arrive. */}
+                                    <div className="flex min-h-5 flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
+                                      {busy ? (
+                                        <Chip key="busy" className="h-5 self-center"><Spinner className="size-3" />{busy}</Chip>
+                                      ) : own && keptOf(source) ? (
                                         <NextLink href={papersHref(own, { source: source.id })} className="text-sm font-semibold text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm">{t("papers.gives", { count: keptOf(source) })}</NextLink>
                                       ) : (
                                         <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
@@ -1047,24 +1055,29 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       {range}
                                     </div>
                                     {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-                                      {taken(source) + leftOut > 0 ? (
+                                    <div className="flex min-h-4 flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
+                                      {/* While it is read, the bar's empty track holds its line. */}
+                                      {busy ? <div aria-hidden className="h-1.5 w-full rounded-full bg-foreground/[0.06] sm:w-64" /> : null}
+                                      {!busy && taken(source) + leftOut > 0 ? (
                                         <div aria-hidden className="flex h-1.5 w-full gap-px overflow-hidden rounded-full sm:w-64">
                                           <span className="bg-primary/70" style={{ flexGrow: keptOf(source) }} />
                                           {doubled ? <span className="bg-foreground/15" style={{ flexGrow: doubled }} /> : null}
                                           {leftOut ? <span className="bg-warning/60" style={{ flexGrow: leftOut }} /> : null}
                                         </div>
                                       ) : null}
-                                        {doubled > 0 && taken(source) ? (
-                                          <button type="button" aria-expanded={open === "merged"} disabled={!rowOf(source)} onClick={() => setOpenSource(open === "merged" ? null : { id: source.id, part: "merged" })} className="inline-flex items-center gap-1 rounded-sm text-muted-foreground outline-none enabled:hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                            <Copy aria-hidden className="size-3.5 self-center" />{t("papers.duplicates", { count: doubled })}{rowOf(source) ? <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "merged" && "rotate-180")} /> : null}
-                                          </button>
-                                        ) : null}
-                                        {itemsLabel ? (
-                                          <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className={cn("inline-flex items-center gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", leftOut ? "ink-warning hover:opacity-80" : "text-muted-foreground hover:text-foreground")}>
-                                            {leftOut ? <FileX aria-hidden className="size-3.5 self-center" /> : null}{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} />
-                                          </button>
-                                        ) : null}
+                                      {!busy && doubled > 0 && taken(source) ? (
+                                        <button type="button" aria-expanded={open === "merged"} disabled={!rowOf(source)} onClick={() => setOpenSource(open === "merged" ? null : { id: source.id, part: "merged" })} className="inline-flex items-center gap-1 rounded-sm text-muted-foreground outline-none enabled:hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+                                          <Copy aria-hidden className="size-3.5 self-center" />{t("papers.duplicates", { count: doubled })}{rowOf(source) ? <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "merged" && "rotate-180")} /> : null}
+                                        </button>
+                                      ) : null}
+                                      {/* Its list opens where the server has read the source; before that the count is a plain fact, with nothing to open. */}
+                                      {!busy && itemsLabel && !rowOf(source) ? (
+                                        <span className={cn("inline-flex items-center gap-1", leftOut ? "ink-warning" : "text-muted-foreground")}>{leftOut ? <FileX aria-hidden className="size-3.5 self-center" /> : null}{itemsLabel}</span>
+                                      ) : !busy && itemsLabel ? (
+                                        <button type="button" aria-expanded={open === "left"} onClick={() => setOpenSource(open === "left" ? null : { id: source.id, part: "left" })} className={cn("inline-flex items-center gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", leftOut ? "ink-warning hover:opacity-80" : "text-muted-foreground hover:text-foreground")}>
+                                          {leftOut ? <FileX aria-hidden className="size-3.5 self-center" /> : null}{itemsLabel}<ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", open === "left" && "rotate-180")} />
+                                        </button>
+                                      ) : null}
                                     </div>
                                     {/* What else is true of it, where something is: the rest keep their chips. */}
                                     {source.read?.filed || grew > 0 || stopped || (source.set?.kind === "pdf" && !own) || source.filters?.length || source.facts?.length || (draft.living && GROWS.includes(source.kind)) ? (
@@ -1097,6 +1110,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </>
                               )}
                             </div>
+                            </AutoHeight>
                             <AnimatePresence initial={false}>
                               {open ? (
                                 <motion.div key="scope" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
@@ -1340,8 +1354,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {/* The line a list with nothing in it shows grows in as its last row shrinks away, as a row does. */}
                 {!criterionRows.length && !writing ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">{t("criteria.none")}</p></motion.div> : null}
               </AnimatePresence>
-              <form className="flex items-center gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
-                <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="h-9 flex-1" />
+              {/* The question wraps as it is written, so it reads whole; Enter adds it. */}
+              <form className="flex items-start gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
+                <Textarea id="new-criterion" dir="auto" rows={1} value={text} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim()}><Plus />{t("criteria.add")}</Button>
               </form>
               <div>
@@ -1568,6 +1583,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         </li>
                       ))}
                     </ul>
+                    {/* What saving does arrives once it is counted: the block slides to its size rather than pushing what is under it. */}
+                    <AutoHeight>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
                       <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
@@ -1583,6 +1600,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         </label>
                       ) : null}
                     </div>
+                    </AutoHeight>
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("changes.none")}</p>
@@ -1658,7 +1676,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {models.length && draft.living ? (
                     <>
                     <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
-                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
+                    {lastCheck?.added && lastPerNew ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * lastPerNew), count: lastCheck.added })}</Chip> : null}
                     </>
                   ) : null}
                 </div>

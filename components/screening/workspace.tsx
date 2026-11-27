@@ -35,9 +35,9 @@ import { cn } from "@/lib/utils";
 import { blindOf, inOrder, readersOf, splitsIn, growing, activeReviewers, modelsOf, type Pending, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
-import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, screenHref, settingsHref } from "./links";
+import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, reviewerHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
-import { blindSays, Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
+import { blindSays, settleMeans, Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
 import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
 import { useWords, type Words } from "./words";
 
@@ -189,7 +189,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open?.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
         { id: "papers", label: t("tabs.papers"), icon: Table2, href: papersHref(id), detail: open ? <span className="tabular-nums text-muted-foreground">{words.num(open.total)}</span> : <span aria-hidden className="invisible tabular-nums">0</span> },
         // Only someone who may change it has its settings.
-        ...(!open || open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">{t("tabs.unsaved")}</StateChip> : undefined }] : []),
+        // On a phone's strip the unsaved sign stands alone, so the four tabs keep their room.
+        ...(!open || open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs"><span className="@max-[30rem]/strip:sr-only">{t("tabs.unsaved")}</span></StateChip> : undefined }] : []),
       ]}
     />
   );
@@ -288,7 +289,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const first = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : (others[0] ?? null))) : null;
   const narrowedTo = first ? [first, ...others.filter((one) => one !== first)] : [];
   const faceHref = (reviewer: Reviewer) => {
-    if (view !== "papers") return papersHref(id, { reviewer: reviewer.id });
+    if (view !== "papers") return reviewerHref(id, reviewer);
     const now = narrowedTo.includes(reviewer.id) ? narrowedTo.filter((one) => one !== reviewer.id) : [...narrowedTo, reviewer.id];
     const next = new URLSearchParams(search);
     // One reviewer's kind of vote stays only while they are still the only one.
@@ -336,7 +337,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           }
         >
           <p>{t("rule.chips")}</p>
-          <p>{words.t(`settle.means.${screening.rule.settle}`)}</p>{!splits ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
+          <p>{settleMeans(words, screening, open.invited)}</p>{!splits ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
           {blindSays(words, blindOf(screening, open.invited)) ? <p>{blindSays(words, blindOf(screening, open.invited))}</p> : null}
           {screening.living ? <p>{t("rule.living")}</p> : null}
@@ -484,7 +485,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
   const row = cn("flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6", tone.panel);
   const icon = cn("size-4 shrink-0", tone.ink);
-  const modelLink = (model: Reviewer) => <NextLink key={model.id} href={papersHref(id, { reviewer: model.id })} className={INLINE_LINK}>{model.name}</NextLink>;
+  const modelLink = (model: Reviewer) => <NextLink key={model.id} href={reviewerHref(id, model)} className={INLINE_LINK}>{model.name}</NextLink>;
   // Their names as a list, each a link.
   const models = (list: Reviewer[]) => format.list(list.map(modelLink), { type: "conjunction" });
   if (kind === "arrived" && open.latest) {
@@ -555,14 +556,15 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
   const says = "@max-[48rem]/strip:sr-only";
-  const figures = "tabular-nums text-muted-foreground";
-  // Where a narrow strip keeps only the sign and the figure, the words come back under the pointer.
-  const worded = (words: ReactNode, chip: ReactNode) => <TooltipHint label={words} onlyWhenClipped><span className="flex shrink-0">{chip}</span></TooltipHint>;
+  // On a phone's strip the sign alone stays, so the four tabs keep their room.
+  const figures = "tabular-nums text-muted-foreground @max-[30rem]/strip:sr-only";
+  // Where a narrow strip keeps only the sign, or the sign and the figure, the words and the figure come back under the pointer.
+  const worded = (words: ReactNode, figure: ReactNode, chip: ReactNode) => <TooltipHint label={<span className="flex flex-col">{words}<span className="tabular-nums">{figure}</span></span>} onlyWhenClipped><span className="flex shrink-0">{chip}</span></TooltipHint>;
   if (kind === "checking" && screening.checking) {
-    return worded(pieces("modelsSay.checking.says"), <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.checking.says")}</span><span className={figures}>{t("banner.checked", { done: screening.checking.done, of: screening.checking.of })}</span></Chip>);
+    return worded(pieces("modelsSay.checking.says"), t("banner.checked", { done: screening.checking.done, of: screening.checking.of }), <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.checking.says")}</span><span className={figures}>{t("banner.checked", { done: screening.checking.done, of: screening.checking.of })}</span></Chip>);
   }
   if (kind === "gathering" && open.gathering) {
-    return worded(pieces("modelsSay.gathering.says"), <Chip icon={Search} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.gathering.says")}</span><span className={figures}>{t.rich("banner.counting", { of: open.gathering.of, done: () => <AnimatedNumber value={open.gathering!.done} /> })}</span></Chip>);
+    return worded(pieces("modelsSay.gathering.says"), t.rich("banner.counting", { of: open.gathering.of, done: () => open.gathering!.done }), <Chip icon={Search} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.gathering.says")}</span><span className={figures}>{t.rich("banner.counting", { of: open.gathering.of, done: () => <AnimatedNumber value={open.gathering!.done} /> })}</span></Chip>);
   }
   if (kind === "waiting" && open.waitingFor) {
     return (
@@ -577,16 +579,16 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   if (kind === "reading") {
     const read = modelsRead(reading, total);
-    return worded(reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: (chunks) => chunks }) : t("banner.modelsReading", { count: reading.length }),
+    return worded(reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: (chunks) => chunks }) : t("banner.modelsReading", { count: reading.length }), t("banner.read", { done: read.done, of: read.of }),
       <Chip className="shrink-0 whitespace-nowrap">
         <AiIcon working className="size-3.5 shrink-0" />
-        <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={papersHref(screening.id, { reviewer: reading[0]!.id })} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
+        <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={reviewerHref(screening.id, reading[0]!)} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
         <span className={figures}>{t("banner.read", { done: read.done, of: read.of })}</span>
       </Chip>
     );
   }
   // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
   if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
+  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
   return null;
 }

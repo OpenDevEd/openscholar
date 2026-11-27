@@ -27,7 +27,7 @@ import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
-import { type Blind, type RetiredCriterion, RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, modelsOf, questionOf, readersOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { useWords, type Words } from "./words";
@@ -200,6 +200,12 @@ export const votesTitle = (rule: Pick<Rule, "settle" | "models">, cast: Array<{ 
   modelsAdvise(rule, cast.filter((one) => one.reviewer.kind === "person").length, cast.filter((one) => one.reviewer.kind === "model").length) ? ("votes.titleAdvice" as const) : ("votes.title" as const);
 /** What a screening hides until a reviewer votes, said in full for whoever reads it, or nothing where it hides nothing. */
 export const blindSays = (words: Words, blind: Blind) => (blind === "all" ? words.t("votesHiddenSays") : blind === "people" ? words.t("votesHiddenPeopleSays") : blind === "done" ? words.t("votesWereHiddenSays") : null);
+/** What settles a paper here, said in full: where the models only advise, the people's votes settle it, and a model's only a paper no person has (lib/screening/rules.ts `modelsAdvise`). */
+export const settleMeans = (words: Words, screening: Pick<Screening, "reviewers" | "rule">, pending: Pending[] = []) => {
+  const { settle } = screening.rule;
+  const advice = settle !== "one" && modelsAdvise(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
+  return words.t(advice ? `settle.means.${settle}Advice` : `settle.means.${settle}`);
+};
 /** The chip over a paper's votes while some are kept from you. */
 export const HiddenChip = ({ blind }: { blind: Blind }) => {
   const words = useWords();
@@ -850,8 +856,8 @@ export function PaperStepper({ onStep, canPrevious, canNext }: { onStep: (by: 1 
   const t = useTranslations("screening.pieces");
   return (
     <>
-      <TooltipHint label={<span className="flex items-center gap-2">{t("previousPaper")}<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={t("previousPaper")} aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-      <TooltipHint label={<span className="flex items-center gap-2">{t("nextPaper")}<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={t("nextPaper")} aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("previousPaper")}<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("previousPaper")} aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("nextPaper")}<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("nextPaper")} aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
     </>
   );
 }

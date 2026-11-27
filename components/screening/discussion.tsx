@@ -57,7 +57,10 @@ export function DiscussionShut({ open }: { open: Open }) {
 /** Lines a paper's discussion reads at a time: nearly every one fits the first. */
 const LINES = 50;
 
-export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
+/** What is being written on a paper, and to whom: held by the page where it draws the discussion in two places (Screen, by width), so both show the same draft. */
+export type DiscussionDraft = { text: string; asking: string | null };
+
+export function Discussion({ open, paper, draft: given, onDraft }: { open: Open; paper: Paper; draft?: DiscussionDraft; onDraft?: (next: DiscussionDraft) => void }) {
   const { screening } = open;
   const t = useTranslations("screening.list");
   const { ago, firstName, t: shared } = useWords();
@@ -66,8 +69,12 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const write = useWorkspaceMutation(api.screening.discussion.say);
   // Read the latest first, shown oldest first.
   const said = [...lines.results].reverse();
-  const [text, setText] = useState("");
-  const [asking, setAsking] = useState<string | null>(null);
+  const [own, setOwn] = useState<DiscussionDraft>({ text: "", asking: null });
+  const draft = given ?? own;
+  const setDraft = onDraft ?? setOwn;
+  const { text, asking } = draft;
+  const setText = (next: string) => setDraft({ ...draft, text: next });
+  const setAsking = (next: string | null) => setDraft({ ...draft, asking: next });
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
   const last = said.at(-1);

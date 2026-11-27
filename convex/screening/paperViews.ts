@@ -14,7 +14,7 @@ import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
 import { isFinal, leansOpen, nameHas, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { askedOf, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
+import { askedOf, invitationsTo, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { progressRow } from "./bookkeeping";
@@ -104,6 +104,26 @@ const byJob = { jobId: v.id("screeningJobs") };
 /** Papers one page holds at most, and rows a page looks through for the ones its filters keep. */
 const PAGE_MAX = 100;
 const FILTER_ROWS = 1_500;
+/** Papers a page of a search looks through for the ones its filters keep, from where the page before stopped; a search finds 1,024 at most. */
+const SEARCH_SCAN = 300;
+const SEARCH_MOST = 1_024;
+
+/**
+ * A page of papers found by their words, kept to what `keep` says, so a page is never cut before its filters are
+ * applied: a search can't be paged after a filter, so the page reads the best matches up to where it is and on, and its
+ * cursor is how far down them it got.
+ */
+async function searchPage<Row>(read: (count: number) => Promise<Paper[]>, cursor: string | null, numItems: number, keep: (paper: Paper) => Promise<Row | null>) {
+  const from = Number(cursor) || 0;
+  const limit = Math.min(SEARCH_MOST, from + SEARCH_SCAN);
+  const found = (await read(limit)).slice(from);
+  const kept = await Promise.all(found.map(keep));
+  const page: Row[] = [];
+  let at = 0;
+  for (; at < kept.length && page.length < numItems; at++) if (kept[at] !== null) page.push(kept[at]!);
+  const isDone = at === kept.length && (from + found.length < limit || limit === SEARCH_MOST);
+  return { page, isDone, continueCursor: String(from + at) };
+}
 
 export const paperAction = defineUserQuery({
   path: "screening/paperViews:paper",
@@ -166,7 +186,7 @@ export const counts = workspaceQuery({
     if (!row) return null;
     // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
     const others = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
-    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values())) return null;
+    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length)) return null;
     const votes = ctx.db.query("screeningVotes");
     const theirs = await (voted === "none" || voted === "failed"
       ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
@@ -206,11 +226,14 @@ export const queueAction = defineUserQuery({
     const todo = job.finishedAt === undefined;
     if (needle) {
       // Found by its words, best match first, then kept to the queue.
-      const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).paginate(options);
-      // A paper whose source was taken out is in no queue, found by its words or not.
-      const rows = await views(ctx, looking, read.page.filter((paper) => !paper.withdrawn && holdsAll(paper, needle)));
       const mine = (row: PaperView) => row.cast.find((one) => one.reviewer === actor.userId);
-      return { ...read, page: rows.filter((row) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted))) };
+      const inQueue = (row: PaperView) => (queue === "conflicts" ? true : queue === "todo" ? todo && row.mine && !mine(row)?.vote && !isFinal(row.result) : queue === "again" ? mine(row)?.vote?.flagged === true : mine(row)?.vote !== undefined && (!voted || mine(row)!.vote!.decision === voted));
+      return await searchPage((count) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => (queue === "conflicts" ? q.search("searchText", needle).eq("jobId", jobId).eq("result", "conflict") : q.search("searchText", needle).eq("jobId", jobId))).take(count), paginationOpts.cursor, options.numItems, async (paper) => {
+        // A paper whose source was taken out is in no queue, found by its words or not.
+        if (paper.withdrawn || !holdsAll(paper, needle)) return null;
+        const [row] = await views(ctx, looking, [paper]);
+        return row && inQueue(row) ? row : null;
+      });
     }
     if (queue === "conflicts") {
       const read = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "conflict")).paginate(options);
@@ -262,7 +285,7 @@ export const listAction = defineUserQuery({
     if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     // While the others' votes are kept from the person (./view.ts `keepsVotes`), nothing worked out from those votes orders or narrows what they are given.
-    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values());
+    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length);
     // How divided a paper's votes are, and the points their answers give it, put the papers in an order that says how the others voted: asked for then, the papers come as they were added.
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
@@ -280,7 +303,6 @@ export const listAction = defineUserQuery({
     };
     const needle = text?.trim() ?? "";
     if (needle) {
-      const read = await ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).paginate(options);
       // Found by its words and still kept to the reviewer and the vote asked for, by what the person may see of them: a vote kept from them is no match for any way of voting.
       const of = reviewer ? rowOf(reviewer) : undefined;
       const settler = reviewer && voted === "settled" ? ctx.db.normalizeId("users", reviewer) : null;
@@ -292,8 +314,11 @@ export const listAction = defineUserQuery({
         if (!on) return false;
         return voted === "none" ? !on.vote && !on.hidden && !on.failed : voted === "failed" ? on.failed === true : voted ? on.vote?.decision === voted : on.vote !== undefined || on.hidden === true;
       };
-      const found = read.page.filter((paper) => keeps(paper) && holdsAll(paper, needle) && (!settler || paper.resolved?.by === settler));
-      return { ...read, page: (await withVotes(found)).filter(theirs) };
+      return await searchPage((count) => ctx.db.query("screeningResults").withSearchIndex("search_papers", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId); const of = result ? found.eq("result", result) : found; return source ? of.eq("sourceId", source) : of; }).take(count), paginationOpts.cursor, options.numItems, async (paper) => {
+        if (!keeps(paper) || !holdsAll(paper, needle) || (settler && paper.resolved?.by !== settler)) return null;
+        const [row] = await withVotes([paper]);
+        return row && theirs(row) ? row : null;
+      });
     }
     const papers = stream(ctx.db, schema).query("screeningResults");
     // The conflicts one person settled: by whoever settled them, who needn't be one of its reviewers.

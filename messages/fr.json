@@ -5102,7 +5102,6 @@
     },
     "find": "Rechercher",
     "everyRecord": "Toutes les notices de {library}",
-    "allRecords": "Toutes les notices",
     "recordsFrom": "Notices de {library}",
     "private": "Privée",
     "public": "Publique",
@@ -8579,6 +8578,7 @@
         "movesToFinished": "Il passe dans Terminés dans la liste, et peut être rouvert ou modifié à tout moment"
       },
       "delete": {
+        "collectionStays": "{collection} reste dans votre Bibliothèque",
         "title": "Supprimer {name} ?",
         "goes": "Les votes et les paramètres sont supprimés avec lui",
         "saved": "{count, plural, one {L'article enregistré dans {collection} y reste} other {Les # articles enregistrés dans {collection} y restent}}",
@@ -8714,7 +8714,7 @@
       "waitingForVotes": "{count} en attente de votes",
       "inConflictFor": "{count} en désaccord, à trancher par {who}",
       "upToDate": "À jour",
-      "allSettled": "Tous les articles sont tranchés",
+      "allSettled": "Tous les articles sont tranchés, prêt à terminer",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
@@ -8735,7 +8735,7 @@
       },
       "discussion": {
         "title": "Discussion",
-        "about": "{models, select, true {Les évaluateurs et la personne qui tranche les désaccords discutent ici d'un article, avec tous ceux qui y participent ou avec une seule personne. Un message à une seule personne est une question, et il reste sous Vous attendent sur sa page Criblage jusqu'à sa réponse. On ne peut pas interroger un modèle. Appuyez sur l'une de ses marques dans le tableau pour voir le passage qu'il a lu.} other {Les évaluateurs et la personne qui tranche les désaccords discutent ici d'un article, avec tous ceux qui y participent ou avec une seule personne. Un message à une seule personne est une question, et il reste sous Vous attendent sur sa page Criblage jusqu'à sa réponse.}}",
+        "about": "{models, select, true {Les évaluateurs et la personne qui tranche les désaccords discutent ici d'un article, avec tous ceux qui y participent ou avec une seule personne. Un message à une seule personne est une question, et il reste sous Vous attendent sur sa page Criblage jusqu'à sa réponse. On ne peut pas interroger un modèle. Appuyez sur la marque d'un modèle dans le tableau pour voir le passage qu'il a lu.} other {Les évaluateurs et la personne qui tranche les désaccords discutent ici d'un article, avec tous ceux qui y participent ou avec une seule personne. Un message à une seule personne est une question, et il reste sous Vous attendent sur sa page Criblage jusqu'à sa réponse.}}",
         "blind": "Ce criblage masque à un évaluateur ce qui est écrit sur un article tant que l'article attend encore son propre vote.",
         "shut": "Les évaluateurs discutent ici d'un article. La discussion reste masquée pour ne pas influencer votre vote.",
         "notSent": "Le message n'est pas parti. Réessayez.",
@@ -9087,7 +9087,7 @@
         "pageItems": "articles"
       },
       "answersHelp": {
-        "says": "Chaque colonne est un critère, et la marque est la réponse donnée par ses évaluateurs.",
+        "says": "Chaque colonne est un critère, et chaque marque est la réponse d'un évaluateur.",
         "yes": "Oui",
         "no": "Non",
         "unclear": "Incertain",
@@ -9190,7 +9190,7 @@
         "sources": "Aucune source ne reçoit de nouveaux articles"
       },
       "notReviewer": {
-        "shared": "Ce criblage est partagé avec vous en lecture. Seuls ses évaluateurs votent.",
+        "shared": "Ce criblage est partagé avec vous en lecture, vous ne pouvez donc pas y voter.",
         "finished": "Vous n'êtes pas évaluateur de ce criblage, et il est terminé.",
         "join": "Vous n'êtes pas évaluateur de ce criblage. Rejoignez-le comme évaluateur pour voter."
       },
@@ -9658,6 +9658,8 @@
           "one": "Le premier vote décide"
         },
         "means": {
+          "mostAdvice": "Un article est tranché dès que chaque personne à qui il est attribué a voté et que plus de la moitié ont voté de la même façon. Les votes des modèles sont des avis et ne tranchent qu'un article qu'aucune personne n'a reçu. Sans une telle majorité, c’est un conflit.",
+          "allAdvice": "Un article est tranché quand chaque personne qui l'a reçu a voté et que toutes ont voté de la même façon. Les votes des modèles sont des avis et ne tranchent qu'un article qu'aucune personne n'a reçu. Le moindre écart entre les personnes crée un désaccord.",
           "all": "Un article est tranché quand chaque évaluateur qui l'a reçu a voté et que tous ont voté de la même façon. Le moindre écart crée un désaccord.",
           "most": "Un article est tranché dès que chaque relecteur à qui il est attribué a voté et que plus de la moitié ont voté de la même façon. Là où les votes des modèles comptent, au moins une personne doit faire partie de cette majorité. Sans une telle majorité, c’est un conflit.",
           "one": "Un article est tranché par le premier vote reçu, il n'y a donc jamais de désaccord. Quand un article est confié à une personne, c'est le vote de la première personne qui le tranche. Le vote d'un modèle ne tranche qu'un article qu'aucune personne n'a."

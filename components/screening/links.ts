@@ -39,5 +39,7 @@ export const screenHref = (id: string, query?: { queue?: "again" | "done" | "con
  * `sort`: added, title, newest, split or points. `paper`: the paper open beside the table.
  */
 export const papersHref = (id: string, query?: { result?: string; source?: string; added?: string; reviewer?: string; voted?: string; with?: string; reason?: string; sort?: string; paper?: string }) => withQuery(`${BASE}/${id}/papers`, query);
+/** A reviewer's papers: the ones they voted on, or, before their first vote, the ones that wait for it, so the link never opens an empty list. */
+export const reviewerHref = (id: string, reviewer: { id: string; tally?: { cast: number } }) => papersHref(id, { reviewer: reviewer.id, ...(reviewer.tally && !reviewer.tally.cast ? { voted: "none" } : {}) });
 /** Its settings, at one of their sections. */
 export const settingsHref = (id: string, section?: "papers" | "new-papers" | "criteria" | "reviewers" | "decided" | "goes-to") => withQuery(`${BASE}/${id}/settings`, undefined, section);

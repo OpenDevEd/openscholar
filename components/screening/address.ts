@@ -77,10 +77,10 @@ export const searchHistory = (was: string, next: string) => ({ history: Boolean(
 /**
  * Leaves pages that are gone for good (a form already sent, a screening deleted) out of the way back: steps back past
  * every entry at or under `path`, then goes on with `next`, so Back from where it leads returns to the page before
- * them and Forward has nothing left to reopen. `lands` says whether an entry is already the page `next` opens: a
- * push to the address showing is only a replace, which would leave the entries after it, so it steps one further.
- * Where the browser can't say how far back that is, or the entries before were another document's, `next` takes
- * this entry's place instead.
+ * them and Forward has nothing left to reopen. `lands` says whether an entry is already the page `next` opens: then it
+ * steps one further and opens it again, since a push is what clears the entries after it. Where the browser can't say
+ * how far back that is, or the entries are another document's (from before a reload), `next` takes this entry's place,
+ * or Back goes straight onto the page it opens.
  */
 export function leaveBehind(path: string, next: (how: "push" | "replace") => void, lands: (url: URL) => boolean = () => false) {
   const list = navigation() as (Navigation & { currentEntry: Entry & { sameDocument?: boolean } }) | undefined;
@@ -89,18 +89,28 @@ export function leaveBehind(path: string, next: (how: "push" | "replace") => voi
   const under = (url: URL | null) => url !== null && (url.pathname === path || url.pathname.startsWith(`${path}/`));
   if (!list || !current) return next("replace");
   const entries = list.entries() as Array<Entry & { sameDocument?: boolean }>;
+  const go = (to: number, then?: "push") => {
+    if (then) window.addEventListener("popstate", () => next(then), { once: true });
+    window.history.go(to - current.index);
+  };
   let first = current.index;
   while (first > 0 && under(at(entries[first - 1]?.url ?? null))) first--;
-  // The tab began on these pages: back to its first entry, which then takes the next page's place.
+  // The tab began on these pages: back to its first entry, which then takes the next page's place. Nothing clears the
+  // entries after a tab's first one but a push from it, which would leave the gone page behind Back: Forward can still
+  // reach them, and finds them gone.
   if (first === 0) {
-    if (current.index === 0) return next("replace");
+    if (current.index === 0 || entries[0]!.sameDocument === false) return next("replace");
     window.addEventListener("popstate", () => next("replace"), { once: true });
     return window.history.go(-current.index);
   }
-  let landing = first - 1;
-  if (lands(at(entries[landing]!.url)!) && landing > 0) landing--;
+  const before = entries[first - 1]!;
+  if (lands(at(before.url)!)) {
+    const earlier = entries[first - 2];
+    // The page it opens is the one before: straight back onto it, where what is before that is another document's, or nothing.
+    if (!earlier || earlier.sameDocument === false || before.sameDocument === false) return go(first - 1);
+    return go(first - 2, "push");
+  }
   // Entries from before a reload belong to another document: going back to them loads a page, and nothing follows.
-  if (entries[landing]!.sameDocument === false) return next("replace");
-  window.addEventListener("popstate", () => next("push"), { once: true });
-  window.history.go(landing - current.index);
+  if (before.sameDocument === false) return next("replace");
+  go(first - 1, "push");
 }

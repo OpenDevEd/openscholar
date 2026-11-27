@@ -5103,7 +5103,6 @@
     },
     "find": "Vind",
     "everyRecord": "Elke rekord in {library}",
-    "allRecords": "Alle rekords",
     "recordsFrom": "Rekords van {library}",
     "private": "Privaat",
     "public": "Openbaar",
@@ -8580,6 +8579,7 @@
         "movesToFinished": "Dit skuif na Klaar in die lys, en kan enige tyd heropen of verander word"
       },
       "delete": {
+        "collectionStays": "{collection} bly in jou Biblioteek",
         "title": "Vee {name} uit?",
         "goes": "Die stemme en instellings word saam uitgevee",
         "saved": "{count, plural, one {Die # artikel wat in {collection} gestoor is, bly daar} other {Die # artikels wat in {collection} gestoor is, bly daar}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} wag vir stemme",
       "inConflictFor": "{count} in konflik, vir {who} om te beslis",
       "upToDate": "Op datum",
-      "allSettled": "Elke artikel is beslis",
+      "allSettled": "Elke artikel is beslis, gereed om af te sluit",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
@@ -8736,7 +8736,7 @@
       },
       "discussion": {
         "title": "Bespreking",
-        "about": "{models, select, true {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly onder Het jou nodig op hul Siftering-bladsy totdat hulle antwoord. ’n Model kan nie gevra word nie. Druk een van sy merke in die tabel vir die gedeelte wat dit gelees het.} other {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly onder Het jou nodig op hul Siftering-bladsy totdat hulle antwoord.}}",
+        "about": "{models, select, true {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly onder Het jou nodig op hul Siftering-bladsy totdat hulle antwoord. ’n Model kan nie gevra word nie. Druk ’n model se merk in die tabel om die gedeelte te sien wat dit gelees het.} other {Beoordelaars en die persoon wat konflikte beslis, bespreek ’n artikel hier, met almal daarop of met een persoon. ’n Reël aan een persoon is ’n vraag, en dit bly onder Het jou nodig op hul Siftering-bladsy totdat hulle antwoord.}}",
         "blind": "Hierdie siftering versteek wat oor ’n artikel geskryf is vir ’n beoordelaar net solank die artikel nog vir daardie beoordelaar se eie stem wag.",
         "shut": "Beoordelaars bespreek ’n artikel hier. Dit bly uit sig sodat dit jou stem nie kan beïnvloed nie.",
         "notSent": "Dit is nie gestuur nie. Probeer weer.",
@@ -9088,7 +9088,7 @@
         "pageItems": "artikels"
       },
       "answersHelp": {
-        "says": "Elke kolom is ’n kriterium, en die merk is die antwoord wat sy beoordelaars gegee het.",
+        "says": "Elke kolom is ’n kriterium, en elke merk is hoe ’n beoordelaar dit beantwoord het.",
         "yes": "Ja",
         "no": "Nee",
         "unclear": "Onduidelik",
@@ -9191,7 +9191,7 @@
         "sources": "Geen bron kry artikels by nie"
       },
       "notReviewer": {
-        "shared": "Hierdie siftering is met jou gedeel om te lees. Net sy beoordelaars stem.",
+        "shared": "Hierdie siftering is met jou gedeel om te lees, so jy kan nie daaroor stem nie.",
         "finished": "Jy is nie ’n beoordelaar op hierdie siftering nie, en dit is klaar.",
         "join": "Jy is nie ’n beoordelaar op hierdie siftering nie. Sluit as beoordelaar aan om te stem."
       },
@@ -9659,6 +9659,8 @@
           "one": "Eerste stem beslis"
         },
         "means": {
+          "mostAdvice": "’n Artikel is beslis sodra elke persoon wat dit gekry het, gestem het en meer as die helfte dieselfde gestem het. Die modelle se stemme is raad en beslis net ’n artikel wat geen persoon het nie. Sonder so ’n meerderheid is dit ’n konflik.",
+          "allAdvice": "’n Artikel is beslis sodra elke persoon wat dit gekry het, gestem het en almal dieselfde gestem het. Die modelle se stemme is raad en beslis net ’n artikel wat geen persoon het nie. Enige verdeling tussen die mense is ’n konflik.",
           "all": "’n Artikel is beslis sodra elke beoordelaar wat dit gekry het, gestem het en almal dieselfde gestem het. Enige verdeling is ’n konflik.",
           "most": "’n Artikel is besleg sodra elke beoordelaar aan wie dit gegee is gestem het en meer as die helfte dieselfde gestem het. Waar die modelle se stemme tel, moet minstens een persoon in daardie meerderheid wees. Sonder so ’n meerderheid is dit ’n konflik.",
           "one": "’n Artikel word deur die eerste stem daarop beslis, so daar is nooit ’n konflik nie. Waar ’n persoon die artikel kry, beslis die eerste persoon se stem dit. ’n Model se stem beslis net ’n artikel wat geen persoon het nie."

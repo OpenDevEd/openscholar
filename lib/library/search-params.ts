@@ -44,8 +44,6 @@ export function parseLibrarySort(combined: LibrarySortCombined): {
   return { sortBy, sortOrder };
 }
 
-/** A collection as the Library shows it: every page that opens one links here. */
-export const collectionHref = (id: string) => `/library?col=${encodeURIComponent(id)}`;
 
 /**
  * Parser map for all library URL state parameters.

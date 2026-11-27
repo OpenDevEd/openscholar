@@ -44,7 +44,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
+import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
 import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
@@ -52,7 +52,7 @@ import type { Open } from "./store";
 import { useTranslations } from "next-intl";
 import { useWords } from "./words";
 import { searchHistory, useOpenInAddress } from "./address";
-import { decide, NOTE_LENGTH, OTHER_REASON, type Answer } from "@/lib/screening/rules";
+import { givenReason, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
@@ -88,7 +88,7 @@ type Voted = (typeof VOTED)[number];
  * What the table shows, kept in the address (papersHref in links.ts says what each means). `reviewer`
  * with `voted` narrows to one reviewer's votes, and `voted` alone to your own. `voted=settled` is the
  * conflicts that reviewer settled, and `voted=failed` the papers a model couldn't read. `reason` is why
- * a paper was excluded, or the criterion a Maybe was unclear on. `paper` is the one open: `first` and
+ * a paper was excluded. `paper` is the one open: `first` and
  * `last` name it by its place on the page shown, while a step onto another page waits for that page. The
  * list keeps its own page in the address.
  */
@@ -368,7 +368,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       : null,
     // Beside a reviewer's own kind of vote, the others are named apart.
     also.length && voted !== "any" ? { key: "with", label: t("chip.alsoVotedOnBy", { names: namesOf(also) }), clear: { with: null } } : null,
-    reason ? { key: "reason", label: filter === "maybe" ? words.unclear(reason, reasonNames) : words.failed(reason, reasonNames), shown: <Reason reason={reason} criteria={reasonNames} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
+    reason ? { key: "reason", label: words.failed(reason, reasonNames), shown: <Reason reason={reason} criteria={reasonNames} />, clear: { reason: null } } : null,
     added !== "all" ? { key: "added", label: t("chip.added", { when: addedLabel(added) }), shown: <Named name={t("filter.added")}>{addedLabel(added)}</Named>, clear: { added: null } } : null,
   ].filter((one) => one !== null);
   const anyFilter = active.length > 0 || Boolean(query.trim());
@@ -808,7 +808,8 @@ function Legend({ children }: { children: ReactNode }) {
   return <div className="space-y-1.5 pt-1 text-foreground">{children}</div>;
 }
 function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode }) {
-  return <p className="flex items-center gap-2.5">{mark}{children}</p>;
+  // A row that wraps keeps its mark on the first line.
+  return <p className="flex items-start gap-2.5 [&>:first-child]:mt-px [&>:first-child]:shrink-0">{mark}{children}</p>;
 }
 
 /** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
@@ -837,7 +838,7 @@ function Wide({ fits, style, className, children }: { fits: boolean; style: CSSP
   return fits ? <div style={style} className={className}>{children}</div> : <ScrollArea axis="x" shades style={style} className={className}>{children}</ScrollArea>;
 }
 
-const ROW_LINK = "rounded-sm outline-none decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50";
+const REASON_LINK = "rounded-sm outline-none decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /** What put a paper where it stands: the criterion it failed, how its reviewers split, or whose vote it waits for. Each opens the papers it names. */
 function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?: string }) {
@@ -884,7 +885,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
         {/* An excluded paper's reason narrows the table to it. A Maybe's unclear criterion names why and opens nothing: the list narrows by exclusion reasons only, and a link to it would open empty. */}
         {state.result === "exclude" ? (
-          <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>
+          <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>
         ) : (
           <span className="block truncate text-xs text-muted-foreground"><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} unclear /></span>
         )}
@@ -922,12 +923,15 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
     );
   }
   return (
-    <div className="space-y-2">
+    // Escape goes back from the reasons, as from the note's form, and never closes what they sit in: the list takes the focus when it opens, so the key reaches it.
+    <div ref={onBack ? takeFocus : undefined} tabIndex={onBack ? -1 : undefined} className="space-y-2 outline-none" onKeyDown={onBack ? (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onBack(); } } : undefined}>
       <ReasonRows criteria={criteria} many={many} onPick={(reason) => (reason === OTHER_REASON && !note.trim() ? setWriting(true) : onPick(reason, note.trim() || undefined))} />
-      {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>{t("back")}</Button> : null}
+      {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button> : null}
     </div>
   );
 }
+/** Takes the focus once, as the element arrives: stable, so a later render doesn't take it again. */
+const takeFocus = (node: HTMLElement | null) => node?.focus({ preventScroll: true });
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
 function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; canStep: { previous: boolean; next: boolean }; /** Where it is in the list, and how many the list holds where that is counted. */ place: { at: number; of?: number } }) {
@@ -947,11 +951,14 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   // A note for your vote and one for the paper's result, apart: someone who both reviews it and settles it writes each in its own place, as on Screen.
   // Each starts as what is saved, your vote's note or the result's, until it is written in: a vote changed here keeps its note, as on Screen.
   const [notes, setNotes] = useState<Partial<Record<"vote" | "result", string>>>({});
+  // A vote just sent shows as cast until the server's answer comes, so the drawer never shows the vote before it.
+  const [sent, setSent] = useState<{ paper: string; decision: Decision; reason?: string } | null>(null);
   const setNote = (kind: "vote" | "result", text: string) => setNotes((all) => ({ ...all, [kind]: text }));
   const state = settledOf(paper);
   const visible = paper.sees;
   const cast = youFirst(castOf(screening, paper), open.me);
-  const mine = voteOn(paper, open.me);
+  const saved = voteOn(paper, open.me);
+  const mine = sent?.paper === paper.id ? ({ ...saved, decision: sent.decision, reason: sent.reason } as NonNullable<typeof saved>) : saved;
   const noteOf = (kind: "vote" | "result") => notes[kind] ?? (kind === "vote" ? (mine?.note ?? "") : (state.resolvedBy ? (state.note ?? "") : ""));
   const isMine = cast.some((one) => one.reviewer.id === open.me);
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer && one.vote) : undefined;
@@ -976,22 +983,24 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     // Refused, the editor the vote came from opens again with what was written, so nothing is written twice.
     const wasOpen = deciding === kind;
     const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); if (wasOpen) setDeciding(kind); notSaved(t, error); };
-    if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch(refused);
-    else open.resolve(paper.id, decision, said, reason).catch(refused);
-    const undo = () => (kind === "vote" ? open.vote(paper.id, mine ? { decision: mine.decision, answers: mine.answers, ...(mine.reason ? { reason: mine.reason } : {}), ...(mine.note ? { note: mine.note } : {}) } : null) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason)).catch((error) => notSaved(t, error));
+    // What was written is what is saved once the server has it: the field then shows the saved note, so the next change keeps it too.
+    const done = () => { setSent(null); setNotes(({ [kind]: _sent, ...rest }) => rest); };
+    const failed = (error: unknown) => { setSent(null); refused(error); };
+    if (kind === "vote") {
+      setSent({ paper: paper.id, decision, reason });
+      open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).then(done, failed);
+    } else open.resolve(paper.id, decision, said, reason).then(done, failed);
+    const undo = () => (kind === "vote" ? open.vote(paper.id, saved ? { decision: saved.decision, answers: saved.answers, ...(saved.reason ? { reason: saved.reason } : {}), ...(saved.note ? { note: saved.note } : {}) } : null) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason)).catch((error) => notSaved(t, error));
     // Undo puts back only what you did: a result someone else settled is theirs, and isn't put back in your name.
     const mayUndo = kind === "vote" || !state.resolvedBy || state.resolvedBy === open.me;
     const shownToast = toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);
     setDeciding(null);
     setReasonFor(null);
-    // What was written is now what is saved: the field goes back to showing the saved note, so the next change keeps it too.
-    setNotes(({ [kind]: _sent, ...rest }) => rest);
   };
-  // Excluding asks why only where nothing says it yet: your own answers failing a must-have, or a note already written, is the reason. The same rule as on Screen.
+  // Excluding asks why only where nothing says it yet, as on Screen (lib/screening/rules.ts `givenReason`).
   const exclude = (kind: "vote" | "result") => {
-    const failedMust = kind === "vote" ? decide({ ...Object.fromEntries(screening.criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers }, screening.criteria).reason : undefined;
-    if (failedMust) settle(kind, "exclude", failedMust);
-    else if (noteOf(kind).trim()) settle(kind, "exclude", OTHER_REASON);
+    const reason = givenReason(screening.criteria, mine?.answers, noteOf(kind), kind === "result");
+    if (reason) settle(kind, "exclude", reason);
     else setReasonFor(kind);
   };
   const buttons = (kind: "vote" | "result") =>
@@ -1000,7 +1009,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     ) : (
       <div className="space-y-2">
         {/* The note wraps and grows to a few lines, as on Screen: a long one stays in view as it is written. */}
-        <Textarea maxLength={NOTE_LENGTH} rows={1} value={noteOf(kind)} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
+        <Textarea maxLength={NOTE_LENGTH} rows={1} value={noteOf(kind)} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" && othersRead(screening, open.me, open.invited) ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
         <div className="grid grid-cols-3 gap-2">
           {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>
@@ -1013,7 +1022,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       <div className="sticky top-0 z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6">
         <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? (place.of === undefined ? words.num(place.at + 1) : t("panel.placeOf", { at: place.at + 1, of: place.of })) : t("panel.notInList")}</span>
         <PaperStepper onStep={onStep} canPrevious={canStep.previous} canNext={canStep.next} />
-        <TooltipHint label={<span className="flex items-center gap-2">{t("panel.close")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label={t("panel.close")} aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">{t("panel.close")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("panel.close")} aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
       </div>
       <div className="space-y-2">
         <h2 dir="auto" className="text-base font-semibold leading-snug">{paper.title}</h2>
@@ -1043,6 +1052,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
             <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
             {buttons("vote")}
+            {/* Changing a vote can be let go, as the override can: the vote stands as it was. */}
+            {mine && reasonFor !== "vote" ? <Button variant="ghost" size="sm" className="w-full" onClick={() => { setDeciding(null); setNotes(({ vote: _typed, ...rest }) => rest); }}>{t("panel.cancel")}</Button> : null}
           </Panel>
         )
       ) : null}

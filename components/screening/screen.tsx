@@ -39,14 +39,14 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, leansOpen, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, givenReason, leansOpen, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
-import { Discussion, DiscussionShut } from "./discussion";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName, othersRead } from "./data";
+import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
@@ -206,6 +206,8 @@ function Screen({ open }: { open: Open }) {
   const setReasonFor = (next: string | null, { inPlace = true }: { inPlace?: boolean } = {}) => (tablet ? setReasonSheet(next ? "reasons" : null, { inPlace }) : setReasonMenu(next));
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
+  // What is being written in each paper's discussion, and to whom.
+  const [talks, setTalks] = useState<Record<string, DiscussionDraft>>({});
   const [keysOpen, setKeysOpen] = useState(false);
   const article = useRef<HTMLDivElement>(null);
   // A pane's scroll and the keyboard's focus are the outside systems. A paper that has just been drawn starts at its title, not where the last one was left. Where nothing else holds the keyboard, the paper takes it, so the arrows, Space and Page Down read on through a long paper as they would scroll a page.
@@ -302,6 +304,8 @@ function Screen({ open }: { open: Open }) {
   // Settling a conflict decides the paper for everyone. It is not the settler's own vote.
   const nextAfter = t("nextAfter", { settling: String(resolving) });
   const mine = paper ? myVote(paper) : undefined;
+  // The note the field starts from: the person's own vote's, or, settling, the settlement's, as the Papers drawer does.
+  const savedNote = (one: Paper) => (resolving ? (one.resolved?.note ?? "") : (myVote(one)?.note ?? ""));
   const visible = paper?.sees ?? false;
   // Your own column first, then the other people, then the models, the same on every paper.
   const cast = paper ? youFirst(castOf(screening, paper), open.me) : [];
@@ -329,7 +333,7 @@ function Screen({ open }: { open: Open }) {
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
     // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note. What the field shows is what is saved: a note is never dropped out of sight.
-    const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : (mine?.note ?? "")).trim() || undefined;
+    const note = (notes[paper.id] ?? savedNote(paper)).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
       // The sheet steps back before the note opens, so Back from the note leaves the paper as it was.
@@ -377,15 +381,12 @@ function Screen({ open }: { open: Open }) {
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide || (advanced.current?.paper === paper.id && Date.now() - advanced.current.at < 500)) return;
-    // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
-    const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...mine?.answers, ...answers[paper.id] }, criteria).reason : undefined;
-    // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
-    const written = (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim();
-    if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER_REASON);
+    // Excluding asks why, unless your own answers or a note already say (lib/screening/rules.ts `givenReason`).
+    const reason = decision === "exclude" ? givenReason(criteria, { ...mine?.answers, ...answers[paper.id] }, notes[paper.id] ?? savedNote(paper), resolving) : undefined;
     // On a phone the reasons are a sheet, a step of its own: the paper under it is named first, so Back from the sheet, or from the paper after it, comes back to this one.
-    else if (decision === "exclude" && !failed && tablet && !picked) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setReasonFor(paper.id));
-    else if (decision === "exclude" && !failed) setReasonFor(paper.id);
-    else decideOn(decision, failed);
+    if (reason === null && tablet && !picked) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setReasonFor(paper.id));
+    else if (reason === null) setReasonFor(paper.id);
+    else decideOn(decision, reason);
   };
   const undo = () => {
     if (!last) return;
@@ -492,7 +493,7 @@ function Screen({ open }: { open: Open }) {
   const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? t("bar.underMinute") : minutes < 90 ? t("bar.minutes", { minutes }) : t("bar.hours", { hours: Math.round(minutes / 60) })) : null;
   // Dragging the paper casts a vote only where a vote is still to cast, on a screen that is touched.
   const swipeable = tablet && answering && mayDecide && !mine && Boolean(paper) && writing !== paper?.id;
-  const hasNote = Boolean(paper && (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim());
+  const hasNote = Boolean(paper && (notes[paper.id] ?? savedNote(paper)).trim());
   // The note's field is open when it was asked for, when it holds a note, and always for the reason a conflict is settled with.
   // Undo takes back what was last done here: a reviewer's vote, or the decision of whoever settles a conflict.
   const undoSays = t("shortcuts.undo", { settling: String(resolving) });
@@ -630,13 +631,14 @@ function Screen({ open }: { open: Open }) {
     const on = resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision;
     return (
       <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : (event) => event.detail < 2 && press(decision)}>
-        <Kbd className={cn("max-lg:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
+        <Kbd className={cn("pointer-coarse:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
       </VoteButton>
     );
   };
 
   // What the reviewers say to each other about it, wherever its votes show. Drawn with the votes, in whichever of their two places is on the page.
-  const discussion = paper && visible ? <div data-discussion><Discussion open={open} paper={paper} /></div> : null;
+  // Drawn twice, one for each width, with one draft between them: a window made narrower shows what was being written.
+  const discussion = paper && visible ? <div data-discussion><Discussion open={open} paper={paper} draft={talks[paper.id]} onDraft={(next) => setTalks((all) => ({ ...all, [paper.id]: next }))} /></div> : null;
   // Where the others' votes are still hidden, what they wrote is too, and the rule stands in its place.
   const noDiscussion = paper && !discussion ? <DiscussionShut open={open} /> : null;
   const said = paper?.messages ?? 0;
@@ -917,7 +919,7 @@ function Screen({ open }: { open: Open }) {
                                     <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-8 min-w-0 items-center justify-center gap-1 rounded-md border px-1.5 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
                                       {/* On the criterion the keys answer, from a laptop's width, each answer's key stands where its sign does, in its sign's colour: the row says which key gives which answer, and nothing gets wider. */}
                                       <Icon className={cn("size-3.5 shrink-0", !on && TONE[tone].ink, toAnswer === criterion && "lg:hidden")} />
-                                      {toAnswer === criterion ? <Kbd className={cn("max-lg:hidden", on ? "border-current/30 bg-transparent text-current" : TONE[tone].ink)}>{ANSWER_KEY[answer]}</Kbd> : null}
+                                      {toAnswer === criterion ? <Kbd className={cn("pointer-coarse:hidden", on ? "border-current/30 bg-transparent text-current" : TONE[tone].ink)}>{ANSWER_KEY[answer]}</Kbd> : null}
                                       <span className="truncate">{label}</span>
                                     </button>
                                   );
@@ -974,7 +976,7 @@ function Screen({ open }: { open: Open }) {
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
                 <TooltipHint label={t("shortcuts.title")} onlyWhenClipped>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
-                  <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground max-lg:hidden" aria-label={t("shortcuts.title")}><span className="max-2xl:hidden">{t("shortcuts.title")}</span><Kbd>?</Kbd></Button></PopoverTrigger>
+                  <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground pointer-coarse:hidden" aria-label={t("shortcuts.title")}><span className="max-2xl:hidden">{t("shortcuts.title")}</span><Kbd>?</Kbd></Button></PopoverTrigger>
                 </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
@@ -1028,8 +1030,8 @@ function Screen({ open }: { open: Open }) {
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
                   <ReasonNoteField value={notes[paper.id] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [paper.id]: text }))} />
                   <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
+                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
+                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
                   </div>
                 </form>
               ) : (
@@ -1055,8 +1057,8 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                        <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[paper.id] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
                   </AutoHeight>
@@ -1285,9 +1287,9 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
   const wide = cast.length <= 5 ? { column: "@[30rem]/votes:[--mark:3.25rem]", name: "@[30rem]/votes:block", key: "@[30rem]/votes:invisible" } : cast.length <= 7 ? { column: "@[38rem]/votes:[--mark:3.25rem]", name: "@[38rem]/votes:block", key: "@[38rem]/votes:invisible" } : { column: "", name: "", key: "" };
   return (
     <div className="@container/votes">
-    {/* The marks sit right after the longest criterion, so a row reads across. Where that is wider than the room there is, on a phone or in a narrow sidebar, the criteria take what is left and cut off, so every column fits before anything scrolls sideways. */}
+    {/* The marks sit right after the longest criterion, so a row reads across. Where the table's own box is narrow (a phone, the Papers drawer), the criteria take what is left and cut off, so every column fits before anything scrolls sideways. */}
     {/* The rows are set apart by their cells' own margins, not by a gap. A grid keeps a gap around a row for as long as the row is there, even at no height, so the passage that opens under a row would take 6px with it in the last frame of closing. */}
-    <div className={cn("-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 [--mark:1.75rem] *:my-[3px] sm:w-fit sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]", wide.column)} style={{ "--marks": `repeat(${cast.length}, var(--mark))` } as React.CSSProperties}>
+    <div className={cn("-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 [--mark:1.75rem] *:my-[3px] @md/votes:w-fit @md/votes:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]", wide.column)} style={{ "--marks": `repeat(${cast.length}, var(--mark))` } as React.CSSProperties}>
       {/* Where the faces stand without names, the ring around one of them is named in the corner beside them. */}
       {me && cast.some((one) => one.reviewer.id === me) ? <span className={cn("flex items-center gap-1.5 self-end pb-1 text-xs text-muted-foreground", wide.key)}><span aria-hidden className="ms-0.5 size-2.5 rounded-full ring-2 ring-primary/70 ring-offset-1 ring-offset-card" />{words.t("you")}</span> : <span />}
       {cast.map(({ reviewer, vote, failed, hidden: kept }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} settled={settled} you={reviewer.id === me} kept={Boolean(kept)} criteria={criteria} named={wide.name} />)}
@@ -1302,7 +1304,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
             {/* In a narrow table (a phone, the Papers drawer with many reviewers) "Answers differ" goes under the criterion, so the name keeps the column's width. */}
             <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs @max-md/votes:flex-wrap">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
-              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 @max-md/votes:grow @max-md/votes:basis-0 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
+              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate @max-md/votes:line-clamp-2 @max-md/votes:grow @max-md/votes:basis-0 @max-md/votes:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {earlier ? <TooltipHint label={t("matrix.earlierWording")}><History role="img" aria-label={t("matrix.earlierWording")} className="size-3.5 shrink-0 text-muted-foreground" /></TooltipHint> : null}
               {split ? <span aria-hidden className="@md/votes:hidden @max-md/votes:basis-full" /> : null}
               {split ? (

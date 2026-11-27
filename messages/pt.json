@@ -5103,7 +5103,6 @@
     },
     "find": "Encontrar",
     "everyRecord": "Todos os registos de {library}",
-    "allRecords": "Todos os registos",
     "recordsFrom": "Registos de {library}",
     "private": "Privado",
     "public": "Público",
@@ -8580,6 +8579,7 @@
         "movesToFinished": "Passa para Terminadas na lista, e pode ser reaberta ou alterada a qualquer momento"
       },
       "delete": {
+        "collectionStays": "{collection} fica na sua Biblioteca",
         "title": "Eliminar {name}?",
         "goes": "Os votos e as definições são eliminados com ela",
         "saved": "{count, plural, one {O # artigo guardado em {collection} fica lá} other {Os # artigos guardados em {collection} ficam lá}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} à espera de votos",
       "inConflictFor": "{count} em conflito, para {who} resolver",
       "upToDate": "Atualizada",
-      "allSettled": "Todos os artigos estão decididos",
+      "allSettled": "Todos os artigos estão decididos, pronto a terminar",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
@@ -8736,7 +8736,7 @@
       },
       "discussion": {
         "title": "Discussão",
-        "about": "{models, select, true {Os revisores e a pessoa que resolve os conflitos discutem um artigo aqui, com todos os que estão nele ou com uma pessoa. Uma mensagem para uma pessoa é uma pergunta, e fica em «Precisa de si» na página de Triagem dessa pessoa até responder. Não é possível perguntar a um modelo. Prima uma das suas marcas na tabela para ver a passagem que leu.} other {Os revisores e a pessoa que resolve os conflitos discutem um artigo aqui, com todos os que estão nele ou com uma pessoa. Uma mensagem para uma pessoa é uma pergunta, e fica em «Precisa de si» na página de Triagem dessa pessoa até responder.}}",
+        "about": "{models, select, true {Os revisores e a pessoa que resolve os conflitos discutem um artigo aqui, com todos os que estão nele ou com uma pessoa. Uma mensagem para uma pessoa é uma pergunta, e fica em «Precisa de si» na página de Triagem dessa pessoa até responder. Não é possível perguntar a um modelo. Prima a marca de um modelo na tabela para ver a passagem que leu.} other {Os revisores e a pessoa que resolve os conflitos discutem um artigo aqui, com todos os que estão nele ou com uma pessoa. Uma mensagem para uma pessoa é uma pergunta, e fica em «Precisa de si» na página de Triagem dessa pessoa até responder.}}",
         "blind": "Esta triagem oculta o que é escrito sobre um artigo a um revisor apenas enquanto o artigo ainda espera pelo voto desse revisor.",
         "shut": "Os revisores discutem um artigo aqui. Fica oculto para não influenciar o seu voto.",
         "notSent": "Não foi enviado. Tente novamente.",
@@ -9088,7 +9088,7 @@
         "pageItems": "artigos"
       },
       "answersHelp": {
-        "says": "Cada coluna é um critério, e a marca é a resposta que os revisores deram.",
+        "says": "Cada coluna é um critério, e cada marca é a resposta de um revisor.",
         "yes": "Sim",
         "no": "Não",
         "unclear": "Incerto",
@@ -9191,7 +9191,7 @@
         "sources": "Nenhuma fonte ganha artigos"
       },
       "notReviewer": {
-        "shared": "Esta triagem foi partilhada consigo para leitura. Só os revisores votam.",
+        "shared": "Esta triagem foi partilhada consigo para leitura, por isso não pode votar nela.",
         "finished": "Não é revisor desta triagem, e ela está terminada.",
         "join": "Não é revisor desta triagem. Junte-se como revisor para votar."
       },
@@ -9659,6 +9659,8 @@
           "one": "O primeiro voto decide"
         },
         "means": {
+          "mostAdvice": "Um artigo fica decidido quando todas as pessoas a quem foi atribuído votaram e mais de metade votou da mesma forma. Os votos dos modelos são conselho e só decidem um artigo que nenhuma pessoa tem. Sem essa maioria é um conflito.",
+          "allAdvice": "Um artigo fica decidido quando todas as pessoas a quem foi atribuído votaram e todas votaram da mesma forma. Os votos dos modelos são conselho e só decidem um artigo que nenhuma pessoa tem. Qualquer divergência entre as pessoas é um conflito.",
           "all": "Um artigo fica decidido quando todos os revisores a quem foi atribuído votaram e todos votaram da mesma forma. Qualquer divergência é um conflito.",
           "most": "Um artigo fica decidido quando todos os revisores a quem foi atribuído votaram e mais de metade votou da mesma forma. Onde os votos dos modelos contam, pelo menos uma pessoa tem de estar nessa maioria. Sem essa maioria é um conflito.",
           "one": "Um artigo fica decidido pelo primeiro voto, por isso nunca há conflito. Quando o artigo é dado a uma pessoa, decide-o o voto da primeira pessoa. O voto de um modelo só decide um artigo que nenhuma pessoa tem."

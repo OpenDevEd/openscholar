@@ -5103,7 +5103,6 @@
     },
     "find": "Tafuta",
     "everyRecord": "Kila rekodi kwenye {library}",
-    "allRecords": "Rekodi zote",
     "recordsFrom": "Rekodi kutoka {library}",
     "private": "Cha faragha",
     "public": "Cha umma",
@@ -8580,6 +8579,7 @@
         "movesToFinished": "Unahamia Zilizokamilika kwenye orodha, na unaweza kufunguliwa tena au kubadilishwa wakati wowote"
       },
       "delete": {
+        "collectionStays": "{collection} inabaki kwenye Maktaba yako",
         "title": "Futa {name}?",
         "goes": "Kura na mipangilio inafutwa pamoja nao",
         "saved": "{count, plural, one {Makala # iliyohifadhiwa kwenye {collection} inabaki hapo} other {Makala # zilizohifadhiwa kwenye {collection} zinabaki hapo}}",
@@ -8715,7 +8715,7 @@
       "waitingForVotes": "{count} zinasubiri kura",
       "inConflictFor": "{count} zenye mgongano, {who} aamue",
       "upToDate": "Uko sasa",
-      "allSettled": "Kila makala imeamuliwa",
+      "allSettled": "Kila makala imeamuliwa, tayari kukamilishwa",
       "none": "{show, select, you {Hakuna kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika.} open {Hakuna uchujaji unaoendelea.} other {Hakuna uchujaji.}}",
       "noneCalled": "{show, select, you {Hakuna kinachoitwa {name} kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika unaoitwa {name}.} open {Hakuna uchujaji unaoendelea unaoitwa {name}.} other {Hakuna uchujaji unaoitwa {name}.}}",
       "showEvery": "Onyesha kila uchujaji",
@@ -8736,7 +8736,7 @@
       },
       "discussion": {
         "title": "Majadiliano",
-        "about": "{models, select, true {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu. Modeli haiwezi kuulizwa. Bonyeza alama yake mojawapo kwenye jedwali kuona kifungu ilichosoma.} other {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu.}}",
+        "about": "{models, select, true {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu. Modeli haiwezi kuulizwa. Bonyeza alama ya modeli kwenye jedwali kuona kifungu ilichosoma.} other {Wakaguzi na anayeamua migongano hujadili makala hapa, na kila mtu aliye juu yake au na mtu mmoja. Ujumbe kwa mtu mmoja ni swali, na unabaki chini ya Unaohitaji wewe kwenye ukurasa wake wa Uchujaji hadi ajibu.}}",
         "blind": "Uchujaji huu unamficha mkaguzi kilichoandikwa kuhusu makala pale tu makala bado inasubiri kura yake mwenyewe.",
         "shut": "Wakaguzi hujadili makala hapa. Majadiliano yanabaki yamefichwa ili yasiathiri kura yako.",
         "notSent": "Haukutumwa. Jaribu tena.",
@@ -9088,7 +9088,7 @@
         "pageItems": "makala"
       },
       "answersHelp": {
-        "says": "Kila nguzo ni kigezo, na alama ni jibu ambalo wakaguzi wake walitoa.",
+        "says": "Kila nguzo ni kigezo, na kila alama ni jibu la mkaguzi mmoja.",
         "yes": "Ndiyo",
         "no": "Hapana",
         "unclear": "Haieleweki",
@@ -9191,7 +9191,7 @@
         "sources": "Hakuna chanzo kinachopata makala mpya"
       },
       "notReviewer": {
-        "shared": "Uchujaji huu umeshirikiwa nawe usome tu. Wakaguzi wake pekee ndio wanaopiga kura.",
+        "shared": "Uchujaji huu umeshirikiwa nawe usome tu, kwa hiyo huwezi kupiga kura.",
         "finished": "Wewe si mkaguzi wa uchujaji huu, na umekamilika.",
         "join": "Wewe si mkaguzi wa uchujaji huu. Jiunge kama mkaguzi ili upige kura."
       },
@@ -9659,6 +9659,8 @@
           "one": "Kura ya kwanza inaamua"
         },
         "means": {
+          "mostAdvice": "Makala huamuliwa mara kila mtu aliyepewa amepiga kura na zaidi ya nusu yao wamepiga kura sawa. Kura za miundo ni ushauri, na huamua tu makala ambayo hakuna mtu aliyepewa. Bila wingi kama huo ni mgongano.",
+          "allAdvice": "Makala inaamuliwa pale kila mtu aliyepewa amepiga kura na wote wamepiga kura moja. Kura za miundo ni ushauri, na huamua tu makala ambayo hakuna mtu aliyepewa. Tofauti yoyote kati ya watu ni mgongano.",
           "all": "Makala inaamuliwa pale kila mkaguzi aliyepewa amepiga kura na wote wamepiga kura moja. Tofauti yoyote ni mgongano.",
           "most": "Makala huamuliwa mara kila mkaguzi aliyepewa amepiga kura na zaidi ya nusu yao wamepiga kura sawa. Pale ambapo kura za miundo zinahesabiwa, angalau mtu mmoja lazima awe katika wingi huo. Bila wingi kama huo ni mgongano.",
           "one": "Makala inaamuliwa na kura yake ya kwanza, kwa hivyo hakuna mgongano kamwe. Pale mtu anapopewa makala, kura ya mtu wa kwanza ndiyo inayoiamua. Kura ya modeli inaamua tu makala ambayo hakuna mtu aliyepewa."
