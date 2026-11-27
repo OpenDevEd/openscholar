@@ -14,7 +14,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -291,33 +291,32 @@ const inSavedOrder = <T extends { id?: string; key?: string }>(list: T[], saved:
   return [...saved.flatMap((one) => list.find((item) => idOf(item) === idOf(one)) ?? []), ...list.filter((item) => !saved.some((one) => idOf(one) === idOf(item)))];
 };
 
-// A criterion is one row where the list is wide enough for its question, and wraps under the question where it isn't: the list's own width decides, since the form's column is narrow in a wide window too.
-/** The width the short names take in the criteria's rows, and their column's name above them. */
-const SHORT_NAME = "w-44 shrink-0 @max-3xl/criteria:ms-5 @max-3xl/criteria:w-auto @max-3xl/criteria:min-w-48 @max-3xl/criteria:flex-1";
-/** The room a row's last two controls take, must-have or nice to have and remove, so the column names line up with the fields under them. */
-const ROW_END = "flex w-58 shrink-0 items-center justify-end gap-x-3 @max-3xl/criteria:ms-5 @max-3xl/criteria:w-auto";
-
 /**
  * A criterion's short name. What is typed stays here while the field has the keyboard, so an emptied
  * field shows the name the criterion falls back to: its question's own words.
  */
-function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: number; /** The "?" beside the field's own name, which shows where the column names are hidden. */ help?: ReactNode; onChange: (short: string) => void }) {
+function ShortName({ criterion, n, onChange }: { criterion: Criterion; n: number; onChange: (short: string) => void }) {
   const [typing, setTyping] = useState<string | null>(null);
   const t = useTranslations("screening.form");
-  const field = useId();
   return (
-    <div className={cn(SHORT_NAME, "flex items-center gap-2")}>
-      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground @3xl/criteria:hidden"><label htmlFor={field}>{t("criteria.shortName")}</label>{/* The other rows keep the "?"'s room, so every field starts in line. */ help ?? <span aria-hidden className="size-5 shrink-0" />}</span>
-      <Input
-        id={field}
-        value={typing ?? criterion.short}
-        maxLength={SHORT_NAME_LENGTH}
-        placeholder={shortOf(criterion.text)}
-        aria-label={t("criteria.shortNameOf", { n })}
-        onChange={(event) => { setTyping(event.target.value); onChange(event.target.value.trim() || shortOf(criterion.text)); }}
-        onBlur={() => setTyping(null)}
-        className="h-8 min-w-0 flex-1 px-2 text-sm"
-      />
+    <Input
+      value={typing ?? criterion.short}
+      maxLength={SHORT_NAME_LENGTH}
+      placeholder={shortOf(criterion.text)}
+      aria-label={t("criteria.shortNameOf", { n })}
+      onChange={(event) => { setTyping(event.target.value); onChange(event.target.value.trim() || shortOf(criterion.text)); }}
+      onBlur={() => setTyping(null)}
+      className="h-8 min-w-0 px-2 text-sm"
+    />
+  );
+}
+
+/** A part of a criterion under its question: its name, and in a quieter voice what it does, over its field. */
+function CriterionPart({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <p className="flex flex-wrap items-baseline gap-x-2 text-xs"><span className="font-medium text-foreground">{label}</span><span className="text-muted-foreground">{hint}</span></p>
+      {children}
     </div>
   );
 }
@@ -671,7 +670,6 @@ export function ScreeningForm({ id }: { id?: string }) {
       return withCriteria(d, [...d.criteria, ...mine.map(({ key: theirs, text: question, short, must, note, terms }) => ({ key: `new:${hash(question)}:${theirs}`, text: question, short, must, terms, addedAt: Date.now(), ...(note ? { note } : {}) }))], { ...Object.fromEntries(mine.map((criterion) => [`new:${hash(criterion.text)}:${criterion.key}`, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), ...d.scoring.points });
     });
   };
-  const shortNameHelp = <Help title={t("criteria.shortName")} facts={<HelpFact>{t("criteria.shortNameMax", { count: SHORT_NAME_LENGTH })}</HelpFact>}>{t("criteria.shortNameHelp")}</Help>;
   const copyable = screenings.items.filter((one) => one.id !== id && one.criteria > 0).slice(0, 8);
   const cantWrite = !draft.question.trim() ? t("criteria.needQuestion") : null;
   // A model writes yes-or-no criteria from the research question, each with a short name and the words to mark for whoever votes.
@@ -1306,52 +1304,43 @@ export function ScreeningForm({ id }: { id?: string }) {
             }
           >
             <div className={cn(LIST, "bg-card")}>
-              {/* The column names come and go with the first and the last criterion, growing and shrinking as a row does. */}
-              <AnimatePresence initial={false}>
-                {criterionRows.length ? (
-                  <motion.div key="names" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden @max-3xl/criteria:hidden", DIVIDED_ROW)}>
-                <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground">
-                  <span className="w-4 shrink-0" />
-                  <span className="min-w-0 flex-1 px-1">{t("criteria.questionColumn")}</span>
-                  <span className={cn(SHORT_NAME, "flex items-center gap-1")}>{t("criteria.shortName")}{shortNameHelp}</span>
-                  <span aria-hidden className={ROW_END} />
-                </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
               <AnimatePresence initial={false}>
                 {criterionRows.map(({ criterion, gone }, i) => (
                   <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
-                    {/* A criterion is two lines, its question and the guidance under it, so what sits beside them lines up with the question. */}
-                    <div className={cn("flex items-start gap-x-3 gap-y-1 px-4 py-2 transition-colors @max-3xl/criteria:flex-wrap", gone && TONE.warning.panel)}>
+                    {/* A criterion is its question, with what it is (must-have or nice to have) beside it, then each of its parts under it with its name: nothing sits beside the question but the choice that goes with it, so no column stands taller than the others. */}
+                    <div className={cn("flex items-start gap-x-3 px-4 py-3 transition-colors", gone && TONE.warning.panel)}>
                       <span className="mt-2 w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{words.num(i + 1)}</span>
                       {gone ? (
-                        <>
-                          <p className="min-w-0 flex-1 px-1 py-1.5 text-sm text-muted-foreground line-through @max-3xl/criteria:basis-[calc(100%-1.75rem)]">{criterion.text}</p>
-                          <StateChip tone="warning" icon={Trash2} className="@max-3xl/criteria:ms-5">{t("papers.removedOnSave")}</StateChip>
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                          <p className="min-w-0 flex-1 basis-60 py-1.5 text-sm text-muted-foreground line-through">{criterion.text}</p>
+                          <StateChip tone="warning" icon={Trash2}>{t("papers.removedOnSave")}</StateChip>
                           <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => keepCriterion(criterion)}><Undo2 />{t("papers.keep")}</Button>
-                        </>
+                        </div>
                       ) : (
-                        <>
-                          {/* The short name follows the question's words until someone has written one. */}
-                          <div className="min-w-0 flex-1 @max-3xl/criteria:basis-[calc(100%-1.75rem)]">
-                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, ((text) => (now: Criterion) => ({ text, short: isNamed(now) ? now.short : shortOf(text) }))(event.target.value))} aria-label={t("criteria.criterion", { n: i + 1 })} aria-invalid={!criterion.text.trim() || undefined} placeholder={t("criteria.questionPlaceholder")} className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
-                            {/* What counts and what doesn't. A reviewer opens it with "Guidance" under the question on Screen, and a model is given it with the question. */}
-                            <div className="flex items-start gap-1 ps-1 text-muted-foreground">
-                              <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
-                              <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={t("criteria.guidanceFor", { n: i + 1 })} placeholder={t("criteria.guidancePlaceholder")} className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content placeholder-shown:border-dashed placeholder-shown:border-border hover:border-border-subtle" />
-                            </div>
-                            {/* The words a person sees marked in each abstract while they vote on this criterion. */}
-                            <MarkedWords criterion={criterion} n={i + 1} onChange={(terms) => patchCriterion(criterion.key, { terms })} />
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, ((text) => (now: Criterion) => ({ text, short: isNamed(now) ? now.short : shortOf(text) }))(event.target.value))} aria-label={t("criteria.criterion", { n: i + 1 })} aria-invalid={!criterion.text.trim() || undefined} placeholder={t("criteria.questionPlaceholder")} className="min-h-9 min-w-0 flex-1 basis-64 resize-none py-1.5 text-sm font-medium field-sizing-content" />
+                            <span className="flex shrink-0 items-center gap-2">
+                              <Segmented label={t("criteria.is", { n: i + 1 })} value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: t("criteria.must") }, { id: "nice", label: t("criteria.nice") }]} />
+                              <TooltipHint label={t("papers.remove", { name: criterionName(effectsSay, criterion) })}>
+                                <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={t("papers.remove", { name: criterionName(effectsSay, criterion) })} onClick={() => removeCriterion(criterion)}><Trash2 /></Button>
+                              </TooltipHint>
+                            </span>
                           </div>
-                          <ShortName criterion={criterion} n={i + 1} help={criterion.key === criterionRows.find((row) => !row.gone)?.criterion.key ? shortNameHelp : undefined} onChange={(short) => patchCriterion(criterion.key, { short })} />
-                          <span className={ROW_END}>
-                            <Segmented label={t("criteria.is", { n: i + 1 })} value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: t("criteria.must") }, { id: "nice", label: t("criteria.nice") }]} />
-                            <TooltipHint label={t("papers.remove", { name: criterionName(effectsSay, criterion) })}>
-                              <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={t("papers.remove", { name: criterionName(effectsSay, criterion) })} onClick={() => removeCriterion(criterion)}><Trash2 /></Button>
-                            </TooltipHint>
-                          </span>
-                        </>
+                          {/* Each part says what it is and who reads it, on its own line over the field: no sign to guess at. */}
+                          <CriterionPart label={t("criteria.guidanceLabel")} hint={t("criteria.guidanceHint")}>
+                            <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={t("criteria.guidanceFor", { n: i + 1 })} placeholder={t("criteria.guidancePlaceholder")} className="min-h-8 resize-none py-1.5 text-sm field-sizing-content" />
+                          </CriterionPart>
+                          {/* Two short fields side by side where there is room, one under the other on a phone. */}
+                          <div className="grid gap-x-4 gap-y-3 @2xl/criteria:grid-cols-2">
+                            <CriterionPart label={t("criteria.shortName")} hint={t("criteria.shortNameHint")}>
+                              <ShortName criterion={criterion} n={i + 1} onChange={(short) => patchCriterion(criterion.key, { short })} />
+                            </CriterionPart>
+                            <CriterionPart label={t("criteria.wordsLabel")} hint={t("criteria.wordsHint")}>
+                              <MarkedWords criterion={criterion} n={i + 1} onChange={(terms) => patchCriterion(criterion.key, { terms })} />
+                            </CriterionPart>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -1849,10 +1838,7 @@ function MarkedWords({ criterion, n, onChange }: { criterion: Criterion; n: numb
   const t = useTranslations("screening.form");
   const read = (text: string) => [...new Set(text.split(",").map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERMS);
   return (
-    <div className="mt-1.5 flex items-start gap-1 ps-1 text-muted-foreground">
-      <Highlighter aria-hidden className="mt-1 size-3.5 shrink-0" />
-      <Textarea rows={1} value={typing ?? criterion.terms.join(", ")} onChange={(event) => { setTyping(event.target.value); onChange(read(event.target.value)); }} onBlur={() => setTyping(null)} aria-label={t("criteria.wordsFor", { n })} placeholder={t("criteria.wordsPlaceholder")} className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content placeholder-shown:border-dashed placeholder-shown:border-border hover:border-border-subtle" />
-    </div>
+    <Textarea rows={1} value={typing ?? criterion.terms.join(", ")} onChange={(event) => { setTyping(event.target.value); onChange(read(event.target.value)); }} onBlur={() => setTyping(null)} aria-label={t("criteria.wordsFor", { n })} placeholder={t("criteria.wordsPlaceholder")} className="min-h-8 resize-none py-1.5 text-sm field-sizing-content" />
   );
 }
 
