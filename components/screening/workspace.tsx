@@ -265,7 +265,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // It opens its place in the tabs' row by its width, and closes it as it goes.
   const passing = <AnimatePresence initial={false}>{now ? <Opening across key="now"><Passing kind={now} open={open} workspace={workspace.name} /></Opening> : null}</AnimatePresence>;
   // The people on it: its workspace's people who review it, and whoever it is shared with from outside, to vote or to look. Its models are not people, and are counted with the reviewers on the Overview.
-  const on = open.guests + activeReviewers(screening).filter((one) => !one.guest && one.kind === "person").length;
+  // The people the People dialog lists to whoever opens it: a guest sees the reviewers, and not the other guests or invitations, so their count leaves those out too.
+  const on = open.canChange ? open.guests + activeReviewers(screening).filter((one) => !one.guest && one.kind === "person").length : activeReviewers(screening).filter((one) => one.kind === "person").length;
   // A member who isn't one of its reviewers can join it.
   const canJoin = !open.isReviewer && open.canChange && !screening.finishedAt;
   const resume = () => void open.resume();
@@ -356,7 +357,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         {facts.advice ? <Chip icon={AiIcon}>{facts.advice}</Chip> : null}
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
-        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}
+        {screening.living && !screening.finishedAt ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}
       </div>
       </div>
       {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>{t("change")}</NextLink></Button> : null}
@@ -393,7 +394,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                   </span>
                 ) : null}
                 {/* A living screening says so beside its name, as its row in the list does, and opens its checks. Below a laptop's width the chip is with the rule's. */}
-                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">{/* Beside the name, what it means is said where the bar has the room for both. */}{t.rich("rule.livingChip", { every: screening.living.every, more: (chunks) => <span className="max-[87.5rem]:hidden">{chunks}</span> })}</LinkChip> : null}
+                {screening.living && !screening.finishedAt ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">{/* Beside the name, what it means is said where the bar has the room for both. */}{t.rich("rule.livingChip", { every: screening.living.every, more: (chunks) => <span className="max-[87.5rem]:hidden">{chunks}</span> })}</LinkChip> : null}
                 {/* On a phone the menu ends the title's row, as an app bar's does. */}
                 <span className="flex sm:hidden">{more}</span>
               </>
@@ -495,7 +496,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   const words = useWords();
   const format = useFormatter();
   // Drawn again each minute, so "just now" moves on to "2 min ago" while the page stays open.
-  useNow({ updateInterval: 60_000 });
+  const now = useNow({ updateInterval: 60_000 }).getTime();
   if (!kind) return null;
   const tone = TONE[BANNER_TONE[kind]];
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
@@ -508,7 +509,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
+        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at, now), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
         <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />{t("banner.screenNew", { count: open.latest.mine })}</NextLink></Button>
       </div>
     );
@@ -536,7 +537,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
       <div className={row}>
         <CircleCheck className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          {words.ago(at) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at) })}
+          {words.ago(at, now) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at, now) })}
           <Help title={t("banner.finishedTitle")}>{t("banner.finishedHelp", { member: String(open.canChange), workspace })}</Help>
         </span>
         {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw />{t("checkReopens")}</Button> : null}
@@ -572,7 +573,7 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
   // Drawn again each minute, so "just now" moves on while the page stays open.
-  useNow({ updateInterval: 60_000 });
+  const now = useNow({ updateInterval: 60_000 }).getTime();
   const says = "@max-[48rem]/strip:sr-only";
   // On a phone's strip the sign alone stays, so the four tabs keep their room.
   const figures = "tabular-nums text-muted-foreground @max-[30rem]/strip:sr-only";
@@ -607,6 +608,6 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
   if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
+  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at, now) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at, now) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
   return null;
 }

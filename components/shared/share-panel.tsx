@@ -51,6 +51,8 @@ export type ShareAdding = {
   has: (email: string) => boolean;
   /** Why nobody more can be added, such as a plan's guest limit. */
   full?: string;
+  /** Why nobody more from outside can be added, where the workspace's own people still can: no invitation is offered, and the field stays open for them. */
+  outsideFull?: string;
 };
 
 export function SharePanel<R extends string>({ adding, roles, entries, foot, onCopy }: { adding?: ShareAdding; roles: Array<ShareRole<R>>; entries: Array<ShareEntry<R>>; foot?: ReactNode; onCopy: () => Promise<void> }) {
@@ -61,7 +63,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
   const field = useRef<HTMLLabelElement>(null);
   const suggestions = useRef<HTMLUListElement>(null);
   const typed = adding?.query.trim().toLowerCase() ?? "";
-  const canInvite = adding !== undefined && !adding.full && EMAIL.test(typed) && !adding.has(typed);
+  const canInvite = adding !== undefined && !adding.full && !adding.outsideFull && EMAIL.test(typed) && !adding.has(typed);
   const candidates = adding?.candidates ?? [];
   const choices = (canInvite ? 1 : 0) + candidates.length;
   const options = roles.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }));
@@ -120,7 +122,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                       role="combobox"
                       aria-expanded={open && adding.candidates !== undefined}
                       aria-controls="share-suggestions"
-                      placeholder={adding.full ?? t("addPeople")}
+                      placeholder={adding.full ?? adding.outsideFull ?? t("addPeople")}
                       aria-label={t("addPeople")}
                       className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:pointer-fine:text-sm"
                     />

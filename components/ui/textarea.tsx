@@ -10,8 +10,10 @@ const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.ComponentProps<"textarea">
 >(({ className, ...props }, ref) => (
+  // What someone writes runs the way their language does: Arabic from the right, in a page set to English too.
   <textarea
     ref={ref}
+    dir="auto"
     data-slot="textarea"
     className={cn(TEXTAREA_CLASS, className)}
     {...props}

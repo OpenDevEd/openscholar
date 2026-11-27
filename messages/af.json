@@ -5080,7 +5080,8 @@
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is",
-      "pointScreening": "Stem is gratis. {name} betaal vir die sifting se KI-modelle."
+      "pointScreening": "{models, select, true {Stem is gratis. {name} betaal vir die sifting se KI-modelle.} other {Stem is gratis.}}",
+      "pointLooking": "Om daarna te kyk is gratis"
     },
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",
@@ -5090,7 +5091,7 @@
       "screen": "{count, plural, one {# sifting het jou nodig} other {# siftings het jou nodig}}",
       "screenWhy": "Artikels om te sif, konflikte om te besleg, vrae aan jou of uitnodigings om te beantwoord",
       "shared": "{count, plural, one {# uitnodiging wag vir jou antwoord} other {# uitnodigings wag vir jou antwoord}}",
-      "sharedWhy": "Siftings, geselsies, soektogte en onttrekkings wat met jou gedeel is",
+      "sharedWhy": "Uitnodigings na siftings, versamelings, soektogte, geselsies, onttrekkings en outeurprofiele",
       "publish": "{count, plural, one {# verslag is gereed om te publiseer} other {# verslae is gereed om te publiseer}}",
       "publishWhy": "{count, plural, one {Dit word gepubliseer sodra jy dit aktiveer} other {Hulle word gepubliseer sodra jy hulle aktiveer}}"
     }
@@ -8813,7 +8814,7 @@
       "empty": {
         "arriving": "Die artikels is op pad",
         "arrivingSays": "{reviewer, select, true {Hulle verskyn hier soos hulle uit die bronne aankom. Jy kan begin sif sodra die eerstes hier is.} other {Hulle verskyn hier soos hulle uit die bronne aankom.}}",
-        "noPaper": "{sources, select, failed {Die bronne kon nie gelees word nie. Instellings sê hoekom, en kan hulle weer lees.} true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {{canChange, select, true {Voeg ’n bron by om die beoordelaars artikels te gee.} other {Artikels kom sodra ’n bron bygevoeg is.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {Sommige bronne kon nie gelees word nie. Lees hulle weer vanaf die bronne.} other {Sommige bronne kon nie gelees word nie.}}} true {Die bronne het geen artikel bevat wat gesif kan word nie.} other {{canChange, select, true {Voeg ’n bron by om die beoordelaars artikels te gee.} other {Artikels kom sodra ’n bron bygevoeg is.}}}}",
         "toSources": "{sources, select, failed {Sien die bronne} true {Sien die bronne} other {Voeg ’n bron by}}"
       },
       "progress": {
@@ -9441,7 +9442,7 @@
         "arrived": "{done, number} van {count, number} is hier",
         "noneYet": "Geen artikel het nog by jou uitgekom nie",
         "noneYours": "Geen van die artikels hier is joune om op te stem nie",
-        "givenOut": "{count, plural, one {Elke artikel gaan na # persoon} other {Elke artikel gaan na # mense}}, en die artikels hier is aan ander gegee voordat jy aangesluit het. {living, select, true {Nuwe artikels word met jou gedeel soos hulle aankom.} other {Artikels kan vanaf die Oorsig na jou geskuif word.}}",
+        "givenOut": "{count, plural, one {Elke artikel gaan na # persoon} other {Elke artikel gaan na # mense}}, en die artikels hier is aan ander gegee. {next, select, living {Nuwe artikels word met jou gedeel soos hulle aankom.} move {Artikels kan vanaf die Oorsig na jou geskuif word.} other {}}",
         "allVoted": "Jy het op al jou artikels gestem",
         "finished": "Hierdie siftering is klaar",
         "unvoted": "{count, plural, one {# van jou artikels het nie jou stem nie} other {# van jou artikels het nie jou stem nie}}",

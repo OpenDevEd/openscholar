@@ -5079,7 +5079,8 @@
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo",
-      "pointScreening": "Ukuvota kumahhala. U-{name} ukhokhela amamodeli e-AI okuhlunga."
+      "pointScreening": "{models, select, true {Ukuvota kumahhala. U-{name} ukhokhela amamodeli e-AI okuhlunga.} other {Ukuvota kumahhala.}}",
+      "pointLooking": "Ukulibuka kumahhala"
     },
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",
@@ -5089,7 +5090,7 @@
       "screen": "{count, plural, one {Ukuhlunga okungu-# kuyakudinga} other {Ukuhlunga okungu-# kuyakudinga}}",
       "screenWhy": "Amaphepha okuhlunga, izingxabano zokuxazulula, imibuzo obuzwe yona noma izimemo zokuphendula",
       "shared": "{count, plural, one {Isimemo esingu-# silinde impendulo yakho} other {Izimemo ezingu-# zilinde impendulo yakho}}",
-      "sharedWhy": "Ukuhlunga, izingxoxo, ukusesha nokukhipha okwabelwana nawe",
+      "sharedWhy": "Izimemo zokuhlunga, amaqoqo, ukusesha, izingxoxo, ukukhipha namaphrofayela ababhali",
       "publish": "{count, plural, one {Umbiko ongu-# usulungele ukushicilelwa} other {Imibiko engu-# isilungele ukushicilelwa}}",
       "publishWhy": "{count, plural, one {Ushicilelwa uma uwuvula} other {Ishicilelwa uma uyivula}}"
     }
@@ -8812,7 +8813,7 @@
       "empty": {
         "arriving": "Amaphepha asendleleni",
         "arrivingSays": "{reviewer, select, true {Avela lapha njengoba efika evela emithonjeni. Ungaqala ukuskrina ngokushesha nje uma awokuqala esefikile.} other {Avela lapha njengoba efika evela emithonjeni.}}",
-        "noPaper": "{sources, select, failed {Imithombo ayikwazanga ukufundwa. Izilungiselelo zisho ukuthi kungani, futhi zingayifunda futhi.} true {Imithombo ibingenalo iphepha elingaskrinwa.} other {{canChange, select, true {Engeza umthombo ukuze unikeze ababuyekezi amaphepha.} other {Amaphepha afika uma kungezwe umthombo.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {Eminye imithombo ayikwazanga ukufundwa. Yifunde futhi kusukela emithonjeni.} other {Eminye imithombo ayikwazanga ukufundwa.}}} true {Imithombo ibingenalo iphepha elingaskrinwa.} other {{canChange, select, true {Engeza umthombo ukuze unikeze ababuyekezi amaphepha.} other {Amaphepha afika uma kungezwe umthombo.}}}}",
         "toSources": "{sources, select, failed {Bona imithombo} true {Bona imithombo} other {Engeza umthombo}}"
       },
       "progress": {
@@ -9440,7 +9441,7 @@
         "arrived": "{done, number} kwa-{count, number} afikile",
         "noneYet": "Alikho iphepha elize kuwe okwamanje",
         "noneYours": "Alikho iphepha lapha okungelakho ukulivotela",
-        "givenOut": "{count, plural, one {Iphepha ngalinye liya kumuntu ongu-#} other {Iphepha ngalinye liya kubantu abangu-#}}, futhi amaphepha alapha aya kwabanye ngaphambi kokuthi ujoyine. {living, select, true {Amaphepha amasha yabelwana nawe njengoba efika.} other {Amaphepha angadluliselwa kuwe kusukela ku-Ukubuka konke.}}",
+        "givenOut": "{count, plural, one {Iphepha ngalinye liya kumuntu ongu-#} other {Iphepha ngalinye liya kubantu abangu-#}}, futhi amaphepha alapha aya kwabanye. {next, select, living {Amaphepha amasha yabelwana nawe njengoba efika.} move {Amaphepha angadluliselwa kuwe kusukela ku-Ukubuka konke.} other {}}",
         "allVoted": "Uvote kuwo wonke amaphepha akho",
         "finished": "Lokhu kuskrini kuqediwe",
         "unvoted": "{count, plural, one {# wamaphepha akho alinalo ivoti lakho} other {# wamaphepha akho awanalo ivoti lakho}}",

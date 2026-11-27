@@ -68,12 +68,13 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
  */
 export const vote = workspaceMutation({
   args: voteArgs,
-  // Whether the vote was cast: one on a selection (`onlyWaiting`) is left where a vote was cast since.
-  returns: v.boolean(),
+  // When the vote it cast was cast, for an Undo to name (`onlyAt`); null where it took a vote back or changed nothing.
+  returns: v.union(v.number(), v.null()),
   handler: async (ctx, actor, args) => {
     const done = (await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined })) !== false;
     await bookkeepLater(ctx);
-    return done;
+    // A mutation's clock stands still: this is the moment the vote was stamped with.
+    return done && args.decision !== null ? Date.now() : null;
   },
 });
 

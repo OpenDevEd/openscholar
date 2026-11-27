@@ -5079,7 +5079,8 @@
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
       "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录",
-      "pointScreening": "投票免费。{name} 支付筛选所用 AI 模型的费用。"
+      "pointScreening": "{models, select, true {投票免费。{name} 支付筛选所用 AI 模型的费用。} other {投票免费。}}",
+      "pointLooking": "查看免费"
     },
     "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
     "asRole": "身份：{role}",
@@ -5089,7 +5090,7 @@
       "screen": "{count, plural, other {# 个筛选需要你}}",
       "screenWhy": "待筛选的论文、待解决的冲突、问你的问题或待回复的邀请",
       "shared": "{count, plural, other {有 # 个邀请等待你回复}}",
-      "sharedWhy": "与你共享的筛选、对话、搜索和提取",
+      "sharedWhy": "筛选、收藏集、搜索、对话、提取和作者资料的邀请",
       "publish": "{count, plural, other {# 份报告可以上线}}",
       "publishWhy": "{count, plural, other {激活后即上线}}"
     }
@@ -8812,7 +8813,7 @@
       "empty": {
         "arriving": "论文正在路上",
         "arrivingSays": "{reviewer, select, true {论文从来源到达后会显示在这里。第一批到达后你就可以开始筛选。} other {论文从来源到达后会显示在这里。}}",
-        "noPaper": "{sources, select, failed {无法读取来源。设置中会说明原因，并可重新读取。} true {来源中没有可筛选的论文。} other {{canChange, select, true {添加来源，审核人就会收到论文。} other {添加来源后，论文就会到来。}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {部分来源无法读取。请从来源处重新读取。} other {部分来源无法读取。}}} true {来源中没有可筛选的论文。} other {{canChange, select, true {添加来源，审核人就会收到论文。} other {添加来源后，论文就会到来。}}}}",
         "toSources": "{sources, select, failed {查看来源} true {查看来源} other {添加来源}}"
       },
       "progress": {
@@ -9440,7 +9441,7 @@
         "arrived": "已到达 {done, number} / {count, number}",
         "noneYet": "还没有分给你的论文",
         "noneYours": "这里没有需要你投票的论文",
-        "givenOut": "{count, plural, other {每篇论文分给 # 人}}，这里的论文在你加入前已分给其他人。{living, select, true {新论文到达时会分给你。} other {可以在概览中把论文转给你。}}",
+        "givenOut": "{count, plural, other {每篇论文分给 # 人}}，这里的论文已分给其他人。{next, select, living {新论文到达时会分给你。} move {可以在概览中把论文转给你。} other {}}",
         "allVoted": "你已对你的所有论文投票",
         "finished": "此筛选已完成",
         "unvoted": "{count, plural, other {你的论文中有 # 篇还没有你的投票}}",

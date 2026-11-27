@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // Date.now in posthog handler
 
+import { useWaitingInvitations, WaitingInvitations } from "@/components/workspaces/shared";
 import React, { useState } from "react";
 import { useConvex } from "convex/react";
 import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
@@ -261,7 +262,9 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
 function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
+  // Searches shared with the person that wait for their answer, above their own.
+  const invitations = useWaitingInvitations();
+  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}><WaitingInvitations rows={invitations} kind="search" />{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {

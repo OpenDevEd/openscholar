@@ -5079,7 +5079,8 @@
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
       "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue",
-      "pointScreening": "Voter est gratuit. {name} paie les modèles d'IA du criblage."
+      "pointScreening": "{models, select, true {Voter est gratuit. {name} paie les modèles d'IA du criblage.} other {Voter est gratuit.}}",
+      "pointLooking": "Le consulter est gratuit"
     },
     "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
     "asRole": "en tant que {role}",
@@ -5089,7 +5090,7 @@
       "screen": "{count, plural, one {# tri a besoin de vous} other {# tris ont besoin de vous}}",
       "screenWhy": "Articles à cribler, conflits à trancher, questions qui vous sont posées ou invitations à accepter",
       "shared": "{count, plural, one {# invitation attend votre réponse} other {# invitations attendent votre réponse}}",
-      "sharedWhy": "Criblages, discussions, recherches et extractions partagés avec vous",
+      "sharedWhy": "Invitations à des criblages, collections, recherches, discussions, extractions et profils d'auteur",
       "publish": "{count, plural, one {# rapport est prêt à être publié} other {# rapports sont prêts à être publiés}}",
       "publishWhy": "{count, plural, one {Il est publié dès que vous l’activez} other {Ils sont publiés dès que vous les activez}}"
     }
@@ -8812,7 +8813,7 @@
       "empty": {
         "arriving": "Les articles arrivent",
         "arrivingSays": "{reviewer, select, true {Ils s'affichent ici à mesure qu'ils arrivent des sources. Vous pouvez commencer le criblage dès l'arrivée des premiers.} other {Ils s'affichent ici à mesure qu'ils arrivent des sources.}}",
-        "noPaper": "{sources, select, failed {Les sources n'ont pas pu être lues. Les paramètres disent pourquoi et peuvent les relire.} true {Les sources ne contenaient aucun article pouvant être criblé.} other {{canChange, select, true {Ajoutez une source pour donner des articles aux évaluateurs.} other {Les articles arrivent dès qu'une source est ajoutée.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {Certaines sources n'ont pas pu être lues. Relisez-les depuis les sources.} other {Certaines sources n'ont pas pu être lues.}}} true {Les sources ne contenaient aucun article pouvant être criblé.} other {{canChange, select, true {Ajoutez une source pour donner des articles aux évaluateurs.} other {Les articles arrivent dès qu'une source est ajoutée.}}}}",
         "toSources": "{sources, select, failed {Voir les sources} true {Voir les sources} other {Ajouter une source}}"
       },
       "progress": {
@@ -9440,7 +9441,7 @@
         "arrived": "{done, number} sur {count, number} sont arrivés",
         "noneYet": "Aucun article ne vous est encore parvenu",
         "noneYours": "Aucun des articles ici ne vous revient",
-        "givenOut": "{count, plural, one {Chaque article va à # personne} other {Chaque article va à # personnes}}, et les articles ici sont allés à d'autres avant votre arrivée. {living, select, true {Les nouveaux articles sont partagés avec vous à leur arrivée.} other {Des articles peuvent vous être confiés depuis l'aperçu.}}",
+        "givenOut": "{count, plural, one {Chaque article va à # personne} other {Chaque article va à # personnes}}, et les articles ici sont allés à d'autres. {next, select, living {Les nouveaux articles sont partagés avec vous à leur arrivée.} move {Des articles peuvent vous être confiés depuis l'aperçu.} other {}}",
         "allVoted": "Vous avez voté sur tous vos articles",
         "finished": "Ce criblage est terminé",
         "unvoted": "{count, plural, one {# de vos articles est resté sans votre vote} other {# de vos articles sont restés sans votre vote}}",

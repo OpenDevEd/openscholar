@@ -72,7 +72,7 @@ export function NoPapers({ open }: { open: Open }) {
   const t = useTranslations("screening.overview");
   const words = useWords();
   // Sources that were read and held nothing it can screen, or that couldn't be read at all: Settings says why, and reads them again.
-  const sources = !open.screening.sources.length ? "false" : open.screening.sources.every((source) => source.read?.state === "failed") ? "failed" : "true";
+  const sources = !open.screening.sources.length ? "false" : open.screening.sources.some((source) => source.read?.state === "failed") ? "failed" : "true";
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
       <p className="text-sm font-medium">{words.t("empty.all")}</p>
@@ -972,7 +972,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
   const t = useTranslations("screening.overview");
   const words = useWords();
   // Drawn again each minute, so a check "just now" moves on while the page stays open.
-  useNow({ updateInterval: 60_000 });
+  const now = useNow({ updateInterval: 60_000 }).getTime();
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
   // The latest checks, a page at a time once every one is asked for. The look it started with is its own row under them.
@@ -1030,7 +1030,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                   <div className="flex items-start gap-3 px-4 py-3">
                     {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t("checks.checkedBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at)}</span></p>
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t("checks.checkedBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at, now)}</span></p>
                       {check.state === "failed" ? (
                         <StateChip tone="destructive">{t("checks.failed")}</StateChip>
                       ) : check.found ? (
@@ -1086,7 +1086,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
+              <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt, now)}</span></p>
               {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
               {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>

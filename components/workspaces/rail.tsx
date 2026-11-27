@@ -296,7 +296,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 ) : null}
                 <Opening key="communities">{item({ href: "/evidence-communities", icon: EvidenceLibrariesIcon, label: t("communities"), active: is("/evidence-communities") })}</Opening>
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
-                {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared"), badge: invitations.length || undefined, badgeSays: { title: t("badge.shared", { count: invitations.length }), detail: t("badge.sharedWhy") } })}</Opening> : null}
+                {/* In an organization's workspace too while an invitation waits: what it shares then sits in the person's own workspace, which Shared opens. */}
+                {slug === null || invitations.length ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared"), badge: invitations.length || undefined, badgeSays: { title: t("badge.shared", { count: invitations.length }), detail: t("badge.sharedWhy") } })}</Opening> : null}
               </AnimatePresence>
 
               <div className="my-1.5 h-px w-8 bg-foreground/10" />

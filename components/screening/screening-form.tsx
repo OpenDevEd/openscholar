@@ -333,6 +333,7 @@ const unbroken = (text: string) => text.replace(/\s*\n\s*/g, " ");
 
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
+  const tFrame = useTranslations("screening.frame");
   const tc = useTranslations("common");
   // "First vote decides" puts one person on each paper. The number set before it comes back when another rule is picked again, so clicking through the rules changes nothing by the way.
   const [eachBefore, setEachBefore] = useState<Screening["rule"]["each"] | null>(null);
@@ -609,7 +610,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const lastCheck = open?.latest ?? null;
   // What its models have cost so far.
   const spentSoFar = saved ? saved.reviewers.reduce((sum, reviewer) => sum + (reviewer.tally?.spent ?? 0), 0) : 0;
-  const edits = saved ? changesOf(say, saved, draft) : [];
+  // Invitations to take back on Save, by address.
+  const [uninviting, setUninviting] = useState<string[]>([]);
+  const edits = saved ? [...changesOf(say, saved, draft), ...(uninviting.length ? [{ text: t("edit.removedReviewers", { count: uninviting.length, names: words.listed(uninviting.slice(0, 2)) }), section: "reviewers" as EffectSection }] : [])] : [];
   const dirty = edits.length > 0;
   // Paused models read nothing until someone resumes them: their rows and the cost say so.
   const paused = Boolean(saved?.paused && !saved.finishedAt && models.length);
@@ -755,9 +758,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What each list shows: on a running screening, what saving would remove stays in its place.
   const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : sources.map((source) => ({ source, gone: false }));
   const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
-  // Someone invited to vote is a row from the save that invited them on, as the People dialog lists them, until they join: the saved screening holds them as an invitation, not a reviewer. Removing the row takes the invitation back.
-  const invitedRows = (saved ? (open?.invited ?? []) : []).flatMap((one) => (one.email && !draft.reviewers.some((reviewer) => reviewer.email?.toLowerCase() === one.email!.toLowerCase()) ? [{ reviewer: invitedReviewer(one.email, 0), gone: false, invitation: true }] : []));
-  const reviewerRows = [...draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left), invitation: false })), ...invitedRows];
+  // Someone invited to vote is a row from the save that invited them on, as the People dialog lists them, until they join: the saved screening holds them as an invitation, not a reviewer. Removing the row is a change like any other: it waits for Save, and the save takes the invitation back.
+  const invitedRows = (saved ? (open?.invited ?? []) : []).flatMap((one) => (one.email && !draft.reviewers.some((reviewer) => reviewer.email?.toLowerCase() === one.email!.toLowerCase()) ? [{ reviewer: invitedReviewer(one.email, 0), gone: uninviting.includes(one.email), invitation: true, undelivered: Boolean(one.undelivered) }] : []));
+  const reviewerRows = [...draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left), invitation: false, undelivered: false })), ...invitedRows];
 
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")));
   const start = async () => {
@@ -796,6 +799,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
+      // Invitations taken back go first: they free their guest places for anyone invited in the same save, and the papers waiting for them are then settled without them.
+      if (uninviting.length) await Promise.all(uninviting.map((email) => share.uninvite(email)));
+      setUninviting([]);
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
       const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
@@ -811,7 +817,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       }
       // A community's collection is checked, or made, there before the save.
       if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
-      else await saveChange({ jobId: saved.id, change });
+      else if (changing) await saveChange({ jobId: saved.id, change });
       // The page stays where it is: Changes keeps what the save did until the next edit.
       setLastSave({ edits, lines, moves });
       setRecheck(false);
@@ -827,6 +833,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const discard = () => {
     const was = kept;
     setRecheck(false);
+    setUninviting([]);
     keep(key, () => undefined);
     toast(t("toast.discarded"), { action: { label: t("toast.undo"), onClick: () => keep(key, () => was) } });
   };
@@ -1446,7 +1453,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
             <div className={cn(LIST, "bg-card")}>
               <AnimatePresence initial={false}>
-                {youFirst(reviewerRows, me).map(({ reviewer, gone, invitation }) => {
+                {youFirst(reviewerRows, me).map(({ reviewer, gone, invitation, undelivered }) => {
                   const votes = wasOn(reviewer) || gone ? votesOf(reviewer) : 0;
                   const left = reviewer.kind === "model" ? ahead(reviewer) : 0;
                   return (
@@ -1456,7 +1463,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? words.t(saved.finishedAt ? "person.invitedFinished" : "person.invited") : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? (undelivered ? tFrame("peopleDialog.notSent") : words.t(saved.finishedAt ? "person.invitedFinished" : "person.invited")) : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>
@@ -1484,8 +1491,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </>
                         )
                       }
-                      onRemove={() => (invitation && reviewer.email ? void share.uninvite(reviewer.email).catch(failed) : removeReviewer(reviewer))}
-                      onKeep={() => keepReviewer(reviewer)}
+                      onRemove={() => (invitation && reviewer.email ? setUninviting((now) => [...now, reviewer.email!]) : removeReviewer(reviewer))}
+                      onKeep={() => (invitation && reviewer.email ? setUninviting((now) => now.filter((email) => email !== reviewer.email)) : keepReviewer(reviewer))}
                     />
                   );
                 })}
@@ -1515,17 +1522,17 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <span className="text-sm text-muted-foreground">{t("decided.onePerson")}</span>
                 ) : readers ? (
                   // Every number up to the team's size, invited people included, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
-                  <Segmented label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
+                  <Segmented wraps label={t("decided.each")} value={draft.rule.each !== "all" && Number(draft.rule.each) > readers ? (String(readers) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: readers }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: words.num(k + 1) })), { id: "all" as const, label: t("decided.everyone") }]} />
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
               <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, saved ? (open?.invited ?? []) : []), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
-                <Segmented label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
+                <Segmented wraps label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
                 {/* A rule that doesn't apply says why in its place: with no model there is nothing to count, and the first vote is a person's whatever the setting. */}
                 {!models.length ? <JumpLink to="reviewers" className={cn(INLINE_LINK, "text-sm font-normal")}>{t("decided.addModel")}</JumpLink>
                   : draft.rule.settle === "one" ? <span className="text-sm text-muted-foreground">{t("decided.modelsUnderOne")}</span>
-                  : <Segmented label={t("decided.modelVotes")} value={draft.rule.models} onChange={(next) => set({ rule: { ...draft.rule, models: next } })} options={[{ id: "vote" as const, label: t("decided.countAsVote") }, { id: "advice" as const, label: t("decided.adviceOnly") }]} />}
+                  : <Segmented wraps label={t("decided.modelVotes")} value={draft.rule.models} onChange={(next) => set({ rule: { ...draft.rule, models: next } })} options={[{ id: "vote" as const, label: t("decided.countAsVote") }, { id: "advice" as const, label: t("decided.adviceOnly") }]} />}
               </RuleRow>
               <RuleRow name={t("decided.settledBy")} help={<Help title={t("decided.conflictsTitle")}>{t("decided.conflictsHelp")}</Help>}>
                 {!conflicts ? (
@@ -1546,7 +1553,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, hiding) ? (
                   <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
                 ) : (
-                  <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
+                  <Segmented wraps label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
                 )}
               </RuleRow>
               {/* What the rule does, on three made-up papers. */}

@@ -3,6 +3,8 @@
  * vote, conflicts wait for them to settle, a colleague's reminder, and a colleague putting them on it. Each person turns one screening's emails off
  * for themselves. The sending itself needs Node (./noticeMail.ts).
  */
+import { actorIn } from "../workspaces/actor";
+import { grantOf } from "../sharing/items";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -38,10 +40,14 @@ export async function conflictsWait(ctx: MutationCtx, jobId: Id<"screeningJobs">
 /** What one email says, read when it is sent: null where the person turned the screening's emails off, has it no more, or nothing waits for them. */
 export const context = internalQuery({
   args: { jobId: v.id("screeningJobs"), userId: v.id("users"), about: aboutValidator, by: v.optional(v.id("users")) },
-  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), more: v.optional(v.boolean()), by: v.optional(v.string()) })),
+  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), more: v.optional(v.boolean()), finished: v.optional(v.boolean()), living: v.optional(v.boolean()), by: v.optional(v.string()) })),
   handler: async (ctx, { jobId, userId, about, by }) => {
     const [job, user, row] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("users", userId), noticeOf(ctx, jobId, userId)]);
-    if (!job || job.finishedAt !== undefined || user?.state !== "active" || row?.off) return null;
+    // A finished screening sends nothing, except to someone just given it to vote on: they are told it is theirs once reopened.
+    const finished = job?.finishedAt !== undefined;
+    if (!job || (finished && about !== "joined") || user?.state !== "active" || row?.off) return null;
+    // Only to someone who can still open it: in its workspace, or a guest it is shared with.
+    if (!(await actorIn(ctx, user, job.workspaceId)) && !(await grantOf(ctx, job._id, userId))) return null;
     const workspace = await ctx.db.get("workspaces", job.workspaceId);
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
     // A member opens it in its workspace, and a guest in their own.
@@ -55,9 +61,9 @@ export const context = internalQuery({
     const waits = await waitsOn(ctx, job, userId, on, progress);
     const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0) : waits.forYou;
     // Someone put on a screening is told so whether or not a paper waits for them yet.
-    if (!count && !(about === "joined" && on)) return null;
+    if (!count && !(about === "joined" && (on || finished))) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
-    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(about === "papers" && count >= NEW_COUNTED ? { more: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
+    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(about === "papers" && count >= NEW_COUNTED ? { more: true } : {}), ...(finished ? { finished: true } : {}), ...(job.living ? { living: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
   },
 });
 

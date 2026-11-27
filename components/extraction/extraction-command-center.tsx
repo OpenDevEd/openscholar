@@ -1,5 +1,6 @@
 "use client";
 
+import { useWaitingInvitations, WaitingInvitations } from "@/components/workspaces/shared";
 import { useState } from "react";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { useTranslations } from "next-intl";
@@ -74,6 +75,7 @@ export function ExtractionCommandCenter() {
   const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, inWorkspace(workspaceId, {}));
   const total = text ? undefined : runBy.by ? runBy.countOf(runBy.by) : count;
 
+  const invitations = useWaitingInvitations();
   return (
     <LibraryPageShell
       intro={runBy.filter}
@@ -97,6 +99,8 @@ export function ExtractionCommandCenter() {
         </Button>
       }
     >
+      {/* Extractions shared with the person that wait for their answer, above their own. */}
+      <WaitingInvitations rows={invitations} kind="extraction" text={searchFilter} />
       <div className={cn(jobs.isStale && "pointer-events-none opacity-60")}>
         {jobs.isLoading ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={jobs.items}

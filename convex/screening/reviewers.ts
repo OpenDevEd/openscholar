@@ -151,6 +151,9 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   const grant = reviewer.userId ? await grantOf(ctx, job._id, reviewer.userId) : null;
   if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
+  // Questions put to them wait no more: they can't answer from here now. What was written stays on each paper.
+  // ponytail: the first 200 open questions to them; a reviewer asked more than that on one screening keeps the rest open.
+  if (reviewer.userId) for (const message of await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", job._id).eq("to", reviewer.userId!).eq("open", true)).take(200)) await ctx.db.patch("screeningMessages", message._id, { open: undefined });
   const rule = job.rule;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
@@ -283,25 +286,52 @@ export const joinIn = workspaceMutation({
  * one who only looks, or has it no more, is not. Someone who has since joined its workspace keeps their place as a member.
  */
 export const guestChanged = internalMutation({
-  args: { item: v.string(), userId: v.id("users") },
+  args: { item: v.string(), userId: v.id("users"), /** Placed as the screening reopens: they are told they can vote now, whatever told them they could later. */ reopened: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { item, userId }) => {
+  handler: async (ctx, { item, userId, reopened }) => {
     const jobId = ctx.db.normalizeId("screeningJobs", item);
     const job = jobId ? await ctx.db.get("screeningJobs", jobId) : null;
-    if (job?.shape === 2) await placeGuest(ctx, job, userId);
+    if (job?.shape === 2) await placeGuest(ctx, job, userId, reopened === true);
+    return null;
+  },
+});
+
+/**
+ * Takes someone who left an organization off its screenings: their votes stay and count, and the papers that waited
+ * for them go to the others (`takeOff`). One the screening is shared with as a guest who votes stays on it.
+ */
+export const memberLeft = internalMutation({
+  args: { organizationId: v.id("organizations"), clerkUserId: v.string(), cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { organizationId, clerkUserId, cursor }) => {
+    const [workspace, person] = await Promise.all([
+      ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique(),
+      ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique(),
+    ]);
+    if (!workspace || !person) return null;
+    // Every screening they are on, a step at a time: the ones of this organization are taken off them.
+    const page = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", person._id)).paginate({ cursor: cursor ?? null, numItems: STEP });
+    for (const reviewer of page.page) {
+      if (reviewer.left !== undefined) continue;
+      const job = await ctx.db.get("screeningJobs", reviewer.jobId);
+      if (job?.workspaceId !== workspace._id || (await grantOf(ctx, job._id, person._id))?.role === "editor") continue;
+      await takeOff(ctx, job, reviewer, false);
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.memberLeft, { organizationId, clerkUserId, cursor: page.continueCursor });
     return null;
   },
 });
 
 /** Puts a guest on a screening as a reviewer, or takes them off, as their place as its guest says. A finished screening takes no one on: reopening it asks again for each guest (./screenings.ts `reopen`). */
-async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">) {
+async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, reopened = false) {
   const [grant, person] = await Promise.all([grantOf(ctx, job._id, userId), ctx.db.get("users", userId)]);
   if (person && (await actorIn(ctx, person, job.workspaceId))) return;
   const reviewer = (await reviewersOf(ctx, job._id)).find((one) => one.kind === "person" && one.userId === userId);
-  if (grant?.role === "editor" && job.finishedAt === undefined) {
-    // One who accepted an emailed invitation was told by that email. One given it by name was told nothing: an email says they are on it.
-    const emailed = person ? (await Promise.all(addressesOf(person).map((email) => ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", job._id).eq("email", email)).first()))).some((one) => one?.state === "accepted") : false;
-    await addPerson(ctx, job, userId, grant.grantedBy, { tell: !emailed });
+  // One who accepted an emailed invitation was told by that email. One given it by name was told nothing: an email says they are on it, or, the screening being finished, that they vote once it is reopened.
+  const emailed = async () => (person ? (await Promise.all(addressesOf(person).map((email) => ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", job._id).eq("email", email)).first()))).some((one) => one?.state === "accepted" && one.role === "editor") : false);
+  if (grant?.role === "editor" && job.finishedAt === undefined) await addPerson(ctx, job, userId, grant.grantedBy, { tell: reopened || !(await emailed()) });
+  else if (grant?.role === "editor" && !reviewer) {
+    if (grant.grantedBy !== userId && !(await emailed())) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId, about: "joined", by: grant.grantedBy });
   }
   else if (grant?.role !== "editor" && reviewer) await takeOff(ctx, job, reviewer, false);
 }
