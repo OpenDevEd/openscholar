@@ -16,8 +16,8 @@ import { dealable, keepVersion, modelsFree, readingModel, reviewersOf, sourcesOf
 
 /** Why a screening can't move yet, in words for whoever asked, or null. */
 export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">): Promise<string | null> {
-  if (job.reading) return "Its papers are still arriving. Move it once they are all in.";
-  const reading = "Its models are reading. Pause them to move it now, or move it once they have read every paper.";
+  if (job.reading) return "The papers are still arriving. Move the screening once they are all in.";
+  const reading = "The models are reading. Pause them to move the screening now, or move it once they have read every paper.";
   // A reading that began before a pause runs to its end, and holds its slot until the worker has counted it.
   if (await ctx.db.query("screeningVotes").withIndex("by_job_and_slot", (q) => q.eq("jobId", job._id).eq("slot", true)).first()) return reading;
   if (!modelsFree(job)) return null;

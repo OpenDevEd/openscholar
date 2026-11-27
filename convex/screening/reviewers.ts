@@ -19,11 +19,11 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
-import { isFinal, nextResolver, readersFor } from "../../lib/screening/rules";
+import { isFinal, readersFor } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
-import { countDealt, dealable, keepVersion, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
+import { countDealt, dealable, keepVersion, settlerFor, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
 import { modelFor, modelInput, modelsLimit, NEEDS_CRITERIA } from "./screenings";
 import { startWaitingVotes } from "./slots";
 
@@ -151,15 +151,17 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   const grant = reviewer.userId ? await grantOf(ctx, job._id, reviewer.userId) : null;
   if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
-  // Questions put to them wait no more: they can't answer from here now. What was written stays on each paper.
-  if (reviewer.userId) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: reviewer.userId });
   const rule = job.rule;
+  let settler: Id<"users"> | undefined;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
-    await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver: nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) } });
+    settler = await settlerFor(ctx, job, people.flatMap((one) => one.userId ?? []), reviewer.userId);
+    await ctx.db.patch("screeningJobs", job._id, { rule: { ...rule, resolver: settler } });
     // Who settles conflicts is part of the rule: the whole record lists the change.
     await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
   }
+  // Questions put to them wait no more: they can't answer from here now. Put to them as the one who settles, they go to whoever settles now. What was written stays on each paper.
+  if (reviewer.userId) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: reviewer.userId, ...(settler ? { to: settler } : {}) });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId: reviewer._id, discard, cursor: null, status: "waiting" });
 }
 
@@ -297,12 +299,12 @@ export const guestChanged = internalMutation({
 
 /** Closes the questions put to someone on one screening, a step at a time, once they can no longer answer them there. What was written stays on each paper. */
 export const closeQuestions = internalMutation({
-  args: { jobId: v.id("screeningJobs"), userId: v.id("users") },
+  args: { jobId: v.id("screeningJobs"), userId: v.id("users"), /** Whoever settles its conflicts now, where the person stopped settling them: the questions go on to them, still open. */ to: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { jobId, userId }) => {
+  handler: async (ctx, { jobId, userId, to }) => {
     const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(STEP);
-    for (const message of open) await ctx.db.patch("screeningMessages", message._id, { open: undefined });
-    if (open.length === STEP) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId });
+    for (const message of open) await ctx.db.patch("screeningMessages", message._id, to && to !== userId ? { to } : { open: undefined });
+    if (open.length === STEP) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId, ...(to ? { to } : {}) });
     return null;
   },
 });
@@ -348,13 +350,11 @@ export const settlerLeft = internalMutation({
     for (const job of page.page) {
       if (job.workspaceId !== workspaceId || !job.rule || (await grantOf(ctx, job._id, userId))?.role === "editor") continue;
       const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one.kind === "person" && one.userId && one.userId !== userId).flatMap((one) => one.userId ?? []);
-      // With no person reviewing it, whoever made it while they are still in its workspace, else someone who is.
-      const maker = people.length || job.createdBy === userId ? null : await ctx.db.get("users", job.createdBy);
-      const next = people.length ? nextResolver(job.createdBy, people) : maker && (await actorIn(ctx, maker, workspaceId)) ? maker._id : await memberOf(ctx, workspaceId, userId);
-      if (!next) continue;
+      const next = await settlerFor(ctx, job, people, userId);
+      if (next === userId) continue;
       await ctx.db.patch("screeningJobs", job._id, { rule: { ...job.rule, resolver: next } });
       await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
-      await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId });
+      await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId, to: next });
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.settlerLeft, { workspaceId, userId, status, cursor: page.continueCursor });
     // Open ones first, then the ones whose models ran out of credits, which are voted on still, then the finished ones.
@@ -362,17 +362,6 @@ export const settlerLeft = internalMutation({
     return null;
   },
 });
-
-/** Someone still in an organization's workspace, besides the person who left it. */
-async function memberOf(ctx: MutationCtx, workspaceId: Id<"workspaces">, leaving: Id<"users">) {
-  const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (workspace?.kind !== "organization") return undefined;
-  for (const membership of await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(STEP)) {
-    const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
-    if (person?.state === "active" && person._id !== leaving) return person._id;
-  }
-  return undefined;
-}
 
 /** Puts a guest on a screening as a reviewer, or takes them off, as their place as its guest says. A finished screening takes no one on: reopening it asks again for each guest (./screenings.ts `reopen`). */
 async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, reopened = false) {

@@ -5,6 +5,7 @@
 // only guests are added here: someone in one of your organizations at once, anyone else by an
 // emailed invitation.
 
+import { useWords } from "@/components/screening/words";
 import { useDeferredValue, useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
@@ -96,6 +97,7 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow();
+  const words = useWords();
   const { user } = useUser();
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
@@ -170,7 +172,7 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
             avatar: <EmailAvatar />,
             name: invitation.email,
             // Sent a week before it expires, by the server's clock: never later than now by this one's.
-            detail: invitation.delivery === "failed" ? t("notSent") : t("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
+            detail: words.invitationTrouble({ failed: invitation.delivery === "failed", expiresAt: invitation.expiresAt }) ?? t("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
             role: invitation.role,
             ...(picks ? { onRole: (role: GuestRole) => void setRole({ kind, id, guest: { email: invitation.email }, role }).catch(failed) } : {}),
             onResend: () => void invite({ kind, id, email: invitation.email, role: invitation.role }).then(() => say(t("sentAgain", { email: invitation.email })), failed),

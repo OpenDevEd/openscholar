@@ -14,7 +14,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon, RotateCcw } from "@/components/icons";
+import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon, RotateCcw, Repeat } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -512,6 +512,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const previewChange = useWorkspaceAction(api.screening.effects.preview);
   const { execute: writeQuestions, credits: writeCredits } = useGenerateScreeningCriteria();
   const share = useSharing((saved?.id ?? "") as Id<"screeningJobs">);
+  const tShare = useTranslations("workspaces.share");
   const give = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   // What one PDF's first reading cost when it was added (./sources.tsx says the same before any is).
@@ -768,8 +769,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : sources.map((source) => ({ source, gone: false }));
   const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
   // Someone invited to vote is a row from the save that invited them on, as the People dialog lists them, until they join: the saved screening holds them as an invitation, not a reviewer. Removing the row is a change like any other: it waits for Save, and the save takes the invitation back.
-  const invitedRows = (saved ? (open?.invited ?? []) : []).flatMap((one) => (one.email && !draft.reviewers.some((reviewer) => reviewer.email?.toLowerCase() === one.email!.toLowerCase()) ? [{ reviewer: invitedReviewer(one.email, 0), gone: uninviting.includes(one.email), invitation: true, undelivered: Boolean(one.undelivered) }] : []));
-  const reviewerRows = [...draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left), invitation: false, undelivered: false })), ...invitedRows];
+  const invitedRows = (saved ? (open?.invited ?? []) : []).flatMap((one) => (one.email && !draft.reviewers.some((reviewer) => reviewer.email?.toLowerCase() === one.email!.toLowerCase()) ? [{ reviewer: invitedReviewer(one.email, 0), gone: uninviting.includes(one.email), invitation: true, undelivered: Boolean(one.undelivered), expiresAt: one.expiresAt }] : []));
+  const reviewerRows = [...draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left), invitation: false, undelivered: false, expiresAt: undefined as number | undefined })), ...invitedRows];
 
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("toast.failed")));
   const start = async () => {
@@ -825,11 +826,15 @@ export function ScreeningForm({ id }: { id?: string }) {
           const retried = (one: (typeof outside)[number]) => (one === first ? took! : rest[again.filter((other) => other !== first).indexOf(one)]!);
           sent = sent.map((one, at) => (one.status === "rejected" ? retried(outside[at]!) : one));
         }
-        // Those not taken back by an invitation are taken back now.
-        await Promise.all(uninviting.map((email) => share.uninvite(email)));
-        // Taken back now: a save tried again doesn't take them back twice.
-        setUninviting(() => []);
-        if (again.length && !first) { const retried = await send(again); sent = sent.map((one, at) => (one.status === "rejected" ? retried[again.indexOf(outside[at]!)]! : one)); }
+        const takeBack = async () => {
+          await Promise.all(uninviting.map((email) => share.uninvite(email)));
+          // Taken back now: a save tried again doesn't take them back twice.
+          setUninviting(() => []);
+        };
+        // A member given it by name can't take an invitation's place in its own step: the invitations go first and free theirs.
+        if (again.length && !first) { await takeBack(); const retried = await send(again); sent = sent.map((one, at) => (one.status === "rejected" ? retried[again.indexOf(outside[at]!)]! : one)); }
+        // Those not taken back by an invitation are taken back once everyone is invited: with one refused, they wait with it, so no paper settles without its replacement.
+        else if (sent.every((one) => one.status === "fulfilled")) await takeBack();
       }
       // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
       const refused = outside.flatMap((one, at) => (sent[at]!.status === "rejected" ? [{ one, why: (sent[at] as PromiseRejectedResult).reason as unknown }] : []));
@@ -1477,7 +1482,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
             <div className={cn(LIST, "bg-card")}>
               <AnimatePresence initial={false}>
-                {youFirst(reviewerRows, me).map(({ reviewer, gone, invitation, undelivered }) => {
+                {youFirst(reviewerRows, me).map(({ reviewer, gone, invitation, undelivered, expiresAt }) => {
                   const votes = wasOn(reviewer) || gone ? votesOf(reviewer) : 0;
                   const left = reviewer.kind === "model" ? ahead(reviewer) : 0;
                   return (
@@ -1487,7 +1492,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? words.invitedSays({ failed: undelivered, role: "editor" }, Boolean(saved.finishedAt)) : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? words.invitedSays({ failed: undelivered, role: "editor", expiresAt }, Boolean(saved.finishedAt)) : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>
@@ -1512,6 +1517,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                               </>
                             ) : null}
                             {votes && saved ? <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id })}>{words.count("votes", votes)}</LinkChip> : null}
+                            {/* An invitation that couldn't be sent is sent again here, as from People. */}
+                            {invitation && undelivered && reviewer.email ? <Button variant="outline" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={() => void share.invite(reviewer.email!).then(() => toast(tShare("sentAgain", { email: reviewer.email! })), (error) => showStyledToast("error", getErrorMessage(error, t("toast.failed"))))}><Repeat className="size-3.5" />{tShare("sendAgain")}</Button> : null}
                           </>
                         )
                       }
@@ -1556,7 +1563,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   })()
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
-              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, saved ? (open?.invited ?? []) : []), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
+              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, pending), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
                 <Segmented wraps label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
@@ -1578,11 +1585,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, hiding) ? { detail: t("decided.seeingAdvice") } : {})}>
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, hiding, models.length) ? { detail: t("decided.seeingAdvice") } : {})}>
                 {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
                 {/* Whether the choice could hide anything at all, asked as if votes were hidden until one votes: under At any time nothing is hidden either way. */}
-                {models.length && !hidesVotes({ ...draft.rule, blind: "after" }, hiding) ? (
-                  <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
+                {!hidesVotes({ ...draft.rule, blind: "after" }, hiding, models.length) ? (
+                  <span className="text-sm text-muted-foreground">{t("decided.seeingNothing", { models: String(models.length > 0) })}</span>
                 ) : (
                   <Segmented wraps label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
                 )}

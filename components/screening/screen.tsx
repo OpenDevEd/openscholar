@@ -40,20 +40,20 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, givenReason, leansOpen, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, givenReason, leansOpen, NO_REASON, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead, rtl } from "./data";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
-import { useWords } from "./words";
+import { useRtl, useWords } from "./words";
 
 // pdf.js is loaded only for a paper screened as its PDF.
 const PaperPdf = dynamic(() => import("./paper-pdf"), { ssr: false });
@@ -78,15 +78,11 @@ const BAR_HEIGHT = "lg:min-h-[4.5rem]";
  * and the page scrolls.
  */
 const PANE = "min-w-0 lg:min-h-0";
-/** From a window 1400px wide the page has three columns, the same for the bar under them: the queue, the paper, your answers. Under that, three would leave the paper a strip to read in (365px at 1280). */
-const WIDE = "min-[87.5rem]:grid-cols-[19rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[22rem_minmax(0,1fr)_32rem]";
+/** From a window 1400px wide the page has three columns, the same for the bar under them: the queue, the paper, your answers. Under that, three would leave the paper a strip to read in (365px at 1280). The queue and your answers widen only from 1760px, where the paper keeps a laptop's room beside them. */
+const WIDE = "min-[87.5rem]:grid-cols-[19rem_minmax(0,1fr)_22rem] min-[110rem]:grid-cols-[22rem_minmax(0,1fr)_32rem]";
 /** The same columns with the queue folded away: its column closes to nothing and the paper takes its width. The tracks keep their form, so the change slides. */
-const FOLDED = "min-[87.5rem]:grid-cols-[0rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[0rem_minmax(0,1fr)_32rem]";
-/** The bar keeps its first part while the queue is folded. From 2xl the vote gives up the queue's width, so it still ends where the paper does and the last vote stays under the answers. */
-const BAR_FOLDED = "2xl:grid-cols-[22rem_minmax(0,1fr)_32rem]";
+const FOLDED = "min-[87.5rem]:grid-cols-[0rem_minmax(0,1fr)_22rem] min-[110rem]:grid-cols-[0rem_minmax(0,1fr)_32rem]";
 const SLIDES = "min-[87.5rem]:transition-[grid-template-columns] min-[87.5rem]:duration-300 min-[87.5rem]:ease-out motion-reduce:transition-none";
-/** Your answers and the last vote fill their column: on a very wide window the paper takes the room, never a band left empty. */
-const BESIDE = "";
 /** From a laptop's width the queue's bar is a row of its own over the panes. Up to 1400px there are two columns under it: the paper, with your answers beside it, and the queue's list opens from the window's side. */
 const COLUMNS = "lg:max-[87.5rem]:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_minmax(0,1fr)]";
 /**
@@ -134,6 +130,7 @@ export function ScreenPage() {
 }
 
 function Screen({ open }: { open: Open }) {
+  const backwards = useRtl();
   const { screening } = open;
   const t = useTranslations("screening.screen");
   const pieces = useTranslations("screening.pieces");
@@ -397,8 +394,15 @@ function Screen({ open }: { open: Open }) {
     else given[criterion] = answer;
     setAnswers((all) => ({ ...all, [paper.id]: given }));
     // On a paper you have voted on, the answer joins the vote at once.
-    // It stamps the vote anew: the step that cast it names the new moment, so Undo still takes it back.
-    if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).then((at) => { const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved); if (at !== null && cast) cast.saved = at; }, failed);
+    // It stamps the vote anew: the step that cast it names the new moment, and Undo waits for it, so Undo still takes the vote back.
+    if (mine && !resolving) {
+      const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved);
+      // An exclusion that rested on this criterion failing rests on what the answers say now: another failed must-have, the note, or no reason.
+      const rested = mine.decision === "exclude" && mine.reason === criterion && given[criterion] !== "no";
+      const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
+      const saving = open.vote(paper.id, ballot).then((at) => { if (at !== null && cast) cast.saved = at; }, failed);
+      if (cast) cast.pending = Promise.all([cast.pending, saving]);
+    }
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide || (advanced.current && Date.now() - advanced.current.at < 500 && (advanced.current.pageTurned || advanced.current.paper === paper.id))) return;
@@ -461,8 +465,8 @@ function Screen({ open }: { open: Open }) {
       }
       else if (key === "?") setKeysOpen(true);
       // The arrows go the way the Next and Previous buttons point: in a right-to-left language, Next is on the left.
-      else if (key === (rtl() ? "arrowleft" : "arrowright") || key === "j" || key === "s") go(at + 1);
-      else if (key === (rtl() ? "arrowright" : "arrowleft") || key === "k") go(at - 1);
+      else if (key === (backwards ? "arrowleft" : "arrowright") || key === "j" || key === "s") go(at + 1);
+      else if (key === (backwards ? "arrowright" : "arrowleft") || key === "k") go(at - 1);
       else return;
       event.preventDefault();
     },
@@ -890,7 +894,7 @@ function Screen({ open }: { open: Open }) {
 
             {/* Your answers to the criteria: a pane of their own. Each paper has its own, so another paper's start at their top. */}
             <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
-              <div data-criteria className={cn("p-5", BESIDE)}>
+              <div data-criteria className="p-5">
                 <Section
                   title={answering ? t("criteria.yours") : t("criteria.title")}
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
@@ -999,7 +1003,7 @@ function Screen({ open }: { open: Open }) {
       {paper ? (
         /* The vote stays at the foot of the window: under the panes from a laptop's width, where it is the workbench's last row. From 1400px it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under that the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
         <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0">
-          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES, folded && BAR_FOLDED)}>
+          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES)}>
             {/* Where you are */}
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
@@ -1021,7 +1025,7 @@ function Screen({ open }: { open: Open }) {
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
                   {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer")) && (what !== "undo" || Boolean(last?.mayUndo))).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
-                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key) => (rtl() ? ({ "→": "←", "←": "→" }[key] ?? key) : key)).map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
+                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key) => (backwards ? ({ "→": "←", "←": "→" }[key] ?? key) : key)).map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>
                     </p>
                   ))}
@@ -1153,7 +1157,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* The last vote and its way back, then the paper it was on and what the vote led to. */}
-            <div className={cn("flex min-w-0 flex-col justify-center gap-1 px-4 py-2 text-xs text-muted-foreground max-[87.5rem]:hidden", BESIDE)}>
+            <div className={cn("flex min-w-0 flex-col justify-center gap-1 px-4 py-2 text-xs text-muted-foreground max-[87.5rem]:hidden")}>
               {last ? (
                 <>
                   <div className="flex min-w-0 items-center gap-2">

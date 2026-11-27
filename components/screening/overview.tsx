@@ -592,7 +592,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.creditsOf(open.spent(reviewer)) })}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.invitedSays({ failed: Boolean(open.invited.find((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase())?.undelivered), role: "editor" }, Boolean(open.screening.finishedAt)) : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? ((invitation) => words.invitedSays({ failed: Boolean(invitation?.undelivered), role: "editor", expiresAt: invitation?.expiresAt }, Boolean(open.screening.finishedAt)))(open.invited.find((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase())) : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
           )}
         </div>
       </div>

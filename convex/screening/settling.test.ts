@@ -345,6 +345,26 @@ describe("what a change takes out", () => {
     expect(after.papers.some((one) => one.on.ben === "waiting")).toBe(false);
   });
 
+  it("hands its conflicts to someone still in the organization once its maker and its last reviewer have both left", async () => {
+    const made = await team(["ann", "ben", "cat"]);
+    const { jobId } = await started(made, ["ann", "ben"], 2, { rule: { each: 2, settle: "all", blind: "after" } });
+    await run(made.t);
+    const organizationId = await made.t.run(async (ctx) => { const workspace = (await ctx.db.get("workspaces", made.workspaceId))!; if (workspace.kind !== "organization") throw new Error("not an organization"); return workspace.organizationId; });
+    const settler = async () => (await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.rule!.resolver;
+    // Leaving ends the membership, and then tells the screenings.
+    const leaves = async (clerkUserId: string) => {
+      await made.t.run(async (ctx) => { for (const one of await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", clerkUserId).eq("state", "active")).collect()) await ctx.db.patch("organizationMemberships", one._id, { state: "revoked" }); });
+      await made.t.mutation(internal.screening.reviewers.memberLeft, { organizationId, clerkUserId });
+      await run(made.t);
+    };
+    // Ann made it and settles it: she leaves, and Ben, reviewing it, settles it.
+    await leaves("ann");
+    expect(await settler()).toBe(made.ids.ben);
+    // Ben leaves too: nobody reviews it, and Ann can't open it, so Cat settles it.
+    await leaves("ben");
+    expect(await settler()).toBe(made.ids.cat);
+  });
+
   it("emails a colleague put on a screening, with the papers that wait for them or with none", async () => {
     const made = await team(["ann", "ben", "cat"]);
     const { workspaceId } = made;

@@ -45,13 +45,13 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead, rtl } from "./data";
+import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
 import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
-import { useWords } from "./words";
+import { useRtl, useWords } from "./words";
 import { searchHistory, useOpenInAddress } from "./address";
 import { givenReason, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
@@ -144,6 +144,7 @@ export function PapersPage() {
 /** A reviewer's name, or a person's who settles conflicts without voting. */
 
 function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
+  const backwards = useRtl();
   const { screening } = open;
   // What is written in the drawer is kept for each paper, as Screen keeps it: stepping to the next paper and back finds it where it was, and a save refused after stepping on puts the note back on its own paper.
   const [notes, setNotes] = useState<Record<string, PaperNotes>>({});
@@ -294,8 +295,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       if (target?.closest("[role=menu], [role=listbox], [role=dialog]:not([data-paper-drawer])") || event.key === "Escape") return;
       if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
       // The arrows go the way the drawer's chevrons point: in a right-to-left language, Next is on the left.
-      if (event.key === "j" || event.key === (rtl() ? "ArrowLeft" : "ArrowRight")) step(1);
-      else if (event.key === "k" || event.key === (rtl() ? "ArrowRight" : "ArrowLeft")) step(-1);
+      if (event.key === "j" || event.key === (backwards ? "ArrowLeft" : "ArrowRight")) step(1);
+      else if (event.key === "k" || event.key === (backwards ? "ArrowRight" : "ArrowLeft")) step(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
