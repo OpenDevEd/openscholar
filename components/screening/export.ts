@@ -253,7 +253,7 @@ export function voteRows(screening: Screening, papers: Paper[], whose?: string) 
   );
 }
 /** Which reviewer and paper pairs the votes file has a row for, and why a pair can have none. */
-const VOTE_ROWS = "One row for each paper a reviewer was given. A pair with no row is a paper that reviewer was never given: a model is given no paper that is only a PDF it can't read, someone added after screening began is given none settled before they came, and where fewer people are on each paper than there are, each person is given a share.";
+const VOTE_ROWS = "One row for each paper a reviewer was given. A pair with no row is a paper that reviewer was never given. A model is given no paper that is only a PDF it can't read, someone added after screening began is given none settled before they came, and where fewer people are on each paper than there are, each person is given a share.";
 /** The columns of the votes file, each with what it holds. `criteria` stands for one column for each criterion. */
 export const VOTE_GUIDE = {
   paper_id: PAPER_GUIDE.paper_id,

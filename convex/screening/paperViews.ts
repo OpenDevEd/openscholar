@@ -12,9 +12,9 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../l
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
-import { advisory, isFinal, leansOpen, nameHas, seesVotes, showsEarly, type Answer } from "../../lib/screening/rules";
+import { isFinal, leansOpen, nameHas, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { askedOf, reviewersOf, viewId, votesOf } from "./dealing";
+import { askedOf, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { progressRow } from "./bookkeeping";
@@ -57,9 +57,7 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
 export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper: Paper, votes: Vote[]): PaperView {
   const mine = reviewer ? votes.find((vote) => vote.reviewerId === reviewer._id) : undefined;
   const result = paper.result ?? "waiting";
-  // Where the models only advise, a paper nobody else is on hides nothing (lib/screening/rules.ts `hidesVotes`).
-  const alone = advisory(job.rule!) && !votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== reviewer?._id && reviewers.get(vote.reviewerId)?.kind === "person");
-  const sees = alone || seesVotes(job.rule!.blind, result, mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
+  const sees = seesPaper(job, paper.result, votes, (id) => reviewers.get(id)?.kind, reviewer?._id);
   const cast = votes
     .filter((vote) => vote.status !== "discarded")
     // A place closed because the paper was settled without that vote is still a place: the page says the paper was settled without it.
@@ -320,7 +318,15 @@ export const listAction = defineUserQuery({
           ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
         // The paper's own filters (a result, a source, a reason) are asked of each vote before the page is cut, so a page is never empty while papers that match lie further on.
-      ).filterWith(async (vote) => { if (!(await open(vote))) return false; const paper = await ctx.db.get("screeningResults", vote.resultId); return paper !== null && keeps(paper); }).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
+      ).filterWith(async (vote) => {
+        if (!(await open(vote))) return false;
+        const paper = await ctx.db.get("screeningResults", vote.resultId);
+        if (!paper || !keeps(paper)) return false;
+        // The papers every one of the reviewers compared with them voted on too (an agreement cell's list), asked here as well.
+        if (!others.length) return true;
+        const cast = new Set((await votesOf(ctx, paper._id)).filter((one) => one.status === "cast").map((one) => one.reviewerId));
+        return others.every((id) => cast.has(id));
+      }).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.
       const theirs = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
       return { ...read, page: (await withVotes(theirs)).filter((paper) => !told || paper.sees) };

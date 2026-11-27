@@ -8,7 +8,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
 import { project } from "../../lib/screening/project";
-import { SOMEONE, gotThrough, theirsOf } from "../../lib/screening/rules";
+import { SOMEONE, advisory, gotThrough, seesVotes, theirsOf } from "../../lib/screening/rules";
 import { readsPdfs } from "../../lib/assistant/files";
 import { readsPdfOf } from "../../lib/pricing/estimate";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
@@ -194,3 +194,14 @@ export async function keptByOthers(ctx: Pick<QueryCtx, "db">, sources: Doc<"scre
 }
 /** One source's merged records read for that count: a source merges few of its records into another's papers. */
 const MERGED_COUNTED = 2000;
+
+/**
+ * Whether the person looking sees how a paper's other reviewers voted, and so what was written about it: once the
+ * screening allows (lib/screening/rules.ts `seesVotes`), or where the models only advise and no other person is on the
+ * paper, since then there is nothing to keep. One test for the paper's views, its discussion and what is written to it.
+ */
+export function seesPaper(job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, result: Doc<"screeningResults">["result"], votes: Array<Pick<Doc<"screeningVotes">, "reviewerId" | "status">>, kindOf: (id: Id<"screeningReviewers">) => "person" | "model" | undefined, me: Id<"screeningReviewers"> | undefined) {
+  const mine = me ? votes.find((vote) => vote.reviewerId === me) : undefined;
+  const alone = advisory(job.rule!) && !votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== me && kindOf(vote.reviewerId) === "person");
+  return alone || seesVotes(job.rule!.blind, result ?? "waiting", mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
+}

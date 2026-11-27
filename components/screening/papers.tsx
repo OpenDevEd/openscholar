@@ -459,7 +459,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
 
   // A column head that orders the table: pressed again, the other way round.
-  const sortHead = (label: string, on: boolean, next: Sort | null, descending = false) => (
+  // Where a search or a reviewer fixes the order (`fixedOrder`), the head is its name and orders nothing, as the Order menu says.
+  const sortHead = (label: string, on: boolean, next: Sort | null, descending = false) => fixedOrder ? <span>{label}</span> : (
     <button type="button" onClick={() => go({ sort: next })} className={cn("-mx-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50", on && "text-primary")}>
       {label}
       {on ? (descending ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />) : <ArrowUpDown className="size-3 opacity-40" />}

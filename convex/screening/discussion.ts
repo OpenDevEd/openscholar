@@ -10,9 +10,8 @@ import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation } from "../lib/userActions";
 import type { InWorkspace } from "../workspaces/actor";
-import { seesVotes } from "../../lib/screening/rules";
 import { standingOn } from "./access";
-import { nameOf, votesOf } from "./dealing";
+import { nameOf, reviewersOf, seesPaper, votesOf } from "./dealing";
 import { personOf } from "./view";
 import { logChange } from "./log";
 import { SCREENING_TEXT } from "./validators";
@@ -26,8 +25,9 @@ async function readable(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id
   const standing = await standingOn(ctx, actor, jobId);
   const paper = standing?.job.shape === 2 ? await ctx.db.get("screeningResults", paperId) : null;
   if (!standing || paper?.jobId !== jobId) return null;
-  const mine = standing.reviewer ? (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === standing.reviewer!._id) : undefined;
-  return seesVotes(standing.job.rule?.blind ?? "after", paper.result, mine?.status === "waiting" ? "waiting" : undefined, standing.job.finishedAt !== undefined) ? { ...standing, paper } : null;
+  const [votes, reviewers] = await Promise.all([votesOf(ctx, paperId), reviewersOf(ctx, jobId)]);
+  const kinds = new Map(reviewers.map((one) => [one._id, one.kind]));
+  return seesPaper(standing.job, paper.result, votes, (id) => kinds.get(id), standing.reviewer?._id) ? { ...standing, paper } : null;
 }
 
 const person = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
