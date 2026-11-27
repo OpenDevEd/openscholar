@@ -582,7 +582,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const reread = models.reduce((sum, model) => sum + atOnce(model), 0);
   // How many settled papers the change would move if they were checked again. They keep their result unless that is asked for.
   const again = saved ? preview.again : 0;
-  const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
+  // What is left to read already holds the papers a change has read again at once (`reread`, shown as a part of it): counted once.
+  const cost = models.reduce((sum, model) => sum + due(model), 0);
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
   // What the last check's papers cost is set by the models saved on the screening, not by an edit not yet saved; while its models are held, they read none of them yet.
   const lastPerNew = saved && !saved.paused ? modelsOf(saved).reduce((sum, model) => sum + paperCredits(model.model!), 0) : 0;

@@ -45,7 +45,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName, othersRead } from "./data";
+import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
@@ -284,7 +284,7 @@ function Screen({ open }: { open: Open }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; queue: Queue; at: number }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
@@ -342,7 +342,9 @@ function Screen({ open }: { open: Open }) {
       setReasonFor(null, { inPlace: false });
       return setWriting(paper.id);
     }
-    const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() };
+    // Settling, what stood before is kept too: Undo puts back a settlement changed, as the drawer's does, not only one made.
+    const settled = settledOf(paper);
+    const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, settledBefore: resolving && settled.resolvedBy ? settled : null, queue, at: Date.now() };
     setHistory((all) => [...all, cast]);
     // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
     const refused = (error: unknown) => {
@@ -392,7 +394,7 @@ function Screen({ open }: { open: Open }) {
   };
   const undo = () => {
     if (!last) return;
-    if (last.resolved) open.resolve(last.paper.id, null).catch(failed);
+    if (last.resolved) (last.settledBefore ? open.resolve(last.paper.id, last.settledBefore.final ?? null, last.settledBefore.note, last.settledBefore.reason) : open.resolve(last.paper.id, null)).catch(failed);
     else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null).catch(failed);
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
@@ -759,7 +761,7 @@ function Screen({ open }: { open: Open }) {
                 <ScrollArea shades className="min-h-0 flex-1">
                 <ul className="divide-y divide-border-subtle">
                   {items.map((one) => row(one, (picked) => { openIt(picked, { inPlace: true }); setListing(false, { inPlace: true }); }))}
-                  {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">{t("queue.noMatch")}</li> : null}
+                  {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">{listed.canNext ? t("queue.noMatchYet") : t("queue.noMatch")}</li> : null}
                 </ul>
                 </ScrollArea>
                 {pager("border-t border-border-subtle px-3 py-2")}
@@ -788,8 +790,12 @@ function Screen({ open }: { open: Open }) {
           <PaperSkeleton label={t("queue.loadingPaper")} className="lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
         ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
-            <p className="text-sm font-medium">{t("queue.noMatch")}</p>
-            <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null })}>{t("queue.showWhole")}</Button>
+            {/* Where more of the queue is still to read, nothing found yet is said as such, with the way on. */}
+            <p className="text-sm font-medium">{listed.canNext ? t("queue.noMatchYet") : t("queue.noMatch")}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {listed.canNext ? <Button size="sm" variant="outline" onClick={listed.next}>{t("queue.readFurther")}</Button> : null}
+              <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null })}>{t("queue.showWhole")}</Button>
+            </div>
           </div>
         ) : (
           <>

@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}, PDF के रूप में पढ़ने पर ज़्यादा} other {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}}}",
         "noneGrow": "इनमें से किसी स्रोत में नए लेख नहीं आते। देखने के लिए एक खोज, संग्रह, Evidence Community, Zotero लाइब्रेरी या कोई और स्क्रीनिंग जोड़ें।",
         "addToCheck": "देखने के लिए एक खोज, संग्रह, Evidence Community, Zotero लाइब्रेरी या कोई और स्क्रीनिंग जोड़ें।",
-        "lastSpent": "पिछली जाँच में लगभग {spent, plural, one {# क्रेडिट} other {# क्रेडिट}}, {count, plural, one {# लेख} other {# लेख}}"
+        "lastSpent": "पिछली जाँच में जोड़े गए {count, plural, one {# लेख} other {# लेख}} पढ़ने के लिए लगभग {spent, plural, one {# क्रेडिट} other {# क्रेडिट}}"
       },
       "criteria": {
         "helpTitle": "अनिवार्य और वैकल्पिक",
@@ -9257,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {{count, plural, one {# मतभेद सुलझाएँ} other {# मतभेद सुलझाएँ}}} other {{count, plural, one {# मतभेद देखें} other {# मतभेद देखें}}}}",
       "screenPapers": "{count, plural, one {# लेख स्क्रीन करें} other {# लेख स्क्रीन करें}}",
       "queue": {
+        "readFurther": "आगे पढ़ें",
+        "noMatchYet": "अब तक पढ़े गए लेखों में से कोई मेल नहीं खाता",
         "label": "कतार",
         "todo": "करने को",
         "again": "फिर वोट दें",

@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel}}",
         "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
         "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
-        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}} bei der letzten Prüfung, {count, plural, one {# Artikel} other {# Artikel}}"
+        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}}, um die {count, plural, one {# Arbeit} other {# Arbeiten}} zu lesen, die die letzte Prüfung hinzugefügt hat"
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
@@ -9258,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {{count, plural, one {# Konflikt entscheiden} other {# Konflikte entscheiden}}} other {{count, plural, one {# Konflikt ansehen} other {# Konflikte ansehen}}}}",
       "screenPapers": "{count, plural, one {# Artikel prüfen} other {# Artikel prüfen}}",
       "queue": {
+        "readFurther": "Weiterlesen",
+        "noMatchYet": "Keiner der bisher gelesenen Artikel passt",
         "label": "Warteschlange",
         "todo": "Offen",
         "again": "Neu abstimmen",

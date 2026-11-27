@@ -14,7 +14,7 @@ import { isFinal, modelKey, seesVotes, showsEarly, type Decision, type Result } 
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, invitedTo, keptPage, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
+import { dealable, invitedTo, keeperOf, keptPage, papersOf, readingModel, readOf, readsOf, sourcesOf, teamFor, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -75,8 +75,12 @@ export const step = internalQuery({
     let [reopened, eachChanged] = [0, 0];
 
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result_and_place", (q) => { const one = q.eq("jobId", jobId).eq("result", result); return slice.from === undefined ? (slice.to === undefined ? one : one.lt("place", slice.to)) : slice.to === undefined ? one.gte("place", slice.from) : one.gte("place", slice.from).lt("place", slice.to); }).paginate({ cursor, numItems: STEP });
+    // The sources the change takes out, as the save will (./settings.ts `withdraw`): a paper of theirs that no other source keeps leaves, and no one reads it.
+    const leavingSources = new Set(change.removeSources ?? []);
+    const allSources = leavingSources.size ? await sourcesOf(ctx, jobId) : [];
     for (const paper of page.page) {
       if (paper.withdrawn) continue;
+      if (paper.sourceId && leavingSources.has(paper.sourceId) && !(await keeperOf(ctx, paper._id, leavingSources, allSources))) continue;
       const before = (await votesOf(ctx, paper._id)).map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
       const was: Result = paper.result ?? "waiting";
       const thrown = before.some((place) => discards.get(place.reviewer) && place.status === "cast");

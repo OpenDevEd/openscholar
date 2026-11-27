@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha, ngaphezulu uma lifundwa njenge-PDF} other {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha}}",
         "noneGrow": "Ayikho kule mithombo ethola amaphepha. Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
         "addToCheck": "Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
-        "lastSpent": "Cishe {spent, plural, one {ikhredithi engu-#} other {amakhredithi angu-#}} ekuhloleni kokugcina, {count, plural, one {# iphepha} other {# amaphepha}}"
+        "lastSpent": "Cishe {spent, plural, one {ikhredithi elingu-#} other {amakhredithi angu-#}} ukufunda {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} engezwe wukuhlola kokugcina"
       },
       "criteria": {
         "helpTitle": "Imfuneko nokuhle ukuba nakho",
@@ -9257,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {Xazulula {count, plural, one {# ukungqubuzana} other {# ukungqubuzana}}} other {Bona {count, plural, one {# ukungqubuzana} other {# ukungqubuzana}}}}",
       "screenPapers": "Skrina {count, plural, one {# iphepha} other {# amaphepha}}",
       "queue": {
+        "readFurther": "Funda okwengeziwe",
+        "noMatchYet": "Awekho amaphepha afundwe kuze kube manje afanayo",
         "label": "Umugqa",
         "todo": "Okusazokwenziwa",
         "again": "Vota futhi",

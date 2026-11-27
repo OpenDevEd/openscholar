@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédit} other {# crédits}} par nouvel article, plus s'il est lu depuis un PDF} other {{credits, plural, one {# crédit} other {# crédits}} par nouvel article}}",
         "noneGrow": "Aucune de ces sources ne reçoit de nouveaux articles. Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
         "addToCheck": "Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
-        "lastSpent": "Environ {spent, plural, one {# crédit} other {# crédits}} lors de la dernière vérification, {count, plural, one {# article} other {# articles}}"
+        "lastSpent": "Environ {spent, plural, one {# crédit} other {# crédits}} pour lire {count, plural, one {l'article} other {les # articles}} ajoutés par la dernière vérification"
       },
       "criteria": {
         "helpTitle": "Indispensable et souhaitable",
@@ -9257,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {Trancher {count, plural, one {# désaccord} other {# désaccords}}} other {Voir {count, plural, one {# désaccord} other {# désaccords}}}}",
       "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
       "queue": {
+        "readFurther": "Lire la suite",
+        "noMatchYet": "Aucun des articles lus jusqu'ici ne correspond",
         "label": "File",
         "todo": "À faire",
         "again": "Revoter",

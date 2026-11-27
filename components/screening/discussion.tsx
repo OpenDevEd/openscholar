@@ -73,7 +73,12 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const draft = given ?? own;
   const setDraft = onDraft ?? setOwn;
   const { text, asking } = draft;
-  const setText = (next: string) => setDraft({ ...draft, text: next });
+  // What is in the field now, for a send that fails after the person has gone on writing: the line that wasn't sent comes back without taking their place.
+  const typed = useRef(text);
+  const setText = (next: string) => {
+    typed.current = next;
+    setDraft({ ...draft, text: next });
+  };
   const setAsking = (next: string | null) => setDraft({ ...draft, asking: next });
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
@@ -92,7 +97,7 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const send = () => {
     const words = text.trim();
     if (!words) return;
-    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(words); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
+    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(typed.current.trim() ? `${words}\n\n${typed.current}` : words); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };

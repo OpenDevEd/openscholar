@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",
         "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
         "addToCheck": "確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
-        "lastSpent": "前回の確認で約{spent, plural, other {# クレジット}}、{count, plural, other {論文 # 件}}"
+        "lastSpent": "前回の確認で追加された論文 {count, plural, other {# 件}}を読むのに約{spent, plural, other {# クレジット}}"
       },
       "criteria": {
         "helpTitle": "必須基準と望ましい基準",
@@ -9257,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {{count, plural, other {不一致 # 件を判定}}} other {{count, plural, other {不一致 # 件を見る}}}}",
       "screenPapers": "{count, plural, other {論文 # 件をスクリーニング}}",
       "queue": {
+        "readFurther": "さらに読む",
+        "noMatchYet": "これまでに読んだ論文に一致するものはありません",
         "label": "キュー",
         "todo": "未投票",
         "again": "再投票",

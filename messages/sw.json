@@ -8290,7 +8290,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya}}",
         "noneGrow": "Hakuna kati ya vyanzo hivi kinachopata makala mpya. Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
         "addToCheck": "Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
-        "lastSpent": "Takriban {spent, plural, one {krediti #} other {krediti #}} ukaguzi wa mwisho, {count, plural, one {makala #} other {makala #}}"
+        "lastSpent": "Takriban {spent, plural, one {salio #} other {salio #}} kusoma {count, plural, one {makala #} other {makala #}} ambazo ukaguzi wa mwisho uliongeza"
       },
       "criteria": {
         "helpTitle": "Lazima na hiari",
@@ -9258,6 +9258,8 @@
       "settleConflicts": "{settle, select, true {Amua {count, plural, one {mgongano #} other {migongano #}}} other {Ona {count, plural, one {mgongano #} other {migongano #}}}}",
       "screenPapers": "Chuja {count, plural, one {makala #} other {makala #}}",
       "queue": {
+        "readFurther": "Soma zaidi",
+        "noMatchYet": "Hakuna makala iliyosomwa hadi sasa inayolingana",
         "label": "Foleni",
         "todo": "Kufanya",
         "again": "Piga kura tena",

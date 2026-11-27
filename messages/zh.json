@@ -8289,7 +8289,7 @@
         "perNew": "{pdf, select, true {每篇新论文 {credits, plural, other {# 积分}}，按 PDF 读取的更多} other {每篇新论文 {credits, plural, other {# 积分}}}}",
         "noneGrow": "这些来源都不会增加论文。添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
         "addToCheck": "添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
-        "lastSpent": "上次检查约 {spent, plural, other {# 积分}}，{count, plural, other {# 篇论文}}"
+        "lastSpent": "阅读上次检查新增的{count, plural, other {# 篇论文}}约需{spent, plural, other {# 积分}}"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
@@ -9257,6 +9257,8 @@
       "settleConflicts": "{settle, select, true {裁决 {count, plural, other {# 个冲突}}} other {查看 {count, plural, other {# 个冲突}}}}",
       "screenPapers": "筛选 {count, plural, other {# 篇论文}}",
       "queue": {
+        "readFurther": "继续读取",
+        "noMatchYet": "目前读到的论文中没有匹配的",
         "label": "队列",
         "todo": "待处理",
         "again": "重新投票",
