@@ -7784,7 +7784,7 @@
       "model": {
         "startsLater": "{name} iqala uma amaphepha esefikile",
         "nothingToRead": "{name} ayisenawo amaphepha okufunda",
-        "reads": "{name} ifunda {all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}"
+        "reads": "{name} ifunda {upTo, select, true {kuze kufike {count, plural, one {# iphepha} other {# amaphepha}}} other {{all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}"
       },
       "person": {
         "invited": "{name} uthola isimemo nge-imeyili, kanye namaphepha uma esejoyinile",
@@ -8283,7 +8283,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha, ngaphezulu uma lifundwa njenge-PDF} other {{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha elisha}}",
         "noneGrow": "Ayikho kule mithombo ethola amaphepha. Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
         "addToCheck": "Engeza ukusesha, iqoqo, i-Evidence Community, umtapo wolwazi we-Zotero noma okunye ukuskrini ukuze kuhlolwe.",
-        "lastSpent": "{spent} {count, plural, one {ephepheni lokugcina} other {emaphepheni okugcina angu-#}}"
+        "lastSpent": "Cishe {spent, plural, one {ikhredithi engu-#} other {amakhredithi angu-#}} ngamaphepha okuhlola kokugcina angu-{count, plural, one {#} other {#}} ngalawa mamodeli"
       },
       "criteria": {
         "helpTitle": "Imfuneko nokuhle ukuba nakho",
@@ -8885,7 +8885,7 @@
         "means": "Ukuthi ababuyekezi ababili bavumelana kangakanani ngaphezu kwethuba, kumaphepha bobabili abavote kuwo. Izigaba zezindlela zocwaningo ziyakubika. Isibalo sisonke yisilinganiso sawo wonke amapheya.",
         "swings": "Kumaphepha ambalwa kushintsha kakhulu, futhi kungehla ngaphansi kuka-0. Kuyazinza njengoba amaphepha amaningi eba namavoti omabili.",
         "none": "akusebenzi",
-        "noneFact": "akusebenzi ngamunye wenza isinqumo esifanayo njalo, ngakho inhlanhla ichaza konke"
+        "noneFact": "akusebenzi kusho ukuthi bobabili benza isinqumo esifanayo kuwo wonke amaphepha, ngakho i-kappa ayinalo inani"
       },
       "facts": {
         "startedIt": "ukuqale {ago}"
@@ -8935,6 +8935,7 @@
         "failed": "Akukwazanga ukuqedwa",
         "found": "{count, number} atholakele",
         "alreadyIn": "{count, number} asevele ekhona",
+        "leftOut": "{count, plural, one {# kushiywe ngaphandle} other {# kushiywe ngaphandle}}",
         "added": "{count, number} engeziwe",
         "newFrom": "{count, number} amasha avela ku-{source}",
         "result": "{result, select, include {{count, number} afakiwe} maybe {{count, number} mhlawumbe} exclude {{count, number} akhishiwe} conflict {{count, number} ayangqubuzana} other {{count, number} alinde amavoti}}",
@@ -9376,7 +9377,7 @@
         "seeVotes": "{count, plural, =1 {Bona ivoti lakho} other {Bona amavoti akho angu-#}}",
         "join": "Joyina njengombuyekezi",
         "allPapers": "Bona wonke amaphepha",
-        "noneCanSplit": "Iphepha ngalinye lapha linqunywa ivoti elilodwa, ngakho alikho elilinde ukuxazululwa"
+        "noneCanSplit": "Iphepha ngalinye lapha linqunywa ivoti elilodwa, ngakho alikho elingangqubuzana"
       },
       "matrix": {
         "nameYou": "{name}, wena",

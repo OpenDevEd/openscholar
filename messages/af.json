@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} begin sodra die artikels aankom",
         "nothingToRead": "{name} het geen artikels oor om te lees nie",
-        "reads": "{name} lees {all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
+        "reads": "{name} lees {upTo, select, true {tot {count, plural, one {# artikel} other {# artikels}}} other {{all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
       },
       "person": {
         "invited": "{name} kry ’n uitnodiging per e-pos, en artikels sodra hulle aansluit",
@@ -8284,7 +8284,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel, meer as dit as ’n PDF gelees word} other {{credits, plural, one {# krediet} other {# krediete}} per nuwe artikel}}",
         "noneGrow": "Geeneen van hierdie bronne kry artikels by nie. Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
         "addToCheck": "Voeg ’n soektog, ’n versameling, ’n Evidence Community, ’n Zotero-biblioteek of ’n ander siftering by om te kontroleer.",
-        "lastSpent": "{spent} vir {count, plural, one {die laaste artikel} other {die laaste # artikels}}"
+        "lastSpent": "Sowat {spent, plural, one {# krediet} other {# krediete}} vir die laaste kontrole se {count, plural, one {# artikel} other {# artikels}} met hierdie modelle"
       },
       "criteria": {
         "helpTitle": "Vereiste en wenslik",
@@ -8886,7 +8886,7 @@
         "means": "Hoe ver twee beoordelaars bo toeval saamstem, op die artikels waarop albei gestem het. Metode-afdelings rapporteer dit. Die algehele syfer is die gemiddelde van elke paar.",
         "swings": "Op ’n handvol artikels swaai dit wyd, en kan dit onder 0 val. Dit stabiliseer soos meer artikels albei stemme het.",
         "none": "n.v.t.",
-        "noneFact": "n.v.t. elkeen het elke keer dieselfde besluit geneem, so toeval verklaar alles"
+        "noneFact": "n.v.t. beteken albei het by elke artikel dieselfde besluit geneem, so kappa het geen waarde nie"
       },
       "facts": {
         "startedIt": "het dit {ago} begin"
@@ -8936,6 +8936,7 @@
         "failed": "Kon nie voltooi word nie",
         "found": "{count, number} gevind",
         "alreadyIn": "{count, number} reeds daarin",
+        "leftOut": "{count, plural, one {# uitgelaat} other {# uitgelaat}}",
         "added": "{count, number} bygevoeg",
         "newFrom": "{count, number} nuut uit {source}",
         "result": "{result, select, include {{count, number} ingesluit} maybe {{count, number} miskien} exclude {{count, number} uitgesluit} conflict {{count, number} in konflik} other {{count, number} wag vir stemme}}",
@@ -9377,7 +9378,7 @@
         "seeVotes": "{count, plural, =1 {Sien jou stem} other {Sien jou # stemme}}",
         "join": "Sluit as beoordelaar aan",
         "allPapers": "Sien al die artikels",
-        "noneCanSplit": "Elke artikel hier word deur een stem besleg, so geeneen wag om besleg te word nie"
+        "noneCanSplit": "Elke artikel hier word deur een stem besleg, so geeneen kan in konflik wees nie"
       },
       "matrix": {
         "nameYou": "{name}, jy",

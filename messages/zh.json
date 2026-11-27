@@ -7784,7 +7784,7 @@
       "model": {
         "startsLater": "{name} 会在论文到达后开始",
         "nothingToRead": "{name} 没有剩余要读的论文",
-        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}"
+        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到此筛选时} save {会在保存后立即} other {}}阅读{upTo, select, true {最多 {count, plural, other {# 篇论文}}} other {{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}}}"
       },
       "person": {
         "invited": "{name} 会通过邮件收到邀请，加入后分到论文",
@@ -8283,7 +8283,7 @@
         "perNew": "{pdf, select, true {每篇新论文 {credits, plural, other {# 积分}}，按 PDF 读取的更多} other {每篇新论文 {credits, plural, other {# 积分}}}}",
         "noneGrow": "这些来源都不会增加论文。添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
         "addToCheck": "添加搜索、合集、Evidence Community、Zotero 文库或其他筛选以供检查。",
-        "lastSpent": "最近 {count, plural, other {# 篇论文}}用了 {spent}"
+        "lastSpent": "按这些模型，上次检查的 {count, plural, other {# 篇论文}}约需 {spent, plural, other {# 积分}}"
       },
       "criteria": {
         "helpTitle": "必要条件和加分项",
@@ -8885,7 +8885,7 @@
         "means": "两位审核人在双方都投票的论文上，超出随机水平的一致程度。方法部分会报告这一数值。总体数值是所有两两组合的平均值。",
         "swings": "只有少量论文时它波动很大，可能低于 0。双方都投票的论文越多，它越稳定。",
         "none": "不适用",
-        "noneFact": "不适用 每次都做出相同决定，因此完全可由偶然解释"
+        "noneFact": "不适用表示两人对每篇论文都做出了相同决定，因此 kappa 没有值"
       },
       "facts": {
         "startedIt": "{ago}开始"
@@ -8935,6 +8935,7 @@
         "failed": "未能完成",
         "found": "找到 {count, number} 篇",
         "alreadyIn": "{count, number} 篇已在其中",
+        "leftOut": "{count, plural, other {# 篇被排除在外}}",
         "added": "加入 {count, number} 篇",
         "newFrom": "来自 {source} 的 {count, number} 篇新论文",
         "result": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
@@ -9376,7 +9377,7 @@
         "seeVotes": "{count, plural, =1 {查看你的投票} other {查看你的 # 次投票}}",
         "join": "以审核人身份加入",
         "allPapers": "查看所有论文",
-        "noneCanSplit": "这里每篇论文由一票决定，因此没有论文等待裁定"
+        "noneCanSplit": "这里每篇论文由一票决定，因此不会出现分歧"
       },
       "matrix": {
         "nameYou": "{name}（你）",

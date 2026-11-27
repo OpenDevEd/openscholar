@@ -7784,7 +7784,7 @@
       "model": {
         "startsLater": "{name} は論文が届いてから開始します",
         "nothingToRead": "{name} が読む論文は残っていません",
-        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}を読みます"
+        "reads": "{name} は{when, select, gathered {論文がすべて届いた後に} finished {スクリーニングが再開された後に} paused {モデルが再開された後に} credits {ワークスペースに次の論文の分のクレジットができた後に} waiting {このスクリーニングの順番が来たときに} save {保存するとすぐに} other {}}{upTo, select, true {最大{count, plural, other {論文 # 件}}} other {{all, select, true {{count, plural, other {論文 # 件すべて}}} other {まだ確定していない{count, plural, other {論文 # 件}}}}}}を読みます"
       },
       "person": {
         "invited": "{name} にメールで招待が届き、参加すると論文が割り当てられます",
@@ -8283,7 +8283,7 @@
         "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",
         "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
         "addToCheck": "確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
-        "lastSpent": "直近の{count, plural, other {論文 # 件}}で {spent}"
+        "lastSpent": "これらのモデルでの前回の確認の論文{count, plural, other {# 件}}で約{spent, plural, other {# クレジット}}"
       },
       "criteria": {
         "helpTitle": "必須基準と望ましい基準",
@@ -8885,7 +8885,7 @@
         "means": "2 人のレビュアーが、両者とも投票した論文について、偶然を超えてどの程度一致しているかを示します。論文の方法の節で報告される値です。全体の値はすべてのペアの平均です。",
         "swings": "論文が数件のうちは値が大きく揺れ、0 を下回ることもあります。両者の投票がある論文が増えるにつれて安定します。",
         "none": "該当なし",
-        "noneFact": "該当なし 毎回同じ判断だったため、偶然ですべて説明できます"
+        "noneFact": "該当なしは、2人がすべての論文で同じ判断をしたことを示し、カッパに値はありません"
       },
       "facts": {
         "startedIt": "{ago}に開始"
@@ -8935,6 +8935,7 @@
         "failed": "完了できませんでした",
         "found": "{count, number} 件見つかりました",
         "alreadyIn": "{count, number} 件は登録済み",
+        "leftOut": "{count, plural, other {# 件を除外}}",
         "added": "{count, number} 件を追加",
         "newFrom": "{source} から新しい論文 {count, number} 件",
         "result": "{result, select, include {採用 {count, number} 件} maybe {保留 {count, number} 件} exclude {除外 {count, number} 件} conflict {不一致 {count, number} 件} other {投票待ち {count, number} 件}}",
@@ -9376,7 +9377,7 @@
         "seeVotes": "{count, plural, =1 {自分の投票を見る} other {自分の # 票を見る}}",
         "join": "レビュアーとして参加",
         "allPapers": "すべての論文を見る",
-        "noneCanSplit": "ここでは各論文が1票で決まるため、解決を待つ論文はありません"
+        "noneCanSplit": "ここでは各論文が1票で決まるため、対立になる論文はありません"
       },
       "matrix": {
         "nameYou": "{name}（あなた）",

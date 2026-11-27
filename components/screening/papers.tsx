@@ -422,7 +422,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || splits).map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
@@ -928,7 +928,9 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     if (kind === "vote") open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).catch((error) => notSaved(t, error));
     else open.resolve(paper.id, decision, said, reason).catch((error) => notSaved(t, error));
     const undo = () => (kind === "vote" ? open.vote(paper.id, mine ? { decision: mine.decision, answers: mine.answers, ...(mine.reason ? { reason: mine.reason } : {}), ...(mine.note ? { note: mine.note } : {}) } : null) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason)).catch((error) => notSaved(t, error));
-    toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), { action: { label: t("undo"), onClick: () => void undo() } });
+    // Undo puts back only what you did: a result someone else settled is theirs, and isn't put back in your name.
+    const mayUndo = kind === "vote" || !state.resolvedBy || state.resolvedBy === open.me;
+    toast(kind === "vote" ? t("panel.youVoted", { decision: words.decision(decision) }) : t("settledToast", { count: 1, result: words.result(decision) }), mayUndo ? { action: { label: t("undo"), onClick: () => void undo() } } : undefined);
     setDeciding(null);
     setReasonFor(null);
     setNote(kind, "");

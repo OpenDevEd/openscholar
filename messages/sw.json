@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} inaanza makala zikishafika",
         "nothingToRead": "{name} haina makala zilizobaki za kusoma",
-        "reads": "{name} inasoma {all, select, true {{count, plural, one {makala #} other {makala zote #}}} other {{count, plural, one {makala # ambayo bado haijaamuliwa} other {makala # ambazo bado hazijaamuliwa}}}}{when, select, gathered { makala zote zikishafika} finished { uchujaji ukishafunguliwa tena} paused { modeli zikishaendelezwa} credits { nafasi kazi ikishakuwa na krediti za kutosha kwa makala inayofuata} waiting { zamu ya uchujaji huu ikifika} save { mara tu hii itakapohifadhiwa} other {}}"
+        "reads": "{name} inasoma {upTo, select, true {hadi {count, plural, one {makala #} other {makala #}}} other {{all, select, true {{count, plural, one {makala #} other {makala zote #}}} other {{count, plural, one {makala # ambayo bado haijaamuliwa} other {makala # ambazo bado hazijaamuliwa}}}}}}{when, select, gathered { makala zote zikishafika} finished { uchujaji ukishafunguliwa tena} paused { modeli zikishaendelezwa} credits { nafasi kazi ikishakuwa na krediti za kutosha kwa makala inayofuata} waiting { zamu ya uchujaji huu ikifika} save { mara tu hii itakapohifadhiwa} other {}}"
       },
       "person": {
         "invited": "{name} anapata mwaliko kwa barua pepe, na makala akishajiunga",
@@ -8284,7 +8284,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya, zaidi ikisomwa kama PDF} other {{credits, plural, one {Krediti #} other {Krediti #}} kwa kila makala mpya}}",
         "noneGrow": "Hakuna kati ya vyanzo hivi kinachopata makala mpya. Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
         "addToCheck": "Ongeza utafutaji, mkusanyiko, Evidence Community, maktaba ya Zotero au uchujaji mwingine wa kukagua.",
-        "lastSpent": "{spent} kwa {count, plural, one {makala # ya mwisho} other {makala # za mwisho}}"
+        "lastSpent": "Takriban {spent, plural, one {krediti #} other {krediti #}} kwa {count, plural, one {makala #} other {makala #}} za ukaguzi wa mwisho kwa miundo hii"
       },
       "criteria": {
         "helpTitle": "Lazima na hiari",
@@ -8886,7 +8886,7 @@
         "means": "Kiwango ambacho wakaguzi wawili wanakubaliana zaidi ya bahati, kwenye makala ambazo wote wawili wamepigia kura. Sehemu za mbinu huiripoti. Kiwango cha jumla ni wastani wa kila jozi.",
         "swings": "Kwenye makala chache inabadilika sana, na inaweza kushuka chini ya 0. Inatulia kadiri makala nyingi zaidi zinavyopata kura zote mbili.",
         "none": "haitumiki",
-        "noneFact": "haitumiki kila mmoja alifanya uamuzi uleule kila mara, hivyo bahati inaeleza yote"
+        "noneFact": "haitumiki inamaanisha wote wawili walifanya uamuzi uleule kwa kila makala, kwa hiyo kappa haina thamani"
       },
       "facts": {
         "startedIt": "aliuanzisha {ago}"
@@ -8936,6 +8936,7 @@
         "failed": "Haukuweza kukamilika",
         "found": "{count, number} zimepatikana",
         "alreadyIn": "{count, number} tayari zimo",
+        "leftOut": "{count, plural, one {# imeachwa} other {# zimeachwa}}",
         "added": "{count, number} zimeongezwa",
         "newFrom": "{count, number} mpya kutoka {source}",
         "result": "{result, select, include {{count, number} zimejumuishwa} maybe {{count, number} labda} exclude {{count, number} zimetengwa} conflict {{count, number} zenye mgongano} other {{count, number} zinasubiri kura}}",
@@ -9377,7 +9378,7 @@
         "seeVotes": "{count, plural, =1 {Ona kura yako} other {Ona kura zako #}}",
         "join": "Jiunge kama mkaguzi",
         "allPapers": "Ona makala zote",
-        "noneCanSplit": "Kila makala hapa huamuliwa kwa kura moja, kwa hiyo hakuna inayosubiri kutatuliwa"
+        "noneCanSplit": "Kila makala hapa huamuliwa kwa kura moja, kwa hiyo hakuna inayoweza kuwa na mgongano"
       },
       "matrix": {
         "nameYou": "{name}, wewe",

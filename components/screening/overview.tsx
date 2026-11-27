@@ -166,19 +166,23 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
         <div className="space-y-3">
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={total - counts.conflict - counts.waiting} /></span>
-            <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
-            {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
-            {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
-            {!open.gathering && removed.left ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
-            {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
-            {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert} className="self-center">{t("progress.capped", { workspace: screening.workspace.name, personal: String(screening.workspace.kind === "personal") })}</LinkChip> : null}
-            {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
-            {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText} className="self-center">{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
-            {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers" className="self-center">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
+            {/* The line under the count: its words and the chips beside them centred on one another, and the whole line on the count's baseline. */}
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm text-muted-foreground">{t("progress.settledOf", { total })}</span>
+              {open.modelsNow === "reading" ? <Chip className="bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING(tp)}</Chip> : null}
+              {/* Fewer papers than its sources held asks for a reason where the count is: what was left out, and what two sources both brought. */}
+              {!open.gathering && removed.left ? <SettingsChip open={open} part="papers">{t("progress.leftOut", { count: removed.left, bare: String(removed.bare === removed.left) })}</SettingsChip> : null}
+              {/* A plan gives one screening so many papers: where a source held more, its reading stopped there, and the way to more is the plan. */}
+              {screening.sources.some((source) => source.read?.capped) ? <LinkChip href="/pricing" tone="warning" icon={TriangleAlert}>{t("progress.capped", { workspace: screening.workspace.name, personal: String(screening.workspace.kind === "personal") })}</LinkChip> : null}
+              {/* A living source can bring a paper that is only a PDF after the screening started: with models alone that can't read it, it waits for a reviewer. */}
+              {unreadPdfs(screening) ? <SettingsChip open={open} part="reviewers" tone="warning" icon={FileText}>{t("progress.pdfsUnread", { count: unreadPdfs(screening) })}</SettingsChip> : null}
+              {!open.gathering && removed.merged ? <SettingsChip open={open} part="papers">{t("progress.merged", { count: removed.merged })}</SettingsChip> : null}
+            </span>
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
-            {RESULTS.map((result) => {
+            {/* In conflict is a count only where a paper can be in conflict, or one is. */}
+            {RESULTS.filter((result) => result !== "conflict" || splitsIn(screening, counts.conflict, open.invited)).map((result) => {
               const Icon = RESULT_STYLE[result].icon;
               const inner = (
                 <>
@@ -936,7 +940,9 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                         <>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Chip>{t("checks.found", { count: check.found })}</Chip>
-                            {check.found - check.added ? <Chip>{t("checks.alreadyIn", { count: check.found - check.added })}</Chip> : null}
+                            {/* What it found is what it added, what was in the screening already, and what it left out: each counted apart. */}
+                            {check.found - check.added - (check.left ?? 0) > 0 ? <Chip>{t("checks.alreadyIn", { count: check.found - check.added - (check.left ?? 0) })}</Chip> : null}
+                            {check.left ? <Chip>{t("checks.leftOut", { count: check.left })}</Chip> : null}
                             {check.added ? <LinkChip href={papersHref(screening.id, { added: check.id })} tone="primary">{t("checks.added", { count: check.added })}</LinkChip> : null}
                           </div>
                           {/* Each source that gained papers, with how many were new to the screening: with more than one source to check, the total alone doesn't say which is still finding papers. */}

@@ -132,7 +132,7 @@
     "means": "How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.",
     "swings": "On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes.",
     "none": "n/a",
-    "noneFact": "n/a each gave one decision every time, so chance explains it all"
+    "noneFact": "n/a means both gave the same decision on every paper, so kappa has no value"
   },
   "facts": {
     "startedIt": "started it {ago}"
@@ -182,6 +182,7 @@
     "failed": "Couldn't be finished",
     "found": "{count, number} found",
     "alreadyIn": "{count, number} already in it",
+    "leftOut": "{count, plural, one {# left out} other {# left out}}",
     "added": "{count, number} added",
     "newFrom": "{count, number} new from {source}",
     "result": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",

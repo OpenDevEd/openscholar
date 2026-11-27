@@ -660,7 +660,7 @@ export const itemsOf = internalAction({
 export const papersOf = internalAction({
   args: { userId: v.id("users"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), first: v.number(), last: v.number() },
   returns: v.object({
-    papers: v.array(v.object({ key: v.string(), paper: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()), venue: v.optional(v.string()), pdfUrl: v.string() })),
+    papers: v.array(v.object({ key: v.string(), paper: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()), venue: v.optional(v.string()), workType: v.optional(v.string()), pdfUrl: v.string() })),
     ended: v.boolean(),
     zoteroUserId: v.string(),
   }),
@@ -681,6 +681,7 @@ export const papersOf = internalAction({
       ...(item.year === undefined ? {} : { year: item.year }),
       ...(item.doi ? { doi: item.doi.slice(0, ZOTERO_NAME_MAX) } : {}),
       ...(item.venueName ? { venue: item.venueName.slice(0, ZOTERO_NAME_MAX) } : {}),
+      ...(item.itemType ? { workType: item.itemType } : {}),
     }));
     return { papers, ended: read.nextCursor === undefined, zoteroUserId: connection.zoteroUserId };
   },

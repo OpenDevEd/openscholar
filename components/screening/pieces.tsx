@@ -7,7 +7,7 @@
 import { type CSSProperties, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import PlainLink from "next/link";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
-import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon, ArrowUpRight } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "./parts";
 import { tintOf } from "@/components/settings/model-map";
@@ -715,6 +715,8 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
 }
 
 /** The reasons to exclude as rows to press: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. The same three as the menu on Screen. */
+/** Whether the pointer is a mouse: a phone gets no focus put on a row for keys it has none of, which would move its sheet. */
+const finePointer = () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches;
 export function ReasonRows({ criteria, many = false, titled = true, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** Whether the question is said over the rows; a sheet that has it as its own title leaves it out. */ titled?: boolean; onPick: (reason: string) => void }) {
   const words = useWords();
   const groups = words.excludeGroups(many);
@@ -734,7 +736,7 @@ export function ReasonRows({ criteria, many = false, titled = true, onPick }: { 
         <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
           {titled ? <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p> : null}
           {group.list.map((reason, i) => (
-            <button key={reason.key} type="button" autoFocus={at === 0 && i === 0} onClick={() => onPick(reason.key)} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-border-subtle bg-card px-3 py-2 text-start text-sm transition-colors hover:bg-muted">
+            <button key={reason.key} type="button" autoFocus={at === 0 && i === 0 && finePointer()} onClick={() => onPick(reason.key)} className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-border-subtle bg-card px-3 py-2 text-start text-sm transition-colors hover:bg-muted">
               <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} asked /></span>
               {reason.hotkey ? <Kbd className="pointer-coarse:hidden">{reason.hotkey === "Enter" ? "↵" : reason.hotkey}</Kbd> : null}
             </button>
@@ -774,7 +776,7 @@ export function PaperFacts({ paper, source, added }: {
       {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">{t("paperFacts.from", { name: source.name })}</LinkChip> : null}
       {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>{t("paperFacts.added", { ago: words.ago(added.at) })}</LinkChip> : null}
       {paper.cited === undefined ? null : <Chip icon={Quote}>{t("paperFacts.cited", { count: paper.cited })}</Chip>}
-      {page ? <LinkChip href={page} target="_blank" rel="noreferrer" icon={ArrowUpRight}>{tp("paperPage")}</LinkChip> : null}
+      {page ? <LinkChip href={page} target="_blank" rel="noreferrer" icon={ExternalLink}>{tp("paperPage")}</LinkChip> : null}
       {/* Its DOI opens the paper where it is published; without one, its page here, or else a search for its title. In a new tab, so the place in the list is kept. A paper screened as its PDF has its full text on the page already. */}
       {paper.pdf || (!paper.doi && page) ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>{t("paperFacts.fullText")}</LinkChip>}
     </>

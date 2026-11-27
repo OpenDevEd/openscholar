@@ -288,7 +288,7 @@ export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">, pend
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with
  * their votes kept. Every page that offers a settler, or says a paper settles on one vote, asks this.
  */
-export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => conflicts > 0 || canConflict(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
+export const splitsIn = (screening: Pick<Screening, "rule" | "reviewers">, conflicts: number, pending: Array<{ email: string }> = []) => conflicts > 0 || (screening.rule.settle !== "one" && screening.reviewers.some((one) => one.left !== undefined && !one.discarded && (one.tally?.cast ?? 0) > 0)) || canConflict(screening.rule, readersOf(screening, pending).each, modelsOf(screening).length);
 /** How many people read each paper, as the shared rule counts it: the pages hold the number as the text a control holds. */
 export const eachOf = (rule: Pick<Rule, "each">): SharedRule["each"] => (rule.each === "all" ? "all" : Number(rule.each));
 /** How many people are invited by email and haven't answered: the ones a draft adds, and a running screening's invitations still waiting (`pending`, convex/screening/view.ts `invited`), each once. */

@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} startet, sobald die Artikel da sind",
         "nothingToRead": "{name} hat keine Artikel mehr zu lesen",
-        "reads": "{name} liest {all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
+        "reads": "{name} liest {upTo, select, true {bis zu {count, plural, one {# Artikel} other {# Artikel}}} other {{all, select, true {{count, plural, one {# Artikel} other {alle # Artikel}}} other {{count, plural, one {den # noch nicht entschiedenen Artikel} other {die # noch nicht entschiedenen Artikel}}}}}}{when, select, gathered {, sobald alle Artikel da sind} finished {, sobald das Screening wieder geöffnet ist} paused {, sobald die Modelle fortgesetzt werden} credits {, sobald der Arbeitsbereich genug Credits für den nächsten Artikel hat} waiting {, sobald dieses Screening an der Reihe ist} save {, sobald dies gespeichert ist} other {}}"
       },
       "person": {
         "invited": "{name} erhält eine Einladung per E-Mail und nach dem Beitritt Artikel",
@@ -8284,7 +8284,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel, mehr, wenn er als PDF gelesen wird} other {{credits, plural, one {# Credit} other {# Credits}} pro neuem Artikel}}",
         "noneGrow": "Keine dieser Quellen bekommt neue Artikel. Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
         "addToCheck": "Fügen Sie eine Suche, eine Sammlung, eine Evidence Community, eine Zotero-Bibliothek oder ein anderes Screening zum Abfragen hinzu.",
-        "lastSpent": "{spent} für {count, plural, one {den letzten Artikel} other {die letzten # Artikel}}"
+        "lastSpent": "Etwa {spent, plural, one {# Credit} other {# Credits}} für die {count, plural, one {# Arbeit} other {# Arbeiten}} der letzten Prüfung mit diesen Modellen"
       },
       "criteria": {
         "helpTitle": "Muss-Kriterium und Kann-Kriterium",
@@ -8886,7 +8886,7 @@
         "means": "Wie weit zwei Reviewer über den Zufall hinaus übereinstimmen, bei den Artikeln, über die beide abgestimmt haben. Methodenteile geben es an. Der Gesamtwert ist der Mittelwert aller Paare.",
         "swings": "Bei wenigen Artikeln schwankt es stark und kann unter 0 fallen. Es stabilisiert sich, je mehr Artikel beide Stimmen haben.",
         "none": "k. A.",
-        "noneFact": "k. A. jeder traf jedes Mal dieselbe Entscheidung, also erklärt der Zufall alles"
+        "noneFact": "k. A. heißt, beide trafen bei jedem Artikel dieselbe Entscheidung, also hat Kappa keinen Wert"
       },
       "facts": {
         "startedIt": "hat es {ago} gestartet"
@@ -8936,6 +8936,7 @@
         "failed": "Konnte nicht abgeschlossen werden",
         "found": "{count, number} gefunden",
         "alreadyIn": "{count, number} bereits enthalten",
+        "leftOut": "{count, plural, one {# ausgelassen} other {# ausgelassen}}",
         "added": "{count, number} hinzugefügt",
         "newFrom": "{count, number} neu aus {source}",
         "result": "{result, select, include {{count, number} eingeschlossen} maybe {{count, number} vielleicht} exclude {{count, number} ausgeschlossen} conflict {{count, number} im Konflikt} other {{count, number} warten auf Stimmen}}",
@@ -9377,7 +9378,7 @@
         "seeVotes": "{count, plural, =1 {Ihre Stimme ansehen} other {Ihre # Stimmen ansehen}}",
         "join": "Als Reviewer beitreten",
         "allPapers": "Alle Artikel ansehen",
-        "noneCanSplit": "Jeder Artikel hier wird durch eine Stimme entschieden, also wartet keiner auf eine Klärung"
+        "noneCanSplit": "Jeder Artikel hier wird durch eine Stimme entschieden, also kann keiner in Konflikt geraten"
       },
       "matrix": {
         "nameYou": "{name}, Sie",

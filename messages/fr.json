@@ -7784,7 +7784,7 @@
       "model": {
         "startsLater": "{name} démarre une fois les articles arrivés",
         "nothingToRead": "{name} n'a plus d'articles à lire",
-        "reads": "{name} lit {all, select, true {{count, plural, one {l'article} other {les # articles}}} other {{count, plural, one {l'article pas encore tranché} other {les # articles pas encore tranchés}}}}{when, select, gathered { une fois tous les articles arrivés} finished { une fois le criblage rouvert} paused { quand les modèles reprennent} credits { une fois que l'espace de travail a assez de crédits pour son prochain article} waiting { quand vient le tour de ce criblage} save { dès l'enregistrement} other {}}"
+        "reads": "{name} lit {upTo, select, true {jusqu’à {count, plural, one {# article} other {# articles}}} other {{all, select, true {{count, plural, one {l'article} other {les # articles}}} other {{count, plural, one {l'article pas encore tranché} other {les # articles pas encore tranchés}}}}}}{when, select, gathered { une fois tous les articles arrivés} finished { une fois le criblage rouvert} paused { quand les modèles reprennent} credits { une fois que l'espace de travail a assez de crédits pour son prochain article} waiting { quand vient le tour de ce criblage} save { dès l'enregistrement} other {}}"
       },
       "person": {
         "invited": "{name} reçoit une invitation par e-mail, puis des articles après avoir rejoint",
@@ -8283,7 +8283,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédit} other {# crédits}} par nouvel article, plus s'il est lu depuis un PDF} other {{credits, plural, one {# crédit} other {# crédits}} par nouvel article}}",
         "noneGrow": "Aucune de ces sources ne reçoit de nouveaux articles. Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
         "addToCheck": "Ajoutez une recherche, une collection, une Evidence Community, une bibliothèque Zotero ou un autre criblage à vérifier.",
-        "lastSpent": "{spent} pour {count, plural, one {le dernier article} other {les # derniers articles}}"
+        "lastSpent": "Environ {spent, plural, one {# crédit} other {# crédits}} pour {count, plural, one {l’article} other {les # articles}} de la dernière vérification avec ces modèles"
       },
       "criteria": {
         "helpTitle": "Indispensable et souhaitable",
@@ -8885,7 +8885,7 @@
         "means": "Le degré d'accord entre deux évaluateurs au-delà du hasard, sur les articles où tous deux ont voté. Les sections Méthodes le rapportent. Le chiffre global est la moyenne de toutes les paires.",
         "swings": "Sur quelques articles seulement, il varie fortement et peut descendre sous 0. Il se stabilise à mesure que davantage d'articles ont les deux votes.",
         "none": "n/d",
-        "noneFact": "n/d chacun a pris la même décision à chaque fois, donc le hasard explique tout"
+        "noneFact": "n/d signifie que les deux ont pris la même décision pour chaque article, donc kappa n’a pas de valeur"
       },
       "facts": {
         "startedIt": "l'a démarré {ago}"
@@ -8935,6 +8935,7 @@
         "failed": "N'a pas pu aboutir",
         "found": "{count, number} trouvés",
         "alreadyIn": "{count, number} déjà présents",
+        "leftOut": "{count, plural, one {# écarté} other {# écartés}}",
         "added": "{count, number} ajoutés",
         "newFrom": "{count, number} nouveaux depuis {source}",
         "result": "{result, select, include {{count, number} inclus} maybe {{count, number} peut-être} exclude {{count, number} exclus} conflict {{count, number} en désaccord} other {{count, number} en attente de votes}}",
@@ -9376,7 +9377,7 @@
         "seeVotes": "{count, plural, =1 {Voir votre vote} other {Voir vos # votes}}",
         "join": "Rejoindre comme évaluateur",
         "allPapers": "Voir tous les articles",
-        "noneCanSplit": "Chaque article ici est tranché par un seul vote, aucun n’attend donc d’être tranché"
+        "noneCanSplit": "Chaque article ici est tranché par un seul vote, aucun ne peut donc être en conflit"
       },
       "matrix": {
         "nameYou": "{name}, vous",

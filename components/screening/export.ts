@@ -50,7 +50,7 @@ import {
 import { pdfsMissed, pdfsOf, type Figures } from "./store";
 
 /** A screening as it stands, with the figures the server keeps of it, and the person taking a file out of it. */
-export type Taken = { screening: Screening; counts: Record<Result, number>; me: string; figures: Figures | undefined };
+export type Taken = { screening: Screening; counts: Record<Result, number>; me: string; figures: Figures | undefined; /** Invitations still waiting, which the rule waits for as for anyone (./data.ts `readersOf`). */ invited?: Array<{ email: string }> };
 
 const iso = (at: number) => new Date(at).toISOString();
 /** A day as a file says it, with its year: a file is read long after the year it was made in. */
@@ -359,10 +359,14 @@ export function methodsOf(out: Taken) {
   const { left, bare, merged } = removedOf(screening.sources);
   const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
-  const { people, each } = readersOf(screening);
+  // The people per record the rule asks for, counting invitations still waiting, as every page counts them.
+  const { people, each } = readersOf(screening, out.invited ?? []);
   const [models, reviewers] = [modelsOf(screening), activeReviewers(screening)];
   const pair = people.length > 1 ? pairOf(figures, people[0]!.id, people[1]!.id) : null;
-  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const kappa = pairOf(figures, a.id, b.id)?.kappa; return kappa == null ? [] : [kappa]; })).sort((a, b) => a - b);
+  // Every pair of reviewers who voted on a record in common: kappa where it has a value, and how many pairs voted the same way every time, where it has none. Pairs who shared no record are no pair here.
+  const met = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return pair ? [pair] : []; }));
+  const kappas = met.flatMap((pair) => (pair.kappa === null ? [] : [pair.kappa])).sort((a, b) => a - b);
+  const alike = met.length - kappas.length;
   const names = people.map((person) => person.name);
   // Who reads each record, said the way a methods section says it.
   const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${names[0]})` : people.length === 2 ? `Both human reviewers (${names.join(" and ")})` : `All ${people.length} human reviewers (${names.join(", ")})`) : `${numberWord(each)} of the ${people.length} human reviewers (${names.join(", ")})`;
@@ -390,6 +394,9 @@ export function methodsOf(out: Taken) {
   const everyModel = [...models, ...offModels];
   // Whose votes settle a record: as advice the models' do not, on a record a person has.
   const deciders = modelsAdvise(screening.rule, each, everyModel.length) ? "human reviewers" : "reviewers";
+  // Whether two reviewers whose votes settle records ever voted on the same one: the records, not the settings, say whether a record was settled by one vote.
+  const deciding = new Set(screening.reviewers.filter((one) => one.kind === "person" || !modelsAdvise(screening.rule, each, everyModel.length)).map((one) => one.id));
+  const shared = (figures?.pairs ?? []).some((pair) => deciding.has(pair.a) && deciding.has(pair.b) && pair.matrix.some((n) => n > 0));
   // The people who joined after it began were given only what was still open then.
   const late = people.filter((person) => later(screening, person.addedAt));
   // Anyone else given fewer records than there are, whatever kept one from them: said with how many, so the claim is never wider than what they were given.
@@ -401,8 +408,8 @@ export function methodsOf(out: Taken) {
     return [
       ...(later(screening, model.addedAt) ? [`${model.name} was added after screening began and was given only the records still open then.`] : []),
       ...(missed ? [`${model.name} ${is} not given the ${plural(missed, "record", "records")} that came only as a PDF, which it can't read; ${missed === 1 ? "that record" : "those records"} ${one(missed)} ${othersLeft}.`] : []),
-      // A model doesn't read a record its people settled first (its vote would count for nothing): it says how many it did vote on.
-      ...((model.tally?.cast ?? 0) < kept - missed && (screening.rule.settle === "one" || modelsAdvise(screening.rule, each, everyModel.length)) ? [running ? `${model.name} has voted on ${num(model.tally?.cast ?? 0)} of the ${num(kept)} records so far, and reads none its people settle first.` : `${model.name} voted on ${num(model.tally?.cast ?? 0)} of the ${num(kept)} records; the people settled the others first.`] : []),
+      // A model doesn't read a record that other reviewers' votes settled first (its vote would count for nothing): the places it closed say how many.
+      ...((model.tally?.closed ?? 0) > 0 ? [`${model.name} ${running ? "has not read" : "did not read"} ${plural(model.tally?.closed ?? 0, "record", "records")} that the other reviewers' votes settled first.`] : []),
     ];
   });
   return [
@@ -414,11 +421,11 @@ export function methodsOf(out: Taken) {
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
     readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to ${short.length ? "the records" : `each record${late.length ? " still open when they joined" : ""}`}${screening.rule.blind === "after" ? `. A reviewer ${running ? "does" : "did"} not see the other votes on a record before casting their own` : ""}.${short.length ? ` ${short.map((person) => `${person.name} was given ${num(person.tally?.dealt ?? 0)} of the ${num(kept)}`).join(", and ")}.` : ""}${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}${offPeople.length ? ` ${listed(offPeople.map((person) => person.name))} ${offPeople.length === 1 ? "was" : "were"} taken off after screening began, and the votes they cast until then were kept.` : ""}` : offPeople.length ? `${listed(offPeople.map((person) => person.name))} ${offPeople.length === 1 ? "was a human reviewer" : "were human reviewers"} until taken off, and the votes cast until then were kept.` : "No human reviewer was assigned to the records.",
     everyModel.length ? `${everyModel.length === 1 ? "One AI model" : `${everyModel.length} AI models`} (${everyModel.map((m) => m.name).join(", ")}) ${running && !offModels.length ? (models.length === 1 ? "votes" : "vote") : running ? "have voted" : "voted"} on the records${people.length ? (modelsAdvise(screening.rule, each, everyModel.length) || screening.rule.settle === "one" ? ` as advice only (the human reviewers ${running ? "decide" : "decided"} each record they ${running ? "are" : "were"} given)` : ` as ${everyModel.length === 1 ? "an additional reviewer" : "additional reviewers"}`) : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} ${othersLeft}` : ""}.${offModels.length ? ` ${listed(offModels.map((m) => m.name))} ${offModels.length === 1 ? "was" : "were"} taken off after screening began, and ${offModels.length === 1 ? "its" : "their"} votes cast until then were kept.` : ""}${modelsShort.length ? ` ${modelsShort.join(" ")}` : ""}` : "No AI model took part.",
-    screening.rule.settle !== "one" && !counts.conflict && !changed && !offPeople.length && !canConflict(screening.rule, each, everyModel.length) ? `Each record ${is} settled by the one ${modelsAdvise(screening.rule, each, everyModel.length) ? "human " : ""}vote it ${running ? "is" : "was"} given.` : screening.rule.settle === "all" ? `A record ${is} settled once all of its ${deciders} ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "disagreement", "disagreements")} ${one(counts.conflict)} still to be settled` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its ${deciders} once all of them ${running ? "have" : "had"} voted${everyModel.length && people.length && !modelsAdvise(screening.rule, each, everyModel.length) ? `, provided at least one human reviewer ${running ? "is" : "was"} in that majority` : ""}, and records with no such majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "such record", "such records")} ${one(counts.conflict)} still to be settled` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it${models.length && people.length ? `; where a human reviewer ${running ? "is" : "was"} assigned a record, the first human vote ${running ? "settles" : "settled"} it` : ""}.`,
+    screening.rule.settle !== "one" && !counts.conflict && !shared && !canConflict(screening.rule, each, everyModel.length) ? `Each record ${is} settled by the one ${modelsAdvise(screening.rule, each, everyModel.length) ? "human " : ""}vote it ${running ? "is" : "was"} given.` : screening.rule.settle === "all" ? `A record ${is} settled once all of its ${deciders} ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "disagreement", "disagreements")} ${one(counts.conflict)} still to be settled` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its ${deciders} once all of them ${running ? "have" : "had"} voted${everyModel.length && people.length && !modelsAdvise(screening.rule, each, everyModel.length) ? `, provided at least one human reviewer ${running ? "is" : "was"} in that majority` : ""}, and records with no such majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "such record", "such records")} ${one(counts.conflict)} still to be settled` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it${models.length && people.length ? `; where a human reviewer ${running ? "is" : "was"} assigned a record, the first human vote ${running ? "settles" : "settled"} it` : ""}.`,
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began. Votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${names[0]} and ${names[1]} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (${pair.kappa === null ? "Cohen's kappa could not be estimated, as both gave the same decision every time" : `Cohen's kappa ${pair.kappa.toFixed(2)}`}).` : "",
-    kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${kappas.length < (reviewers.length * (reviewers.length - 1)) / 2 ? "; for the other pairs every vote was the same, and kappa has no value" : ""}.` : "",
+    kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${alike ? `; ${alike === 1 ? "one other pair" : `${alike} other pairs`} gave the same decision on every record they shared, so kappa has no value for ${alike === 1 ? "it" : "them"}` : ""}.` : "",
     `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
   ].filter(Boolean).join(" ");
 }

@@ -7784,7 +7784,7 @@
       "model": {
         "startsLater": "लेख आते ही {name} शुरू होगा",
         "nothingToRead": "{name} के पास पढ़ने को कोई लेख नहीं बचा",
-        "reads": "{when, select, gathered {सभी लेख आ जाने पर } finished {स्क्रीनिंग फिर खुलने पर } paused {मॉडल फिर शुरू होने पर } credits {वर्कस्पेस में अगले लेख के लिए पर्याप्त क्रेडिट होने पर } waiting {इस स्क्रीनिंग की बारी आने पर } save {इसे सहेजते ही } other {}}{name} {all, select, true {सभी {count, plural, one {# लेख} other {# लेख}}} other {अभी तय न हुए {count, plural, one {# लेख} other {# लेख}}}} पढ़ेगा"
+        "reads": "{when, select, gathered {सभी लेख आ जाने पर } finished {स्क्रीनिंग फिर खुलने पर } paused {मॉडल फिर शुरू होने पर } credits {वर्कस्पेस में अगले लेख के लिए पर्याप्त क्रेडिट होने पर } waiting {इस स्क्रीनिंग की बारी आने पर } save {इसे सहेजते ही } other {}}{name} {upTo, select, true {अधिकतम {count, plural, one {# लेख} other {# लेख}}} other {{all, select, true {सभी {count, plural, one {# लेख} other {# लेख}}} other {अभी तय न हुए {count, plural, one {# लेख} other {# लेख}}}}}} पढ़ेगा"
       },
       "person": {
         "invited": "{name} को ईमेल से आमंत्रण मिलेगा, और जुड़ने के बाद लेख",
@@ -8283,7 +8283,7 @@
         "perNew": "{pdf, select, true {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}, PDF के रूप में पढ़ने पर ज़्यादा} other {हर नए लेख के लिए {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}}}",
         "noneGrow": "इनमें से किसी स्रोत में नए लेख नहीं आते। देखने के लिए एक खोज, संग्रह, Evidence Community, Zotero लाइब्रेरी या कोई और स्क्रीनिंग जोड़ें।",
         "addToCheck": "देखने के लिए एक खोज, संग्रह, Evidence Community, Zotero लाइब्रेरी या कोई और स्क्रीनिंग जोड़ें।",
-        "lastSpent": "पिछले {count, plural, one {# लेख} other {# लेखों}} के लिए {spent}"
+        "lastSpent": "इन मॉडलों से पिछली जाँच के {count, plural, one {# पेपर} other {# पेपरों}} के लिए लगभग {spent, plural, one {# क्रेडिट} other {# क्रेडिट}}"
       },
       "criteria": {
         "helpTitle": "अनिवार्य और वैकल्पिक",
@@ -8885,7 +8885,7 @@
         "means": "दोनों के वोट वाले लेखों पर, दो समीक्षक संयोग से कितना ज़्यादा सहमत हैं। विधि वाले भाग इसकी रिपोर्ट करते हैं। कुल आँकड़ा हर जोड़े का औसत है।",
         "swings": "कुछ ही लेखों पर यह बहुत ऊपर-नीचे होता है, और 0 से नीचे जा सकता है। जैसे-जैसे ज़्यादा लेखों पर दोनों वोट आते हैं, यह स्थिर होता है।",
         "none": "लागू नहीं",
-        "noneFact": "लागू नहीं हर बार दोनों ने एक ही फ़ैसला किया, इसलिए संयोग ही सब समझाता है"
+        "noneFact": "लागू नहीं का मतलब है कि दोनों ने हर पेपर पर एक ही फ़ैसला किया, इसलिए कप्पा का कोई मान नहीं है"
       },
       "facts": {
         "startedIt": "ने इसे {ago} शुरू किया"
@@ -8935,6 +8935,7 @@
         "failed": "पूरी नहीं हो सकी",
         "found": "{count, number} मिले",
         "alreadyIn": "{count, number} पहले से इसमें",
+        "leftOut": "{count, plural, one {# छोड़ा गया} other {# छोड़े गए}}",
         "added": "{count, number} जोड़े गए",
         "newFrom": "{source} से {count, number} नए",
         "result": "{result, select, include {{count, number} शामिल} maybe {{count, number} शायद} exclude {{count, number} बाहर} conflict {{count, number} मतभेद में} other {{count, number} वोट की प्रतीक्षा में}}",
@@ -9376,7 +9377,7 @@
         "seeVotes": "{count, plural, =1 {अपना वोट देखें} other {अपने # वोट देखें}}",
         "join": "समीक्षक के रूप में जुड़ें",
         "allPapers": "सभी लेख देखें",
-        "noneCanSplit": "यहाँ हर पेपर एक वोट से तय होता है, इसलिए कोई निपटारे की प्रतीक्षा में नहीं है"
+        "noneCanSplit": "यहाँ हर पेपर एक वोट से तय होता है, इसलिए कोई टकराव में नहीं जा सकता"
       },
       "matrix": {
         "nameYou": "{name}, आप",

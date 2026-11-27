@@ -518,7 +518,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
-  const conflicts = splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
+  const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, saved ? (open?.invited ?? []) : []);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
@@ -1586,7 +1586,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {models.length && draft.living ? (
                     <>
                     <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
-                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.credits(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
+                    {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.creditsOf(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
                     </>
                   ) : null}
                 </div>

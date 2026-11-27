@@ -152,7 +152,7 @@
     "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
     "join": "Join as a reviewer",
     "allPapers": "See all the papers",
-    "noneCanSplit": "Each paper here is settled by one vote, so none waits to be settled"
+    "noneCanSplit": "Each paper here is settled by one vote, so none can be in conflict"
   },
   "matrix": {
     "nameYou": "{name}, you",

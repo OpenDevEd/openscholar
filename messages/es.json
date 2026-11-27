@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} empieza cuando lleguen los artículos",
         "nothingToRead": "A {name} no le quedan artículos que leer",
-        "reads": "{name} lee {all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
+        "reads": "{name} lee {upTo, select, true {hasta {count, plural, one {# artículo} other {# artículos}}} other {{all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}}}{when, select, gathered { cuando lleguen todos los artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para el siguiente artículo} waiting { cuando llegue el turno de este cribado} save { en cuanto se guarde esto} other {}}"
       },
       "person": {
         "invited": "{name} recibe una invitación por correo, y artículos cuando se una",
@@ -8284,7 +8284,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo, más si se lee como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artículo nuevo}}",
         "noneGrow": "Ninguna de estas fuentes añade artículos. Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
         "addToCheck": "Añada una búsqueda, una colección, una Evidence Community, una biblioteca de Zotero u otro cribado para comprobar.",
-        "lastSpent": "{spent} {count, plural, one {por el último artículo} other {por los últimos # artículos}}"
+        "lastSpent": "Unos {spent, plural, one {# crédito} other {# créditos}} por {count, plural, one {el # artículo} other {los # artículos}} de la última comprobación con estos modelos"
       },
       "criteria": {
         "helpTitle": "Requisitos y deseables",
@@ -8886,7 +8886,7 @@
         "means": "Cuánto coinciden dos revisores más allá del azar, en los artículos que ambos han votado. Se indica en la sección de métodos. La cifra global es la media de todos los pares.",
         "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos.",
         "none": "n/d",
-        "noneFact": "n/d cada uno tomó siempre la misma decisión, así que el azar lo explica todo"
+        "noneFact": "n/d significa que ambos tomaron la misma decisión en cada artículo, así que kappa no tiene valor"
       },
       "facts": {
         "startedIt": "lo empezó {ago}"
@@ -8936,6 +8936,7 @@
         "failed": "No se pudo terminar",
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} ya estaban",
+        "leftOut": "{count, plural, one {# omitido} other {# omitidos}}",
         "added": "{count, number} añadidos",
         "newFrom": "{count, number} nuevos de {source}",
         "result": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
@@ -9377,7 +9378,7 @@
         "seeVotes": "{count, plural, =1 {Ver su voto} other {Ver sus # votos}}",
         "join": "Unirse como revisor",
         "allPapers": "Ver todos los artículos",
-        "noneCanSplit": "Cada artículo aquí se decide con un voto, así que ninguno espera una resolución"
+        "noneCanSplit": "Cada artículo aquí se decide con un voto, así que ninguno puede quedar en conflicto"
       },
       "matrix": {
         "nameYou": "{name}, usted",

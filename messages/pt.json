@@ -7785,7 +7785,7 @@
       "model": {
         "startsLater": "{name} começa quando os artigos chegarem",
         "nothingToRead": "{name} não tem mais artigos para ler",
-        "reads": "{name} lê {all, select, true {{count, plural, one {o # artigo} other {todos os # artigos}}} other {{count, plural, one {o # artigo ainda não decidido} other {os # artigos ainda não decididos}}}}{when, select, gathered { quando todos os artigos chegarem} finished { quando a triagem for reaberta} paused { quando os modelos retomarem} credits { quando o espaço de trabalho tiver créditos suficientes para o artigo seguinte} waiting { quando chegar a vez desta triagem} save { assim que isto for guardado} other {}}"
+        "reads": "{name} lê {upTo, select, true {até {count, plural, one {# artigo} other {# artigos}}} other {{all, select, true {{count, plural, one {o # artigo} other {todos os # artigos}}} other {{count, plural, one {o # artigo ainda não decidido} other {os # artigos ainda não decididos}}}}}}{when, select, gathered { quando todos os artigos chegarem} finished { quando a triagem for reaberta} paused { quando os modelos retomarem} credits { quando o espaço de trabalho tiver créditos suficientes para o artigo seguinte} waiting { quando chegar a vez desta triagem} save { assim que isto for guardado} other {}}"
       },
       "person": {
         "invited": "{name} recebe um convite por email, e artigos quando aderir",
@@ -8284,7 +8284,7 @@
         "perNew": "{pdf, select, true {{credits, plural, one {# crédito} other {# créditos}} por artigo novo, mais se for lido como PDF} other {{credits, plural, one {# crédito} other {# créditos}} por artigo novo}}",
         "noneGrow": "Nenhuma destas fontes ganha artigos. Adicione uma pesquisa, uma coleção, uma Evidence Community, uma biblioteca do Zotero ou outra triagem para verificar.",
         "addToCheck": "Adicione uma pesquisa, uma coleção, uma Evidence Community, uma biblioteca do Zotero ou outra triagem para verificar.",
-        "lastSpent": "{spent} {count, plural, one {pelo último artigo} other {pelos últimos # artigos}}"
+        "lastSpent": "Cerca de {spent, plural, one {# crédito} other {# créditos}} pelos {count, plural, one {# artigo} other {# artigos}} da última verificação com estes modelos"
       },
       "criteria": {
         "helpTitle": "Obrigatório e opcional",
@@ -8886,7 +8886,7 @@
         "means": "Quanto dois revisores concordam para além do acaso, nos artigos em que ambos votaram. As secções de métodos indicam-no. O valor global é a média de todos os pares.",
         "swings": "Com poucos artigos oscila muito, e pode descer abaixo de 0. Estabiliza à medida que mais artigos têm os dois votos.",
         "none": "n/d",
-        "noneFact": "n/d cada um tomou sempre a mesma decisão, por isso o acaso explica tudo"
+        "noneFact": "n/d significa que ambos tomaram a mesma decisão em todos os artigos, por isso o kappa não tem valor"
       },
       "facts": {
         "startedIt": "iniciou-a {ago}"
@@ -8936,6 +8936,7 @@
         "failed": "Não foi possível terminar",
         "found": "{count, number} encontrados",
         "alreadyIn": "{count, number} já na triagem",
+        "leftOut": "{count, plural, one {# deixado de fora} other {# deixados de fora}}",
         "added": "{count, number} adicionados",
         "newFrom": "{count, number} novos de {source}",
         "result": "{result, select, include {{count, number} incluídos} maybe {{count, number} talvez} exclude {{count, number} excluídos} conflict {{count, number} em conflito} other {{count, number} à espera de votos}}",
@@ -9377,7 +9378,7 @@
         "seeVotes": "{count, plural, =1 {Ver o seu voto} other {Ver os seus # votos}}",
         "join": "Juntar-se como revisor",
         "allPapers": "Ver todos os artigos",
-        "noneCanSplit": "Cada artigo aqui é decidido por um voto, por isso nenhum espera resolução"
+        "noneCanSplit": "Cada artigo aqui é decidido por um voto, por isso nenhum pode ficar em conflito"
       },
       "matrix": {
         "nameYou": "{name}, você",
