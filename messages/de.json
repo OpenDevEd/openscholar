@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
     "asRole": "als {role}",
     "memberCan": "Mitglieder suchen, speichern, sichten und extrahieren mit allem, was die Organisation teilt.",
-    "adminCan": "Admins können dasselbe und außerdem Personen einladen und entfernen sowie Einstellungen und Ausgaben verwalten."
+    "adminCan": "Admins können dasselbe und außerdem Personen einladen und entfernen sowie Einstellungen und Ausgaben verwalten.",
+    "badge": {
+      "screen": "{count, plural, one {# Screening braucht Sie} other {# Screenings brauchen Sie}}",
+      "screenWhy": "Artikel zum Prüfen, Konflikte zum Entscheiden oder Fragen an Sie",
+      "publish": "{count, plural, one {# Bericht ist bereit zur Veröffentlichung} other {# Berichte sind bereit zur Veröffentlichung}}",
+      "publishWhy": "{count, plural, one {Er geht online, sobald Sie ihn aktivieren} other {Sie gehen online, sobald Sie sie aktivieren}}"
+    }
   },
   "models": {
     "changeInSettings": "In den KI-Einstellungen ändern"

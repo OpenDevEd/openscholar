@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
     "asRole": "as {role}",
     "memberCan": "Lede soek, stoor, sif en onttrek met alles wat die organisasie deel.",
-    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur."
+    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur.",
+    "badge": {
+      "screen": "{count, plural, one {# sifting het jou nodig} other {# siftings het jou nodig}}",
+      "screenWhy": "Artikels om te sif, konflikte om te besleg of vrae aan jou",
+      "publish": "{count, plural, one {# verslag is gereed om te publiseer} other {# verslae is gereed om te publiseer}}",
+      "publishWhy": "{count, plural, one {Dit word gepubliseer sodra jy dit aktiveer} other {Hulle word gepubliseer sodra jy hulle aktiveer}}"
+    }
   },
   "models": {
     "changeInSettings": "Verander in KI-instellings"

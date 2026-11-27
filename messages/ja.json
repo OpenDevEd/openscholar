@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
     "asRole": "{role}として",
     "memberCan": "メンバーは、組織で共有されているものすべてを使って検索・保存・スクリーニング・抽出ができます。",
-    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。"
+    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。",
+    "badge": {
+      "screen": "{count, plural, other {#件のスクリーニングがあなたを待っています}}",
+      "screenWhy": "スクリーニングする論文、判断する対立、またはあなたへの質問",
+      "publish": "{count, plural, other {#件のレポートを公開できます}}",
+      "publishWhy": "{count, plural, other {有効にすると公開されます}}"
+    }
   },
   "models": {
     "changeInSettings": "AI 設定で変更"

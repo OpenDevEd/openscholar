@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Esto no es una dirección de correo: {values}. Corrígela o quítala para crear la organización.} other {Estas no son direcciones de correo: {values}. Corrígelas o quítalas para crear la organización.}}",
     "asRole": "como {role}",
     "memberCan": "Los miembros buscan, guardan, criban y extraen con todo lo que comparte la organización.",
-    "adminCan": "Los administradores pueden hacer lo mismo y además invitar y quitar personas y gestionar los ajustes y el gasto."
+    "adminCan": "Los administradores pueden hacer lo mismo y además invitar y quitar personas y gestionar los ajustes y el gasto.",
+    "badge": {
+      "screen": "{count, plural, one {# cribado le necesita} other {# cribados le necesitan}}",
+      "screenWhy": "Artículos que cribar, conflictos que resolver o preguntas para usted",
+      "publish": "{count, plural, one {# informe está listo para publicarse} other {# informes están listos para publicarse}}",
+      "publishWhy": "{count, plural, one {Se publica cuando usted lo active} other {Se publican cuando usted los active}}"
+    }
   },
   "models": {
     "changeInSettings": "Cambiar en los ajustes de IA"

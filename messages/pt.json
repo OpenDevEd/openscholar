@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
     "asRole": "como {role}",
     "memberCan": "Os membros pesquisam, guardam, triam e extraem com tudo o que a organização partilha.",
-    "adminCan": "Os administradores podem fazer o mesmo e também convidar e remover pessoas e gerir definições e gastos."
+    "adminCan": "Os administradores podem fazer o mesmo e também convidar e remover pessoas e gerir definições e gastos.",
+    "badge": {
+      "screen": "{count, plural, one {# triagem precisa de si} other {# triagens precisam de si}}",
+      "screenWhy": "Artigos para triar, conflitos para resolver ou perguntas para si",
+      "publish": "{count, plural, one {# relatório está pronto para publicar} other {# relatórios estão prontos para publicar}}",
+      "publishWhy": "{count, plural, one {É publicado quando o ativar} other {São publicados quando os ativar}}"
+    }
   },
   "models": {
     "changeInSettings": "Alterar nas definições de IA"

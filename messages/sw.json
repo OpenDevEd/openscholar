@@ -5088,7 +5088,13 @@
     "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
     "asRole": "kama {role}",
     "memberCan": "Wanachama hutafuta, huhifadhi, huchuja na kutoa data kwa kila kitu ambacho shirika linashiriki.",
-    "adminCan": "Wasimamizi wanaweza kufanya hivyo hivyo, na pia kualika na kuondoa watu na kusimamia mipangilio na matumizi."
+    "adminCan": "Wasimamizi wanaweza kufanya hivyo hivyo, na pia kualika na kuondoa watu na kusimamia mipangilio na matumizi.",
+    "badge": {
+      "screen": "{count, plural, one {Uchujaji # unakuhitaji} other {Uchujaji # unakuhitaji}}",
+      "screenWhy": "Makala ya kuchuja, migongano ya kutatua au maswali uliyoulizwa",
+      "publish": "{count, plural, one {Ripoti # iko tayari kuchapishwa} other {Ripoti # ziko tayari kuchapishwa}}",
+      "publishWhy": "{count, plural, one {Inachapishwa ukiiwasha} other {Zinachapishwa ukiziwasha}}"
+    }
   },
   "models": {
     "changeInSettings": "Badilisha kwenye mipangilio ya AI"

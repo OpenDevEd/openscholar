@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
     "asRole": "njenge-{role}",
     "memberCan": "Amalungu ayasesha, alondoloze, ahlunge futhi akhiphe ngakho konke inhlangano ekwabelanayo.",
-    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali."
+    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali.",
+    "badge": {
+      "screen": "{count, plural, one {Ukuhlunga okungu-# kuyakudinga} other {Ukuhlunga okungu-# kuyakudinga}}",
+      "screenWhy": "Amaphepha okuhlunga, ukungqubuzana okuxazululwayo noma imibuzo obuzwe yona",
+      "publish": "{count, plural, one {Umbiko ongu-# usulungele ukushicilelwa} other {Imibiko engu-# isilungele ukushicilelwa}}",
+      "publishWhy": "{count, plural, one {Ushicilelwa uma uwuvula} other {Ishicilelwa uma uyivula}}"
+    }
   },
   "models": {
     "changeInSettings": "Shintsha ezilungiselelweni ze-AI"

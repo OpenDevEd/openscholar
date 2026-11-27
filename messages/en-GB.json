@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
     "asRole": "as {role}",
     "memberCan": "Members search, save, screen and extract with everything the organization shares.",
-    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending."
+    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending.",
+    "badge": {
+      "screen": "{count, plural, one {# screening needs you} other {# screenings need you}}",
+      "screenWhy": "Papers to screen, conflicts to settle or questions put to you",
+      "publish": "{count, plural, one {# report is ready to go live} other {# reports are ready to go live}}",
+      "publishWhy": "{count, plural, one {It goes live once you activate it} other {They go live once you activate them}}"
+    }
   },
   "models": {
     "changeInSettings": "Change in AI settings"

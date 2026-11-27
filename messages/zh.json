@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
     "asRole": "身份：{role}",
     "memberCan": "成员可以用组织共享的所有内容进行搜索、保存、筛查和提取。",
-    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。"
+    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。",
+    "badge": {
+      "screen": "{count, plural, other {# 个筛选需要你}}",
+      "screenWhy": "待筛选的论文、待裁定的分歧或向你提出的问题",
+      "publish": "{count, plural, other {# 份报告可以上线}}",
+      "publishWhy": "{count, plural, other {激活后即上线}}"
+    }
   },
   "models": {
     "changeInSettings": "在 AI 设置中更改"

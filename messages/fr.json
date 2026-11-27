@@ -5087,7 +5087,13 @@
     "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
     "asRole": "en tant que {role}",
     "memberCan": "Les membres recherchent, enregistrent, trient et extraient avec tout ce que l'organisation partage.",
-    "adminCan": "Les admins peuvent faire de même, et aussi inviter et retirer des personnes et gérer les paramètres et les dépenses."
+    "adminCan": "Les admins peuvent faire de même, et aussi inviter et retirer des personnes et gérer les paramètres et les dépenses.",
+    "badge": {
+      "screen": "{count, plural, one {# tri a besoin de vous} other {# tris ont besoin de vous}}",
+      "screenWhy": "Des articles à trier, des conflits à trancher ou des questions qui vous sont posées",
+      "publish": "{count, plural, one {# rapport est prêt à être publié} other {# rapports sont prêts à être publiés}}",
+      "publishWhy": "{count, plural, one {Il est publié dès que vous l’activez} other {Ils sont publiés dès que vous les activez}}"
+    }
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"
