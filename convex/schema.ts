@@ -1633,6 +1633,7 @@ export default defineSchema({
   })
     .index("by_result", ["resultId"])
     .index("by_job_and_place", ["jobId", "place"])
+    .index("by_result_and_reviewer", ["resultId", "reviewerId"])
     .index("by_reviewer_and_status_and_place", ["reviewerId", "status", "place"])
     .index("by_reviewer_and_status_and_lean_and_place", ["reviewerId", "status", "lean", "place"])
     // A reviewer's votes, the latest first, all of them or the ones cast one way.

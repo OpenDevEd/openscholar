@@ -326,7 +326,8 @@ async function freeToMove(ctx: Pick<QueryCtx, "db">, from: Id<"screeningReviewer
   let below: number | undefined;
   for (let stretch = 0; stretch < MOVE_STRETCHES && found.length < most; stretch++) {
     const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => (below === undefined ? q.eq("reviewerId", from).eq("status", "waiting") : q.eq("reviewerId", from).eq("status", "waiting").lt("place", below))).order("desc").take(MOVE_LOOKED);
-    for (const vote of waiting) if (found.length < most && !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === to)) found.push(vote);
+    // One indexed look for the other person on each paper: a large team's votes are never all read.
+    for (const vote of waiting) if (found.length < most && !(await ctx.db.query("screeningVotes").withIndex("by_result_and_reviewer", (q) => q.eq("resultId", vote.resultId).eq("reviewerId", to)).first())) found.push(vote);
     if (waiting.length < MOVE_LOOKED) break;
     below = waiting.at(-1)!.place;
   }

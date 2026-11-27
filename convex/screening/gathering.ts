@@ -357,7 +357,7 @@ export const fill = internalMutation({
     const fileSpread = { ...source.fileSpread };
     // The most papers the workspace's plan gives one screening: past it, a source's reading stops, and says so.
     const most = await planLimit(ctx, job.workspaceId, "request_papers");
-    // The papers of sources taken out leave room for others: the limit counts the papers the screening has now.
+    // The papers of sources taken out leave room for others: the limit counts the papers the screening has now (`present`).
     const gone = (await progressRow(ctx, job._id))?.withdrawn ?? 0;
     let capped = false;
     // This reading of the source: each time it is read from its start is a pass of its own (./dealing.ts `readAgain`).
@@ -398,7 +398,10 @@ export const fill = internalMutation({
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
       // It finds the papers this step already took too: a mutation reads what it wrote.
       const twin = await twinOf(ctx, job._id, keys);
+      // The papers the screening has now: every one it took, less those taken out, with any brought back in this step. Bringing one back takes room as a new one does.
+      const present = check.from + check.added + taken - gone + back;
       if (twin?.withdrawn) {
+        if (typeof most === "number" && present >= most) { capped = true; break; }
         // Its source was taken out, and this one holds it too: it comes back as this source's paper, in the place it had, with the votes cast on it. The worker gives its open places out again.
         await ctx.db.patch("screeningResults", twin._id, { withdrawn: undefined, sourceId, record: paper.record, doneAt: ctx.db.vars.commitTs });
         back++;
@@ -416,7 +419,7 @@ export const fill = internalMutation({
       // A paper the screening already holds is passed over above, whatever it now lacks: an abstract that a lookup failed to bring this time leaves out only a paper that is new.
       if (!abstract && !paper.file) { await leave(title, "abstract", named); continue; }
       const place = check.from + check.added + taken;
-      if (typeof most === "number" && place - gone >= most) { capped = true; break; }
+      if (typeof most === "number" && present >= most) { capped = true; break; }
       const resultId = await ctx.db.insert("screeningResults", {
         ...sourceMetadata(paper),
         jobId: job._id,
