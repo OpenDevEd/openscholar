@@ -635,9 +635,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const soFar = String(reading);
   // The PDFs it was handed, each read once as it was added, which the workspace paid for then.
   const handedPdfs = fresh ? sources.reduce((sum, source) => sum + (source.set?.kind === "pdf" ? baseTotal(source) : 0), 0) : 0;
-  // Why it can't start yet: it needs papers and a reviewer first. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
-  const stop: Block | null = !papers || reading
-    ? { text: reading ? t("block.reading") : t("block.addPapers"), section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
+  // Why it can't start yet. It may start with no papers, and wait for them. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
+  const stop: Block | null = reading
+    ? { text: t("block.reading"), section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: t("block.addReviewer"), section: "reviewers", focus: "#add-person" }
       : lacking;

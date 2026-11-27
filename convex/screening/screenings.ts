@@ -234,7 +234,8 @@ export const open = internalMutation({
     const title = name.trim();
     if (!title || title.length > SCREENING_TEXT.name) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
     if ((question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
-    if (!sources.length || sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads 1 to ${MAX_SOURCES} sources.`);
+    // It may start with no source: its reviewers and criteria are set, and it waits for papers until one is added.
+    if (sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads up to ${MAX_SOURCES} sources.`);
     if (!people.length && !models.length && !guests) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
     if (new Set(people).size !== people.length || new Set(models.map((one) => `${one.model}:${one.effort ?? ""}`)).size !== models.length) throw createError("VALIDATION_ERROR", "Each reviewer is on a screening once.");
     const most = await modelsLimit(ctx, workspaceId);

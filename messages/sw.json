@@ -8146,7 +8146,6 @@
         "orphaned": "{many, select, true {{count, plural, one {Makala # ni PDF tu, ambayo modeli hizi haziwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hizi haziwezi kusoma. Ongeza mtu}}} other {{count, plural, one {Makala # ni PDF tu, ambayo modeli hii haiwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hii haiwezi kusoma. Ongeza mtu}}}}",
         "creditsShort": "{credits, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
         "reading": "Inasoma makala",
-        "addPapers": "Ongeza makala ili uanze",
         "addReviewer": "Ongeza mkaguzi ili uanze"
       },
       "unread": "{count, plural, other {# hazikuweza kusomwa}}",
@@ -8792,7 +8791,7 @@
       "empty": {
         "arriving": "Makala ziko njiani",
         "arrivingSays": "{reviewer, select, true {Zinaonekana hapa zinapofika kutoka kwenye vyanzo. Unaweza kuanza kuchuja mara zile za kwanza zikifika.} other {Zinaonekana hapa zinapofika kutoka kwenye vyanzo.}}",
-        "noPaper": "{sources, select, true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {Uchujaji huu hauna chanzo cha kupata makala.}}",
+        "noPaper": "{sources, select, true {Vyanzo havikuwa na makala inayoweza kuchujwa.} other {Inasubiri makala. Ongeza chanzo, na makala zake zitaenda kwa wakaguzi.}}",
         "toSources": "{sources, select, true {Ona vyanzo} other {Ongeza chanzo}}"
       },
       "progress": {
