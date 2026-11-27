@@ -6528,6 +6528,7 @@
       "registration": "DOI-registrasie",
       "zenodoSandbox": "Zenodo-toetsomgewing",
       "crossrefSandbox": "Crossref-toetsomgewing",
+      "docidSandbox": "DOCiD-toetsomgewing",
       "off": "Af",
       "zenodoHint": "Argiveer elke verslag se PDF.",
       "crossrefHint": "Gee elke verslag 'n DOI onder jou voorvoegsel. As dit af is, stop publisering: Zenodo alleen kan nog nie 'n verslag sy DOI gee nie.",

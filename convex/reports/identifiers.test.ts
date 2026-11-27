@@ -38,7 +38,7 @@ describe("identifier services on reports", () => {
     expect(report.doi).toBe("");
     expect(report.registration).toMatchObject({ crossref: false, docid: true, cited: "docid" });
     // DOCiD mints it in the background; once it has, the line the PDF carries names it.
-    await world.t.mutation(internal.reports.registration.mintedAtSigning, { reportId: report._id, handle: "20.500.14351/abc123" });
+    await world.t.mutation(internal.reports.registration.mintedAtSigning, { reportId: report._id, handle: "20.500.14351/abc123", sandbox: false });
     expect((await row(world.t, key)).byline).toContain("https://hdl.handle.net/20.500.14351/abc123");
   });
 

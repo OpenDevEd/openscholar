@@ -123,9 +123,9 @@ export const end = internalMutation({
  * Crossref took the deposit (it is then looked for, not sent again), or Zenodo made a draft (it is carried on from).
  */
 export const noted = internalMutation({
-  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()), docidHandle: v.optional(v.string()), docidPublicationId: v.optional(v.number()), docidRetired: v.optional(v.boolean()), docidDepositTried: v.optional(v.boolean()) },
+  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()), docidHandle: v.optional(v.string()), docidSandbox: v.optional(v.boolean()), docidPublicationId: v.optional(v.number()), docidRetired: v.optional(v.boolean()), docidDepositTried: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId, docidHandle, docidPublicationId, docidRetired, docidDepositTried }) => {
+  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId, docidHandle, docidSandbox, docidPublicationId, docidRetired, docidDepositTried }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report) return null;
     // A draft is the report's whichever asking made it; a deposit is of the record as that asking had it.
@@ -134,7 +134,7 @@ export const noted = internalMutation({
     // is part of what the report's page and the search index show, so it counts as a change.
     if (docidHandle !== undefined || docidPublicationId !== undefined || docidRetired !== undefined || docidDepositTried !== undefined) {
       const docid = report.registrations?.docid ?? { state: "queued" as const };
-      const kept = { registrations: { ...report.registrations, docid: { ...docid, ...(docidHandle && { handle: docidHandle }), ...(docidPublicationId !== undefined && { publicationId: docidPublicationId }), ...(docidRetired !== undefined && { retired: docidRetired }), ...(docidDepositTried !== undefined && { depositTried: docidDepositTried }) } } };
+      const kept = { registrations: { ...report.registrations, docid: { ...docid, ...(docidHandle && { handle: docidHandle, sandbox: docidSandbox }), ...(docidPublicationId !== undefined && { publicationId: docidPublicationId }), ...(docidRetired !== undefined && { retired: docidRetired }), ...(docidDepositTried !== undefined && { depositTried: docidDepositTried }) } } };
       if (docidHandle && docidHandle !== docid.handle) await touch(ctx, report, kept);
       else await ctx.db.patch("reports", reportId, kept);
     }
@@ -232,15 +232,15 @@ export const toMint = internalQuery({
 
 /** Keeps the Handle DOCiD minted at signing and, when the report cites it, puts it in the line its PDF carries. */
 export const mintedAtSigning = internalMutation({
-  args: { reportId: v.id("reports"), handle: v.string() },
+  args: { reportId: v.id("reports"), handle: v.string(), sandbox: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { reportId, handle }) => {
+  handler: async (ctx, { reportId, handle, sandbox }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report || report.registrations?.docid?.handle) return null;
     const settings = await reportSettings(ctx);
     const cites = report.registration.cited === "docid" || !report.doi;
     await touch(ctx, report, {
-      registrations: { ...report.registrations, docid: { state: report.registrations?.docid?.state ?? "none", handle } },
+      registrations: { ...report.registrations, docid: { state: report.registrations?.docid?.state ?? "none", handle, sandbox } },
       registrationError: undefined,
       ...(cites && report.licence && { byline: bylineOf({ ...settings.series, ...seriesOf(report, settings.series) }, `https://hdl.handle.net/${handle}`, report.licence) }),
     });

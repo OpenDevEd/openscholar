@@ -6527,6 +6527,7 @@
       "registration": "DOI 登録",
       "zenodoSandbox": "Zenodo テスト環境",
       "crossrefSandbox": "Crossref テスト環境",
+      "docidSandbox": "DOCiD テスト環境",
       "off": "オフ",
       "zenodoHint": "各レポートの PDF をアーカイブします。",
       "crossrefHint": "各レポートにあなたのプレフィックスで DOI を付与します。オフにすると公開は止まります。Zenodo だけではまだレポートに DOI を付与できません。",

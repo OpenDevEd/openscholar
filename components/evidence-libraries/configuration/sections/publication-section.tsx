@@ -7,7 +7,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
-import { PersonIcon, FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
+import { PersonIcon, ShieldCheck, PublishIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -20,7 +20,6 @@ import { useWithPage } from "../preloads";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectTrigger,
@@ -34,6 +33,7 @@ import { OptionSelect, type PickerOption } from "@/components/shared/option-pick
 import { COMMON_ZENODO_LICENCES, ZENODO_LICENCES, isZenodoLicence, licenceShortName, zenodoLicenceTitle } from "@/lib/zenodo-licences";
 import { FieldGroup, PanelRow } from "../fields";
 import { DocidAccount } from "./docid-account";
+import { CredentialMode, type ActiveMode } from "./credential-mode";
 
 /**
  * Zenodo's licences as picker rows, the common ones first. A Creative Commons licence goes by its short name with its
@@ -52,62 +52,6 @@ const licenceOptions = (common: string, all: string): PickerOption[] => [
 type Saved = FunctionReturnType<
   typeof api.evidenceLibraries.publicationProviders.get
 >;
-type ActiveMode = "sandbox" | "custom";
-
-/**
- * Which account a provider is used with: our sandbox, credentials typed in, or the person's own connected account
- * (Zenodo on a community only, `own`, #1237).
- */
-function CredentialMode<Mode extends string = ActiveMode>({
-  provider,
-  value,
-  onChange,
-  own,
-  children,
-}: {
-  provider: string;
-  value: Mode;
-  onChange: (mode: Mode) => void;
-  /** What the connected-account tab shows; without it there is no such tab. */
-  own?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const t = useTranslations("publicationSettings");
-  return (
-    <Tabs
-      value={value}
-      onValueChange={(mode) => onChange(mode as Mode)}
-      className="gap-4"
-    >
-      {/* Three ways don't fit a phone's width on one line: they wrap rather than being cut off. */}
-      <TabsList aria-label={t("credentials", { provider })} className="max-w-full flex-wrap justify-start group-data-[orientation=horizontal]/tabs:h-auto">
-        <TabsTrigger value="sandbox">
-          <FlaskConical />
-          {t("sandbox")}
-        </TabsTrigger>
-        {own ? (
-          <TabsTrigger value="own">
-            <ZenodoMark className="size-4 rounded-[4px]" />
-            {t("account")}
-          </TabsTrigger>
-        ) : null}
-        <TabsTrigger value="custom">
-          <KeyRound />
-          {t("custom")}
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="sandbox">
-        <PanelRow
-          title={t("sandboxTitle")}
-          hint={t("sandboxHint")}
-          leading={<FlaskConical className="size-4 text-muted-foreground" />}
-        />
-      </TabsContent>
-      {own ? <TabsContent value="own">{own}</TabsContent> : null}
-      <TabsContent value="custom">{children}</TabsContent>
-    </Tabs>
-  );
-}
 
 /** Zenodo's licences that don't let anyone share the work: their records' files are never public on Zenodo. */
 const CLOSED_ZENODO_LICENCES = new Set(["other-closed", "zenodo-freetoread-1.0"]);
@@ -582,7 +526,8 @@ export function PublicationForm({
             onChange={(next) => change((current) => ({ ...current, docid: next }))}
             password={credentials.docidPassword ?? ""}
             onPassword={(value) => credential("docidPassword", value)}
-            stored={saved.settings.docid?.mode === "custom"}
+            stored={!!saved.custom.docidPassword}
+            keptEmail={saved.custom.docidEmail}
           />
         ) : null}
       </fieldset>

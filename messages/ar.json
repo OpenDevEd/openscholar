@@ -6528,6 +6528,7 @@
       "registration": "تسجيل DOI",
       "zenodoSandbox": "بيئة اختبار Zenodo",
       "crossrefSandbox": "بيئة اختبار Crossref",
+      "docidSandbox": "بيئة اختبار DOCiD",
       "off": "متوقف",
       "zenodoHint": "يؤرشف ملف PDF لكل تقرير.",
       "crossrefHint": "يمنح كل تقرير معرّف DOI تحت بادئتك. عند إيقافه يتوقف النشر: لا يستطيع Zenodo وحده منح التقرير معرّف DOI بعد.",

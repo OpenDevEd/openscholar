@@ -6528,6 +6528,7 @@
       "registration": "DOI-Registrierung",
       "zenodoSandbox": "Zenodo-Testumgebung",
       "crossrefSandbox": "Crossref-Testumgebung",
+      "docidSandbox": "DOCiD-Testumgebung",
       "off": "Aus",
       "zenodoHint": "Archiviert das PDF jedes Berichts.",
       "crossrefHint": "Jeder Bericht erhält einen DOI unter Ihrem Präfix. Ist es aus, stoppt das Veröffentlichen: Zenodo allein kann einem Bericht noch keinen DOI geben.",

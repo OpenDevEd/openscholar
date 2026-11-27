@@ -6527,6 +6527,7 @@
       "registration": "DOI 注册",
       "zenodoSandbox": "Zenodo 测试环境",
       "crossrefSandbox": "Crossref 测试环境",
+      "docidSandbox": "DOCiD 测试环境",
       "off": "关闭",
       "zenodoHint": "存档每份报告的 PDF。",
       "crossrefHint": "每份报告获得您前缀下的 DOI。关闭后，发布将停止：仅凭 Zenodo 目前还无法为报告提供 DOI。",

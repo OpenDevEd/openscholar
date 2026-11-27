@@ -6527,6 +6527,7 @@
       "registration": "Ukubhaliswa kwe-DOI",
       "zenodoSandbox": "Indawo yokuhlola ye-Zenodo",
       "crossrefSandbox": "Indawo yokuhlola ye-Crossref",
+      "docidSandbox": "Indawo yokuhlola ye-DOCiD",
       "off": "Kuvaliwe",
       "zenodoHint": "Igcina i-PDF yombiko ngamunye.",
       "crossrefHint": "Inika umbiko ngamunye i-DOI ngaphansi kwesiqalo sakho. Uma kuvaliwe, ukushicilela kuyama: i-Zenodo iyodwa ayikakwazi ukunika umbiko i-DOI yawo.",
