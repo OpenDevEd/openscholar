@@ -151,12 +151,23 @@ export async function writeOverview(
 
 /** Words that make up much of any English prose and little of other languages': where they are over an eighth of a text's words, it is English. */
 const ENGLISH = new Set(["the", "and", "of", "is", "are", "with", "from", "this", "that", "which", "were", "was", "most", "papers", "between", "their"]);
-export const looksEnglish = (text: string) => {
+const englishIn = (text: string) => {
   const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
-  return words.length > 0 && words.filter((word) => ENGLISH.has(word)).length / words.length > 0.125;
+  return { english: words.filter((word) => ENGLISH.has(word)).length, words: words.length };
 };
-/** Any paragraph of it in English: read whole, one English paragraph among French ones passes for French. */
-export const partlyEnglish = (text: string) => text.split(/\n+/).some(looksEnglish);
+export const looksEnglish = (text: string) => {
+  const { english, words } = englishIn(text);
+  return words > 0 && english / words > 0.125;
+};
+/**
+ * Any paragraph of it in English: read whole, one English paragraph among French ones passes for French. A paragraph
+ * needs three of those words too, so a short one in another language that shares one ("Was bedeutet das?") isn't English.
+ */
+export const partlyEnglish = (text: string) =>
+  text.split(/\n+/).some((paragraph) => {
+    const { english, words } = englishIn(paragraph);
+    return english >= 3 && english / words > 0.125;
+  });
 const rewriteIn = (language: string) => `Rewrite the overview you are given in ${language}. Keep every line that is only a chart marker, such as [chart:c1] or [chart:c1:change], exactly as it is. Keep every paper link, such as [a few words](paper:W2016011122), with its target exactly as it is, and write the words inside its brackets in ${language}. Keep every number. Add nothing, leave nothing out, and add no heading or Markdown.`;
 
 const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in Openscholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.

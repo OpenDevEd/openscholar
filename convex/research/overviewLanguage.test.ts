@@ -17,5 +17,7 @@ describe("an overview written in the wrong language", () => {
     expect(looksEnglish(mixed)).toBe(false);
     expect(partlyEnglish(mixed)).toBe(true);
     expect(partlyEnglish(french)).toBe(false);
+    // A short paragraph in another language that shares one of the English words is not English.
+    expect(partlyEnglish("Die Suche umfasst 44 Artikel über Schulmahlzeiten, die meisten aus den Jahren 2020 und 2025.\n\nWas bedeutet das für die Praxis?")).toBe(false);
   });
 });
