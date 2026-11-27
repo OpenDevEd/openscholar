@@ -556,7 +556,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
               <p>{t("row.unreadSays", { count: unread })}</p>
               <Unread open={open} model={reviewer} />
-              {open.canChange ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} variant="default" size="sm" className="shrink-0" /> : null}
+              {open.canChange && !screening.finishedAt ? <RetryRead papers={unread} cost={words.creditsOf(retry.cost)} short={retry.short ? words.creditsOf(retry.short) : undefined} onRetry={() => void open.retry(reviewer).catch((error) => notSaved(t, error))} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -611,7 +611,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem>
-              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
+              {unread && !screening.finishedAt ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && left ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
               ) : null}
@@ -852,7 +852,8 @@ function Facts({ open }: { open: Open }) {
         }
       >
         <Panel className="space-y-2.5">
-          {models.length ? (
+          {/* What models spent stays in view once the last of them is taken off. */}
+          {models.length || spent >= 1 ? (
             <>
               <div>
                 <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
@@ -864,7 +865,7 @@ function Facts({ open }: { open: Open }) {
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
                 {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name, own: String(screening.workspace.kind === "personal" && open.canChange) })}</LinkChip>}
-                <Chip>{words.count("models", models.length)}</Chip>
+                {models.length ? <Chip>{words.count("models", models.length)}</Chip> : null}
                 {/* The total counts what a model spent before it was taken off: said, so it adds up with the rows above. */}
                 {offSpent >= 1 ? <Chip>{t("credits.takenOff", { credits: words.credits(offSpent) })}</Chip> : null}
               </div>
@@ -982,7 +983,9 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                         <Chip>{t("checks.nothingNew")}</Chip>
                       )}
                       {/* A source it couldn't read is said, in place of "Nothing new": it found nothing there it can vouch for. */}
-                      {check.unread ? <LinkChip href={settingsHref(screening.id, "papers")} tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length, names: words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? [])) })}</LinkChip> : null}
+                      {/* The names under the chip, where a long search wraps instead of being cut off. */}
+                      {check.unread ? <LinkChip href={settingsHref(screening.id, "papers")} tone="warning" icon={TriangleAlert} className="w-fit">{t("checks.unread", { count: check.unread.length })}</LinkChip> : null}
+                      {check.unread ? <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{words.listed(check.unread.flatMap((id) => screening.sources.find((source) => source.id === id)?.name ?? []))}</p> : null}
                     </div>
                   </div>
                 </motion.div>

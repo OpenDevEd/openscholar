@@ -8,6 +8,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { innerStep } from "./address";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -57,10 +58,10 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // Whose votes and which papers are in the address with the dialog's tab: each choice is a step, and Forward or a reload shows the same file.
   const [chosen, setChosen] = useQueryStates({ whose: parseAsString.withDefault("all"), group: parseAsStringLiteral(GROUPS) }, { history: "push", scroll: false });
   const whose = chosen.whose;
-  const setWhose = (next: string) => void setChosen({ whose: next === "all" ? null : next });
+  const setWhose = (next: string) => void setChosen({ whose: next === "all" ? null : next }, innerStep());
   // Which papers: unset, the included ones, or the person's own includes where nothing is included yet.
   const picked = chosen.group;
-  const setPicked = (next: Group) => void setChosen({ group: next });
+  const setPicked = (next: Group) => void setChosen({ group: next }, innerStep());
   const { screening, counts, total } = state;
   const { id } = screening;
   // The figures the diagram and the paragraph count from (the reasons, the checks, the agreement): until they are in, neither is taken, or it would leave them out.
@@ -272,7 +273,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                           <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
                           <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{words.decision(row.vote.decision)}</span></td>
                           <td className="px-3 text-xs text-muted-foreground">
-                            {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, reasonCriteria(screening), "label")} label={words.failed(row.vote.reason, reasonCriteria(screening))} className="flex max-w-40 min-w-0"><Reason reason={row.vote.reason} criteria={screening.criteria} /></QuestionName> : t("votes.none")}
+                            {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, reasonCriteria(screening), "label")} label={words.failed(row.vote.reason, reasonCriteria(screening))} className="flex max-w-40 min-w-0"><Reason reason={row.vote.reason} criteria={reasonCriteria(screening)} /></QuestionName> : t("votes.none")}
                           </td>
                           <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-28 truncate">{row.vote.note ?? t("votes.none")}</span></td>
                           <td className="px-3"><ResultChip result={row.result} /></td>

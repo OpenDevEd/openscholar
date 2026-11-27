@@ -44,10 +44,11 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -144,6 +145,7 @@ function Screen({ open }: { open: Open }) {
   const workspaceId = usePageWorkspace();
   // Another queue, order or choice of votes is a step Back returns from. Going from paper to paper and typing in the search box change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  const router = useWorkspaceRouter();
   const { paper: inAddress, q: find, voted, order } = place;
   // A step back past a page's first paper names the page's last one as "last": the paper it is shows once the page arrives, and is named before the next step, so Back and Forward show it again.
   const fromEnd = inAddress === "last";
@@ -243,6 +245,11 @@ function Screen({ open }: { open: Open }) {
     if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(step);
     else step();
   };
+  // Before the list asked for changes (another queue, order or vote picked), the paper on the screen is named in its own entry, so Back comes back to it whatever the queue has done since.
+  const namedThen = (next: () => void) => {
+    if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(next);
+    else next();
+  };
   const go = (index: number) => {
     if (index >= items.length && listed.canNext) return turn(listed.next);
     if (index < 0 && listed.canPrevious) return turn(listed.previous, true);
@@ -316,7 +323,7 @@ function Screen({ open }: { open: Open }) {
 
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
-    // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note.
+    // The note as the field shows it: a draft, even one emptied on purpose, else the vote's saved note. What the field shows is what is saved: a note is never dropped out of sight.
     const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : (mine?.note ?? "")).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
@@ -495,10 +502,11 @@ function Screen({ open }: { open: Open }) {
       label={t("queue.label")}
       value={queue}
       fill="labels"
+      // Another queue is a step in the history, and the paper on the screen is named in its own entry first, so Back comes back to it whatever the queue has done since.
+      onChange={(which) => namedThen(() => router.push(screenHref(id, which === "todo" ? undefined : { queue: which })))}
       options={queues.map((which) => ({
         id: which,
         label: t(`queue.${which}`),
-        href: screenHref(id, which === "todo" ? undefined : { queue: which }),
         detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? (counted?.cast ?? 0) : conflicts} tone={QUEUE_TONE[which]} />,
       }))}
     />
@@ -549,7 +557,7 @@ function Screen({ open }: { open: Open }) {
         <FilterMenu
           name={t("yourVote")}
           value={voted}
-          onChange={(next) => void setPlace({ voted: next, paper: null })}
+          onChange={(next) => namedThen(() => void setPlace({ voted: next, paper: null }))}
           className={className}
           choices={[
             { value: "any" as typeof voted, label: t("filter.any"), icon: <ListChecks />, count: counted?.cast ?? 0 },
@@ -561,7 +569,7 @@ function Screen({ open }: { open: Open }) {
         <FilterMenu
           name={t("filter.order")}
           value={order}
-          onChange={(next) => void setPlace({ order: next, paper: null })}
+          onChange={(next) => namedThen(() => void setPlace({ order: next, paper: null }))}
           narrows={false}
           className={className}
           choices={[
@@ -579,7 +587,8 @@ function Screen({ open }: { open: Open }) {
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
   // One the counts say is empty says so at once.
   // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked. Just after a vote here the counts lag it, so the list itself is waited for.
-  const known = !searched && !picked && queueTotal === 0 && since.length === 0;
+  // Only a pending vote that moves a count (a first vote, a conflict settled) makes the counts lag; changing a vote moves none.
+  const known = !searched && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -945,7 +954,8 @@ function Screen({ open }: { open: Open }) {
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
-              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
+              {/* Its place is held before the first vote too, so the bar keeps its rows when the way back appears. */}
+              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : <span aria-hidden className="invisible flex items-center gap-1 min-[87.5rem]:hidden"><span className="size-8" /><span className="size-6" /></span>}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
                 <TooltipHint label={t("shortcuts.title")}>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
@@ -1001,7 +1011,7 @@ function Screen({ open }: { open: Open }) {
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
                   {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <Input maxLength={NOTE_LENGTH} autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
+                  <ReasonNoteField value={notes[paper.id] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [paper.id]: text }))} />
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="max-lg:hidden">Esc</Kbd></Button>
                     <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}<Kbd className="max-lg:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>

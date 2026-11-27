@@ -22,7 +22,8 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { ANSWERS, NO_REASON, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { ANSWERS, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
+import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
 import { type RetiredCriterion, RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
@@ -857,5 +858,27 @@ export function PdfRoom({ pages, children }: { pages: number; children: ReactNod
       {/* Released once the viewer is in (`data-pdf`): from then it holds its own room, at the shape the file says. */}
       <div style={{ minHeight: `calc(2.25rem + ${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
     </div>
+  );
+}
+
+/**
+ * The field "Another reason" is written in, on Screen and in the Papers drawer: two lines on a phone and one up from
+ * there, wrapping so a long reason stays in view. Enter excludes, as the form's button shows; Shift+Enter starts a line.
+ */
+export function ReasonNoteField({ value, onChange, className }: { value: string; onChange: (text: string) => void; className?: string }) {
+  const t = useTranslations("screening.screen");
+  return (
+    <Textarea
+      maxLength={NOTE_LENGTH}
+      autoFocus
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      // Not while a word is being composed (Chinese, Japanese): that Enter picks the word, it doesn't send the reason.
+      onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}
+      placeholder={t("exclude.why")}
+      aria-label={t("exclude.whyLabel")}
+      className={cn("max-h-24 min-h-8 resize-none py-1.5 text-sm max-lg:min-h-14", className)}
+    />
   );
 }
