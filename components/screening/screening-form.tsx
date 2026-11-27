@@ -10,7 +10,7 @@ import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
@@ -69,6 +69,7 @@ import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help,
 import { paperCredits, pdfsMissed, pdfsOf, pdfReadingCredits, perPaper, readableBy, readingCredits, takesFiles, unreadPdfs, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { useFrame } from "./workspace";
+import { searchHistory } from "./address";
 import { useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -221,6 +222,7 @@ function blank(me: Person): Screening {
   const now = Date.now();
   return {
     id: "" as Id<"screeningJobs">,
+    retired: [],
     name: "",
     createdBy: me.id,
     createdAt: now,
@@ -451,7 +453,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Where papers are added from is a tab in the address: each one picked is a step, so Back returns to the tab before.
   const [kindInAddress, setKind] = useQueryState("addFrom", parseAsStringLiteral(KINDS.map((one) => one.id)).withOptions({ history: "push", scroll: false }));
   const kind: Kind = kindInAddress ?? (fromHandoff && !id ? "evidenceLibrary" : "search");
-  const [find, setFind] = useState("");
+  // The search in the Search and Screening tabs is in the address: starting and clearing it are steps, as in every list.
+  const [find, setFindIn] = useQueryState("addFind", parseAsString.withDefault("").withOptions({ scroll: false }));
+  const setFind = (next: string) => void setFindIn(next || null, searchHistory(find, next));
   const [recheck, setRecheck] = useState(false);
   // The source whose row is open, and on which part: the papers taken from it, or what it held and left out.
   const [openSource, setOpenSource] = useState<{ id: string; part: "papers" | "left" | "merged" } | null>(null);
@@ -741,7 +745,12 @@ export function ScreeningForm({ id }: { id?: string }) {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
-      await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
+      // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
+      if (sent.some((one) => one.status === "rejected")) {
+        showStyledToast("error", t("toast.notInvited"));
+        return;
+      }
       // A community's collection is checked, or made, there before the save.
       if (change.saveTo?.kind === "libraryCollection" || change.saveTo?.kind === "newLibraryCollection") await saveToCommunity({ jobId: saved.id, change });
       else await saveChange({ jobId: saved.id, change });
@@ -1504,7 +1513,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
                       <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
-                      {dirty && countFailed ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{t("changes.countAgain")}</Button> : null}
+                      {dirty && countFailed ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{effectsSay.t("countAgain")}</Button> : null}
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">

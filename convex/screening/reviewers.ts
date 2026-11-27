@@ -44,14 +44,19 @@ const JOINED_AFTER_MS = 2 * 60_000;
  * Puts a person on a screening, new or back again. Someone who comes back keeps the votes they cast. Their share
  * of the papers nobody has voted on follows a step at a time (`join`).
  */
+/** How soon after a screening is made the form's own shares arrive (components/screening/screening-form.tsx `outside`). */
+const FROM_THE_START = 60_000;
+
 export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, by: Id<"users">, { tell = false }: { /** A colleague put them on it: an email says so, with the papers that wait for them once their share is given out. */ tell?: boolean } = {}) {
   const reviewers = await reviewersOf(ctx, job._id);
   const before = reviewers.filter(dealable).length;
   const old = reviewers.find((one) => one.kind === "person" && one.userId === userId);
   if (old && old.left === undefined) return old._id;
   if (!old && reviewers.length >= MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
-  const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "person", userId, addedAt: Date.now(), addedBy: by, dealt: 0 }));
-  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined, addedAt: Date.now() });
+  // Someone the form that made the screening named shares in just after it is made: they were on it from the start, and are dated from it.
+  const addedAt = Date.now() - job.createdAt < FROM_THE_START ? job.createdAt : Date.now();
+  const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "person", userId, addedAt, addedBy: by, dealt: 0 }));
+  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId: job._id, reviewerId, before, cursor: null, result: "waiting" });
   if (tell && by !== userId) await ctx.scheduler.runAfter(JOINED_AFTER_MS, internal.screening.noticeMail.send, { jobId: job._id, userId, about: "joined", by });
   return reviewerId;
@@ -156,7 +161,7 @@ export async function addModel(ctx: MutationCtx, job: Doc<"screeningJobs">, mode
   if (reviewers.filter(readingModel).length >= most) throw createError("VALIDATION_ERROR", `This workspace's plan runs up to ${most} models on a screening. Take one off to add another.`);
   if (!old && reviewers.length >= MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "model", modelId: picked._id, ...(model.effort ? { effort: model.effort } : {}), addedAt: Date.now(), addedBy: by, dealt: 0 }));
-  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined, addedAt: Date.now() });
+  if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId: job._id, reviewerId, cursor: null, result: "waiting" });
   return picked;
 }

@@ -107,7 +107,9 @@ export const resolve = workspaceMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to settle a paper.");
     await paperOf(ctx, jobId, paperId);
     requireReason(job, reason);
-    await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim().slice(0, SCREENING_TEXT.voteNote) } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
+    // A note too long is refused, as a vote's is: none is cut short without a word.
+    if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
+    await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim() } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
     await stamp(ctx, paperId);
     await bookkeepLater(ctx);
     return null;

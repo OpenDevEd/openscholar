@@ -38,7 +38,7 @@ import { inOrder, RESULTS } from "./data";
 import { searchHistory } from "./address";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
 import { draftOf, useKept } from "./drafts";
-import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
+import { OVERS, ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
 import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
 import { toReviewers, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -78,7 +78,8 @@ export function ScreeningsIndex() {
   // Another tab, order or page is a step Back returns from. Typing in the search box changes the address in place.
   const [{ show, sort, q: search }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next);
-  const [over, setOver] = useState<{ id: string; what: What } | null>(null);
+  // A row's menu opens the screening's dialogs over the list, kept in the address as its own pages keep them: the row, and what is open over it (./address.ts).
+  const [{ row: overRow }, openOver] = useQueryStates({ row: parseAsString, over: parseAsStringLiteral(OVERS) }, { history: "push", scroll: false });
   const here = useWorkspace();
   // A new screening begun in this workspace and not started yet, kept with the tab: the list leads back to it.
   const begun = useKept((store) => store.drafts);
@@ -283,7 +284,7 @@ export function ScreeningsIndex() {
                               : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">{t("allSettled")}</LinkChip>}
                           </span>
                           <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">
-                            <RowMenu id={id} name={row.name} onOpen={(what) => setOver({ id, what })} />
+                            <RowMenu id={id} name={row.name} onOpen={(what) => void openOver({ row: id, over: what })} />
                           </span>
                         </li>
                       </Group>
@@ -306,7 +307,7 @@ export function ScreeningsIndex() {
           {/* On a phone the last row can scroll clear of the assistant's button in the corner. */}
           <div aria-hidden className="h-6 lg:hidden" />
         </div>
-        {over ? <RowDialogs key={`${over.id}:${over.what}`} id={over.id} start={over.what} onDone={() => setOver(null)} /> : null}
+        {overRow ? <RowDialogs key={overRow} id={overRow} /> : null}
       </PageWrapper>
     </MotionConfig>
   );
@@ -400,7 +401,7 @@ function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void
  * What the row's menu opens, for one screening: the same dialogs and confirms the open screening has.
  * Sharing can lead on to making someone a reviewer or a viewer, each asked first.
  */
-function RowDialogs({ id, start, onDone }: { id: string; start: What; onDone: () => void }) {
-  // The same overlays the screening's own pages open, started on the one its row's menu asked for.
-  return useScreeningOverlays(useOpenScreening(id) ?? null, { start, onClosed: onDone }).overlays;
+function RowDialogs({ id }: { id: string }) {
+  // The same overlays the screening's own pages open, on the one its row's menu asked for.
+  return useScreeningOverlays(useOpenScreening(id) ?? null).overlays;
 }

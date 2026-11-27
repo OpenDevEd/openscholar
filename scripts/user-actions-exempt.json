@@ -139,6 +139,7 @@
     "zotero/tree:state": "How that reading stands, for the form. The assistant lists collections with zotero/library:collections.",
     "zotero/tree:level": "The form's page of a Zotero library's collections at one level. The assistant lists collections with zotero/library:collections.",
     "zotero/tree:find": "The form's search of a Zotero library's collections by name. The assistant lists collections with zotero/library:collections.",
+    "zotero/tree:path": "The form reading back the collections its address names after a reload. The assistant lists collections with zotero/library:collections.",
     "screening/held:pdfLook": "The price of one PDF's first reading, shown where the form takes PDFs. The assistant adds no files to a screening.",
     "screening/held:look": "The form's count of what a file holds before it is added. The assistant adds no files to a screening.",
     "screening/screenings:sync": "The form that starts a screening having its sources read before it starts, so it can say what they hold. The assistant reads screenings and starts none.",

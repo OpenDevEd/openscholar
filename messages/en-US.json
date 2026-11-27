@@ -1750,17 +1750,7 @@
     "savedToLibrary": "<n>{count, number}</n> added to {name} in {library}",
     "notInLibrary": "<n>{count, number}</n> not in {library}",
     "savesToLibrary": "Adds included papers to {name} in {library}",
-    "notInLibraryFilter": "Not in {library}",
-    "libraryProblem": {
-      "role": "Can't add to {name}: you can only view it now",
-      "notFound": "{name} is no longer in {library}",
-      "unreadable": "{library} didn't answer: some papers weren't added"
-    },
-    "pruneProblem": {
-      "role": "Can't remove papers from {name}: you can only view it now",
-      "notFound": "{name} is no longer in {library}",
-      "unreadable": "{library} didn't answer: some papers weren't removed"
-    }
+    "notInLibraryFilter": "Not in {library}"
   },
   "connectionsPage": {
     "connectedApps": "Connected apps",
@@ -7782,7 +7772,8 @@
   "screening": {
     "effects": {
       "counting": "Working out what this does",
-      "countFailed": "Couldn't work out what this does. Close this and try again",
+      "countFailed": "Couldn't work out what this does",
+      "countAgain": "Try again",
       "criterionUnwritten": "the criterion with no question yet",
       "reopens": "{count, plural, one {# paper goes back to open. The screening stays finished, so nobody votes on it until it is reopened} other {# papers go back to open. The screening stays finished, so nobody votes on them until it is reopened}}",
       "model": {
@@ -7901,6 +7892,7 @@
         "scheduledNone": "The scheduled check found no new papers",
         "known": "{count, plural, one {# was} other {# were}} already in the screening",
         "leftOut": "{count, plural, one {# was left out} other {# were left out}}",
+        "unread": "{count, plural, one {# source couldn't be read} other {# sources couldn't be read}}",
         "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
         "reopenedByCheck": "The screening is open again",
         "changed": "Changed {parts}",
@@ -8156,6 +8148,7 @@
         "undo": "Undo",
         "failed": "That didn't work. Try again.",
         "notAdded": "Some people couldn't be added. Add them again from People.",
+        "notInvited": "Some people couldn't be invited, so nothing was saved yet. Save again to try them again.",
         "notStarted": "The screening couldn't be started. Try again.",
         "saved": "Changes saved",
         "discarded": "Changes discarded"
@@ -8409,7 +8402,6 @@
         "willDo": "What saving does",
         "counting": "Working out what saving does",
         "countFailed": "Couldn't work out what saving does, so it can't be saved yet",
-        "countAgain": "Try again",
         "did": "What the save did",
         "recheck": "Check the settled papers again",
         "recheckOn": "Every settled paper is checked under the new settings. The ones listed above get another result.",
@@ -8757,6 +8749,7 @@
         "loading": "Reading the discussion"
       },
       "pdf": {
+        "showAll": "{count, plural, other {Show all # pages}}",
         "readAs": "{pages, plural, =0 {Read from the PDF} one {Read from the PDF, # page} other {Read from the PDF, # pages}}",
         "openTab": "Open the PDF in a new tab",
         "onItsWay": "The PDF is on its way",
@@ -8905,6 +8898,7 @@
         "startedIt": "started it {ago}"
       },
       "included": {
+        "problem": "{why, select, role {You can only view {name} now, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} notFound {{name} is no longer in the community, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} other {The community didn't answer, so some included papers {adding, select, true {weren't added to {name}} other {weren't taken out of {name}}}}}",
         "title": "Included papers go to",
         "helpTitle": "Where included papers go",
         "savedEach": "Saved as each is included",
@@ -8950,6 +8944,7 @@
         "found": "{count, number} found",
         "alreadyIn": "{count, number} already in it",
         "leftOut": "{count, plural, one {# left out} other {# left out}}",
+        "unread": "{count, plural, one {Couldn't read # source} other {Couldn't read # sources}}",
         "added": "{count, number} added",
         "newFrom": "{count, number} new from {source}",
         "result": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
@@ -9455,7 +9450,8 @@
           "unread": "It couldn't be read",
           "pdfTooBig": "Over {mb, number} MB",
           "unsent": "It couldn't be sent",
-          "allUnsent": "They couldn't be sent"
+          "allUnsent": "They couldn't be sent",
+          "priceComing": "Added once the price of a PDF shows. Add it again in a moment"
         },
         "drop": "Drop reference files or PDFs here",
         "helpTitle": "Files",
@@ -9464,6 +9460,7 @@
         "aboutFiles": "A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.",
         "aboutPdfs": "A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar's index holds that DOI, the paper shows with the index's title and abstract. Otherwise the paper is the PDF itself. A person screening it reads the file, and so does each AI model that reads PDFs, every page of it. A model that reads text only, or can't take a PDF that long, gets no vote on it. A scan is read the same way. A file that doesn't open is left out.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, or a text file of DOIs, any number at once",
+        "pricing": "Working out what a PDF costs",
         "pdfCost": "A model reads each PDF's first pages for its title and DOI. That costs up to {credits, plural, one {# credit} other {# credits}} a PDF, paid as it is added",
         "filesLabel": "Files to upload",
         "choose": "Choose files",
@@ -9496,7 +9493,9 @@
         "add": "Add DOIs"
       },
       "zotero": {
-        "myLibrary": "My library",
+        "gone": "This collection is no longer in Zotero",
+          "openAbove": "Open {name}",
+          "myLibrary": "My library",
         "loading": "Loading Zotero",
         "loadingCollections": "Loading the collections",
         "notConnected": "Zotero isn't connected",

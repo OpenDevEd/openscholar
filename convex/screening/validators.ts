@@ -1,6 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { PDF_BANDS } from "../../lib/pricing/estimate";
+import { NOTE_LENGTH } from "../../lib/screening/rules";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
@@ -202,10 +203,14 @@ export const paperResultValidator = v.union(v.literal("include"), v.literal("may
 
 /** Words an organiser marks on one criterion, and how long each is. */
 export const MAX_TERMS = 20;
-const TEXT = { name: 200, question: 2_000, criterion: 500, short: 40, note: 2_000, term: 80, voteNote: 2_000, message: 4_000 } as const;
+const TEXT = { name: 200, question: 2_000, criterion: 500, short: 40, note: 2_000, term: 80, voteNote: NOTE_LENGTH, message: 4_000 } as const;
 export const SCREENING_TEXT = TEXT;
 
 /** One criterion: the question, its short name, whether a paper must meet it, guidance, marked words, and what each answer is worth. */
+/** A criterion taken off, as a reason it was a criterion for still names it. */
+export const retiredCriterionValidator = v.object({ key: v.string(), text: v.string(), short: v.string(), must: v.boolean() });
+export const RETIRED_CRITERIA = 200;
+export const retiredCriteriaValidator = capped(v.array(retiredCriterionValidator), RETIRED_CRITERIA);
 export const criterionValidator = v.object({
   key: v.string(),
   text: v.string(),
@@ -455,7 +460,7 @@ export const figuresValidator = v.object({
   recent: capped(v.record(v.string(), v.number()), MAX_REVIEWERS),
   startedWith: v.number(),
   // Its checks for new papers after the start: how many, when the last one was, and what they found and added.
-  checks: v.object({ later: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number() }),
+  checks: v.object({ later: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number(), /** The later checks with a source they couldn't read. */ unread: v.optional(v.number()) }),
   // How many times its settings were changed.
   changes: v.number(),
 });

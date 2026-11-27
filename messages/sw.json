@@ -1751,17 +1751,7 @@
     "savedToLibrary": "<n>{count, number}</n> zimeongezwa kwenye {name} kwenye {library}",
     "notInLibrary": "<n>{count, number}</n> hazipo kwenye {library}",
     "savesToLibrary": "Huongeza makala zilizojumuishwa kwenye {name} kwenye {library}",
-    "notInLibraryFilter": "Hazipo kwenye {library}",
-    "libraryProblem": {
-      "role": "Haiwezi kuongeza kwenye {name}: sasa unaweza kuiona tu",
-      "notFound": "{name} haipo tena kwenye {library}",
-      "unreadable": "{library} haikujibu: baadhi ya makala hazikuongezwa"
-    },
-    "pruneProblem": {
-      "role": "Haiwezi kuondoa makala kutoka {name}: sasa unaweza kuiona tu",
-      "notFound": "{name} haipo tena kwenye {library}",
-      "unreadable": "{library} haikujibu: baadhi ya makala hazikuondolewa"
-    }
+    "notInLibraryFilter": "Hazipo kwenye {library}"
   },
   "connectionsPage": {
     "connectedApps": "Programu zilizounganishwa",
@@ -7783,7 +7773,8 @@
   "screening": {
     "effects": {
       "counting": "Inakokotoa hii itafanya nini",
-      "countFailed": "Haikuweza kukokotoa hii itafanya nini. Funga hii na ujaribu tena",
+      "countFailed": "Haikuweza kukokotoa hii itafanya nini",
+      "countAgain": "Jaribu tena",
       "criterionUnwritten": "kigezo ambacho bado hakina swali",
       "reopens": "{count, plural, one {Makala # inarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayeipigia kura hadi ufunguliwe tena} other {Makala # zinarudi kuwa wazi. Uchujaji unabaki umekamilika, kwa hivyo hakuna anayezipigia kura hadi ufunguliwe tena}}",
       "model": {
@@ -7902,6 +7893,7 @@
         "scheduledNone": "Ukaguzi wa ratiba haukupata makala mpya",
         "known": "{count, plural, one {# ilikuwa} other {# zilikuwa}} tayari kwenye uchujaji",
         "leftOut": "{count, plural, one {# iliachwa} other {# ziliachwa}}",
+        "unread": "{count, plural, one {Chanzo # hakikuweza kusomwa} other {Vyanzo # havikuweza kusomwa}}",
         "joined": "{count, plural, one {Makala # iliingia} other {Makala # ziliingia}} kwenye uchujaji",
         "reopenedByCheck": "Uchujaji uko wazi tena",
         "changed": "Kulibadilishwa {parts}",
@@ -8157,6 +8149,7 @@
         "undo": "Tendua",
         "failed": "Hilo halikufanikiwa. Jaribu tena.",
         "notAdded": "Baadhi ya watu hawakuweza kuongezwa. Waongeze tena kutoka Watu.",
+        "notInvited": "Baadhi ya watu hawakuweza kualikwa, kwa hiyo bado hakuna kilichohifadhiwa. Hifadhi tena ili kujaribu kuwaalika tena.",
         "notStarted": "Uchujaji haukuweza kuanzishwa. Jaribu tena.",
         "saved": "Mabadiliko yamehifadhiwa",
         "discarded": "Mabadiliko yametupwa"
@@ -8410,7 +8403,6 @@
         "willDo": "Kuhifadhi kunafanya nini",
         "counting": "Inakokotoa kuhifadhi kutafanya nini",
         "countFailed": "Haikuweza kukokotoa kuhifadhi kutafanya nini, kwa hivyo bado haiwezi kuhifadhiwa",
-        "countAgain": "Jaribu tena",
         "did": "Kuhifadhi kulifanya nini",
         "recheck": "Kagua tena makala zilizoamuliwa",
         "recheckOn": "Kila makala iliyoamuliwa inakaguliwa chini ya mipangilio mipya. Zile zilizoorodheshwa juu zinapata matokeo mengine.",
@@ -8758,6 +8750,7 @@
         "loading": "Inasoma majadiliano"
       },
       "pdf": {
+        "showAll": "{count, plural, one {Onyesha ukurasa #} other {Onyesha kurasa zote #}}",
         "readAs": "{pages, plural, =0 {Inasomwa kutoka kwenye PDF} one {Inasomwa kutoka kwenye PDF, ukurasa #} other {Inasomwa kutoka kwenye PDF, kurasa #}}",
         "openTab": "Fungua PDF kwenye kichupo kipya",
         "onItsWay": "PDF iko njiani",
@@ -8906,6 +8899,7 @@
         "startedIt": "aliuanzisha {ago}"
       },
       "included": {
+        "problem": "{why, select, role {Sasa unaweza kutazama {name} tu, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} notFound {{name} haipo tena kwenye Evidence Community, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} other {Evidence Community haikujibu, kwa hivyo baadhi ya makala zilizojumuishwa {adding, select, true {hazikuongezwa kwenye {name}} other {hazikuondolewa kwenye {name}}}}}",
         "title": "Makala zilizojumuishwa zinaenda",
         "helpTitle": "Makala zilizojumuishwa zinaenda wapi",
         "savedEach": "Inahifadhiwa kila moja inapojumuishwa",
@@ -8951,6 +8945,7 @@
         "found": "{count, number} zimepatikana",
         "alreadyIn": "{count, number} tayari zimo",
         "leftOut": "{count, plural, one {# imeachwa} other {# zimeachwa}}",
+        "unread": "{count, plural, one {Haukuweza kusoma chanzo #} other {Haukuweza kusoma vyanzo #}}",
         "added": "{count, number} zimeongezwa",
         "newFrom": "{count, number} mpya kutoka {source}",
         "result": "{result, select, include {{count, number} zimejumuishwa} maybe {{count, number} labda} exclude {{count, number} zimetengwa} conflict {{count, number} zenye mgongano} other {{count, number} zinasubiri kura}}",
@@ -9456,7 +9451,8 @@
           "unread": "Haikuweza kusomwa",
           "pdfTooBig": "Zaidi ya MB {mb, number}",
           "unsent": "Haikuweza kutumwa",
-          "allUnsent": "Hazikuweza kutumwa"
+          "allUnsent": "Hazikuweza kutumwa",
+          "priceComing": "Inaongezwa mara gharama ya PDF inapoonekana. Iongeze tena baada ya muda mfupi"
         },
         "drop": "Dondosha faili za marejeleo au PDF hapa",
         "helpTitle": "Faili",
@@ -9465,6 +9461,7 @@
         "aboutFiles": "Faili ya marejeleo ni kile ambacho hifadhidata au programu ya marejeleo inahamisha. Kila rekodi yake yenye kichwa na muhtasari ni makala.",
         "aboutPdfs": "PDF inasomwa mara tu inapoongezwa, kupata kichwa chake na DOI yake. Pale faharasa ya Openscholar ina DOI hiyo, makala inaonyeshwa na kichwa na muhtasari wa faharasa. Vinginevyo makala ni PDF yenyewe. Mtu anayeichuja anasoma faili, na vivyo hivyo kila modeli ya AI inayosoma PDF, kila ukurasa wake. Modeli inayosoma maandishi tu, au isiyoweza kupokea PDF ndefu hivyo, haipati kura kwenye makala hiyo. Nakala iliyoskaniwa inasomwa kwa njia hiyohiyo. Faili isiyofunguka inaachwa.",
         "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV, PDF, au faili ya maandishi yenye DOI, idadi yoyote kwa wakati mmoja",
+        "pricing": "Inakokotoa gharama ya PDF",
         "pdfCost": "Modeli inasoma kurasa za kwanza za kila PDF kupata kichwa na DOI. Hiyo inagharimu hadi {credits, plural, one {krediti #} other {krediti #}} kwa kila PDF, zinazolipwa inapoongezwa",
         "filesLabel": "Faili za kupakia",
         "choose": "Chagua faili",
@@ -9497,6 +9494,8 @@
         "add": "Ongeza DOI"
       },
       "zotero": {
+        "gone": "Mkusanyiko huu haupo tena kwenye Zotero",
+        "openAbove": "Fungua {name}",
         "myLibrary": "Maktaba yangu",
         "loading": "Inapakia Zotero",
         "loadingCollections": "Inapakia mikusanyiko",

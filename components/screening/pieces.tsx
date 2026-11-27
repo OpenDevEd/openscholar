@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { ANSWERS, NO_REASON, OTHER_REASON, settle, type Answer } from "@/lib/screening/rules";
 import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
-import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { type RetiredCriterion, RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
 import { useWords } from "./words";
@@ -255,12 +255,12 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
 
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 /** The papers a screening still has open, as two counts that open them on Papers: in conflict, and waiting for votes. */
-export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string; conflict: number; waiting: number; onClick?: () => void }) {
+export function OpenPapersChips({ id, conflict, waiting }: { id: string; conflict: number; waiting: number }) {
   const t = useTranslations("screening.pieces");
   return (
     <span className="flex flex-wrap gap-1.5">
-      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={onClick}>{t("openPapers.conflict", { count: conflict })}</LinkChip> : null}
-      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={onClick}>{t("openPapers.waiting", { count: waiting })}</LinkChip> : null}
+      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare}>{t("openPapers.conflict", { count: conflict })}</LinkChip> : null}
+      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass}>{t("openPapers.waiting", { count: waiting })}</LinkChip> : null}
     </span>
   );
 }
@@ -512,7 +512,7 @@ export function Named({ name, children }: { name: string; children: ReactNode })
  * behind the sign its answer has, a red cross for one not met and an amber dash for one left unclear. A reason that is
  * not a criterion is its own words.
  */
-export function Reason({ reason, criteria, unclear = false, wrap = false, className }: { reason: string; criteria: Criterion[]; unclear?: boolean; /** In a row to press, where there is room: the name runs onto a second line and is read whole. */ wrap?: boolean; className?: string }) {
+export function Reason({ reason, criteria, unclear = false, wrap = false, className }: { reason: string; criteria: RetiredCriterion[]; unclear?: boolean; /** In a row to press, where there is room: the name runs onto a second line and is read whole. */ wrap?: boolean; className?: string }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
   const criterion = criteria.find((one) => one.key === reason);
@@ -793,7 +793,7 @@ export function PaperFacts({ paper, source, added }: {
  * One reviewer's place on a paper, as every list, popover and card that names it shows it: their decision with the
  * reason on Exclude and when they voted, and under it the note they left, in quotes. A place with no vote in it says why.
  */
-export function VoteFacts({ vote, failed = false, kept = false, settled = false, criteria, children }: { vote: Vote | undefined; failed?: boolean; /** They voted, and how is kept from the person looking. */ kept?: boolean; /** The paper was settled, so a place nobody voted from never will be. */ settled?: boolean; criteria: Criterion[]; /** What else stands with the decision: the answer a card is about. */ children?: ReactNode }) {
+export function VoteFacts({ vote, failed = false, kept = false, settled = false, criteria, children }: { vote: Vote | undefined; failed?: boolean; /** They voted, and how is kept from the person looking. */ kept?: boolean; /** The paper was settled, so a place nobody voted from never will be. */ settled?: boolean; criteria: RetiredCriterion[]; /** What else stands with the decision: the answer a card is about. */ children?: ReactNode }) {
   const t = useTranslations("screening.pieces");
   const words = useWords();
   const style = vote ? RESULT_STYLE[vote.decision] : null;
@@ -819,7 +819,7 @@ export function VoteFacts({ vote, failed = false, kept = false, settled = false,
 }
 
 /** The reason a vote or a result excludes a paper, as a chip: the criterion it fails by its short name, with the whole question for whoever asks. The same chip wherever a reason shows. */
-export function ReasonChip({ reason, criteria, className }: { reason: string; criteria: Criterion[]; className?: string }) {
+export function ReasonChip({ reason, criteria, className }: { reason: string; /** The criteria a reason can name, the ones taken off with them (./data.ts `reasonCriteria`). */ criteria: RetiredCriterion[]; className?: string }) {
   const words = useWords();
   return <QuestionName question={questionOf(reason, criteria, "label")} label={words.failed(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
@@ -844,5 +844,18 @@ export function DiscussionLink({ count, writes = true, onClick }: { count: numbe
       <MessagesSquare aria-hidden className="size-3.5" />
       {count ? t("messages", { count }) : t("discuss")}
     </button>
+  );
+}
+
+/**
+ * The room a paper's PDF takes, held around the viewer while its code loads: its chip row and its pages at A4 for the
+ * column's width (./paper-pdf.tsx holds the same once it is in), so the votes and discussion under it never move.
+ */
+export function PdfRoom({ pages, more = false, children }: { pages: number; /** A "Show all pages" button follows the first page. */ more?: boolean; children: ReactNode }) {
+  return (
+    <div className="@container">
+      {/* Released once the viewer is in (`data-pdf`): from then it holds its own room, at the shape the file says. */}
+      <div style={{ minHeight: `calc(2.25rem + ${more ? "2.75rem + " : ""}${pages * 1.414} * 100cqw + ${(Math.max(1, pages) - 1) * 8}px)` }} className="has-[[data-pdf]]:!min-h-0">{children}</div>
+    </div>
   );
 }

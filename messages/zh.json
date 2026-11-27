@@ -1750,17 +1750,7 @@
     "savedToLibrary": "<n>{count, number}</n> 篇已添加到 {library} 的 {name}",
     "notInLibrary": "<n>{count, number}</n> 篇不在 {library} 中",
     "savesToLibrary": "入选论文将添加到 {library} 的 {name}",
-    "notInLibraryFilter": "不在 {library} 中",
-    "libraryProblem": {
-      "role": "无法添加到 {name}：你现在只能查看它",
-      "notFound": "{name} 已不在 {library} 中",
-      "unreadable": "{library} 没有响应：部分论文未添加"
-    },
-    "pruneProblem": {
-      "role": "无法从 {name} 移除论文：你现在只能查看它",
-      "notFound": "{name} 已不在 {library} 中",
-      "unreadable": "{library} 没有响应：部分论文未移除"
-    }
+    "notInLibraryFilter": "不在 {library} 中"
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",
@@ -7782,7 +7772,8 @@
   "screening": {
     "effects": {
       "counting": "正在计算此操作的影响",
-      "countFailed": "无法计算此操作的影响。请关闭后重试",
+      "countFailed": "无法计算此操作的影响",
+      "countAgain": "重试",
       "criterionUnwritten": "尚未写问题的标准",
       "reopens": "{count, plural, other {# 篇论文重新变为未定。筛选仍保持已完成，因此在重新打开之前，没有人会对其投票}}",
       "model": {
@@ -7901,6 +7892,7 @@
         "scheduledNone": "定期检查没有发现新论文",
         "known": "{count, plural, other {# 篇}}已在筛选中",
         "leftOut": "{count, plural, other {# 篇被排除在外}}",
+        "unread": "{count, plural, other {# 个来源无法读取}}",
         "joined": "{count, plural, other {# 篇论文}}加入了筛选",
         "reopenedByCheck": "筛选已重新打开",
         "changed": "更改了{parts}",
@@ -8156,6 +8148,7 @@
         "undo": "撤销",
         "failed": "操作失败，请重试。",
         "notAdded": "部分人员未能添加。请在人员中重新添加。",
+        "notInvited": "部分人员未能邀请，因此尚未保存任何内容。请再次保存，重新尝试邀请他们。",
         "notStarted": "筛选未能开始，请重试。",
         "saved": "更改已保存",
         "discarded": "已放弃更改"
@@ -8409,7 +8402,6 @@
         "willDo": "保存后的影响",
         "counting": "正在计算保存后的影响",
         "countFailed": "无法计算保存后的影响，因此暂时不能保存",
-        "countAgain": "重试",
         "did": "此次保存的结果",
         "recheck": "重新检查已定案的论文",
         "recheckOn": "每篇已定案的论文都会按新设置重新检查。上面列出的论文会得到另一个结果。",
@@ -8757,6 +8749,7 @@
         "loading": "正在读取讨论"
       },
       "pdf": {
+        "showAll": "{count, plural, other {显示全部 # 页}}",
         "readAs": "{pages, plural, =0 {从 PDF 读取} other {从 PDF 读取，# 页}}",
         "openTab": "在新标签页中打开 PDF",
         "onItsWay": "PDF 正在路上",
@@ -8905,6 +8898,7 @@
         "startedIt": "{ago}开始"
       },
       "included": {
+        "problem": "{why, select, role {你现在只能查看 {name}，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} notFound {{name} 已不在文献社区中，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} other {文献社区没有响应，因此部分入选论文{adding, select, true {未添加到 {name}} other {未从 {name} 移出}}}}",
         "title": "入选论文保存到",
         "helpTitle": "入选论文去向",
         "savedEach": "每篇入选时即保存",
@@ -8950,6 +8944,7 @@
         "found": "找到 {count, number} 篇",
         "alreadyIn": "{count, number} 篇已在其中",
         "leftOut": "{count, plural, other {# 篇被排除在外}}",
+        "unread": "{count, plural, other {无法读取 # 个来源}}",
         "added": "加入 {count, number} 篇",
         "newFrom": "来自 {source} 的 {count, number} 篇新论文",
         "result": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
@@ -9455,7 +9450,8 @@
           "unread": "无法读取",
           "pdfTooBig": "超过 {mb, number} MB",
           "unsent": "未能发送",
-          "allUnsent": "未能发送"
+          "allUnsent": "未能发送",
+          "priceComing": "PDF 的费用显示后才会添加。请稍后再添加一次"
         },
         "drop": "将文献文件或 PDF 拖放到这里",
         "helpTitle": "文件",
@@ -9464,6 +9460,7 @@
         "aboutFiles": "文献文件是数据库或文献管理工具导出的文件。其中每条有标题和摘要的记录就是一篇论文。",
         "aboutPdfs": "PDF 添加后会立即读取其标题和 DOI。如果 Openscholar 的索引中有该 DOI，论文会显示索引中的标题和摘要。否则论文就是这个 PDF 本身。筛选它的人阅读该文件，每个能读取 PDF 的 AI 模型也会阅读它的每一页。只读取文本的模型，或无法处理这么长 PDF 的模型，不会对它投票。扫描件也按同样方式读取。无法打开的文件会被排除在外。",
         "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV、PDF 或列有 DOI 的文本文件，可一次添加任意数量",
+        "pricing": "正在计算 PDF 的费用",
         "pdfCost": "模型会读取每个 PDF 的前几页以获取标题和 DOI。每个 PDF 最多花费 {credits, plural, other {# 积分}}，添加时扣除",
         "filesLabel": "要上传的文件",
         "choose": "选择文件",
@@ -9496,6 +9493,8 @@
         "add": "添加 DOI"
       },
       "zotero": {
+        "gone": "此合集已不在 Zotero 中",
+        "openAbove": "打开 {name}",
         "myLibrary": "我的文库",
         "loading": "正在加载 Zotero",
         "loadingCollections": "正在加载合集",

@@ -42,7 +42,7 @@ export function changeSays(say: EffectsSay, row: Logged): { what: string; effect
     case "scheduledCheck": {
       const added = line(row, "joined")?.count ?? 0;
       const found = { count, added, allNew: String(added === count) };
-      return { what: count ? (row.code === "checked" ? t("activity.checkedFound", found) : t("activity.scheduledFound", found)) : row.code === "checked" ? t("activity.checkedNone") : t("activity.scheduledNone"), effect: effects({ known: (one) => t("activity.known", { count: one.count ?? 0 }), leftOut: (one) => t("activity.leftOut", { count: one.count ?? 0 }), joined: (one) => t("activity.joined", { count: one.count ?? 0 }), reopened: () => t("activity.reopenedByCheck") }) };
+      return { what: count ? (row.code === "checked" ? t("activity.checkedFound", found) : t("activity.scheduledFound", found)) : row.code === "checked" ? t("activity.checkedNone") : t("activity.scheduledNone"), effect: effects({ known: (one) => t("activity.known", { count: one.count ?? 0 }), leftOut: (one) => t("activity.leftOut", { count: one.count ?? 0 }), unread: (one) => t("activity.unread", { count: one.count ?? 0 }), joined: (one) => t("activity.joined", { count: one.count ?? 0 }), reopened: () => t("activity.reopenedByCheck") }) };
     }
     case "settings": {
       const parts = (row.more ?? []).flatMap((one) => (one.code === "part" && one.detail && isSetting(one.detail) ? [t(`activity.setting.${SETTING[one.detail]}`)] : []));
