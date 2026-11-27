@@ -762,7 +762,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const searchOf = new Map([...(picked ? [picked] : []), ...searches.items].map((search) => [`search:${search.id}`, search]));
   const searchLook = (offer: Offer) => {
     const search = searchOf.get(offer.ref);
-    return search ? { label: <QueryText query={search.query} />, trail: <FadeRow as="span" scrolls className="block min-w-0"><FilterChips filters={{ ...search, field: undefined, sortBy: undefined }} size="compact" singleLine /></FadeRow> } : {};
+    return search ? { label: <QueryText query={search.query} />, trail: <FadeRow as="span" scrolls className="block min-w-0"><FilterChips filters={search} size="compact" singleLine /></FadeRow> } : {};
   };
   const offered: { rows: Offer[]; pager?: Pager; loading: boolean } =
     kind === "search"

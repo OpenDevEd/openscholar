@@ -173,7 +173,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     for (const vote of votes) if (vote.status === "waiting" && byId.get(vote.reviewerId)?.kind === "person" && (vote.lean ?? 0) !== lean) await ctx.db.patch("screeningVotes", vote._id, { lean });
     const given = cast.flatMap((one) => (one.status === "cast" && one.decision ? [one.decision] : []));
     const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
-    const reason = now === "exclude" ? (reasonOf(cast, paper.resolved?.reason) ?? NO_REASON) : undefined;
+    // An exclusion cast with no reason counts as no reason given, among the others and when it settles a conflict: it never takes another vote's reason.
+    const reason = now === "exclude" ? (paper.resolved?.decision === "exclude" ? (paper.resolved.reason ?? NO_REASON) : (reasonOf(cast.map((one) => (one.status === "cast" && one.decision === "exclude" && !one.reason ? { ...one, reason: NO_REASON } : one))) ?? NO_REASON)) : undefined;
     const { points, stars } = scoreOf(job.criteria ?? [], job.stars ?? [], cast);
     if (now === "conflict" && was !== "conflict") conflicts = true;
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);

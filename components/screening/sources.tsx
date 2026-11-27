@@ -401,7 +401,7 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
         })}
       </ul>
       )}
-      {rows.hasPages || total > FILES_PAGE ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? first : rows.items.length, total }} /> : null}
+      {rows.hasPages || total > FILES_PAGE ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.isLoading ? first : rows.items.length, total, pageCount: Math.max(1, Math.ceil(total / FILES_PAGE)) }} /> : null}
     </div>
   );
 }
@@ -657,7 +657,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
         </div>
       </div>
-      {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
+      {pagerKnown ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.isLoading ? PAGE : rows.length, ...(words || !here ? {} : { total: here.inside, pageCount: Math.max(1, Math.ceil(here.inside / PAGE)) }) }} /> : null}
       </AutoHeight>
     </div>
   );

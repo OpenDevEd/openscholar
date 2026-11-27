@@ -260,7 +260,12 @@ function Screen({ open }: { open: Open }) {
   const lastPaper = last ? (last.paper.id === paper?.id ? paper : (lastRead ?? last.paper)) : undefined;
   // No vote is cast, and no conflict settled, in a finished screening: the buttons give way to a line that says so.
   const finished = Boolean(screening.finishedAt);
-  const mayDecide = !finished && (resolving ? open.canResolve : open.isReviewer);
+  // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
+  const [arrivedQueue, setArrivedQueue] = useState(queue);
+  if (arrived && arrivedQueue !== queue) setArrivedQueue(queue);
+  const switching = arrivedQueue !== queue && !picked;
+  // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
+  const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
   const answering = !resolving && open.isReviewer;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
@@ -273,7 +278,7 @@ function Screen({ open }: { open: Open }) {
     if (!paper || !mayDecide) return;
     const note = notes[paper.id]?.trim() || (resolving ? undefined : mine?.note);
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
-    if (decision === "exclude" && reason === OTHER && !notes[paper.id]?.trim()) {
+    if (decision === "exclude" && reason === OTHER && !note) {
       setReasonFor(null);
       return setWriting(paper.id);
     }
@@ -314,8 +319,9 @@ function Screen({ open }: { open: Open }) {
     if (!paper || !mayDecide) return;
     // Excluding asks why, unless your own answers already say: no reason, a duplicate or another reason. A title and abstract needs none.
     const failed = decision === "exclude" && !resolving ? decide({ ...Object.fromEntries(criteria.map((c) => [c.key, "yes" as Answer])), ...answers[paper.id] }, criteria).reason : undefined;
-    // Settling a conflict with a reason already written: that is the reason, and nothing more is asked.
-    if (decision === "exclude" && resolving && notes[paper.id]?.trim()) decideOn("exclude", OTHER);
+    // A note already written is the reason, for a vote as for settling a conflict: nothing more is asked.
+    const written = (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim();
+    if (decision === "exclude" && !failed && written) decideOn("exclude", OTHER);
     else if (decision === "exclude" && !failed) setReasonFor(paper.id);
     else decideOn(decision, failed);
   };
@@ -520,10 +526,7 @@ function Screen({ open }: { open: Open }) {
   );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
-  // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
-  const [arrivedQueue, setArrivedQueue] = useState(queue);
-  if (arrived && arrivedQueue !== queue) setArrivedQueue(queue);
-  const switching = arrivedQueue !== queue && !picked;
+  // One the counts say is empty says so at once.
   const known = queue !== "done" && !narrowed && !picked && left === 0;
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.

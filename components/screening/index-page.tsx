@@ -297,7 +297,7 @@ export function ScreeningsIndex() {
                 </ul>
                 )}
                 </AutoHeight>
-                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, total: searched || runBy.by || !tally ? undefined : show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished }} /> : null}
+                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: listed.items.length, ...(searched || runBy.by || !tally ? {} : ((total: number) => ({ total, pageCount: Math.max(1, Math.ceil(total / PAGE)) }))(show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished)) }} /> : null}
               </>
             )}
             </AutoHeight>
