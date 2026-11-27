@@ -34,8 +34,9 @@ const folded = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").r
 
 /** People on ORCID for the words typed, best first: those at one of the author's institutions, then everyone else. */
 export async function findOrcidPeople(words: string, institutions: string[] = []) {
+  const at = atInstitutions(institutions);
   const [near, all] = await Promise.all([
-    institutions.length ? searchOrcid(`given-and-family-names:(${words.replace(/[():"\\]/g, " ")}) AND (${institutions.map((i) => `affiliation-org-name:${phrase(i)}`).join(" OR ")})`, 5) : [],
+    at ? searchOrcid(`given-and-family-names:(${words.replace(/[():"\\]/g, " ")}) AND ${at}`, 5) : [],
     searchOrcid(words, 8),
   ]);
   const seen = new Set(near.map((person) => person.orcid));
@@ -49,9 +50,9 @@ export async function findOrcidPeople(words: string, institutions: string[] = []
  */
 export async function matchOrcid(name: string, institutions: string[]): Promise<{ orcid: string; institution: string } | null> {
   const named = institutions.filter((i) => queryWords(i).length);
-  if (!name.trim() || !named.length) return null;
-  // Everyone with this name who has an affiliation holding every word of one of the institutions.
-  const q = `given-and-family-names:${phrase(name)} AND (${named.map((i) => `affiliation-org-name:(${queryWords(i).map((w) => `+${w}`).join(" ")})`).join(" OR ")})`;
+  const at = atInstitutions(named);
+  if (!name.trim() || !at) return null;
+  const q = `given-and-family-names:${phrase(name)} AND ${at}`;
   const { people, found } = await searchOrcidPage(q, MATCH_ROWS);
   // Every person the search found is read, or none is taken: one more past the page could share the name.
   if (found > people.length) return null;
@@ -70,6 +71,11 @@ const telling = (words: string) => words.split(" ").filter((word) => word && !LI
 const institutionWords = (name: string) => telling(organisationName(name));
 /** The same words with their accents: ORCID's affiliation search reads "montreal" and "montréal" as different words. */
 const queryWords = (name: string) => telling(name.normalize("NFC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim());
+/** ORCID's search for anyone with an affiliation holding every word of one of these institutions; none for no words. */
+const atInstitutions = (institutions: string[]) => {
+  const each = institutions.map(queryWords).filter((words) => words.length);
+  return each.length ? `(${each.map((words) => `affiliation-org-name:(${words.map((w) => `+${w}`).join(" ")})`).join(" OR ")})` : "";
+};
 
 /**
  * Whether an institution on an ORCID record is the one a PDF printed: the record's name holds every word of the
