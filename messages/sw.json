@@ -5010,6 +5010,8 @@
       "members": "{count, plural, one {mwanachama #} other {wanachama #}}",
       "invited": "Amealikwa {when}",
       "notSent": "Barua pepe haikutumwa",
+      "sentAgain": "Mwaliko umetumwa tena kwa {email}",
+      "resendTo": "Tuma mwaliko kwa {name} tena",
       "guests": "Wageni",
       "guestCount": "{count, plural, one {mgeni #} other {wageni #}}",
       "noLimit": "Hakuna kikomo",
@@ -5055,6 +5057,8 @@
       "emptyKind": "Bado hakuna kilichoshirikiwa nawe cha aina hii",
       "emptySearch": "Hakuna kilichoshirikiwa nawe kinachofanana",
       "leave": "Ondoka",
+      "leaveTitle": "Uondoke kwenye {name}?",
+      "leaveSays": "{kind, select, screening {Kura zako zinaendelea kuhesabiwa, na makala ambazo hukuwa umepigia kura zinakwenda kwa wakaguzi wengine. } other {}}Inaondoka kwenye orodha yako. Unaweza kuifungua tena tu ikishirikiwa nawe tena.",
       "leaveFailed": "Haikuweza kuondoka humo",
       "loading": "Inapakia kilichoshirikiwa nawe",
       "more": "Onyesha zaidi",
@@ -5074,12 +5078,14 @@
       "invitations": "Mialiko",
       "accept": "Kubali",
       "decline": "Kataa mwaliko wa {name}",
+      "declineIt": "Kataa",
       "declined": "Mwaliko wa {name} umekataliwa",
       "answerFailed": "Haikufanikiwa. Jaribu tena.",
       "goneTitle": "Kiungo hiki hakiko wazi tena",
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
       "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa",
+      "otherAccount": "Ingia kwa akaunti nyingine",
       "pointScreening": "{models, select, true {Kupiga kura ni bure. {name} hulipia miundo ya AI ya uchujaji.} other {Kupiga kura ni bure.}}",
       "pointLooking": "Kuiangalia ni bure",
       "finishedVote": "Imewekwa kuwa imekamilika. Utaweza kupiga kura ikifunguliwa tena"
@@ -8070,7 +8076,7 @@
           },
           "columns": {
             "name": "Nguzo",
-            "what": "Kile ambacho kila nguzo ya faili mbili za CSV inabeba"
+            "what": "Kile ambacho kila nguzo inabeba katika faili za Makala na Kila kura"
           }
         }
       },
@@ -8257,6 +8263,7 @@
         "helpRead": "Uchujaji unasoma kichwa na muhtasari. Rekodi ambayo faharasa ya Openscholar inaijua inachukua vyote viwili kutoka hapo. Makala inayokuja na PDF yake na haina muhtasari inasomwa kutoka PDF.",
         "helpLeft": "Makala isiyo na muhtasari wala PDF, rekodi isiyo na kichwa, DOI isiyopatikana na faili isiyofunguka haviwezi kuchujwa. Kila kimoja kinaachwa na kuorodheshwa kwenye safu ya chanzo chake pamoja na sababu.",
         "stillReading": "Bado inasoma",
+        "sourcesLeft": "Vyanzo vyake vinabaki katika {workspace}. Ongeza vyako ili kuchuja makala zake hapa.",
         "found": "{soFar, select, true {<n></n> zimepatikana hadi sasa} other {<n></n> zimepatikana}}",
         "leftOut": "<n></n> zimeachwa",
         "merged": "{count, plural, one {Rudio <n></n> limeunganishwa} other {Marudio <n></n> yameunganishwa}}",
@@ -8672,7 +8679,7 @@
         "finishedAdds": "Uchujaji huu umekamilika, kwa hivyo watu wanaoongezwa hapa wanaweza kuuona. Ili kuongeza mkaguzi, ufungue tena, au mwongeze kwenye Mipangilio, ambapo atapiga kura ukishafunguliwa tena.",
         "addModel": "Ongeza modeli",
         "membersAdd": "Wanachama wa {workspace} wanaongeza watu na kubadilisha kile ambacho kila mmoja anaweza kufanya.",
-        "full": "Mpango wa {workspace} unashiriki uchujaji na {count, plural, one {mtu #} other {watu #}} walio nje yake. Mwondoe mmoja ili uongeze mwingine.",
+        "full": "{own, select, true {Mpango wako unashiriki} other {Mpango wa {workspace} unashiriki}} uchujaji na {count, plural, one {mtu #} other {watu #}} kutoka nje. Futa mwaliko, au mwondoe mtu katika Watu, ili uongeze mwingine.",
         "ownWorkspace": "Uko kwenye nafasi kazi yake mwenyewe",
         "everyMember": "Kila mwanachama",
         "canChange": "Anaweza kuuona na kuubadilisha",
@@ -8680,7 +8687,6 @@
         "votedOn": "{detail}, amepigia kura {done, number} kati ya {of, number}",
         "modelRead": "{failed, select, true {{price}, imepitia {done, number} kati ya {of, number}} other {{price}, imesoma {done, number} kati ya {of, number}}}",
         "model": "Modeli",
-        "notSent": "Mwaliko haukuweza kutumwa",
         "showMore": "Onyesha watu zaidi",
         "reviewer": "Mkaguzi",
         "reviewerCan": "Anapigia kura makala anazopata",
@@ -8756,6 +8762,7 @@
       "upToDate": "Uko sasa",
       "allSettled": "{finish, select, true {Kila makala imeamuliwa, tayari kukamilishwa} other {Kila makala imeamuliwa}}",
       "none": "{show, select, you {Hakuna kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika.} open {Hakuna uchujaji unaoendelea.} other {Hakuna uchujaji.}}",
+      "noneElse": "Hakuna kingine katika eneo hili la kazi kinachokuhitaji.",
       "noneCalled": "{show, select, you {Hakuna kinachoitwa {name} kinachokuhitaji.} finished {Hakuna uchujaji uliokamilika unaoitwa {name}.} open {Hakuna uchujaji unaoendelea unaoitwa {name}.} other {Hakuna uchujaji unaoitwa {name}.}}",
       "showEvery": "Onyesha kila uchujaji",
       "pagerItems": "uchujaji",
@@ -9009,7 +9016,7 @@
         "seeEvery": "Ona kila ukaguzi, {count, number} kwa jumla",
         "atStart": "Mwanzoni",
         "startedWith": "{sources, plural, =0 {Hakuna vyanzo} other {{known, select, true {{papers, plural, one {Makala #} other {Makala #}}} other {Makala}} kutoka {sources, plural, one {chanzo #} other {vyanzo #}}}}",
-        "finished": "{every, select, day {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila siku uanze tena} week {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila wiki uanze tena} other {Hakuna ukaguzi wakati uchujaji umekamilika. Ufungue tena ili ukaguzi wa kila mwezi uanze tena}}"
+        "finished": "{every, select, day {Itakagua kila siku tena ikifunguliwa upya} week {Itakagua kila wiki tena ikifunguliwa upya} other {Itakagua kila mwezi tena ikifunguliwa upya}}"
       },
       "flow": {
         "title": "Mtiririko wa PRISMA",
@@ -9628,6 +9635,8 @@
         "invited": "Amealikwa kwa barua pepe, atapiga kura akishajiunga",
         "invitedFinished": "Amealikwa kwa barua pepe. Atapiga kura akishajiunga na uchujaji ukifunguliwa tena",
         "invitedToLook": "Amealikwa kwa barua pepe, ataiona akishajiunga",
+        "notSent": "Mwaliko haukuweza kutumwa",
+        "invitationEnds": "Mwaliko unaisha {when}",
         "toInvite": "Atapata mwaliko utakapohifadhi",
         "toInviteAtStart": "Atapata mwaliko utakapoanza",
         "invites": "Atapata mwaliko kwa barua pepe",

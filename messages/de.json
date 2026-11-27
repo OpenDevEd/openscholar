@@ -5010,6 +5010,8 @@
       "members": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
       "invited": "Eingeladen {when}",
       "notSent": "Die E-Mail wurde nicht gesendet",
+      "sentAgain": "Die Einladung ging erneut an {email}",
+      "resendTo": "Einladung erneut an {name} senden",
       "guests": "Gäste",
       "guestCount": "{count, plural, one {# Gast} other {# Gäste}}",
       "noLimit": "Kein Limit",
@@ -5055,6 +5057,8 @@
       "emptyKind": "Noch nichts dieser Art mit Ihnen geteilt",
       "emptySearch": "Nichts Geteiltes mit Ihnen passt",
       "leave": "Verlassen",
+      "leaveTitle": "{name} verlassen?",
+      "leaveSays": "{kind, select, screening {Ihre Stimmen zählen weiter, und die Artikel, über die Sie noch nicht abgestimmt haben, gehen an die anderen Prüfenden. } other {}}Es verschwindet aus Ihrer Liste. Sie können es erst wieder öffnen, wenn es erneut mit Ihnen geteilt wird.",
       "leaveFailed": "Konnte nicht verlassen werden",
       "loading": "Was mit Ihnen geteilt wird, wird geladen",
       "more": "Mehr anzeigen",
@@ -5074,12 +5078,14 @@
       "invitations": "Einladungen",
       "accept": "Annehmen",
       "decline": "Einladung zu {name} ablehnen",
+      "declineIt": "Ablehnen",
       "declined": "Einladung zu {name} abgelehnt",
       "answerFailed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
       "goneTitle": "Dieser Link ist nicht mehr offen",
       "goneDetail": "Bitten Sie die Person, die ihn geteilt hat, ihn erneut zu teilen",
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
       "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde",
+      "otherAccount": "Mit einem anderen Konto anmelden",
       "pointScreening": "{models, select, true {Abstimmen ist kostenlos. {name} bezahlt die KI-Modelle des Screenings.} other {Abstimmen ist kostenlos.}}",
       "pointLooking": "Ansehen ist kostenlos",
       "finishedVote": "Als abgeschlossen markiert. Sie können abstimmen, sobald es wieder geöffnet ist"
@@ -8070,7 +8076,7 @@
           },
           "columns": {
             "name": "Spalten",
-            "what": "Was jede Spalte der beiden CSV-Dateien enthält"
+            "what": "Was jede Spalte in den Dateien aus Artikel und Alle Stimmen enthält"
           }
         }
       },
@@ -8257,6 +8263,7 @@
         "helpRead": "Ein Screening liest Titel und Abstract. Ein Eintrag, den der Index von Openscholar kennt, übernimmt beides von dort. Ein Artikel, der mit eigenem PDF kommt und kein Abstract hat, wird als PDF gelesen.",
         "helpLeft": "Ein Artikel ohne Abstract und ohne PDF, ein Eintrag ohne Titel, eine DOI, die nicht gefunden wird, und eine Datei, die sich nicht öffnen lässt, können nicht geprüft werden. Jedes davon wird ausgelassen und in der Zeile seiner Quelle mit Grund aufgeführt.",
         "stillReading": "Wird noch gelesen",
+        "sourcesLeft": "Seine Quellen bleiben in {workspace}. Fügen Sie eigene hinzu, um deren Artikel hier zu screenen.",
         "found": "{soFar, select, true {<n></n> bisher gefunden} other {<n></n> gefunden}}",
         "leftOut": "<n></n> ausgelassen",
         "merged": "{count, plural, one {<n></n> Duplikat zusammengeführt} other {<n></n> Duplikate zusammengeführt}}",
@@ -8672,7 +8679,7 @@
         "finishedAdds": "Dieses Screening ist abgeschlossen, daher können hier hinzugefügte Personen es ansehen. Um einen Reviewer hinzuzufügen, öffnen Sie es wieder oder fügen Sie ihn unter Einstellungen hinzu, wo er abstimmt, sobald es wieder geöffnet ist.",
         "addModel": "Modell hinzufügen",
         "membersAdd": "Mitglieder von {workspace} fügen Personen hinzu und ändern, was jede tun darf.",
-        "full": "Der Tarif von {workspace} erlaubt, ein Screening mit {count, plural, one {# Person} other {# Personen}} außerhalb zu teilen. Entfernen Sie jemanden, um eine weitere Person hinzuzufügen.",
+        "full": "{own, select, true {Ihr Tarif erlaubt} other {Der Tarif von {workspace} erlaubt}}, ein Screening mit {count, plural, one {# Person} other {# Personen}} von außerhalb zu teilen. Ziehen Sie eine Einladung zurück oder entfernen Sie jemanden unter Personen, um eine weitere Person hinzuzufügen.",
         "ownWorkspace": "Es ist in deren eigenem Arbeitsbereich",
         "everyMember": "Alle Mitglieder",
         "canChange": "Kann es sehen und ändern",
@@ -8680,7 +8687,6 @@
         "votedOn": "{detail}, über {done, number} von {of, number} abgestimmt",
         "modelRead": "{failed, select, true {{price}, {done, number} von {of, number} geschafft} other {{price}, {done, number} von {of, number} gelesen}}",
         "model": "Modell",
-        "notSent": "Die Einladung konnte nicht gesendet werden",
         "showMore": "Mehr Personen anzeigen",
         "reviewer": "Reviewer",
         "reviewerCan": "Stimmt über die erhaltenen Artikel ab",
@@ -8756,6 +8762,7 @@
       "upToDate": "Aktuell",
       "allSettled": "{finish, select, true {Alle Artikel sind entschieden, bereit zum Abschließen} other {Alle Artikel sind entschieden}}",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
+      "noneElse": "Sonst braucht dich in diesem Arbeitsbereich nichts.",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
       "showEvery": "Alle Screenings anzeigen",
       "pagerItems": "Screenings",
@@ -9009,7 +9016,7 @@
         "seeEvery": "Alle Abfragen ansehen, {count, number} insgesamt",
         "atStart": "Beim Start",
         "startedWith": "{sources, plural, =0 {Keine Quellen} other {{known, select, true {{papers, plural, one {# Artikel} other {# Artikel}}} other {Artikel}} aus {sources, plural, one {# Quelle} other {# Quellen}}}}",
-        "finished": "{every, select, day {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Tag abfragt} week {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jede Woche abfragt} other {Keine Abfragen, solange es abgeschlossen ist. Öffnen Sie es wieder, damit es wieder jeden Monat abfragt}}"
+        "finished": "{every, select, day {Fragt wieder jeden Tag ab, sobald es wieder geöffnet ist} week {Fragt wieder jede Woche ab, sobald es wieder geöffnet ist} other {Fragt wieder jeden Monat ab, sobald es wieder geöffnet ist}}"
       },
       "flow": {
         "title": "PRISMA-Fluss",
@@ -9628,6 +9635,8 @@
         "invited": "Per E-Mail eingeladen, stimmt ab, sobald beigetreten",
         "invitedFinished": "Per E-Mail eingeladen. Stimmt ab, sobald beigetreten und das Screening wieder geöffnet ist",
         "invitedToLook": "Per E-Mail eingeladen, sieht es, sobald beigetreten",
+        "notSent": "Die Einladung konnte nicht gesendet werden",
+        "invitationEnds": "Die Einladung läuft {when} ab",
         "toInvite": "Erhält beim Speichern eine Einladung",
         "toInviteAtStart": "Erhält beim Start eine Einladung",
         "invites": "Erhält eine Einladung per E-Mail",

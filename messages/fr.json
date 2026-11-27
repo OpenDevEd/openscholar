@@ -5009,6 +5009,8 @@
       "members": "{count, plural, one {# membre} other {# membres}}",
       "invited": "Invité {when}",
       "notSent": "L'e-mail n'est pas parti",
+      "sentAgain": "L’invitation a été renvoyée à {email}",
+      "resendTo": "Renvoyer l’invitation à {name}",
       "guests": "Invités",
       "guestCount": "{count, plural, one {# invité} other {# invités}}",
       "noLimit": "Sans limite",
@@ -5054,6 +5056,8 @@
       "emptyKind": "Rien de ce type n'est encore partagé avec vous",
       "emptySearch": "Aucun élément partagé ne correspond",
       "leave": "Quitter",
+      "leaveTitle": "Quitter {name} ?",
+      "leaveSays": "{kind, select, screening {Vos votes continuent de compter, et les articles sur lesquels vous n’aviez pas voté vont aux autres relecteurs. } other {}}Il quitte votre liste. Vous ne pourrez le rouvrir que s’il est de nouveau partagé avec vous.",
       "leaveFailed": "Impossible de le quitter",
       "loading": "Chargement de ce qui est partagé avec vous",
       "more": "Afficher plus",
@@ -5073,12 +5077,14 @@
       "invitations": "Invitations",
       "accept": "Accepter",
       "decline": "Refuser l'invitation à {name}",
+      "declineIt": "Refuser",
       "declined": "Invitation à {name} refusée",
       "answerFailed": "Cela n'a pas abouti. Réessayez.",
       "goneTitle": "Ce lien n'est plus ouvert",
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
       "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue",
+      "otherAccount": "Se connecter avec un autre compte",
       "pointScreening": "{models, select, true {Voter est gratuit. {name} paie les modèles d'IA du criblage.} other {Voter est gratuit.}}",
       "pointLooking": "Le consulter est gratuit",
       "finishedVote": "Marqué comme terminé. Vous pourrez voter dès sa réouverture"
@@ -8069,7 +8075,7 @@
           },
           "columns": {
             "name": "Colonnes",
-            "what": "Ce que contient chaque colonne des deux fichiers CSV"
+            "what": "Ce que contient chaque colonne des fichiers Articles et Tous les votes"
           }
         }
       },
@@ -8256,6 +8262,7 @@
         "helpRead": "Un criblage lit un titre et un résumé. Une notice que connaît l'index d'Openscholar en tire les deux. Un article qui arrive avec son propre PDF et n'a pas de résumé est lu depuis le PDF.",
         "helpLeft": "Un article sans résumé ni PDF, une notice sans titre, un DOI introuvable et un fichier qui ne s'ouvre pas ne peuvent pas être criblés. Chacun est écarté et listé sur la ligne de sa source avec la raison.",
         "stillReading": "Lecture en cours",
+        "sourcesLeft": "Ses sources restent dans {workspace}. Ajoutez les vôtres pour cribler leurs articles ici.",
         "found": "{soFar, select, true {<n></n> trouvés jusqu'ici} other {<n></n> trouvés}}",
         "leftOut": "<n></n> écartés",
         "merged": "{count, plural, one {<n></n> doublon fusionné} other {<n></n> doublons fusionnés}}",
@@ -8671,7 +8678,7 @@
         "finishedAdds": "Ce criblage est terminé, les personnes ajoutées ici peuvent donc le consulter. Pour ajouter un évaluateur, rouvrez-le, ou ajoutez-le dans Paramètres, où il votera une fois le criblage rouvert.",
         "addModel": "Ajouter un modèle",
         "membersAdd": "Les membres de {workspace} ajoutent des personnes et changent ce que chacune peut faire.",
-        "full": "Le forfait de {workspace} permet de partager un criblage avec {count, plural, one {# personne extérieure} other {# personnes extérieures}}. Retirez-en une pour en ajouter une autre.",
+        "full": "{own, select, true {Votre forfait permet} other {Le forfait de {workspace} permet}} de partager un criblage avec {count, plural, one {# personne extérieure} other {# personnes extérieures}}. Retirez une invitation, ou retirez quelqu’un dans Personnes, pour en ajouter une autre.",
         "ownWorkspace": "Il est dans son espace de travail personnel",
         "everyMember": "Tous les membres",
         "canChange": "Peut le voir et le modifier",
@@ -8679,7 +8686,6 @@
         "votedOn": "{detail}, {done, number} sur {of, number} votés",
         "modelRead": "{failed, select, true {{price}, a traité {done, number} sur {of, number}} other {{price}, a lu {done, number} sur {of, number}}}",
         "model": "Modèle",
-        "notSent": "L'invitation n'a pas pu être envoyée",
         "showMore": "Afficher plus de personnes",
         "reviewer": "Évaluateur",
         "reviewerCan": "Vote sur les articles qu'il reçoit",
@@ -8755,6 +8761,7 @@
       "upToDate": "À jour",
       "allSettled": "{finish, select, true {Tous les articles sont tranchés, prêt à terminer} other {Tous les articles sont tranchés}}",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
+      "noneElse": "Rien d’autre dans cet espace de travail n’attend après vous.",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
       "pagerItems": "criblages",
@@ -9008,7 +9015,7 @@
         "seeEvery": "Voir toutes les vérifications, {count, number} au total",
         "atStart": "Au départ",
         "startedWith": "{sources, plural, =0 {Aucune source} other {{known, select, true {{papers, plural, one {# article} other {# articles}}} other {Articles}} de {sources, plural, one {# source} other {# sources}}}}",
-        "finished": "{every, select, day {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque jour} week {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque semaine} other {Aucune vérification tant qu'il est terminé. Rouvrez-le pour vérifier de nouveau chaque mois}}"
+        "finished": "{every, select, day {Vérifie de nouveau chaque jour une fois rouvert} week {Vérifie de nouveau chaque semaine une fois rouvert} other {Vérifie de nouveau chaque mois une fois rouvert}}"
       },
       "flow": {
         "title": "Flux PRISMA",
@@ -9627,6 +9634,8 @@
         "invited": "Invitation envoyée par e-mail, vote après avoir rejoint",
         "invitedFinished": "Invitation envoyée par e-mail. Vote une fois le criblage rejoint et rouvert",
         "invitedToLook": "Invitation envoyée par e-mail, le voit après avoir rejoint",
+        "notSent": "L'invitation n'a pas pu être envoyée",
+        "invitationEnds": "L’invitation expire {when}",
         "toInvite": "Reçoit une invitation à l'enregistrement",
         "toInviteAtStart": "Reçoit une invitation au démarrage",
         "invites": "Reçoit une invitation par e-mail",

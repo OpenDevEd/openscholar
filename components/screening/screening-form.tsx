@@ -119,7 +119,8 @@ const settingOf = (screening: Screening, field: (typeof SETTINGS)[number]) =>
     : field === "sources" ? screening.sources.map((source) => [source.id, scopeOf(source)])
     : screening[field],
   );
-const settingsOf = (screening: Screening) => SETTINGS.map((field) => settingOf(screening, field)).join();
+// Invitations taken back on Save are a change too: a draft that differs only by them is kept.
+const settingsOf = (screening: Screening) => [...SETTINGS.map((field) => settingOf(screening, field)), JSON.stringify([...(screening.uninviting ?? [])].sort())].join();
 
 /** A criterion as the server takes it: one the form made has no key there yet. */
 const criterionOf = (screening: Screening) => (criterion: Criterion) => {
@@ -187,7 +188,8 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     ...(differs("name") ? { name: draft.name } : {}),
     ...(differs("question") ? { question: draft.question } : {}),
     ...(differs("criteria") || differs("scoring") ? { criteria: draft.criteria.map(criterionOf(draft)), stars: draft.scoring.stars } : {}),
-    ...(differs("rule") ? { rule: ruleOf(draft, membersOf(draft)) } : {}),
+    // A guest already reviewing it may settle its conflicts too (the server checks they are on it): only someone invited and not joined yet can't.
+    ...(differs("rule") ? { rule: ruleOf(draft, activeReviewers(draft).filter((one) => one.kind === "person" && !one.email)) } : {}),
     ...(differs("living") ? { living: draft.living?.every ?? null } : {}),
     ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune } : {}),
     ...(draft.sources.some((source) => !saved.sources.some((one) => one.id === source.id)) ? { addSources: draft.sources.filter((source) => !saved.sources.some((one) => one.id === source.id)).map(sourceOf) } : {}),
@@ -336,7 +338,6 @@ const EACH_SIDE_BY_SIDE = 5;
 
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
-  const tFrame = useTranslations("screening.frame");
   const tc = useTranslations("common");
   // "First vote decides" puts one person on each paper. The number set before it comes back when another rule is picked again, so clicking through the rules changes nothing by the way.
   const [eachBefore, setEachBefore] = useState<Screening["rule"]["each"] | null>(null);
@@ -404,6 +405,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const origin = saved ?? made;
   // The guests who vote on the screening this one is copied from, by name: they are not on the copy, and the form says how they get on it.
   // A copy made in another workspace takes none of the people: it says nothing of whom it left behind, the person copying it among them.
+  const sourcesLeft = !id && copied && copied.workspace.id !== workspaceId ? copied.sources.length : 0;
   const guestsLeft = !id && copied && copied.workspace.id === workspaceId ? activeReviewers(copied).filter((one) => one.kind === "person" && one.guest).map((one) => one.name) : [];
   // What isn't saved yet is kept with the tab, so leaving the page and coming back loses nothing.
   // A new screening being filled in is its maker's, in the workspace it was begun in: its files, its searches and what was read of them are that workspace's.
@@ -551,12 +553,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   const people = peopleOf(draft);
   // Someone invited by email reads papers once they have joined.
   // Who the rule can put on a paper: the people on it and the ones invited by email, those a running screening's invitations wait for among them.
-  const { people: joined, invited, each } = readersOf(draft, saved ? (open?.invited ?? []) : []);
+  // The invitations that still wait once this is saved: one marked to be taken back counts no more.
+  const pending = saved ? (open?.invited ?? []).filter((one) => !one.email || !(draft.uninviting ?? []).includes(one.email)) : [];
+  const { people: joined, invited, each } = readersOf(draft, pending);
   // Whose votes a reviewer may be kept from, counting people taken off whose votes stay (./data.ts `hidingReaders`).
-  const hiding = hidingReaders(draft, saved ? (open?.invited ?? []) : []);
+  const hiding = hidingReaders(draft, pending);
   const readers = joined.length + invited;
   // Whether a paper here can be in conflict, and so needs someone to settle it: more than one vote has to settle it.
-  const pending = saved ? (open?.invited ?? []) : [];
   const conflicts = draft.rule.settle !== "one" && splitsIn(draft, open?.counts.conflict ?? 0, pending);
   const models = modelsOf(draft);
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
@@ -811,14 +814,22 @@ export function ScreeningForm({ id }: { id?: string }) {
       const outside = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest && !saved.reviewers.some((was) => was.id === one.id && !was.left) && !(one.email && waiting.has(one.email.toLowerCase())));
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
       const send = (some: typeof outside) => Promise.allSettled(some.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
-      // The invitations taken back go after the new ones, so no paper settles between them without the newcomer. Where the guest places are full, they go first and free their places for the ones that couldn't be sent.
+      // The invitations taken back go after the new ones, so no paper settles between them without the newcomer. Where the guest places are full, the first invitation sent again takes them back in its own step and frees their places, for it and the rest.
       let sent = await send(outside);
       if (uninviting.length) {
+        const again = outside.filter((_, at) => sent[at]!.status === "rejected");
+        const first = again.find((one) => one.email);
+        if (first) {
+          const [took] = await Promise.allSettled([share.invite(first.email!, uninviting)]);
+          const rest = await send(again.filter((one) => one !== first));
+          const retried = (one: (typeof outside)[number]) => (one === first ? took! : rest[again.filter((other) => other !== first).indexOf(one)]!);
+          sent = sent.map((one, at) => (one.status === "rejected" ? retried(outside[at]!) : one));
+        }
+        // Those not taken back by an invitation are taken back now.
         await Promise.all(uninviting.map((email) => share.uninvite(email)));
         // Taken back now: a save tried again doesn't take them back twice.
         setUninviting(() => []);
-        const again = outside.filter((_, at) => sent[at]!.status === "rejected");
-        if (again.length) { const retried = await send(again); sent = sent.map((one, at) => (one.status === "rejected" ? retried[again.indexOf(outside[at]!)]! : one)); }
+        if (again.length && !first) { const retried = await send(again); sent = sent.map((one, at) => (one.status === "rejected" ? retried[again.indexOf(outside[at]!)]! : one)); }
       }
       // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
       const refused = outside.flatMap((one, at) => (sent[at]!.status === "rejected" ? [{ one, why: (sent[at] as PromiseRejectedResult).reason as unknown }] : []));
@@ -873,7 +884,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const nameField = (label: string, placeholder: string) => (
     <div className="flex flex-col gap-1.5 px-4 pb-3 ps-11">
       <label htmlFor="collection-name" className="text-xs font-medium text-muted-foreground">{label}</label>
-      <Textarea id="collection-name" dir="auto" rows={1} value={draft.destination.name} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={placeholder} className="min-h-9 max-w-md resize-none bg-card py-2 text-sm field-sizing-content" />
+      <Textarea id="collection-name" rows={1} value={draft.destination.name} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={placeholder} className="min-h-9 max-w-md resize-none bg-card py-2 text-sm field-sizing-content" />
     </div>
   );
   const another = { ...draft.destination, kind: "new" as const, name: "", collection: undefined };
@@ -907,7 +918,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2 px-4 pb-3 ps-11">
           <div className="flex min-w-48 max-w-md flex-1 flex-col gap-1.5">
             <label htmlFor="community-collection-name" className="text-xs font-medium text-muted-foreground">{t("goes.collectionName")}</label>
-            <Textarea id="community-collection-name" dir="auto" rows={1} value={draft.destination.name} maxLength={LIBRARY_COLLECTION_NAME_MAX} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={communityCollectionName(say, { ...draft, destination: { ...draft.destination, name: "" } })} className="min-h-9 resize-none bg-card py-2 text-sm field-sizing-content" />
+            <Textarea id="community-collection-name" rows={1} value={draft.destination.name} maxLength={LIBRARY_COLLECTION_NAME_MAX} onKeyDown={oneLine} onChange={(event) => set({ destination: { ...draft.destination, name: unbroken(event.target.value) } })} placeholder={communityCollectionName(say, { ...draft, destination: { ...draft.destination, name: "" } })} className="min-h-9 resize-none bg-card py-2 text-sm field-sizing-content" />
           </div>
           <label className="flex h-9 items-center gap-2 text-sm">
             <Lock className="size-3.5 text-muted-foreground" />
@@ -983,14 +994,14 @@ export function ScreeningForm({ id }: { id?: string }) {
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">{t("name.label")}{changed("name")}</label>
-              <Textarea id="screening-name" dir="auto" rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
+              <Textarea id="screening-name" rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="flex h-5 items-center gap-1">
                 <label htmlFor="research-question" className="text-xs font-medium text-muted-foreground">{t.rich("name.question", { optional: (chunks) => <span className="font-normal">{chunks}</span> })}</label>
                 <Help title={t("name.questionTitle")} facts={<HelpFact>{t("name.optional")}</HelpFact>}>{t("name.questionHelp")}</Help>
               </span>
-              <Textarea id="research-question" dir="auto" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
+              <Textarea id="research-question" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
             </div>
           </section>
 
@@ -1017,6 +1028,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             }
           >
             <div className="grid items-start gap-4">
+              {/* A copy made outside the workspace of the one it copies starts with no sources: that one's stay where they are. */}
+              {sourcesLeft ? <p className="flex items-start gap-2 text-sm text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-4 shrink-0" /><span>{t("papers.sourcesLeft", { workspace: copied!.workspace.name })}</span></p> : null}
               <div className="min-w-0 space-y-3">
                 {/* The list and what stands in for it when it is empty are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
@@ -1406,7 +1419,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 return (
               <form className="px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); if (refused) return; addCriterion(text); setText(""); }}>
                 <div className="flex items-start gap-2">
-                <Textarea id="new-criterion" dir="auto" rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
+                <Textarea id="new-criterion" rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim() || refused}><Plus />{t("criteria.add")}</Button>
                 </div>
                 {full ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.full", { count: MAX_QUESTIONS })}</p> : repeated && text.trim() ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.repeated")}</p> : null}
@@ -1474,7 +1487,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === me}
                       href={saved && (wasOn(reviewer) || gone) ? (reviewerHref(saved.id, reviewer) ?? undefined) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? (undelivered ? tFrame("peopleDialog.notSent") : words.t(saved.finishedAt ? "person.invitedFinished" : "person.invited")) : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
+                      detail={reviewer.kind === "model" ? (reviewer.model?.effort && !words.twinEffort(reviewer) ? t("reviewers.aiModelAt", { effort: words.effortOf(reviewer.model.effort).toLocaleLowerCase() }) : t("reviewers.aiModel")) : reviewer.email ? (!saved ? words.t("person.toInviteAtStart") : invitation ? words.invitedSays({ failed: undelivered, role: "editor" }, Boolean(saved.finishedAt)) : !wasOn(reviewer) ? words.t("person.toInvite") : words.t("person.invited")) : reviewer.id === draft.rule.resolver && conflicts ? words.t("person.settles") : words.standsTo(reviewer)}
                       chips={
                         gone ? (
                           <>
@@ -1720,7 +1733,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? t("cost.credits", { credits: words.creditsOf(due(model)) }) : fresh ? <span className="text-muted-foreground">{t("cost.noPapers")}</span> : null}</span>
                   </JumpLink>
                 ))}
-                {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsRead", { count: pdfs.papers, pages: pdfs.pages, capped: String(Boolean(pdfCost)), credits: words.credits(pdfCost) })}</span></p> : null}
+                {/* Said only where a model here reads one of them: one that can't says so on its own row. */}
+                {pdfs.papers && models.some((model) => pdfsMissed(model.model!, pdfs).papers < pdfs.papers) ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsRead", { count: pdfs.papers, pages: pdfs.pages, capped: String(Boolean(pdfCost)), credits: words.credits(pdfCost) })}</span></p> : null}
                 {pdfsUnpriced ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsUnpriced")}</span></p> : null}
                 {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{t("cost.firstReading", { count: handedPdfs })}</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">{t("cost.upTo", { credits: words.creditsOf(handedPdfs * lookCredits) })}</span></div> : null}
                 {/* What the change has the models read again is a part of their rows above, said under them as the PDFs are: it is in the total once. */}

@@ -4,6 +4,9 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { useClerk } from "@clerk/nextjs";
+import { ConfirmChange } from "@/components/screening/team";
+import { useWords } from "@/components/screening/words";
 import { nameHas } from "@/lib/screening/rules";
 import { collectionHref } from "@/lib/library/links";
 import { FadeRow } from "@/components/ui/fade-row";
@@ -11,7 +14,7 @@ import { useDeferredValue, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Building2, Check, CircleCheck, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, MessageSquare, Search, SearchX, Share2, Unlink, UserRound, X, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
@@ -201,12 +204,16 @@ export function GuestChips({ from, role, person = false, votes = false }: { from
 
 function Row({ item }: { item: SharedItem }) {
   const t = useTranslations("workspaces.shared");
-  const format = useFormatter();
-  const now = useNow();
+  const words = useWords();
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
+  // Leaving can't be undone from here: it asks first, as the screening's own menu does.
+  const [asking, setAsking] = useState(false);
   const kind = SHARED_KINDS[item.kind];
   return (
     <Entry viewMode="list-detail">
+      <ConfirmChange open={asking} variant="destructive" title={t("leaveTitle", { name: item.name })} confirm={t("leave")} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed")))); }}>
+        <p className="text-sm text-muted-foreground">{t("leaveSays", { kind: item.kind })}</p>
+      </ConfirmChange>
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
         <Link
@@ -228,8 +235,8 @@ function Row({ item }: { item: SharedItem }) {
           {item.size === undefined ? null : <span className="inline-flex h-6 items-center rounded-full border border-border-subtle px-2.5 text-xs tabular-nums text-muted-foreground">{t(`size.${item.kind}`, { count: item.size })}</span>}
         </div>
       </div>
-      <EntryAside className="h-7 self-start" meta={<time>{format.relativeTime(item.at, now)}</time>}>
-        <EntryAction label={t("leave")} icon={LogOut} danger onClick={() => void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed"))))} />
+      <EntryAside className="h-7 self-start" meta={<time>{words.ago(item.at)}</time>}>
+        <EntryAction label={t("leave")} icon={LogOut} danger onClick={() => setAsking(true)} />
       </EntryAside>
     </Entry>
   );
@@ -258,6 +265,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
   const personal = useCurrentWorkspace();
   const { data: invitation } = useProtectedQuery(api.sharing.invitations.get, inWorkspace(workspaceId, { invitationId }));
   const respond = useWorkspaceAction(api.sharing.invitations.respond);
+  const { signOut } = useClerk();
   const [opening, setOpening] = useState(false);
   if (invitation === undefined) return <Landing />;
   if (invitation === null) {
@@ -278,12 +286,29 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       },
     );
   };
+  const decline = () => {
+    setOpening(true);
+    void respond({ invitationId: invitationId as Id<"itemInvitations">, accept: false }).then(
+      () => {
+        toast(t("declined", { name: "name" in invitation ? invitation.name : "" }));
+        router.push("/shared");
+      },
+      (error) => {
+        setOpening(false);
+        showStyledToast("error", getErrorMessage(error, t("answerFailed")));
+      },
+    );
+  };
   // Sent to another address than this account's own: it says nothing of the item, and opens only if that address is this account's too.
   if (invitation.state === "other") {
     return (
       <Landing hero={<Hero icon={Mail} />} title={t("otherTitle")} chips={<p className="text-sm text-muted-foreground">{t("otherDetail")}</p>}>
         <Button className="w-full" disabled={opening} onClick={open}>
           {t("open")}
+        </Button>
+        {/* Signed out, they sign in with the address it was sent to and come back to it. */}
+        <Button variant="ghost" className="w-full" disabled={opening} onClick={() => void signOut({ redirectUrl: `/sign-in?redirect_url=${encodeURIComponent(`/shared/${invitationId}`)}` })}>
+          {t("otherAccount")}
         </Button>
       </Landing>
     );
@@ -324,13 +349,21 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}
       </Button>
+      {/* One not taken up yet can be turned down here, as from the lists of invitations. */}
+      {invitation.state === "accepted" ? null : (
+        <Button variant="ghost" className="w-full" disabled={opening} onClick={decline}>
+          {t("declineIt")}
+        </Button>
+      )}
     </Landing>
   );
 }
 
 /** The invitations waiting for the person, of every kind and sent to any address of theirs: one read, shared by every list that shows them and by the rail. Undefined until read. */
+/** The invitations waiting for the person; none for someone signed out, so a page open signed out never waits for them. */
 export function useWaitingInvitations(initial?: WaitingInvitation[]) {
-  return useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(useWorkspace(), {})).data?.page ?? initial;
+  const read = useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(useWorkspace(), {}));
+  return read.isAnonymous ? [] : (read.data?.page ?? initial);
 }
 export type WaitingInvitation = FunctionReturnType<typeof api.sharing.invitations.waiting>["page"][number];
 

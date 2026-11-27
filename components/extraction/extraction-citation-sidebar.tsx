@@ -34,11 +34,11 @@ export function ExtractionCitationSidebar({
   const [closing, setClosing] = useState<OpenAnswer | null>(null);
   if (answer && closing !== answer) setClosing(answer);
   const shown = answer ?? closing;
+  const locale = useLocale();
 
   if (!_hasHydrated) return null;
 
   const hasPayload = answer !== null;
-  const locale = useLocale();
   const firstPage = getAllCitationLocations(answer?.result)[0]?.page;
   const width = !hasPayload ? 0 : isCollapsed ? collapsedWidth : expandedWidth;
   const offset = expandedWidth - collapsedWidth;

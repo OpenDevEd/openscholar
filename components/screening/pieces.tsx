@@ -26,7 +26,8 @@ import { ANSWERS, modelsAdvise, NO_REASON, NOTE_LENGTH, OTHER_REASON, settle, ty
 import { A4_SHAPE } from "@/lib/screening/files";
 import { Textarea } from "@/components/ui/textarea";
 import { ourPaperPage } from "@/lib/papers/page-address";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, termsPattern, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
@@ -867,10 +868,12 @@ export function ReasonChip({ reason, criteria, className }: { reason: string; /*
 /** To the paper before and the one after, with their keys: the same pair in Screen's bar and at the head of the Papers drawer. */
 export function PaperStepper({ onStep, canPrevious, canNext }: { onStep: (by: 1 | -1) => void; canPrevious: boolean; canNext: boolean }) {
   const t = useTranslations("screening.pieces");
+  // Right to left, the paper after is to the left, and so is its arrow key.
+  const [before, after] = isRightToLeft(useLocale()) ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"];
   return (
     <>
-      <TooltipHint label={<span className="flex items-center gap-2">{t("previousPaper")}<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("previousPaper")} aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-      <TooltipHint label={<span className="flex items-center gap-2">{t("nextPaper")}<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("nextPaper")} aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("previousPaper")}<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("previousPaper")} aria-keyshortcuts={`k ${before}`} disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("nextPaper")}<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground pointer-coarse:size-10" aria-label={t("nextPaper")} aria-keyshortcuts={`j ${after}`} disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
     </>
   );
 }

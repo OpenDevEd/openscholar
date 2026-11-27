@@ -5009,6 +5009,8 @@
       "members": "{count, plural, one {# member} other {# members}}",
       "invited": "Invited {when}",
       "notSent": "The email didn't send",
+      "sentAgain": "The invitation went to {email} again",
+      "resendTo": "Send the invitation to {name} again",
       "guests": "Guests",
       "guestCount": "{count, plural, one {# guest} other {# guests}}",
       "noLimit": "No limit",
@@ -5054,6 +5056,8 @@
       "emptyKind": "Nothing shared with you of this kind yet",
       "emptySearch": "Nothing shared with you matches",
       "leave": "Leave",
+      "leaveTitle": "Leave {name}?",
+      "leaveSays": "{kind, select, screening {Your votes keep counting, and the papers you had not voted on go to the other reviewers. } other {}}It leaves your list. You can open it again only if it is shared with you again.",
       "leaveFailed": "Couldn't leave it",
       "loading": "Loading what's shared with you",
       "more": "Show more",
@@ -5073,12 +5077,14 @@
       "invitations": "Invitations",
       "accept": "Accept",
       "decline": "Decline the invitation to {name}",
+      "declineIt": "Decline",
       "declined": "Declined the invitation to {name}",
       "answerFailed": "That didn't go through. Try again.",
       "goneTitle": "This link is no longer open",
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
       "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to",
+      "otherAccount": "Sign in with another account",
       "pointScreening": "{models, select, true {Voting is free. {name} pays for the screening's AI models.} other {Voting is free.}}",
       "pointLooking": "Looking at it is free",
       "finishedVote": "Marked finished. You can vote once it is reopened"
@@ -8069,7 +8075,7 @@
           },
           "columns": {
             "name": "Columns",
-            "what": "What each column of the two CSV files holds"
+            "what": "What each column holds in the files from Papers and Every vote"
           }
         }
       },
@@ -8256,6 +8262,7 @@
         "helpRead": "A screening reads a title and an abstract. A record that Openscholar's index knows takes both from there. A paper that comes with its own PDF and has no abstract is read as the PDF.",
         "helpLeft": "A paper with no abstract and no PDF, a record with no title, a DOI that isn't found and a file that doesn't open can't be screened. Each is left out and listed on its source's row with the reason.",
         "stillReading": "Still reading",
+        "sourcesLeft": "Its sources stay in {workspace}. Add your own to screen their papers here.",
         "found": "{soFar, select, true {<n></n> found so far} other {<n></n> found}}",
         "leftOut": "<n></n> left out",
         "merged": "{count, plural, one {<n></n> duplicate merged} other {<n></n> duplicates merged}}",
@@ -8671,7 +8678,7 @@
         "finishedAdds": "This screening is finished, so people added here can look at it. To add a reviewer, reopen it, or add them in Settings, where they vote once it is reopened.",
         "addModel": "Add a model",
         "membersAdd": "Members of {workspace} add people and change what each may do.",
-        "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",
+        "full": "{own, select, true {Your plan shares} other {{workspace}’s plan shares}} a screening with {count, plural, one {# person} other {# people}} from outside. Take back an invitation, or remove someone in People, to add another.",
         "ownWorkspace": "It is in their own workspace",
         "everyMember": "Every member",
         "canChange": "Can see and change it",
@@ -8679,7 +8686,6 @@
         "votedOn": "{detail}, voted on {done, number} of {of, number}",
         "modelRead": "{failed, select, true {{price}, got through {done, number} of {of, number}} other {{price}, read {done, number} of {of, number}}}",
         "model": "Model",
-        "notSent": "The invitation couldn't be sent",
         "showMore": "Show more people",
         "reviewer": "Reviewer",
         "reviewerCan": "Votes on the papers they get",
@@ -8755,6 +8761,7 @@
       "upToDate": "Up to date",
       "allSettled": "{finish, select, true {Every paper is settled, ready to finish} other {Every paper is settled}}",
       "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
+      "noneElse": "Nothing else in this workspace needs you.",
       "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
       "showEvery": "Show every screening",
       "pagerItems": "screenings",
@@ -9008,7 +9015,7 @@
         "seeEvery": "See every check, {count, number} in all",
         "atStart": "At the start",
         "startedWith": "{sources, plural, =0 {No sources} other {{known, select, true {{papers, plural, one {# paper} other {# papers}}} other {Papers}} from {sources, plural, one {# source} other {# sources}}}}",
-        "finished": "{every, select, day {No checks while it is finished. Reopen it to check every day again} week {No checks while it is finished. Reopen it to check every week again} other {No checks while it is finished. Reopen it to check every month again}}"
+        "finished": "{every, select, day {Checks every day again once reopened} week {Checks every week again once reopened} other {Checks every month again once reopened}}"
       },
       "flow": {
         "title": "PRISMA flow",
@@ -9627,6 +9634,8 @@
         "invited": "Invited by email, votes once they join",
         "invitedFinished": "Invited by email. Votes once they have joined and this is reopened",
         "invitedToLook": "Invited by email, sees it once they join",
+        "notSent": "The invitation couldn't be sent",
+        "invitationEnds": "The invitation ends {when}",
         "toInvite": "Gets an invitation when you save",
         "toInviteAtStart": "Gets an invitation when you start",
         "invites": "Gets an invitation by email",

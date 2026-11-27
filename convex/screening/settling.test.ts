@@ -331,9 +331,14 @@ describe("what a change takes out", () => {
     const first = papers.find((one) => benOn.includes(one.title))!;
     await vote("ben", first._id, "include");
     await run(made.t);
+    // Ben settles its conflicts too.
+    await made.t.run(async (ctx) => { const job = (await ctx.db.get("screeningJobs", jobId))!; await ctx.db.patch("screeningJobs", jobId, { rule: { ...job.rule!, resolver: made.ids.ben! } }); });
     const organizationId = await made.t.run(async (ctx) => { const workspace = (await ctx.db.get("workspaces", made.workspaceId))!; if (workspace.kind !== "organization") throw new Error("not an organization"); return workspace.organizationId; });
     await made.t.mutation(internal.screening.reviewers.memberLeft, { organizationId, clerkUserId: "ben" });
     await run(made.t);
+    // Its conflicts go to someone still on it, who can open it.
+    const resolver = (await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.rule!.resolver;
+    expect([made.ids.ann, made.ids.cat]).toContain(resolver);
     const after = await standingOf(made.t, jobId);
     // His vote stays and counts; nothing waits for him any more.
     expect(after.papers.find((one) => one.title === first.title)?.on.ben).toBe("include");

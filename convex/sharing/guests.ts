@@ -77,7 +77,8 @@ export const setRoleAction = defineUserMutation({
     if ("userId" in guest) {
       const grant = await grantOf(ctx, shared.id, guest.userId);
       if (!grant) throw createError("NOT_FOUND", "They aren't a guest of it.");
-      if (grant.role !== role) await ctx.db.patch("itemAccess", grant._id, { role });
+      // Whoever changed it is who gave it, as an email about it says.
+      if (grant.role !== role) await ctx.db.patch("itemAccess", grant._id, { role, grantedBy: actor.userId });
       return null;
     }
     const invitation = await invitationTo(ctx, shared.id, guest.email.trim().toLowerCase());

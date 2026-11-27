@@ -48,10 +48,10 @@ export const context = internalQuery({
     if (!job || (finished && about !== "joined") || user?.state !== "active" || row?.off) return null;
     // Only to someone who can still open it: in its workspace, or a guest it is shared with.
     const inside = Boolean(await actorIn(ctx, user, job.workspaceId));
-    if (!inside && !(await grantOf(ctx, job._id, userId))) return null;
+    const grant = inside ? null : await grantOf(ctx, job._id, userId);
+    if (!inside && !grant) return null;
     const workspace = await ctx.db.get("workspaces", job.workspaceId);
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-    // A member opens it in its workspace, and a guest in their own.
     // A member opens it in its workspace, and a guest in their own: membership was read just above.
     const member = Boolean(organization) && inside;
     const progress = await progressRow(ctx, jobId);
@@ -63,7 +63,8 @@ export const context = internalQuery({
     const waits = await waitsOn(ctx, job, userId, on, progress);
     const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0) : waits.forYou;
     // Someone put on a screening is told so whether or not a paper waits for them yet.
-    if (!count && !(about === "joined" && (on || finished))) return null;
+    // On a finished one, only someone who votes once it is reopened: a guest given it to vote on, never one made a viewer since.
+    if (!count && !(about === "joined" && (on || (finished && grant?.role === "editor")))) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
     return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(about === "papers" && count >= NEW_COUNTED ? { more: true } : {}), ...(finished ? { finished: true } : {}), ...(job.living ? { living: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
   },

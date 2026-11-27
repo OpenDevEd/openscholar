@@ -68,7 +68,8 @@ export const noteShared = async (ctx: Pick<MutationCtx, "db">, shared: Shared, b
 export async function give(ctx: MutationCtx, shared: Shared, person: Doc<"users">, role: GuestRole, by: Pick<Acting, "userId" | "author">) {
   const grant = await grantOf(ctx, shared.id, person._id);
   if (grant) {
-    if (grant.role !== role) await ctx.db.patch("itemAccess", grant._id, { role });
+    // Whoever changed it is who gave it, as an email about it says.
+    if (grant.role !== role) await ctx.db.patch("itemAccess", grant._id, { role, grantedBy: by.userId });
     return;
   }
   const waiting = await waitingFor(ctx, shared.id, person);

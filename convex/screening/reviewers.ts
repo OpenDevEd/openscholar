@@ -329,24 +329,50 @@ export const memberLeft = internalMutation({
       await takeOff(ctx, job, reviewer, false);
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.memberLeft, { organizationId, clerkUserId, cursor: page.continueCursor });
-    else {
-      // The screenings they settle conflicts on, reviewer or not, pass to someone who can still open them: a person reviewing it, else whoever made it.
-      for (const status of ["processing", "completed"] as const) {
-        for (const job of await ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", person._id).eq("status", status)).take(STEP)) {
-          // One the screening is shared with to vote on still opens it, and still settles its conflicts.
-          if (job.workspaceId !== workspace._id || !job.rule || (await grantOf(ctx, job._id, person._id))?.role === "editor") continue;
-          const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one.kind === "person" && one.userId && one.userId !== person._id).flatMap((one) => one.userId ?? []);
-          const maker = job.createdBy !== person._id ? job.createdBy : undefined;
-          const next = people[0] ?? maker;
-          if (!next) continue;
-          await ctx.db.patch("screeningJobs", job._id, { rule: { ...job.rule, resolver: people.includes(job.createdBy) ? job.createdBy : next } });
-          await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
-        }
-      }
-    }
+    // Then the screenings they settle conflicts on, reviewer or not, a page at a time.
+    else await ctx.scheduler.runAfter(0, internal.screening.reviewers.settlerLeft, { workspaceId: workspace._id, userId: person._id, status: "processing", cursor: null });
     return null;
   },
 });
+
+/**
+ * Passes on settling the conflicts of a workspace's screenings from someone who left it: to a person reviewing it,
+ * else whoever made it while they are still in its workspace, else someone who is, so no conflict waits for someone who
+ * can't open it. One the screening is shared with to vote on still opens it, and still settles. A page at a time.
+ */
+export const settlerLeft = internalMutation({
+  args: { workspaceId: v.id("workspaces"), userId: v.id("users"), status: v.union(v.literal("processing"), v.literal("creditsExhausted"), v.literal("completed")), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, userId, status, cursor }) => {
+    const page = await ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", userId).eq("status", status)).paginate({ cursor, numItems: STEP });
+    for (const job of page.page) {
+      if (job.workspaceId !== workspaceId || !job.rule || (await grantOf(ctx, job._id, userId))?.role === "editor") continue;
+      const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one.kind === "person" && one.userId && one.userId !== userId).flatMap((one) => one.userId ?? []);
+      // With no person reviewing it, whoever made it while they are still in its workspace, else someone who is.
+      const maker = people.length || job.createdBy === userId ? null : await ctx.db.get("users", job.createdBy);
+      const next = people.length ? nextResolver(job.createdBy, people) : maker && (await actorIn(ctx, maker, workspaceId)) ? maker._id : await memberOf(ctx, workspaceId, userId);
+      if (!next) continue;
+      await ctx.db.patch("screeningJobs", job._id, { rule: { ...job.rule, resolver: next } });
+      await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!);
+      await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId });
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.settlerLeft, { workspaceId, userId, status, cursor: page.continueCursor });
+    // Open ones first, then the ones whose models ran out of credits, which are voted on still, then the finished ones.
+    else if (status !== "completed") await ctx.scheduler.runAfter(0, internal.screening.reviewers.settlerLeft, { workspaceId, userId, status: status === "processing" ? "creditsExhausted" : "completed", cursor: null });
+    return null;
+  },
+});
+
+/** Someone still in an organization's workspace, besides the person who left it. */
+async function memberOf(ctx: MutationCtx, workspaceId: Id<"workspaces">, leaving: Id<"users">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "organization") return undefined;
+  for (const membership of await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(STEP)) {
+    const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+    if (person?.state === "active" && person._id !== leaving) return person._id;
+  }
+  return undefined;
+}
 
 /** Puts a guest on a screening as a reviewer, or takes them off, as their place as its guest says. A finished screening takes no one on: reopening it asks again for each guest (./screenings.ts `reopen`). */
 async function placeGuest(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, reopened = false) {

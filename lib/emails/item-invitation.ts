@@ -31,7 +31,7 @@ export function itemInvitationMessage({ origin, invitationId, email, kind, word,
 }) {
   const acceptUrl = new URL(`/shared/${invitationId}`, origin).href;
   const identity = { name: "Openscholar", baseUrl: origin, logoUrl: new URL("/web-app-manifest-192x192.png", origin).href, accent: "#ed7b15" };
-  const [label, can] = role === "editor" ? EDITS[kind] : ["Can view", `Open, read and export this ${word}.`];
+  const [label, can] = role === "editor" ? EDITS[kind] : ["Can view", kind === "chat" || kind === "author" ? `Open and read this ${word}.` : `Open, read and export this ${word}.`];
   // Voting costs a screening's reviewers nothing: the workspace that runs it pays for its models. Anything else run on a shared item uses the person's own credits.
   const votes = kind === "screening" && role === "editor";
   // Looking at a screening runs nothing: it costs nothing.
@@ -44,8 +44,8 @@ export function itemInvitationMessage({ origin, invitationId, email, kind, word,
     html: renderLibraryEmail({
       identity,
       title: `${inviter} shared a ${word} with you`,
-      content: `<p style="${emailStyles.paragraph}"><strong style="color:#202822">${escapeHtml(name)}</strong>${escapeHtml(from)}</p>${emailPanel(label, `${can}${when} ${paying}`, "Your access")}${emailButton("Open invitation", acceptUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Sign in with ${escapeHtml(email)}. Your invitation expires in 7 days.</p>`,
-      footerHtml: `You received this email because ${escapeHtml(inviter)} invited you to a ${escapeHtml(word)} on Openscholar. If you weren’t expecting it, you can ignore it.`,
+      content: `<p style="${emailStyles.paragraph}"><strong style="color:#202822">${escapeHtml(name)}</strong>${escapeHtml(from)}</p>${emailPanel(label, `${can}${when} ${paying}`, "Your access")}${emailButton("Open invitation", acceptUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Sign in with ${escapeHtml(email)}. Your invitation expires in seven days.</p>`,
+      footerHtml: `You received this email because ${escapeHtml(inviter)} invited you to a ${escapeHtml(word)} on Openscholar. If you weren&#39;t expecting it, you can ignore it.`,
     }),
   };
 }

@@ -23,16 +23,21 @@ import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type Shar
 
 const WEEK = 7 * 86_400_000;
 const actingValidator = { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")) };
-const invitationArgs = { kind: sharedKindValidator, id: v.string(), email: v.string(), role: guestRoleValidator };
+const invitationArgs = { kind: sharedKindValidator, id: v.string(), email: v.string(), role: guestRoleValidator, /** Addresses whose invitations to the item it takes the place of, taken back in the same step: no paper of a screening settles between the two without either. */ replacing: v.optional(v.array(v.string())) };
 
 /** Checks an invitation and keeps it, ready to send. Sending one again restarts its seven days and takes no second place. */
 export const prepare = internalMutation({
   args: { ...actingValidator, ...invitationArgs },
   returns: v.id("itemInvitations"),
-  handler: async (ctx, { userId, workspaceId, author, kind, id, role, ...args }) => {
+  handler: async (ctx, { userId, workspaceId, author, kind, id, role, replacing = [], ...args }) => {
     requireRole(kind, role);
     const actor = await actingAs(ctx, userId, workspaceId, author);
     const shared = await sharedIn(ctx, actor, kind, id);
+    if (replacing.length > MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many invitations to take back at once.");
+    for (const address of replacing) {
+      const old = await invitationTo(ctx, shared.id, address.trim().toLowerCase());
+      if (old?.state === "pending") await ctx.db.patch("itemInvitations", old._id, { state: "cancelled" });
+    }
     await rateLimit(ctx, { name: "item-invitation", key: String(userId), throws: true });
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw createError("VALIDATION_ERROR", "Enter a valid email address");

@@ -2,6 +2,7 @@
  * "Shared with me" (#653): the items a person is a guest of. They are theirs to open in
  * their own workspace only, so in an organization the list is empty.
  */
+import { nameHas } from "../../lib/screening/rules";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
@@ -33,7 +34,7 @@ export const listAction = defineUserQuery({
     if (!(await inOwnWorkspace(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const { userId } = actor;
     const person = await ctx.db.get("users", userId);
-    const needle = text?.trim().toLowerCase() ?? "";
+    const needle = text?.trim() ?? "";
     const rows = stream(ctx.db, schema).query("itemAccess");
     const ordered =
       sort === "name"
@@ -41,17 +42,19 @@ export const listAction = defineUserQuery({
         : (kind ? rows.withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", kind)) : rows.withIndex("by_user_and_grantedAt", (q) => q.eq("userId", userId))).order("desc");
     const read = await ordered
       // A role in an Evidence Library is listed with the libraries, not here.
-      .filterWith(async (row) => shares(row) && (!needle || row.name.toLowerCase().includes(needle)))
+      .filterWith(async (row) => shares(row) && nameHas(row.name, needle))
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX), maximumRowsRead: SHARED_FILTER_ROWS });
     const page = await Promise.all(read.page.filter(shares).map(async (row) => {
       const [shared, sharer] = await Promise.all([findShared(ctx, row.kind, row.item), ctx.db.get("users", row.grantedBy)]);
       // One whose item was just deleted goes with it in a moment (./upkeep.ts). One whose workspace has closed, as a suspended account's has, isn't theirs to open.
       // One moved since into a workspace they act in is theirs there, as its members' are, and not among what's shared with them.
       if (!shared || !(await open(ctx, shared.workspaceId)) || (person && (await actorIn(ctx, person, shared.workspaceId)))) return [];
+      const from = await workspaceFrom(ctx, shared.workspaceId);
+      // Shared by someone whose account is gone: by the workspace it is in, as an invitation from them is.
       return [{
         kind: row.kind, id: shared.id, name: shared.name, role: row.role, at: row.grantedAt,
-        by: { name: sharer ? personName(sharer) || sharer.email : "", ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },
-        from: await workspaceFrom(ctx, shared.workspaceId), ...(shared.size === undefined ? {} : { size: shared.size }),
+        by: { name: (sharer && (personName(sharer) || sharer.email)) || from.name, ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },
+        from, ...(shared.size === undefined ? {} : { size: shared.size }),
       }];
     }));
     return { ...read, page: page.flat() };

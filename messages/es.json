@@ -5010,6 +5010,8 @@
       "members": "{count, plural, one {# miembro} other {# miembros}}",
       "invited": "Invitado {when}",
       "notSent": "El correo no se envió",
+      "sentAgain": "La invitación se envió de nuevo a {email}",
+      "resendTo": "Enviar de nuevo la invitación a {name}",
       "guests": "Invitados",
       "guestCount": "{count, plural, one {# invitado} other {# invitados}}",
       "noLimit": "Sin límite",
@@ -5055,6 +5057,8 @@
       "emptyKind": "Todavía no se ha compartido con usted nada de este tipo",
       "emptySearch": "Ningún elemento compartido con usted coincide",
       "leave": "Salir",
+      "leaveTitle": "¿Salir de {name}?",
+      "leaveSays": "{kind, select, screening {Tus votos siguen contando, y los artículos que no habías votado pasan a los demás revisores. } other {}}Sale de tu lista. Solo podrás abrirlo de nuevo si vuelven a compartirlo contigo.",
       "leaveFailed": "No se pudo salir",
       "loading": "Cargando lo que se comparte con usted",
       "more": "Mostrar más",
@@ -5074,12 +5078,14 @@
       "invitations": "Invitaciones",
       "accept": "Aceptar",
       "decline": "Rechazar la invitación a {name}",
+      "declineIt": "Rechazar",
       "declined": "Invitación a {name} rechazada",
       "answerFailed": "No se pudo hacer. Inténtelo de nuevo.",
       "goneTitle": "Este enlace ya no está abierto",
       "goneDetail": "Pida a quien lo compartió que lo vuelva a compartir",
       "otherTitle": "Esta invitación se envió a otra dirección",
       "otherDetail": "Ábrala si esta cuenta también tiene esa dirección, o inicie sesión con la dirección a la que se envió",
+      "otherAccount": "Iniciar sesión con otra cuenta",
       "pointScreening": "{models, select, true {Votar es gratis. {name} paga los modelos de IA del cribado.} other {Votar es gratis.}}",
       "pointLooking": "Verlo es gratis",
       "finishedVote": "Marcado como terminado. Podrá votar cuando se reabra"
@@ -8070,7 +8076,7 @@
           },
           "columns": {
             "name": "Columnas",
-            "what": "Qué contiene cada columna de los dos archivos CSV"
+            "what": "Qué contiene cada columna en los archivos de Artículos y Todos los votos"
           }
         }
       },
@@ -8257,6 +8263,7 @@
         "helpRead": "Un cribado lee un título y un resumen. Un registro que conoce el índice de Openscholar toma ambos de ahí. Un artículo que llega con su propio PDF y no tiene resumen se lee como el PDF.",
         "helpLeft": "Un artículo sin resumen ni PDF, un registro sin título, un DOI que no se encuentra y un archivo que no se abre no se pueden cribar. Cada uno se descarta y aparece en la fila de su fuente con el motivo.",
         "stillReading": "Aún leyendo",
+        "sourcesLeft": "Sus fuentes se quedan en {workspace}. Añade las tuyas para cribar sus artículos aquí.",
         "found": "{soFar, select, true {<n></n> encontrados hasta ahora} other {<n></n> encontrados}}",
         "leftOut": "<n></n> descartados",
         "merged": "{count, plural, one {<n></n> duplicado fusionado} other {<n></n> duplicados fusionados}}",
@@ -8672,7 +8679,7 @@
         "finishedAdds": "Este cribado ha terminado, así que las personas que se añadan aquí pueden verlo. Para añadir un revisor, reábralo, o añádalo en Ajustes, donde votará cuando se reabra.",
         "addModel": "Añadir un modelo",
         "membersAdd": "Los miembros de {workspace} añaden personas y cambian lo que puede hacer cada una.",
-        "full": "El plan de {workspace} comparte un cribado con {count, plural, one {# persona} other {# personas}} de fuera. Retire a una para añadir a otra.",
+        "full": "{own, select, true {Tu plan comparte} other {El plan de {workspace} comparte}} un cribado con {count, plural, one {# persona} other {# personas}} de fuera. Retira una invitación, o quita a alguien en Personas, para añadir a otra.",
         "ownWorkspace": "Está en su propio espacio de trabajo",
         "everyMember": "Todos los miembros",
         "canChange": "Puede verlo y cambiarlo",
@@ -8680,7 +8687,6 @@
         "votedOn": "{detail}, votó {done, number} de {of, number}",
         "modelRead": "{failed, select, true {{price}, procesó {done, number} de {of, number}} other {{price}, leyó {done, number} de {of, number}}}",
         "model": "Modelo",
-        "notSent": "No se pudo enviar la invitación",
         "showMore": "Mostrar más personas",
         "reviewer": "Revisor",
         "reviewerCan": "Vota los artículos que recibe",
@@ -8756,6 +8762,7 @@
       "upToDate": "Al día",
       "allSettled": "{finish, select, true {Todos los artículos están resueltos, listo para terminar} other {Todos los artículos están resueltos}}",
       "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
+      "noneElse": "Nada más en este espacio de trabajo te necesita.",
       "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
       "showEvery": "Mostrar todos los cribados",
       "pagerItems": "cribados",
@@ -9009,7 +9016,7 @@
         "seeEvery": "Ver todas las comprobaciones, {count, number} en total",
         "atStart": "Al inicio",
         "startedWith": "{sources, plural, =0 {Sin fuentes} other {{known, select, true {{papers, plural, one {# artículo} other {# artículos}}} other {Artículos}} de {sources, plural, one {# fuente} other {# fuentes}}}}",
-        "finished": "{every, select, day {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada día} week {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada semana} other {No hay comprobaciones mientras está terminado. Reábralo para que vuelva a comprobar cada mes}}"
+        "finished": "{every, select, day {Vuelve a comprobar cada día cuando se reabra} week {Vuelve a comprobar cada semana cuando se reabra} other {Vuelve a comprobar cada mes cuando se reabra}}"
       },
       "flow": {
         "title": "Diagrama de flujo PRISMA",
@@ -9628,6 +9635,8 @@
         "invited": "Invitado por correo, vota cuando se una",
         "invitedFinished": "Invitado por correo. Vota cuando se haya unido y el cribado se reabra",
         "invitedToLook": "Invitado por correo, lo ve cuando se una",
+        "notSent": "No se pudo enviar la invitación",
+        "invitationEnds": "La invitación vence {when}",
         "toInvite": "Recibe una invitación al guardar",
         "toInviteAtStart": "Recibe una invitación al empezar",
         "invites": "Recibe una invitación por correo",

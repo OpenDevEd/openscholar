@@ -22,6 +22,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { toast as say } from "sonner";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
@@ -172,6 +173,7 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
             detail: invitation.delivery === "failed" ? t("notSent") : t("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
             role: invitation.role,
             ...(picks ? { onRole: (role: GuestRole) => void setRole({ kind, id, guest: { email: invitation.email }, role }).catch(failed) } : {}),
+            onResend: () => void invite({ kind, id, email: invitation.email, role: invitation.role }).then(() => say(t("sentAgain", { email: invitation.email })), failed),
             onRemove: () => void remove({ kind, id, guest: { email: invitation.email } }).catch(failed),
           })),
         ]}

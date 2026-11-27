@@ -77,7 +77,7 @@ export function isPublicPath(pathname: string) {
  */
 const PAGES_WITH_OWN_LOADING = ["/evidence-communities", "/authors"] as const;
 /** Every page in these sections draws its own frame while loading; a hand-off's page arrives whole from the server. */
-const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/from-library"] as const;
+const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/screening", "/from-library"] as const;
 
 export function showsOwnLoading(pathname: string) {
   // An organization's page under /o/<slug> loads as the same page outside it does.

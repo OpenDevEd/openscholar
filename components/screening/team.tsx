@@ -34,7 +34,7 @@ import type { Pdfs } from "@/lib/pricing/estimate";
 export function AddPerson({ exclude, screening, freeing = 0, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; /** Invitations this form takes back on Save: their places are free for the ones it adds. */ freeing?: number; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   const frame = useTranslations("screening.frame");
-  const workspaceName = useCurrentWorkspace()?.name;
+  const workspace = useCurrentWorkspace();
   const words = useWords();
   const [open, setOpen] = useState(false);
   // The pointer over the button or the keyboard on it: the members are read from then, so the picker opens with them in it.
@@ -66,7 +66,7 @@ export function AddPerson({ exclude, screening, freeing = 0, onPick, children }:
   const already = email !== null && ((known !== undefined && !member) || invitedAlready || guestAlready);
   // The plan's places for people from outside, as the People dialog counts them: those invited in this form and not saved yet take one each. Full, nobody more from outside is offered, and the list says why.
   const room = useProtectedQuery(api.sharing.guests.room, inWorkspace(workspaceId, screening && (open || near) ? { kind: "screening" as const, id: screening } : "skip")).data;
-  const outsideFull = room?.limit != null && room.used - freeing + exclude.filter((one) => one.startsWith("invite:")).length >= room.limit ? frame("peopleDialog.full", { workspace: workspaceName ?? "", count: room.limit }) : null;
+  const outsideFull = room?.limit != null && room.used - freeing + exclude.filter((one) => one.startsWith("invite:")).length >= room.limit ? frame("peopleDialog.full", { own: String(workspace?.kind !== "organization"), workspace: workspace?.name ?? "", count: room.limit }) : null;
   const pick = (value: { person: Person } | { email: string }) => {
     onPick(value);
     setOpen(false);
@@ -93,7 +93,7 @@ export function AddPerson({ exclude, screening, freeing = 0, onPick, children }:
                 ))}
               </div>
             ) : null}
-            <CommandEmpty>{email || found === undefined ? null : <><span className="block font-medium">{text.trim() ? t("nobodyByName") : t("nobodyElse")}</span><span className="mt-1 block text-muted-foreground">{t("inviteHint")}</span></>}</CommandEmpty>
+            <CommandEmpty>{email || found === undefined ? null : <><span className="block font-medium">{text.trim() ? t("nobodyByName") : t("nobodyElse")}</span><span className="mt-1 block text-muted-foreground">{outsideFull ?? t("inviteHint")}</span></>}</CommandEmpty>
             {left.length ? (
               <CommandGroup heading={words.t("person.member")} className={cn("transition-opacity", stale && "opacity-60")}>
                 {left.map((person) => (
