@@ -37,7 +37,7 @@ import { useWords } from "./words";
 /** This part's messages, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
-export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails"] as const;
+export const OVERS = ["activity", "export", "people", "move", "finish", "delete", "leave", "stopEmails", "confirm"] as const;
 export type Over = (typeof OVERS)[number];
 const EXPORT_TABS = ["papers", "votes", "flow", "methods", "record"] as const;
 
@@ -110,6 +110,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const [adding, setAdding] = useState<Reviewer | null>(null);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const [demoting, setDemoting] = useState<Reviewer | null>(null);
+  // A confirmation is open over the page as anything else is (`over=confirm`), taking People's place when asked from there and going back to it once answered.
+  const [fromPeople, setFromPeople] = useState(false);
+  const ask = (set: (reviewer: Reviewer) => void, reviewer: Reviewer, people: boolean) => { set(reviewer); setFromPeople(people); setOver("confirm"); };
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
   const add = useWorkspaceMutation(api.screening.reviewers.add);
   const remove = useWorkspaceMutation(api.screening.reviewers.remove);
@@ -117,14 +120,17 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const controls = {
     show: (next: Over) => setOver(next),
     exportTo: (tab: ExportTab) => { setExportTab(tab); setOver("export"); },
-    add: (reviewer: Reviewer) => setAdding(reviewer),
-    takeOff: (reviewer: Reviewer) => setLeaving(reviewer),
+    add: (reviewer: Reviewer) => ask(setAdding, reviewer, false),
+    takeOff: (reviewer: Reviewer) => ask(setLeaving, reviewer, false),
   };
   if (!state) return { ...controls, overlays: null };
 
   const { screening } = state;
   const { id } = screening;
   const close = () => { setOver(null); setAdding(null); setLeaving(null); setDemoting(null); onClosed?.(); };
+  const answered = () => { setAdding(null); setLeaving(null); setDemoting(null); if (fromPeople) setOver("people"); else close(); };
+  // Reached again by Forward or a reload, a confirmation whose reviewer is no longer known is People, where it was asked.
+  const confirming = over === "confirm" && Boolean(adding || leaving || demoting);
   const unsettled = state.counts.conflict + state.counts.waiting;
   const mine = screening.reviewers.find((one) => one.id === state.me && !one.left)?.tally;
   const collection = words.collectionName(screening);
@@ -136,7 +142,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
       <ActivitySheet open={over === "activity"} onClose={close} state={state} />
       {/* Its files are read only once it is opened. */}
       {over === "export" ? <ExportDialog open onClose={close} state={state} tab={exportTab} onTab={setExportTab} /> : null}
-      <PeopleDialog open={over === "people"} onClose={close} state={state} onAdd={(reviewer) => { setOver(null); setAdding(reviewer); }} onRemove={(reviewer) => { setOver(null); setLeaving(reviewer); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
+      <PeopleDialog open={over === "people" || (over === "confirm" && !confirming)} onClose={close} state={state} onAdd={(reviewer) => ask(setAdding, reviewer, true)} onRemove={(reviewer) => ask(setLeaving, reviewer, true)} onDemote={(reviewer) => ask(setDemoting, reviewer, true)} />
       <MoveDialog
         open={over === "move"}
         onOpenChange={(next) => !next && close()}
@@ -198,9 +204,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
           ]}
         />
       </ConfirmChange>
-      <AddReviewer open={state} reviewer={adding} onConfirm={confirmAdd} onClose={close} />
-      <TakeOff open={state} reviewer={leaving} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={close} />
-      <TakeOff open={state} reviewer={demoting} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={close} />
+      <AddReviewer open={state} reviewer={confirming ? adding : null} onConfirm={confirmAdd} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? leaving : null} onConfirm={(reviewer, discard) => (reviewer.row ? remove({ jobId: id, reviewerId: reviewer.row, discard }) : Promise.resolve(null))} onClose={answered} />
+      <TakeOff open={state} reviewer={confirming ? demoting : null} viewer onConfirm={(reviewer) => sharing.demote(reviewer.id as Id<"users">)} onClose={answered} />
     </>
   );
   return { ...controls, overlays };

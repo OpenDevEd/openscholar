@@ -7865,7 +7865,7 @@
         "prune": "Les articles exclus sont retirés de la collection d'où ils viennent",
         "keep": "Les articles exclus restent dans la collection d'où ils viennent"
       },
-      "withCredits": "{text}, généralement {credits, plural, one {# crédit} other {# crédits}}{each, select, true { chacun} other {}}",
+      "withCredits": "{text}, jusqu'à {credits, plural, one {# crédit} other {# crédits}}{each, select, true { chacun} other {}}",
       "creditsChip": "{credits}{each, select, true { chacun} other {}}",
       "moved": "{count, plural, one {# article déplacé} other {# articles déplacés}} de {from} à {to}",
       "noChange": "Le résultat d'aucun article ne change",
@@ -8433,7 +8433,7 @@
         "free": "Gratuit",
         "credits": "{credits, plural, one {# crédit} other {# crédits}}",
         "noPapers": "Pas encore d'articles",
-        "pdfsRead": "{count, plural, one {# article est lu depuis son PDF} other {# articles sont lus depuis leur PDF}}, {pages, plural, one {# page} other {# pages}} au total{capped, select, true {. Ils coûtent jusqu'à {credits} de ces crédits.} other {.}}",
+        "pdfsRead": "{count, plural, one {# article est lu depuis un PDF} other {# articles sont lus depuis des PDF}}, {pages, plural, one {# page} other {# pages}} au total{capped, select, true {. Ils coûtent jusqu'à {credits} de ces crédits.} other {.}}",
         "pdfsUnpriced": "Un nouvel article qui arrive sous forme de PDF coûte plus, à la page. Son coût s'affiche une fois que le criblage a lu les nouvelles sources.",
         "firstReading": "{count, plural, one {Première lecture de # PDF, payée à son ajout} other {Première lecture de # PDF, payée à leur ajout}}",
         "upTo": "Jusqu'à {credits, plural, one {# crédit} other {# crédits}}",

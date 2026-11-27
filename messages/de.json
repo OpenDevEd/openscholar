@@ -7866,7 +7866,7 @@
         "prune": "Ausgeschlossene Artikel werden aus der Sammlung entfernt, aus der sie kamen",
         "keep": "Ausgeschlossene Artikel bleiben in der Sammlung, aus der sie kamen"
       },
-      "withCredits": "{text}, in der Regel für {credits, plural, one {# Credit} other {# Credits}}{each, select, true { pro Artikel} other {}}",
+      "withCredits": "{text}, für bis zu {credits, plural, one {# Credit} other {# Credits}}{each, select, true { pro Artikel} other {}}",
       "creditsChip": "{credits}{each, select, true { pro Artikel} other {}}",
       "moved": "{count, plural, one {# Artikel} other {# Artikel}} von {from} zu {to} verschoben",
       "noChange": "Das Ergebnis keines Artikels ändert sich",

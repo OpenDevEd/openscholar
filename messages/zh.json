@@ -7865,7 +7865,7 @@
         "prune": "排除的论文会从其来源合集中移出",
         "keep": "排除的论文留在其来源合集中"
       },
-      "withCredits": "{text}，{each, select, true {每篇} other {}}通常 {credits, plural, other {# 积分}}",
+      "withCredits": "{text}，{each, select, true {每篇} other {}}最多 {credits, plural, other {# 积分}}",
       "creditsChip": "{credits}{each, select, true {/篇} other {}}",
       "moved": "{count, plural, other {# 篇论文}}已从 {from} 转给 {to}",
       "noChange": "没有论文的结果改变",

@@ -82,7 +82,7 @@ if (typeof window !== "undefined" && "navigation" in window) {
 export const listedNames = new Map<string, string>();
 
 /** What the frame gives the page inside it: the screening as the person sees it, and the ways to open what opens over it. */
-const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void } | null>(null);
+const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void; takeOff: (reviewer: Reviewer) => void } | null>(null);
 export function useWorkspace() {
   const workspace = use(Workspace);
   if (!workspace) throw new Error("A screening's page is shown inside its frame");
@@ -420,7 +420,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           >
             {/* Each page rises in as it opens. */}
             <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
-              <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity") }}>{children}</Workspace>
+              <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity"), takeOff: overlays.takeOff }}>{children}</Workspace>
             </motion.div>
           </LibraryPageShell>
         </div>

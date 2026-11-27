@@ -8,7 +8,7 @@ import type { MapModel } from "@/components/settings/model-map";
 import type { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DECISIONS, NAMED_REASONS as OTHER_KEYS, RESULTS, canConflict, isFinal, SHORT_NAME_LENGTH, SOMEONE, defaultStars, hash, kappa, modelKey as reviewerKey, nextResolver, readersFor, scoreOf, shortOf, twinsNamed, type Criterion as SharedCriterion, type Decision, type Result, type Rule as SharedRule } from "@/lib/screening/rules";
-// The English a file is written in: the same messages the pages read in English, so a file and a page never name a result two ways.
+// The English a file is written in, apart from the pages' messages so a file doesn't load them all: it names the results, decisions and reasons as the English pages do (messages/en-US.json `screening.words`).
 import FILE_WORDS from "@/messages/screening-fragments/words.json";
 
 export { DECISIONS, RESULTS, SHORT_NAME_LENGTH, hash, shortOf };

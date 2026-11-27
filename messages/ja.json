@@ -7865,7 +7865,7 @@
         "prune": "除外した論文を、元のコレクションから取り除きます",
         "keep": "除外した論文は元のコレクションに残ります"
       },
-      "withCredits": "{text}、通常 {credits, plural, other {# クレジット}}{each, select, true {（1 件あたり）} other {}}",
+      "withCredits": "{text}、最大 {credits, plural, other {# クレジット}}{each, select, true {（1 件あたり）} other {}}",
       "creditsChip": "{credits}{each, select, true {／件} other {}}",
       "moved": "{count, plural, other {論文 # 件}}を {from} から {to} に移しました",
       "noChange": "結果が変わる論文はありません",

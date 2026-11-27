@@ -38,7 +38,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { hash, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip, SEARCH_PILL } from "./pieces";
@@ -489,23 +489,25 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const readGroups = useWorkspaceAction(api.screening.zoteroSources.groups);
   const openTree = useWorkspaceMutation(api.zotero.tree.open);
   const own: ZoteroLibrary = { name: t("zotero.myLibrary") };
-  const [library, setLibrary] = useState<ZoteroLibrary>(own);
-  // The collections opened on the way to where the list stands, the last of them the one it stands in. Their keys are in the address, so each one opened is a step in the history and Back climbs out of it; what each is, is kept as it was read.
-  const [keys, setKeys] = useQueryState("folder", parseAsArrayOf(parseAsString).withOptions({ history: "push", scroll: false }));
-  const [seen, setSeen] = useState<Record<string, ZoteroCollection>>({});
-  const path = (keys ?? []).every((key) => seen[key]) ? (keys ?? []).map((key) => seen[key]!) : [];
+  // The library and the collections opened on the way to where the list stands, the last of them the one it stands in, are in the address together: each one opened is a step in the history, and Back returns to a folder with the library it is in. What each is, is kept as it was read.
+  const [where, setWhere] = useQueryStates({ zoteroLibrary: parseAsString, folder: parseAsArrayOf(parseAsString) }, { history: "push", scroll: false });
+  const [seen, setSeen] = useState<{ libraries: Record<string, ZoteroLibrary>; folders: Record<string, ZoteroCollection> }>({ libraries: {}, folders: {} });
+  const keys = where.folder ?? [];
+  const path = keys.every((key) => seen.folders[key]) ? keys.map((key) => seen.folders[key]!) : [];
   const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
   const [find, setFind] = useState("");
   const words = useDebouncedValue(find.trim(), 300);
   const deepId = useId();
   const connected = account?.connected === true;
-  const of = library.id ? { groupId: library.id } : {};
+  const of = where.zoteroLibrary ? { groupId: where.zoteroLibrary } : {};
   // The groups, a page of Zotero's at a time: the next is read when the person asks for more.
   const [more, setMore] = useState<{ groups: ZoteroLibrary[]; next?: number }>({ groups: [] });
   const groups = useSWR(connected ? ["zotero-groups"] : null, () => readGroups({}), { revalidateOnFocus: false });
   const listedGroups = [...(groups.data?.page ?? []), ...more.groups];
   const nextGroups = more.groups.length ? more.next : groups.data?.next;
+  // The library the address names: as it was picked, else as the groups list it (after a reload).
+  const library: ZoteroLibrary = where.zoteroLibrary ? (seen.libraries[where.zoteroLibrary] ?? listedGroups.find((one) => one.id === where.zoteroLibrary) ?? { id: where.zoteroLibrary, name: t("zotero.group") }) : own;
   const moreGroups = async () => { const read = await readGroups({ start: nextGroups }); setMore((now) => ({ groups: [...now.groups, ...read.page], next: read.next })); };
   // The library's collections are kept on the server as rows, read again from Zotero where what is kept is old (convex/zotero/tree.ts): opening the library asks for that, and the list below pages and searches what is kept.
   useSWR(connected ? ["zotero-open", library.id ?? ""] : null, () => openTree(of), { revalidateOnFocus: false });
@@ -545,11 +547,16 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   // A collection opened says how many it holds, so its pager stands before its first page comes.
   const pagerKnown = listed.hasPages || Boolean(!words && here && here.inside > PAGE);
   const go = (next: ZoteroCollection[]) => {
-    setSeen((now) => ({ ...now, ...Object.fromEntries(next.map((one) => [one.key, one])) }));
-    void setKeys(next.length ? next.map((one) => one.key) : null);
+    setSeen((now) => ({ ...now, folders: { ...now.folders, ...Object.fromEntries(next.map((one) => [one.key, one])) } }));
+    void setWhere({ folder: next.length ? next.map((one) => one.key) : null });
     setFind("");
   };
-  const pick = (next: ZoteroLibrary) => { setLibrary(next); setPicking(false); go([]); };
+  const pick = (next: ZoteroLibrary) => {
+    if (next.id) setSeen((now) => ({ ...now, libraries: { ...now.libraries, [next.id!]: next } }));
+    void setWhere({ zoteroLibrary: next.id ?? null, folder: null });
+    setPicking(false);
+    setFind("");
+  };
   const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
   const under = (one: ZoteroCollection) => deep && one.inside > 0;
   const aboveOf = (one: ZoteroCollection): ZoteroCollection[] => one.above?.map((step) => ({ ...step, papers: 0, inside: 1 })) ?? (path.some((step) => step.key === one.key) ? path.slice(0, path.findIndex((step) => step.key === one.key)) : path);

@@ -179,7 +179,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const first = job.rule?.settle === "one" ? voters.filter((one) => one.status === "cast" && one.decision).reduce<(typeof voters)[number] | undefined>((earliest, one) => (!earliest || (one.at ?? 0) < (earliest.at ?? 0) ? one : earliest), undefined) : undefined;
     const deciding = first ? [first] : voters;
     // An exclusion cast with no reason counts as no reason given, among the others and when it settles a conflict: it never takes another vote's reason.
-    const reason = now === "exclude" ? (paper.resolved?.decision === "exclude" ? (paper.resolved.reason ?? NO_REASON) : (reasonOf(deciding.map((one) => (one.status === "cast" && one.decision === "exclude" && !one.reason ? { ...one, reason: NO_REASON } : one))) ?? NO_REASON)) : undefined;
+    // A result held through a change of settings keeps the reason it was excluded for: the votes that decide it under the new rule didn't decide it.
+    const reason = now === "exclude" ? (paper.resolved?.decision === "exclude" ? (paper.resolved.reason ?? NO_REASON) : held && (carried ?? was) === "exclude" && paper.reason ? paper.reason : (reasonOf(deciding.map((one) => (one.status === "cast" && one.decision === "exclude" && !one.reason ? { ...one, reason: NO_REASON } : one))) ?? NO_REASON)) : undefined;
     const { points, stars } = scoreOf(job.criteria ?? [], job.stars ?? [], cast);
     if (now === "conflict" && was !== "conflict") conflicts = true;
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);

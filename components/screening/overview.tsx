@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
-import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
 import { pdfsMissed, pdfsOf, unreadPdfs, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
@@ -259,7 +258,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const words = useWords();
   const format = useFormatter();
   const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
-  const [leaving, setLeaving] = useState<Reviewer | null>(null);
+  // Taking someone off asks first, in the one confirmation the frame opens for it.
+  const { takeOff } = useWorkspace();
   // The person some papers are being moved from, while that is being set up.
   const [moving, setMoving] = useState<string | null>(null);
   const reviewers = inOrder(activeReviewers(screening), open.me);
@@ -370,7 +370,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               <div role="row" className={cn(ACROSS, "flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium")}>
                 <span role="cell">{group.label} <span className="font-normal tabular-nums text-muted-foreground">{group.rows.length}</span></span>
               </div>
-              {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
+              {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={takeOff} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
             </div>
           ))}
           {/* Whoever was invited by email to vote and has yet to answer: counted among its people, and no reviewer until they join. */}
@@ -412,7 +412,6 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       ) : (
         <EmptyNote>{t("reviewers.nobody", { change: String(open.canChange && !screening.finishedAt) })}</EmptyNote>
       )}
-      <TakeOff open={open} reviewer={leaving} onConfirm={(reviewer, discard) => open.takeOff(reviewer, discard)} onClose={() => setLeaving(null)} />
       {/* Made anew for each move, so it starts from the person it was opened for. */}
       {moving ? <MovePapers key={moving} open={open} people={takers} from={moving} onClose={() => setMoving(null)} /> : null}
     </Section>

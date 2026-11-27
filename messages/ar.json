@@ -7866,7 +7866,7 @@
         "prune": "تُزال الأوراق المستبعدة من المجموعة التي جاءت منها",
         "keep": "تبقى الأوراق المستبعدة في المجموعة التي جاءت منها"
       },
-      "withCredits": "{text}، مقابل {credits, plural, zero {# رصيد} one {رصيد واحد} two {رصيدين} few {# أرصدة} many {# رصيدًا} other {# رصيد}} عادةً{each, select, true { لكل منها} other {}}",
+      "withCredits": "{text}، مقابل {credits, plural, zero {# رصيد} one {رصيد واحد} two {رصيدين} few {# أرصدة} many {# رصيدًا} other {# رصيد}} كحد أقصى{each, select, true { لكل منها} other {}}",
       "creditsChip": "{credits}{each, select, true { لكل منها} other {}}",
       "moved": "{count, plural, zero {انتقلت # ورقة من {from} إلى {to}} one {انتقلت ورقة واحدة من {from} إلى {to}} two {انتقلت ورقتان من {from} إلى {to}} few {انتقلت # أوراق من {from} إلى {to}} many {انتقلت # ورقة من {from} إلى {to}} other {انتقلت # ورقة من {from} إلى {to}}}",
       "noChange": "لا تتغير نتيجة أي ورقة",

@@ -7865,7 +7865,7 @@
         "prune": "बाहर किए गए लेख उस संग्रह से निकाल दिए जाते हैं जिससे वे आए थे",
         "keep": "बाहर किए गए लेख उस संग्रह में रहते हैं जिससे वे आए थे"
       },
-      "withCredits": "{text}, आम तौर पर {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}{each, select, true { प्रति लेख} other {}} में",
+      "withCredits": "{text}, अधिकतम {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}{each, select, true { प्रति लेख} other {}} में",
       "creditsChip": "{credits}{each, select, true { प्रति लेख} other {}}",
       "moved": "{count, plural, one {# लेख {from} से {to} में गया} other {# लेख {from} से {to} में गए}}",
       "noChange": "किसी लेख का परिणाम नहीं बदलता",
@@ -8433,7 +8433,7 @@
         "free": "मुफ़्त",
         "credits": "{credits, plural, one {# क्रेडिट} other {# क्रेडिट}}",
         "noPapers": "अभी कोई लेख नहीं",
-        "pdfsRead": "{count, plural, one {# लेख उसकी PDF से पढ़ा जाता है} other {# लेख उनकी PDF से पढ़े जाते हैं}}, कुल {pages, plural, one {# पेज} other {# पेज}}{capped, select, true {। इनकी लागत इन क्रेडिट में से अधिकतम {credits} है।} other {।}}",
+        "pdfsRead": "{count, plural, one {# लेख PDF के रूप में पढ़ा जाता है} other {# लेख PDF के रूप में पढ़े जाते हैं}}, कुल {pages, plural, one {# पेज} other {# पेज}}{capped, select, true {। इनकी लागत इन क्रेडिट में से अधिकतम {credits} है।} other {।}}",
         "pdfsUnpriced": "जो नया लेख PDF के रूप में आता है, उसकी लागत पेज के हिसाब से ज़्यादा होती है। स्क्रीनिंग के नए स्रोत पढ़ लेने के बाद लागत दिखती है।",
         "firstReading": "{count, plural, one {# PDF की पहली पढ़ाई, जोड़ते समय भुगतान हुआ} other {# PDF की पहली पढ़ाई, जोड़ते समय भुगतान हुआ}}",
         "upTo": "अधिकतम {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}",

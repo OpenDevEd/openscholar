@@ -7866,7 +7866,7 @@
         "prune": "Os artigos excluídos são retirados da coleção de onde vieram",
         "keep": "Os artigos excluídos ficam na coleção de onde vieram"
       },
-      "withCredits": "{text}, normalmente {credits, plural, one {# crédito} other {# créditos}}{each, select, true { cada} other {}}",
+      "withCredits": "{text}, por até {credits, plural, one {# crédito} other {# créditos}}{each, select, true { cada} other {}}",
       "creditsChip": "{credits}{each, select, true { cada} other {}}",
       "moved": "{count, plural, one {# artigo passou} other {# artigos passaram}} de {from} para {to}",
       "noChange": "O resultado de nenhum artigo muda",
@@ -8434,7 +8434,7 @@
         "free": "Gratuito",
         "credits": "{credits, plural, one {# crédito} other {# créditos}}",
         "noPapers": "Ainda não há artigos",
-        "pdfsRead": "{count, plural, one {# artigo é lido a partir do PDF} other {# artigos são lidos a partir do PDF}}, {pages, plural, one {# página} other {# páginas}} no total{capped, select, true {. Custam até {credits} destes créditos.} other {.}}",
+        "pdfsRead": "{count, plural, one {# artigo é lido a partir de um PDF} other {# artigos são lidos a partir de PDFs}}, {pages, plural, one {# página} other {# páginas}} no total{capped, select, true {. Custam até {credits} destes créditos.} other {.}}",
         "pdfsUnpriced": "Um artigo novo que chega como PDF custa mais, à página. Quanto custa aparece quando a triagem tiver lido as novas fontes.",
         "firstReading": "{count, plural, one {Primeira leitura de # PDF, paga quando foi adicionado} other {Primeira leitura de # PDF, paga quando foram adicionados}}",
         "upTo": "Até {credits, plural, one {# crédito} other {# créditos}}",
