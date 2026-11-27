@@ -476,6 +476,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The communities the person reads in, with their collections there: where included papers can go beside their own library.
   const communities = useLibrarySources();
   const create = useWorkspaceAction(api.screening.screenings.create);
+  const resume = useWorkspaceMutation(api.screening.screenings.resume);
   const saveChange = useWorkspaceMutation(api.screening.settings.save);
   const readSourceAgain = useWorkspaceMutation(api.screening.living.readSourceAgain);
   const saveToCommunity = useWorkspaceAction(api.screening.settings.saveToCommunity);
@@ -724,11 +725,13 @@ export function ScreeningForm({ id }: { id?: string }) {
     setRefused(null);
     const name = draft.name.trim() || draft.sources[0]?.name || t("untitled");
     try {
-      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(early ? { draft: early.jobId } : {}) });
-      // People from outside the workspace are given it, or invited to it, once it is there to share: to vote, or to look.
+      // People from outside the workspace are given it, or invited to it, once it is there to share: to vote, or to look. Its models wait for them, so no paper meant for them is settled first.
+      const voters = activeReviewers(draft).some((one) => one.kind === "person" && one.guest);
+      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(early ? { draft: early.jobId } : {}), ...(voters ? { hold: true } : {}) });
       const outside = [...activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).map((one) => ({ one, role: "editor" as const })), ...(draft.viewers ?? []).map((one) => ({ one, role: "viewer" as const }))];
       const sent = await Promise.allSettled(outside.map(({ one, role }) => (one.email ? invite({ kind: "screening", id: jobId, email: one.email, role }) : give({ kind: "screening", id: jobId, personId: one.id as Id<"users">, role }))));
       if (sent.some((one) => one.status === "rejected")) showStyledToast("error", t("toast.notAdded"));
+      if (voters) await resume({ jobId, quiet: true });
       flushSync(() => setSent(draft));
       keep(key, () => undefined);
       // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
@@ -747,8 +750,10 @@ export function ScreeningForm({ id }: { id?: string }) {
       // Sent before the save, so the papers it settles wait for whoever is invited (lib/screening/project.ts).
       const sent = await Promise.allSettled(outside.map((one) => (one.email ? share.invite(one.email) : share.give(one.id as Id<"users">))));
       // Someone who couldn't be invited stays in the draft, and nothing else is saved yet: saving again tries them again.
-      if (sent.some((one) => one.status === "rejected")) {
-        showStyledToast("error", t("toast.notInvited"));
+      const refused = outside.flatMap((one, at) => (sent[at]!.status === "rejected" ? [{ one, why: (sent[at] as PromiseRejectedResult).reason as unknown }] : []));
+      if (refused.length) {
+        // Who couldn't be invited, and what the server said about the first of them.
+        showStyledToast("error", t("toast.notInvited", { names: words.listed(refused.map(({ one }) => one.name)) }), { description: getErrorMessage(refused[0]!.why, t("toast.failed")) });
         return;
       }
       // A community's collection is checked, or made, there before the save.

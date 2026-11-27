@@ -28,13 +28,12 @@ export function useOpenInAddress<T extends string>(key: string, values: readonly
   const own = [key, ...inner];
   // Where the browser has no Navigation API: the address this page opened it over.
   const openedOver = useRef<string | null>(null);
-  const openedAt = useRef<number | null>(null);
   /** How many steps back the page under it is, where every step since it opened is its own; else none, and it closes in place. */
   const stepsBack = () => {
     const list = navigation();
     const current = list?.currentEntry;
-    // Without it, the steps it took are the entries added since it opened (its tabs and choices), counted by the history's length.
-    if (!list || !current) return openedOver.current === without(window.location.href, own) && openedAt.current !== null ? 1 + Math.max(0, window.history.length - openedAt.current) : 0;
+    // Without it, only a single step is known for sure: one with nothing of its own set beyond being open. After a tab or a choice inside it, it closes in place rather than guess how far back the page is.
+    if (!list || !current) return openedOver.current === without(window.location.href, own) && inner.every((one) => !new URL(window.location.href).searchParams.has(one)) ? 1 : 0;
     const entries = list.entries();
     const under = without(window.location.href, own);
     // Back from here, the first entry without it open is the page it was opened over.
@@ -51,12 +50,11 @@ export function useOpenInAddress<T extends string>(key: string, values: readonly
     if (next) {
       if (open === null) {
         openedOver.current = without(window.location.href, own);
-        void setState({ [key]: next }).then(() => { openedAt.current = window.history.length; });
+        void setState({ [key]: next });
       } else void setState({ [key]: next }, { history: "replace" });
     } else if (open !== null) {
       const steps = inPlace ? 0 : stepsBack();
       openedOver.current = null;
-      openedAt.current = null;
       if (steps > 0) window.history.go(-steps);
       else void setState(Object.fromEntries(own.map((one) => [one, null])), { history: "replace" });
     }

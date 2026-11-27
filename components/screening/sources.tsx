@@ -329,7 +329,7 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
           </p>
         )}
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
+        <Button variant="outline" size="sm" className="mt-2" disabled={lookCredits === undefined} onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>
       {reading.length || pending.length || sending.length ? (
         <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
@@ -645,9 +645,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       </div>
       {/* The list holds a page's height while it fills or pages, the rows still to come drawn in their place, and a change to its height slides. */}
       <AutoHeight>
-      <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isStale && "opacity-60")}>
+      {/* Rows of the list before (another library, folder or search) stay dimmed and out of reach until the new ones come: none can be added under the wrong library. */}
+      <div inert={listed.isStale || resolving} className={cn("divide-y divide-border-subtle transition-opacity", (listed.isStale || resolving) && "opacity-60")}>
         {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. A name being looked for is looked for in the whole library. */}
-        {words ? null : here ? (
+        {words || gone || resolving ? null : here ? (
           <OfferRow offer={{ name: here.name, detail: "", total: here.papers }} icon={Folder} trail={trailOf(path.slice(0, -1))} added={added(here)} onAdd={() => add(here)} {...counted(here)} />
         ) : (
           <OfferRow

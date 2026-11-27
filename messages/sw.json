@@ -7893,7 +7893,7 @@
         "scheduledNone": "Ukaguzi wa ratiba haukupata makala mpya",
         "known": "{count, plural, one {# ilikuwa} other {# zilikuwa}} tayari kwenye uchujaji",
         "leftOut": "{count, plural, one {# iliachwa} other {# ziliachwa}}",
-        "unread": "{count, plural, one {Chanzo # hakikuweza kusomwa} other {Vyanzo # havikuweza kusomwa}}",
+        "unread": "{count, plural, one {Haukuweza kusoma chanzo #} other {Haukuweza kusoma vyanzo #}}",
         "joined": "{count, plural, one {Makala # iliingia} other {Makala # ziliingia}} kwenye uchujaji",
         "reopenedByCheck": "Uchujaji uko wazi tena",
         "changed": "Kulibadilishwa {parts}",
@@ -8149,7 +8149,7 @@
         "undo": "Tendua",
         "failed": "Hilo halikufanikiwa. Jaribu tena.",
         "notAdded": "Baadhi ya watu hawakuweza kuongezwa. Waongeze tena kutoka Watu.",
-        "notInvited": "Baadhi ya watu hawakuweza kualikwa, kwa hiyo bado hakuna kilichohifadhiwa. Hifadhi tena ili kujaribu kuwaalika tena.",
+        "notInvited": "Haikuwezekana kualika {names}, kwa hiyo bado hakuna kilichohifadhiwa, na kila badiliko hapa bado linasubiri. Hifadhi tena ili kujaribu tena.",
         "notStarted": "Uchujaji haukuweza kuanzishwa. Jaribu tena.",
         "saved": "Mabadiliko yamehifadhiwa",
         "discarded": "Mabadiliko yametupwa"
@@ -8945,7 +8945,7 @@
         "found": "{count, number} zimepatikana",
         "alreadyIn": "{count, number} tayari zimo",
         "leftOut": "{count, plural, one {# imeachwa} other {# zimeachwa}}",
-        "unread": "{count, plural, one {Haukuweza kusoma chanzo #} other {Haukuweza kusoma vyanzo #}}",
+        "unread": "{count, plural, one {Haukuweza kusoma {names}} other {Haukuweza kusoma vyanzo #, {names}}}",
         "added": "{count, number} zimeongezwa",
         "newFrom": "{count, number} mpya kutoka {source}",
         "result": "{result, select, include {{count, number} zimejumuishwa} maybe {{count, number} labda} exclude {{count, number} zimetengwa} conflict {{count, number} zenye mgongano} other {{count, number} zinasubiri kura}}",
@@ -8985,7 +8985,11 @@
         "newest": "Zilizochapishwa, mpya kwanza",
         "split": "Kura zilizogawanyika zaidi",
         "points": "Pointi nyingi zaidi",
-        "shut": "Uchujaji huu unaficha kura za wakaguzi wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua"
+        "shut": "Uchujaji huu unaficha kura za wakaguzi wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua",
+        "byVote": "Orodha ikipunguzwa kwa mkaguzi mmoja, makala zinakuja kwa mpangilio ambao mkaguzi huyo alizipigia kura",
+        "byVoteLabel": "Kama zilivyopigiwa kura",
+        "bySearch": "Unapotafuta, makala zinakuja kwa mpangilio wa jinsi zinavyolingana vizuri zaidi",
+        "bySearchLabel": "Zinazolingana zaidi kwanza"
       },
       "settledBy": "{you, select, true {Imeamuliwa na wewe} other {Imeamuliwa na {name}}}",
       "settledToast": "{count, number} zimeamuliwa kama {result}",
@@ -9327,6 +9331,7 @@
         "add": "Ongeza vigezo"
       },
       "bar": {
+        "notInList": "Haipo tena kwenye orodha hii",
         "atOf": "{at, number} kati ya {count, number}",
         "left": "{count, plural, other {# zimebaki}}",
         "underMinute": "chini ya dakika moja",
@@ -9452,7 +9457,7 @@
           "pdfTooBig": "Zaidi ya MB {mb, number}",
           "unsent": "Haikuweza kutumwa",
           "allUnsent": "Hazikuweza kutumwa",
-          "priceComing": "Inaongezwa mara gharama ya PDF inapoonekana. Iongeze tena baada ya muda mfupi"
+          "priceComing": "Iongeze tena mara gharama ya PDF inapoonekana"
         },
         "drop": "Dondosha faili za marejeleo au PDF hapa",
         "helpTitle": "Faili",

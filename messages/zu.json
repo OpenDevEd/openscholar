@@ -7892,7 +7892,7 @@
         "scheduledNone": "Ukuhlola okuhleliwe akutholanga maphepha amasha",
         "known": "{count, plural, one {# belisevele} other {# abesevele}} ekuskrinini",
         "leftOut": "{count, plural, one {# lishiywe ngaphandle} other {# ashiywe ngaphandle}}",
-        "unread": "{count, plural, one {# umthombo awukwazanga ukufundwa} other {# imithombo ayikwazanga ukufundwa}}",
+        "unread": "{count, plural, one {Akukwazanga ukufunda # umthombo} other {Akukwazanga ukufunda # imithombo}}",
         "joined": "{count, plural, one {# iphepha lijoyine} other {# amaphepha ajoyine}} ukuskrini",
         "reopenedByCheck": "Ukuskrini kuvulekile futhi",
         "changed": "Kushintshwe {parts}",
@@ -8148,7 +8148,7 @@
         "undo": "Hlehlisa",
         "failed": "Lokho akuphumelelanga. Zama futhi.",
         "notAdded": "Abanye abantu abakwazanga ukwengezwa. Baphinde ubengeze kusuka ku-Abantu.",
-        "notInvited": "Abanye abantu abakwazanga ukumenywa, ngakho akukagcinwa lutho okwamanje. Gcina futhi ukuze uzame ukubamema futhi.",
+        "notInvited": "Akukwazekanga ukumema {names}, ngakho akukagcinwa lutho okwamanje, futhi zonke izinguquko lapha zisalindile. Gcina futhi ukuze uzame futhi.",
         "notStarted": "Ukuskrini akukwazanga ukuqalwa. Zama futhi.",
         "saved": "Izinguquko zigciniwe",
         "discarded": "Izinguquko zilahliwe"
@@ -8944,7 +8944,7 @@
         "found": "{count, number} atholakele",
         "alreadyIn": "{count, number} asevele ekhona",
         "leftOut": "{count, plural, one {# kushiywe ngaphandle} other {# kushiywe ngaphandle}}",
-        "unread": "{count, plural, one {Akukwazanga ukufunda # umthombo} other {Akukwazanga ukufunda # imithombo}}",
+        "unread": "{count, plural, one {Akukwazanga ukufunda {names}} other {Akukwazanga ukufunda # imithombo, {names}}}",
         "added": "{count, number} engeziwe",
         "newFrom": "{count, number} amasha avela ku-{source}",
         "result": "{result, select, include {{count, number} afakiwe} maybe {{count, number} mhlawumbe} exclude {{count, number} akhishiwe} conflict {{count, number} ayangqubuzana} other {{count, number} alinde amavoti}}",
@@ -8984,7 +8984,11 @@
         "newest": "Ushicilelo, okusha kuqala",
         "split": "Amavoti ahlukene kakhulu",
         "points": "Amaphoyinti amaningi",
-        "shut": "Lokhu kuskrini kufihla amavoti abanye ababuyekezi emaphepheni ongakavoti kuwo, futhi lolu hlelo beluzowadalula"
+        "shut": "Lokhu kuskrini kufihla amavoti abanye ababuyekezi emaphepheni ongakavoti kuwo, futhi lolu hlelo beluzowadalula",
+        "byVote": "Uma uhlu lunciphiselwe kumbuyekezi oyedwa, amaphepha avela ngohlelo avotwe ngalo yilowo mbuyekezi",
+        "byVoteLabel": "Njengoba evotiwe",
+        "bySearch": "Ngesikhathi usesha, amaphepha ahambisana kakhulu avela kuqala",
+        "bySearchLabel": "Ahambisana kakhulu kuqala"
       },
       "settledBy": "{you, select, true {Kuxazululwe nguwe} other {Kuxazululwe ngu-{name}}}",
       "settledToast": "Kuxazululwe {count, number} njengokuthi {result}",
@@ -9326,6 +9330,7 @@
         "add": "Engeza imibandela"
       },
       "bar": {
+        "notInList": "Akusekho kulolu hlu",
         "atOf": "{at, number} kwa-{count, number}",
         "left": "{count, plural, other {# asele}}",
         "underMinute": "ngaphansi komzuzu",
@@ -9451,7 +9456,7 @@
           "pdfTooBig": "Ngaphezu kuka-{mb, number} MB",
           "unsent": "Alikwazanga ukuthunyelwa",
           "allUnsent": "Awakwazanga ukuthunyelwa",
-          "priceComing": "Lingezwa uma izindleko ze-PDF sezivela. Lingeze futhi ngemuva kwesikhashana"
+          "priceComing": "Lingeze futhi uma izindleko ze-PDF sezivela"
         },
         "drop": "Lahla amafayela ezinkomba noma ama-PDF lapha",
         "helpTitle": "Amafayela",

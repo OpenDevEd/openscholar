@@ -7893,7 +7893,7 @@
         "scheduledNone": "Die geplante Abfrage hat keine neuen Artikel gefunden",
         "known": "{count, plural, one {# war} other {# waren}} bereits im Screening",
         "leftOut": "{count, plural, one {# wurde ausgelassen} other {# wurden ausgelassen}}",
-        "unread": "{count, plural, one {# Quelle konnte nicht gelesen werden} other {# Quellen konnten nicht gelesen werden}}",
+        "unread": "{count, plural, one {Konnte # Quelle nicht lesen} other {Konnte # Quellen nicht lesen}}",
         "joined": "{count, plural, one {# Artikel kam} other {# Artikel kamen}} ins Screening",
         "reopenedByCheck": "Das Screening ist wieder offen",
         "changed": "Hat {parts} geändert",
@@ -8149,7 +8149,7 @@
         "undo": "Rückgängig",
         "failed": "Das hat nicht geklappt. Versuchen Sie es erneut.",
         "notAdded": "Einige Personen konnten nicht hinzugefügt werden. Fügen Sie sie unter Personen erneut hinzu.",
-        "notInvited": "Einige Personen konnten nicht eingeladen werden, daher wurde noch nichts gespeichert. Speichern Sie erneut, um sie noch einmal einzuladen.",
+        "notInvited": "Die Einladung an {names} ist fehlgeschlagen, daher wurde noch nichts gespeichert, und jede Änderung hier wartet noch. Speichern Sie erneut, um es noch einmal zu versuchen.",
         "notStarted": "Das Screening konnte nicht gestartet werden. Versuchen Sie es erneut.",
         "saved": "Änderungen gespeichert",
         "discarded": "Änderungen verworfen"
@@ -8945,7 +8945,7 @@
         "found": "{count, number} gefunden",
         "alreadyIn": "{count, number} bereits enthalten",
         "leftOut": "{count, plural, one {# ausgelassen} other {# ausgelassen}}",
-        "unread": "{count, plural, one {Konnte # Quelle nicht lesen} other {Konnte # Quellen nicht lesen}}",
+        "unread": "{count, plural, one {Konnte {names} nicht lesen} other {Konnte # Quellen nicht lesen, {names}}}",
         "added": "{count, number} hinzugefügt",
         "newFrom": "{count, number} neu aus {source}",
         "result": "{result, select, include {{count, number} eingeschlossen} maybe {{count, number} vielleicht} exclude {{count, number} ausgeschlossen} conflict {{count, number} im Konflikt} other {{count, number} warten auf Stimmen}}",
@@ -8985,7 +8985,11 @@
         "newest": "Veröffentlicht, neueste zuerst",
         "split": "Am stärksten geteilte Stimmen",
         "points": "Meiste Punkte",
-        "shut": "Dieses Screening verbirgt die Stimmen der anderen Reviewer bei den Artikeln, über die Sie noch abstimmen, und diese Reihenfolge würde sie verraten"
+        "shut": "Dieses Screening verbirgt die Stimmen der anderen Reviewer bei den Artikeln, über die Sie noch abstimmen, und diese Reihenfolge würde sie verraten",
+        "byVote": "Ist die Liste auf einen Reviewer beschränkt, erscheinen die Artikel in der Reihenfolge, in der er über sie abgestimmt hat",
+        "byVoteLabel": "In der Reihenfolge der Stimmen",
+        "bySearch": "Während einer Suche erscheinen die Artikel mit der besten Übereinstimmung zuerst",
+        "bySearchLabel": "Beste Übereinstimmung zuerst"
       },
       "settledBy": "{you, select, true {Von Ihnen entschieden} other {Von {name} entschieden}}",
       "settledToast": "{count, number} als {result} entschieden",
@@ -9327,6 +9331,7 @@
         "add": "Kriterien hinzufügen"
       },
       "bar": {
+        "notInList": "Nicht mehr in dieser Liste",
         "atOf": "{at, number} von {count, number}",
         "left": "{count, plural, other {# übrig}}",
         "underMinute": "unter einer Minute",
@@ -9452,7 +9457,7 @@
           "pdfTooBig": "Über {mb, number} MB",
           "unsent": "Sie konnte nicht gesendet werden",
           "allUnsent": "Sie konnten nicht gesendet werden",
-          "priceComing": "Ein PDF wird hinzugefügt, sobald sein Preis angezeigt wird. Fügen Sie es gleich noch einmal hinzu"
+          "priceComing": "Fügen Sie es noch einmal hinzu, sobald der Preis eines PDFs angezeigt wird"
         },
         "drop": "Literaturdateien oder PDFs hier ablegen",
         "helpTitle": "Dateien",

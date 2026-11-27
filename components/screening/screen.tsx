@@ -300,10 +300,11 @@ function Screen({ open }: { open: Open }) {
   // Any change to the list asked for counts (another queue, order, vote picked in Done, or search): the paper of the list before is never voted on while the new one is read.
   const [arrivedList, setArrivedList] = useState(holding);
   if (arrived && arrivedList !== holding) setArrivedList(holding);
-  const switching = arrivedList !== holding && !picked;
+  // A page turned and not read yet counts too.
+  const switching = (arrivedList !== holding || listed.isStale) && !picked;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
   const mayDecide = !finished && !switching && (resolving ? open.canResolve : open.isReviewer);
-  const answering = !resolving && open.isReviewer && !switching;
+  const answering = !finished && !resolving && open.isReviewer && !switching;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
@@ -570,8 +571,8 @@ function Screen({ open }: { open: Open }) {
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs. While the queue is read the tabs stand alone, where they will be.
   // Only the first read of the queue stands alone like this. A paper read by itself later loads in its own pane: the queue beside it, with its search box, stays where it is and keeps the keyboard.
   // One the counts say is empty says so at once.
-  // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked.
-  const known = !searched && !picked && queueTotal === 0;
+  // A list the counts already say is empty says so at once: To do and the others by what is left, Done by your votes, all of them or the ones picked. Just after a vote here the counts lag it, so the list itself is waited for.
+  const known = !searched && !picked && queueTotal === 0 && since.length === 0;
   const reading = listed.isLoading;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   if (reading && (queue === "done" || left > 0 || narrowed)) {
@@ -931,7 +932,7 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" || !mayDecide ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" && kept ? t("bar.notInList") : queue === "done" || !mayDecide ? (queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />

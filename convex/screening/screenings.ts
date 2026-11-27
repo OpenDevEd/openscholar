@@ -95,6 +95,8 @@ export async function modelFor(ctx: Pick<MutationCtx, "db">, slug: string) {
 }
 
 const setup = {
+  /** Its models wait to read until the people the form invites are on it (`resume` with `quiet`), so a paper meant for them isn't settled first. */
+  hold: v.optional(v.boolean()),
   name: v.string(),
   question: v.optional(v.string()),
   criteria: v.array(criterionInput),
@@ -224,7 +226,7 @@ export const sweepDrafts = internalMutation({
 export const open = internalMutation({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), ...setup, draft: v.optional(v.id("screeningJobs")), libraryDestination: v.optional(libraryDestinationValidator), pruneName: v.optional(v.string()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, workspaceId, author, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, draft, libraryDestination, pruneName }) => {
+  handler: async (ctx, { userId, workspaceId, author, hold, name, question, criteria: sent, stars: sentStars, rule, sources, people, models, saveTo, prune, living, draft, libraryDestination, pruneName }) => {
     const user = await requireActiveUser(ctx, userId);
     const writer = { userId, workspaceId };
     const title = name.trim();
@@ -253,6 +255,7 @@ export const open = internalMutation({
     const later = saveTo.kind === "new" ? saveTo.name.trim() : undefined;
     if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
     const settings = {
+      ...(hold && models.length ? { paused: true as const } : {}),
       status: "processing" as const,
       name: title,
       ...(question?.trim() ? { question: question.trim() } : {}),
@@ -340,14 +343,14 @@ export const pause = workspaceMutation({
  * Lets a screening's models go on reading: after a pause, or once the workspace has credits again.
  */
 export const resume = workspaceMutation({
-  args: byId,
+  args: { ...byId, /** The form letting its models go once its invitations are out: nothing to say in Activity, since nobody paused it. */ quiet: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId, quiet }) => {
     const job = await requireMember(ctx, actor, jobId);
     if ((!job.paused && !job.outOfCredits) || job.finishedAt !== undefined) return null;
     await ctx.db.patch("screeningJobs", jobId, { paused: undefined, outOfCredits: undefined, ...touched() });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
-    await logChange(ctx, actor, job, "resumed");
+    if (!quiet) await logChange(ctx, actor, job, "resumed");
     return null;
   },
 });

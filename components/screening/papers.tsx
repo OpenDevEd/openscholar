@@ -206,6 +206,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     ...(who ? { reviewer: who } : {}),
     ...(who && voted !== "any" ? { voted } : {}),
   };
+  // The server gives one reviewer's papers in the order they voted on them, and a search's in the order they best match: no other order is offered then, and the menu says which it is.
+  const fixedOrder = searched ? ("bySearch" as const) : who ? ("byVote" as const) : null;
   const matching = { jobId: id, ...(filter !== "all" ? { result: filter } : {}), ...narrowed, ...(others.length ? { also: others } : {}), ...(searched ? { text: searched } : {}) };
   const listed = useCursorPageAt("page", api.screening.paperViews.list, inWorkspace(workspaceId, { ...matching, ...(sort !== "added" ? { sort } : {}) }), PAGE, { scroll: false });
   const shown = listed.items;
@@ -437,7 +439,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: t(`sort.${one}`), icon: <Icon />, ...(open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={fixedOrder ? "added" : sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: one === "added" && fixedOrder ? t(`sort.${fixedOrder}Label`) : t(`sort.${one}`), icon: <Icon />, ...(one !== "added" && fixedOrder ? { shut: t(`sort.${fixedOrder}`) } : open.keepsVotes && (one === "split" || one === "points") ? { shut: t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
@@ -992,7 +994,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      {paper.pdf ? <PdfRoom pages={1} more={(paper.pdf.pages ?? 1) > 1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
+      {paper.pdf ? <PdfRoom pages={1}><PaperPdf id={open.screening.id} paper={paper} terms={[]} firstPage /></PdfRoom> : <p dir="auto" className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

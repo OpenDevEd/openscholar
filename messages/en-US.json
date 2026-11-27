@@ -7892,7 +7892,7 @@
         "scheduledNone": "The scheduled check found no new papers",
         "known": "{count, plural, one {# was} other {# were}} already in the screening",
         "leftOut": "{count, plural, one {# was left out} other {# were left out}}",
-        "unread": "{count, plural, one {# source couldn't be read} other {# sources couldn't be read}}",
+        "unread": "{count, plural, one {Couldn't read # source} other {Couldn't read # sources}}",
         "joined": "{count, plural, one {# paper} other {# papers}} joined the screening",
         "reopenedByCheck": "The screening is open again",
         "changed": "Changed {parts}",
@@ -8148,7 +8148,7 @@
         "undo": "Undo",
         "failed": "That didn't work. Try again.",
         "notAdded": "Some people couldn't be added. Add them again from People.",
-        "notInvited": "Some people couldn't be invited, so nothing was saved yet. Save again to try them again.",
+        "notInvited": "{names} couldn't be invited, so nothing was saved yet, and every change here is still waiting. Save again to try again.",
         "notStarted": "The screening couldn't be started. Try again.",
         "saved": "Changes saved",
         "discarded": "Changes discarded"
@@ -8944,7 +8944,7 @@
         "found": "{count, number} found",
         "alreadyIn": "{count, number} already in it",
         "leftOut": "{count, plural, one {# left out} other {# left out}}",
-        "unread": "{count, plural, one {Couldn't read # source} other {Couldn't read # sources}}",
+        "unread": "{count, plural, one {Couldn't read {names}} other {Couldn't read # sources, {names}}}",
         "added": "{count, number} added",
         "newFrom": "{count, number} new from {source}",
         "result": "{result, select, include {{count, number} included} maybe {{count, number} maybe} exclude {{count, number} excluded} conflict {{count, number} in conflict} other {{count, number} waiting for votes}}",
@@ -8984,7 +8984,11 @@
         "newest": "Published, newest first",
         "split": "Most split votes",
         "points": "Most points",
-        "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away"
+        "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away",
+        "byVote": "Kept to one reviewer, the papers come in the order they voted on them",
+        "byVoteLabel": "In the order they voted",
+        "bySearch": "While searching, the papers come in the order they best match",
+        "bySearchLabel": "Best match first"
       },
       "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}",
       "settledToast": "Settled {count, number} as {result}",
@@ -9326,7 +9330,8 @@
         "add": "Add criteria"
       },
       "bar": {
-        "atOf": "{at, number} of {count, number}",
+        "notInList": "Not in this list now",
+          "atOf": "{at, number} of {count, number}",
         "left": "{count, plural, other {# left}}",
         "underMinute": "under a minute",
         "minutes": "about {minutes, number} min",
@@ -9451,7 +9456,7 @@
           "pdfTooBig": "Over {mb, number} MB",
           "unsent": "It couldn't be sent",
           "allUnsent": "They couldn't be sent",
-          "priceComing": "Added once the price of a PDF shows. Add it again in a moment"
+          "priceComing": "Add it again once the price of a PDF shows"
         },
         "drop": "Drop reference files or PDFs here",
         "helpTitle": "Files",
