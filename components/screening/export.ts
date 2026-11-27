@@ -359,6 +359,8 @@ export function methodsOf(out: Taken) {
   const { screening, counts, figures } = out;
   const [kept, open] = [totalIn(out), openIn(out)];
   const { left, bare, merged } = removedOf(screening.sources);
+  // Sources whose last reading failed: what they hold isn't among the records counted.
+  const unreadNow = screening.sources.filter((source) => source.read?.state === "failed" && !source.read.removedAt);
   const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, found: 0, added: 0 };
   // The people per record the rule asks for, counting invitations still waiting, as every page counts them.
@@ -423,7 +425,7 @@ export function methodsOf(out: Taken) {
   });
   return [
     !open ? "" : running ? `Screening was still in progress when this was written, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.` : `The screening was marked finished with ${plural(open, "record", "records")} still open, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.`,
-    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
+    `Records from ${plural(screening.sources.length, "source", "sources")} (n = ${num(found + left)}) were brought into Openscholar.${unreadNow.length ? ` ${listed(unreadNow.map((source) => source.name))} could not be read when last tried, so ${unreadNow.length === 1 ? "its records are" : "their records are"} not among those counted here.` : ""}${bare ? ` ${plural(bare, "record", "records")} with no abstract ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : "were screened"}.`,
     looks.later && looks.lastAt ? `${[0, screening.sources.length].includes(growing(screening).length) ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.${looks.unread ? ` ${looks.unread === looks.later ? (looks.later === 1 ? "That search" : "Each of those searches") : `${looks.unread} of those searches`} could not read every source, so ${looks.unread === 1 ? "it is" : "they are"} incomplete.` : ""}${screening.living && running ? ` A further search is scheduled ${EVERY_LABEL[screening.living.every].toLowerCase()}.` : ""}` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
     `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}${((musts) => (musts && models.length ? `, ${musts === screening.criteria.length ? (musts === 1 ? "a must-have" : "all must-haves") : `${musts} of them must-haves`}, which an AI model ${running ? "has" : "had"} to find met to vote to include a record` : ""))(screening.criteria.filter((c) => c.must).length)}` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text instead.` : ""}`,
@@ -486,6 +488,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       const [yes, no, unclear] = scoring.points[criterion.key] ?? [0, 0, 0];
       return { number: i + 1, key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear }, added_at: since(criterion.addedAt) };
     }),
+    // Criteria taken off: votes and reasons from before still name them by key.
+    retired_criteria: screening.retired.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must })),
     // Someone invited who hasn't joined is waited for as a reviewer: counted, since papers can wait for them.
     invited_not_joined: readersOf(screening, out.invited ?? []).invited,
     reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: reviewer.model.effort ?? effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
@@ -501,7 +505,7 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       answers: vote.answers,
       note: vote.note ?? null,
       voted_at: iso(vote.at),
-      ...(reviewer.kind === "model" ? { read: Object.fromEntries(criteria.flatMap((criterion) => { const [sentence, confidence] = [vote.passages?.[criterion.key], vote.confidences?.[criterion.key]]; return vote.answers[criterion.key] ? [[criterion.key, { passage: sentence === undefined || sentence === null ? null : (sentencesOf(paper.abstract)[sentence] ?? null), confidence: confidence === undefined ? null : Number(confidence.toFixed(2)) }]] : []; })) } : {}),
+      ...(reviewer.kind === "model" ? { read: Object.fromEntries(reasonCriteria(screening).flatMap((criterion) => { const [sentence, confidence] = [vote.passages?.[criterion.key], vote.confidences?.[criterion.key]]; return vote.answers[criterion.key] ? [[criterion.key, { passage: sentence === undefined || sentence === null ? null : (sentencesOf(paper.abstract)[sentence] ?? null), confidence: confidence === undefined ? null : Number(confidence.toFixed(2)) }]] : []; })) } : {}),
     }] : [])),
     // Who was on a paper and cast no vote on it: someone who has yet to, someone the paper was settled without, a model that couldn't read it.
     without_a_vote: rows.flatMap(({ paper, reviewer, vote, kept, status }) => (vote || kept ? [] : [{ paper_id: paper.id, reviewer_id: reviewer.id, status }])),
