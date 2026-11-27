@@ -9165,6 +9165,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Du fichier {name}",
       "required": "Obligatoire",
       "starsOf": "{count} étoiles sur {of}",
       "modelsSay": {

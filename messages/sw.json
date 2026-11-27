@@ -9166,6 +9166,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Kutoka faili {name}",
       "required": "Inahitajika",
       "starsOf": "nyota {count} kati ya {of}",
       "modelsSay": {

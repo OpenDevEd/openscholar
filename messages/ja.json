@@ -9165,6 +9165,7 @@
       }
     },
     "pieces": {
+      "fromFile": "ファイル {name} から",
       "required": "必須",
       "starsOf": "星 {of} 個中 {count} 個",
       "modelsSay": {

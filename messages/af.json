@@ -9166,6 +9166,7 @@
       }
     },
     "pieces": {
+      "fromFile": "Uit die lêer {name}",
       "required": "Verpligtend",
       "starsOf": "{count} van {of} sterre",
       "modelsSay": {

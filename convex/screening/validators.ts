@@ -75,6 +75,8 @@ export const screeningPaperInputValidator = v.object({
   abstract: v.optional(v.string()),
   /** The paper's own PDF, handed over by whoever added it, and how many pages it has: what a paper with no abstract is screened on. */
   file: v.optional(v.id("_storage")),
+  /** The name of the file it came in, for a paper read from a PDF dropped in: how its reviewers and its files name it. */
+  fileName: v.optional(v.string()),
   pages: v.optional(v.number()),
   /** Its first page's height for its width (lib/screening/files.ts `pageShapeOf`), which its pages show at before the file is read. */
   shape: v.optional(v.number()),
@@ -423,6 +425,7 @@ const castViewValidator = v.object({ reviewer: v.string(), vote: v.optional(vote
 /** A paper with the votes the person looking may see (./paperViews.ts `shown`). */
 export const paperViewValidator = v.object({
   id: v.id("screeningResults"),
+  fileName: v.optional(v.string()),
   // It left the screening with its source: shown where an address still names it, and voted on by nobody.
   withdrawn: v.optional(v.literal(true)),
   key: v.string(),

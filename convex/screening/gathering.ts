@@ -35,7 +35,7 @@ import { readersFor } from "../../lib/screening/rules";
 import { handedPapers, handedStart, withAbstracts, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
-import { leftOutWhyValidator, MAX_SOURCE_ROWS, screeningPaperInputValidator, sourceSetValidator } from "./validators";
+import { leftOutWhyValidator, MAX_SOURCE_ROWS, SCREENING_TEXT, screeningPaperInputValidator, sourceSetValidator } from "./validators";
 
 type SourceSet = Infer<typeof sourceSetValidator>;
 type Why = Infer<typeof leftOutWhyValidator>;
@@ -427,6 +427,7 @@ export const fill = internalMutation({
         title,
         ...(abstract ? { abstract } : {}),
         ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }), ...(paper.shape === undefined ? {} : { shape: paper.shape }) } : {}),
+        ...(paper.fileName ? { fileName: paper.fileName.slice(0, SCREENING_TEXT.name) } : {}),
         ...(paper.record ? { record: paper.record } : {}),
         authors: paper.authors?.slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,
