@@ -5,30 +5,38 @@
 // link or a reload, or changed something in the address while open (a filter picked in a sheet), it closes by taking
 // itself out of the address in place, so nothing chosen in it is undone.
 import { useRef } from "react";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 
-/** The address as it is, less what is open over it: the same while nothing else in it has changed. */
-const addressWithout = (key: string) => {
+/** The address as it is, less what is open over it and what belongs to that: the same while nothing else in it has changed. */
+const addressWithout = (keys: string[]) => {
   const query = new URLSearchParams(window.location.search);
-  query.delete(key);
+  for (const key of keys) query.delete(key);
   query.sort();
   return `${window.location.pathname}?${query}`;
 };
 
-export function useOpenInAddress<T extends string>(key: string, values: readonly T[]) {
-  const [open, setOpen] = useQueryState(key, parseAsStringLiteral(values).withOptions({ history: "push", scroll: false }));
+export function useOpenInAddress<T extends string>(key: string, values: readonly T[], { inner = [] }: { /** What it keeps in the address while open, such as a dialog's tab: one step with it, and gone when it closes. */ inner?: string[] } = {}) {
+  const [state, setState] = useQueryStates({ [key]: parseAsStringLiteral(values), ...Object.fromEntries(inner.map((one) => [one, parseAsString])) }, { history: "push", scroll: false });
+  const open = (state[key] ?? null) as T | null;
+  const own = [key, ...inner];
   // The address this page opened it over, so taking the step back lands where the person was, and only then.
   const openedOver = useRef<string | null>(null);
   const set = (next: T | null, { inPlace = false }: { /** Closed where something else takes its step in the history (a paper picked from it), not by stepping back. */ inPlace?: boolean } = {}) => {
     if (next) {
-      if (open === null) openedOver.current = addressWithout(key);
-      void setOpen(next, open === null ? undefined : { history: "replace" });
+      if (open === null) openedOver.current = addressWithout(own);
+      void setState({ [key]: next }, open === null ? undefined : { history: "replace" });
     } else if (open !== null) {
-      const back = !inPlace && openedOver.current === addressWithout(key);
+      const back = !inPlace && openedOver.current === addressWithout(own);
       openedOver.current = null;
       if (back) window.history.back();
-      else void setOpen(null, { history: "replace" });
+      else void setState(Object.fromEntries(own.map((one) => [one, null])), { history: "replace" });
     }
   };
   return [open, set] as const;
 }
+
+/**
+ * How a search box writes to the history: starting a search and clearing one are steps, since the list changes in front
+ * of the person, and the letters typed in between replace each other. Every list's search box asks this.
+ */
+export const searchHistory = (was: string, next: string) => ({ history: Boolean(next.trim()) !== Boolean(was.trim()) ? ("push" as const) : ("replace" as const) });

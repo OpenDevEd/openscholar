@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { useOpenInAddress } from "./address";
+import { searchHistory, useOpenInAddress } from "./address";
 import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, GitCompare, Highlighter, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -157,7 +157,12 @@ function Screen({ open }: { open: Open }) {
   const leading = `${holding}:${listed.page}`;
   // The list shown is the one asked for: not an earlier search or page that stays up while the new one is read.
   const arrived = !listed.isLoading && !listed.isStale;
-  if (!picked && arrived && led?.of !== leading && listed.items[0]) setLed({ of: leading, id: listed.items[0].id });
+  // A step back past a page's first paper opens the last one of the page before, as the step forward opens the next page's first.
+  const [fromEnd, setFromEnd] = useState(false);
+  if (!picked && arrived && led?.of !== leading && listed.items[0]) {
+    setLed({ of: leading, id: (fromEnd ? listed.items.at(-1)! : listed.items[0]).id });
+    if (fromEnd) setFromEnd(false);
+  }
   // It follows a paper the address names too. Whatever then takes the name out, a search, a page turn, another order or choice of votes, leaves that paper open until the list asked for arrives, and never the first paper of a page read long before.
   if (picked && led?.id !== picked) setLed({ of: leading, id: picked });
   // Until the list asked for arrives, the paper that was open stays open.
@@ -174,8 +179,9 @@ function Screen({ open }: { open: Open }) {
   // Typing in the search box takes the paper out of the address, so the first paper found opens.
   // Starting a search, and clearing one, is a step in the history: the list changes in front of the person. The letters typed between replace each other.
   const setFind = (next: string) => {
-    const step = Boolean(next.trim()) !== Boolean(find.trim());
-    const search = () => void setPlace({ q: next, paper: null }, step ? undefined : { history: "replace" });
+    const how = searchHistory(find, next);
+    const step = how.history === "push";
+    const search = () => void setPlace({ q: next, paper: null }, how);
     if (step && !picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(search);
     else search();
   };
@@ -230,15 +236,15 @@ function Screen({ open }: { open: Open }) {
     });
   };
   // Past the page's last paper is the next page's first, and before its first the page before.
-  const turn = (to: () => void) => {
-    const step = () => { void setPlace({ paper: null }); to(); };
+  const turn = (to: () => void, end = false) => {
+    const step = () => { setFromEnd(end); void setPlace({ paper: null }); to(); };
     // As with a paper: the one on the screen gets its own entry before the page moves on.
     if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(step);
     else step();
   };
   const go = (index: number) => {
     if (index >= items.length && listed.canNext) return turn(listed.next);
-    if (index < 0 && listed.canPrevious) return turn(listed.previous);
+    if (index < 0 && listed.canPrevious) return turn(listed.previous, true);
     const next = items[Math.max(0, Math.min(items.length - 1, index))];
     if (next) openIt(next);
   };

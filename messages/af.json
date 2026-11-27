@@ -7782,12 +7782,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Bereken wat dit doen",
+      "countFailed": "Kon nie bereken wat dit doen nie. Maak dit toe en probeer weer",
       "criterionUnwritten": "die kriterium wat nog geen vraag het nie",
       "reopens": "{count, plural, one {# artikel is weer oop. Die siftering bly klaar, so niemand stem daarop totdat dit heropen word nie} other {# artikels is weer oop. Die siftering bly klaar, so niemand stem daarop totdat dit heropen word nie}}",
       "model": {
         "startsLater": "{name} begin sodra die artikels aankom",
         "nothingToRead": "{name} het geen artikels oor om te lees nie",
-        "reads": "{name} lees {upTo, select, true {die oop artikels wat niemand eers beslis nie, {count, plural, one {# artikel} other {# artikels}} vandag} other {{all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}"
+        "reads": "{name} lees {upTo, select, true {die {count, plural, one {# oop artikel} other {# oop artikels}}} other {{all, select, true {{count, plural, one {die # artikel} other {al # artikels}}} other {die {count, plural, one {# artikel} other {# artikels}} wat nog nie beslis is nie}}}}{when, select, gathered { sodra al die artikels aangekom het} finished { sodra die siftering heropen word} paused { sodra die modelle hervat} credits { sodra die werkruimte genoeg krediete vir die volgende artikel het} waiting { sodra dit hierdie siftering se beurt is} save { sodra dit gestoor is} other {}}{upTo, select, true {, en slaan enige oor wat beslis is voordat dit hulle lees} other {}}"
       },
       "person": {
         "invited": "{name} kry ’n uitnodiging per e-pos, en artikels sodra hulle aansluit",
@@ -7864,7 +7866,7 @@
         "prune": "Uitgesluite artikels word uit die versameling gehaal waaruit hulle gekom het",
         "keep": "Uitgesluite artikels bly in die versameling waaruit hulle gekom het"
       },
-      "withCredits": "{text}, vir tot {credits, plural, one {# krediet} other {# krediete}}{each, select, true { elk} other {}}",
+      "withCredits": "{text}, gewoonlik {credits, plural, one {# krediet} other {# krediete}}{each, select, true { elk} other {}}",
       "creditsChip": "{credits}{each, select, true { elk} other {}}",
       "moved": "{count, plural, one {# artikel} other {# artikels}} van {from} na {to} geskuif",
       "noChange": "Geen artikel se uitslag verander nie",
@@ -8350,7 +8352,7 @@
         "votesKeep": "{count, plural, one {# stem tel steeds} other {# stemme tel steeds}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Kan nie PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie PDF’e lees nie, so # artikels kry geen stem daarvan nie}}} other {{count, plural, one {Kan nie die langste PDF’e lees nie, so # artikel kry geen stem daarvan nie} other {Kan nie die langste PDF’e lees nie, so # artikels kry geen stem daarvan nie}}}}",
         "creditsFor": "{credits, plural, one {# krediet} other {# krediete}} vir {count, plural, one {# artikel} other {# artikels}}",
-        "allRead": "Alles gelees",
+        "allRead": "Niks oor om te lees nie",
         "none": "Nog geen beoordelaars nie",
         "addPerson": "Voeg ’n persoon by",
         "guestsLeft": "{count, plural, one {{names} stem as gas op die siftering waarvan hierdie een gekopieer is, en is nie op hierdie een nie. Deel dit met hulle sodra dit begin het.} other {{names} stem as gaste op die siftering waarvan hierdie een gekopieer is, en is nie op hierdie een nie. Deel dit met hulle sodra dit begin het.}}",
@@ -8407,6 +8409,8 @@
         "activity": "Aktiwiteit",
         "willDo": "Wat stoor doen",
         "counting": "Bereken wat stoor doen",
+        "countFailed": "Kon nie bereken wat stoor doen nie, so dit kan nog nie gestoor word nie",
+        "countAgain": "Probeer weer",
         "did": "Wat die stoor gedoen het",
         "recheck": "Gaan die beslisde artikels weer na",
         "recheckOn": "Elke beslisde artikel word onder die nuwe instellings nagegaan. Dié wat hierbo gelys is, kry ’n ander uitslag.",

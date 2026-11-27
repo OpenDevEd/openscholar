@@ -10,7 +10,7 @@ import { flushSync } from "react-dom";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { useQueryState } from "nuqs";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, Highlighter, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon } from "@/components/icons";
@@ -47,7 +47,7 @@ import { useGenerateScreeningCriteria } from "@/lib/ai/client/router";
 import { rowKey, screeningQuestionsOf, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { LIBRARY_COLLECTION_NAME_MAX, fittingCollectionName } from "@/lib/evidence-libraries/source-address";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
@@ -448,7 +448,9 @@ export function ScreeningForm({ id }: { id?: string }) {
       return settingsOf(origin) === settingsOf(made) ? undefined : made;
     });
   };
-  const [kind, setKind] = useState<Kind>(fromHandoff && !id ? "evidenceLibrary" : "search");
+  // Where papers are added from is a tab in the address: each one picked is a step, so Back returns to the tab before.
+  const [kindInAddress, setKind] = useQueryState("addFrom", parseAsStringLiteral(KINDS.map((one) => one.id)).withOptions({ history: "push", scroll: false }));
+  const kind: Kind = kindInAddress ?? (fromHandoff && !id ? "evidenceLibrary" : "search");
   const [find, setFind] = useState("");
   const [recheck, setRecheck] = useState(false);
   // The source whose row is open, and on which part: the papers taken from it, or what it held and left out.
@@ -460,13 +462,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What can be added, a page of each at a time. Every kind is read up front, so switching between them moves nothing.
   const typed = useDebouncedValue(find.trim(), 300);
   const searches = useSearchList({ sort: "recent", pageSize: OFFER_PAGE, text: kind === "search" ? typed : "" });
-  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), OFFER_PAGE);
+  const collections = useCursorPageAt("offerPage", api.library.collections.listCollections, inWorkspace(workspaceId, {}), OFFER_PAGE);
   const savedCount = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {})).data;
   // The workspace's newest screenings, whose criteria can be copied.
-  const screenings = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const }), OFFER_PAGE);
+  const screenings = useCursorPageAt("offerPage", api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const }), OFFER_PAGE);
   // The ones that have included a paper, a page at a time, for the Screening tab: the server pages only those, so a page never comes back empty with more behind it.
-  const withIncluded = useCursorPage(api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, included: true as const, ...(kind === "screening" && typed ? { text: typed } : {}) }), OFFER_PAGE);
-  const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
+  const withIncluded = useCursorPageAt("offerPage", api.screening.view.list, inWorkspace(workspaceId, { show: "all" as const, sort: "newest" as const, included: true as const, ...(kind === "screening" && typed ? { text: typed } : {}) }), OFFER_PAGE);
+  const destinations = useCursorPageAt("toPage", api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // The communities the person reads in, with their collections there: where included papers can go beside their own library.
   const communities = useLibrarySources();
   const create = useWorkspaceAction(api.screening.screenings.create);
@@ -487,7 +489,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const changing = change && Object.keys(change).length > 0 ? JSON.stringify(change) : null;
   const counted = useSWR(saved && changing && workspaceId ? ["screening-preview", saved.id, changing] : null, () => previewChange({ jobId: saved!.id, change: change! }), { revalidateOnFocus: false });
   // Until the server has counted the change as it now stands, nothing it would do is known: no figure from an earlier change stands in.
-  const known = !changing || counted.data !== undefined || Boolean(counted.error);
+  const known = !changing || counted.data !== undefined;
+  // A count that failed is said, with a way to ask again: a save waits for it, since nothing it would do is known.
+  const countFailed = Boolean(changing) && Boolean(counted.error) && counted.data === undefined;
   const preview: Preview = (changing ? counted.data : undefined) ?? NO_PREVIEW;
   // While the server counts a change, what it would do isn't known: the save waits for it.
   const counting = Boolean(changing) && (counted.isLoading || counted.isValidating) && !counted.error;
@@ -731,7 +735,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     }
   };
   const save = async () => {
-    if (!saved || !id || !change || busy || counting) return;
+    if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
@@ -850,8 +854,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     {
       id: "reviewers",
       label: t("part.reviewers"),
-      value: reviewersNow.length ? format.list(whoCounts, { type: "unit", style: "short" }) : t("summary.nobody"),
-      problem: !reviewersNow.length,
+      value: whoCounts.length ? format.list(whoCounts, { type: "unit", style: "short" }) : t("summary.nobody"),
+      problem: !whoCounts.length,
       aside: reviewersNow.length ? (
         <Faces reviewers={reviewersNow} me={me} max={4} mark="size-6" />
       ) : null,
@@ -1092,7 +1096,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               {/* What can be added sits in a well of its own, under its own title: it never looks like what is already in. */}
               <Panel className="@container min-w-0 space-y-3">
                 <h3 className="text-sm font-semibold">{t("papers.addFrom")}</h3>
-                <Tabs value={kind} onValueChange={(next) => { setKind(next as Kind); setFind(""); }} className="gap-3">
+                <Tabs value={kind} onValueChange={(next) => { void setKind(next as Kind); setFind(""); }} className="gap-3">
                   <ScrollArea axis="x" shades className="rounded-[1.375rem] bg-card ring-1 ring-border-subtle">
                   <TabsList id="add-papers" aria-label={t("papers.addFrom")} className="h-auto w-max justify-start gap-1 bg-transparent p-1 group-data-[orientation=horizontal]/tabs:h-auto">
                     {KINDS.map((one) => (
@@ -1499,7 +1503,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </ul>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
+                      {dirty && countFailed ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{t("changes.countAgain")}</Button> : null}
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
@@ -1626,7 +1631,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {holdUp ? <Blocker block={holdUp} /> : null}
             <div className="ms-auto flex items-center gap-2">
               <Button variant="ghost" onClick={() => setDiscarding(edits)}>{t("bar.discard")}</Button>
-              <Button disabled={Boolean(holdUp)} onClick={save}><Check />{t("bar.save")}</Button>
+              <Button disabled={Boolean(holdUp) || counting || countFailed} onClick={save}><Check />{t("bar.save")}</Button>
             </div>
           </div>
         </ActionBar>
@@ -1794,7 +1799,7 @@ const LEFT_PAGE = 8;
  */
 function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number; /** The running screening, whose papers open. */ open: string | null; sources: Source[] }) {
   const t = useTranslations("screening.form");
-  const rows = useCursorPage(api.screening.view.merged, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
+  const rows = useCursorPageAt("records", api.screening.view.merged, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
   return (
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
@@ -1821,7 +1826,7 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
 function LeftOut({ jobId, sourceId, total }: { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources">; total: number }) {
   const t = useTranslations("screening.form");
   const words = useWords();
-  const rows = useCursorPage(api.screening.view.leftOut, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
+  const rows = useCursorPageAt("records", api.screening.view.leftOut, inWorkspace(usePageWorkspace(), { jobId, sourceId }), LEFT_PAGE);
   return (
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}

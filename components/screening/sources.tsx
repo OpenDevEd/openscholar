@@ -37,7 +37,8 @@ import { COLUMN_KEYS, FILE_MAX_BYTES, REFERENCES, doisIn, readTable, tableCounts
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
+import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { hash, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip, SEARCH_PILL } from "./pieces";
@@ -373,7 +374,7 @@ const FILE_ROW = 45;
 export function PdfFiles({ batch, total }: { batch: string; total: number }) {
   const t = useTranslations("screening.sources");
   const words = useWords();
-  const rows = useCursorPage(api.screening.files.list, inWorkspace(usePageWorkspace(), { batch }), FILES_PAGE);
+  const rows = useCursorPageAt("filesPage", api.screening.files.list, inWorkspace(usePageWorkspace(), { batch }), FILES_PAGE);
   // The first page holds as many as the drop has, up to a page: its rows and its pager stand from the first frame.
   const first = Math.min(total, FILES_PAGE);
   return (
@@ -489,8 +490,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const openTree = useWorkspaceMutation(api.zotero.tree.open);
   const own: ZoteroLibrary = { name: t("zotero.myLibrary") };
   const [library, setLibrary] = useState<ZoteroLibrary>(own);
-  // The collections opened on the way to where the list stands, the last of them the one it stands in.
-  const [path, setPath] = useState<ZoteroCollection[]>([]);
+  // The collections opened on the way to where the list stands, the last of them the one it stands in. Their keys are in the address, so each one opened is a step in the history and Back climbs out of it; what each is, is kept as it was read.
+  const [keys, setKeys] = useQueryState("folder", parseAsArrayOf(parseAsString).withOptions({ history: "push", scroll: false }));
+  const [seen, setSeen] = useState<Record<string, ZoteroCollection>>({});
+  const path = (keys ?? []).every((key) => seen[key]) ? (keys ?? []).map((key) => seen[key]!) : [];
   const [deep, setDeep] = useState(true);
   const [picking, setPicking] = useState(false);
   const [find, setFind] = useState("");
@@ -508,8 +511,8 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   useSWR(connected ? ["zotero-open", library.id ?? ""] : null, () => openTree(of), { revalidateOnFocus: false });
   const tree = useProtectedQuery(api.zotero.tree.state, inWorkspace(workspaceId, connected ? of : "skip")).data;
   const here = path.at(-1);
-  const level = useCursorPage(api.zotero.tree.level, inWorkspace(workspaceId, connected && !words ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
-  const found = useCursorPage(api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
+  const level = useCursorPageAt("folderPage", api.zotero.tree.level, inWorkspace(workspaceId, connected && !words ? { ...of, ...(here ? { parent: here.key } : {}) } : "skip"), PAGE);
+  const found = useCursorPageAt("folderPage", api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
   const listed = words ? found : level;
 
   // The tab as it will stand once the account is known: the library's pill, the search and its switch, and the list.
@@ -541,7 +544,11 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const loading = reading || listed.isLoading;
   // A collection opened says how many it holds, so its pager stands before its first page comes.
   const pagerKnown = listed.hasPages || Boolean(!words && here && here.inside > PAGE);
-  const go = (next: ZoteroCollection[]) => { setPath(next); setFind(""); };
+  const go = (next: ZoteroCollection[]) => {
+    setSeen((now) => ({ ...now, ...Object.fromEntries(next.map((one) => [one.key, one])) }));
+    void setKeys(next.length ? next.map((one) => one.key) : null);
+    setFind("");
+  };
   const pick = (next: ZoteroLibrary) => { setLibrary(next); setPicking(false); go([]); };
   const refOf = (one?: ZoteroCollection, withUnder = false) => `zotero:${library.id ?? "me"}${one ? `:${one.key}` : ""}${withUnder ? ":deep" : ""}`;
   const under = (one: ZoteroCollection) => deep && one.inside > 0;

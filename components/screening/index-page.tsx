@@ -35,6 +35,7 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
 import { inOrder, RESULTS } from "./data";
+import { searchHistory } from "./address";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
 import { draftOf, useKept } from "./drafts";
 import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
@@ -122,7 +123,7 @@ export function ScreeningsIndex() {
             icon={ListChecks}
             title={t("title")}
             // Until the counts say whether there is any screening, the search and the order hold their place unseen: a new account has neither.
-            filters={empty ? undefined : <CommandCenterFilters pending={counts === undefined} sortOptions={SORTS.map((value) => ({ value, label: t(`sort.${value}`) }))} currentSort={sort} onSortChange={(next) => go({ sort: next, page: null })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder={t("find")} />}
+            filters={empty ? undefined : <CommandCenterFilters pending={counts === undefined} sortOptions={SORTS.map((value) => ({ value, label: t(`sort.${value}`) }))} currentSort={sort} onSortChange={(next) => go({ sort: next, page: null })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, searchHistory(search, next))} placeholder={t("find")} />}
             actions={
               <Button asChild size="sm" className={BAR_ACTION}>
                 <NextLink href={newHref()}><Plus /><span className={BAR_LABEL}>{t("newScreening")}</span></NextLink>

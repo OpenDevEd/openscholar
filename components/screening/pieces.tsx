@@ -618,8 +618,11 @@ export function RuleExamples({ rule, each, models }: { rule: Rule; each: number;
     <div className="flex flex-wrap gap-x-6 gap-y-2">
       {examples.map((decisions, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="flex gap-0.5">
-            {decisions.slice(0, 6).map((decision, n) => <VoteMark key={n} vote={decision ? { decision } : undefined} who={t("reviewerN", { n: n + 1 })} className="size-5" />)}
+          {/* Past six votes, the ones between the first four and the last are counted: the last vote, which an example may leave waiting, is always drawn. */}
+          <span className="flex items-center gap-0.5">
+            {(decisions.length > 6 ? [...decisions.slice(0, 4).map((decision, n) => [decision, n] as const), null, [decisions.at(-1)!, decisions.length - 1] as const] : decisions.map((decision, n) => [decision, n] as const)).map((mark) =>
+              mark ? <VoteMark key={mark[1]} vote={mark[0] ? { decision: mark[0] } : undefined} who={t("reviewerN", { n: mark[1] + 1 })} className="size-5" /> : <span key="more" className="px-0.5 text-2xs font-medium text-muted-foreground tabular-nums">+{decisions.length - 5}</span>,
+            )}
           </span>
           <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
           <ResultChip result={row(decisions)} />
@@ -646,6 +649,9 @@ export function AnswerMark({ answer, label, pressable = false }: { answer: Answe
 /** "Answers differ", beside a criterion its reviewers answered differently: a chip that is pressed, and opens the answer that stands apart. In no result's colour: answers that differ are not a paper in conflict, which only its votes make. */
 export const DIFFER = "flex h-5 items-center gap-0.5 whitespace-nowrap rounded-full bg-foreground/[0.07] ps-1.5 pe-1 text-2xs font-medium text-foreground outline-none transition-colors hover:bg-foreground/[0.12] focus-visible:ring-2 focus-visible:ring-ring/50";
 
+/** An answer's mark in a help fact, drawn at three quarters and taking one line of the fact's words (16px), so it sits beside them. */
+const MarkInFact = ({ children }: { children: ReactNode }) => <span className="-ms-0.5 flex h-4 w-[1.125rem] shrink-0 items-center justify-center"><span className="flex scale-75">{children}</span></span>;
+
 /**
  * What a paper's table of votes shows, behind its "?": the same on Screen and in the Papers drawer, with every sign the
  * table draws. The rule that hides votes is named only on a screening that has it.
@@ -662,10 +668,10 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
           <HelpFact icon={Hourglass}>{words.t("noVoteSays.yet")}</HelpFact>
           <HelpFact icon={Minus}>{words.t("noVoteSays.none")}</HelpFact>
           <HelpFact icon={TriangleAlert}>{words.t("noVoteSays.failed")}</HelpFact>
-          {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label={t("votesHelp.anAnswer")} /></span>{t(`answer.${answer}`)}</HelpFact>)}
+          {ANSWERS.map((answer) => <HelpFact key={answer}><MarkInFact><AnswerMark answer={answer} label={t("votesHelp.anAnswer")} /></MarkInFact>{t(`answer.${answer}`)}</HelpFact>)}
           <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />{t("votesHelp.noAnswer")}</HelpFact>
           <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>{t("votesHelp.answersDiffer")}<ChevronDown aria-hidden className="size-3" /></span>{t("votesHelp.answeredDifferently")}</HelpFact>
-          <HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label={t("votesHelp.anAnswer")} pressable /></span>{t("votesHelp.opensAnswer")}</HelpFact>
+          <HelpFact><MarkInFact><AnswerMark answer="yes" label={t("votesHelp.anAnswer")} pressable /></MarkInFact>{t("votesHelp.opensAnswer")}</HelpFact>
         </>
       }
     >

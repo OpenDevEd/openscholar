@@ -287,6 +287,11 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   <NextLink href={papersHref(id)} onClick={onClose}>{t("votes.seeEvery")}<ArrowRight /></NextLink>
                 </Button>
               </div>
+            ) : (tab === "flow" || tab === "methods") && !figures ? (
+              // Until the figures are in, the diagram and the paragraph are not drawn: drawn early they would leave out what the figures add, and then change.
+              <div aria-busy className="space-y-2.5 rounded-2xl border border-border-subtle p-4">
+                {["w-full", "w-11/12", "w-full", "w-5/6", "w-3/5"].map((width, at) => <SkeletonBar key={at} className={`h-4 ${width}`} />)}
+              </div>
             ) : tab === "flow" ? (
               // The drawing itself, as it will be saved: what you see is what your co-author gets.
               <img alt={t("flow.alt", { boxes: flow.map((row) => `${row.main.title}, ${row.main.n}`).join("; ") })} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`} className="w-full rounded-2xl border border-border-subtle bg-white" />

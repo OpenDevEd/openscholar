@@ -7782,12 +7782,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "A calcular o que isto faz",
+      "countFailed": "Não foi possível calcular o que isto faz. Feche e tente novamente",
       "criterionUnwritten": "o critério ainda sem pergunta",
       "reopens": "{count, plural, one {# artigo volta a estar em aberto. A triagem continua terminada, por isso ninguém vota nele até ela ser reaberta} other {# artigos voltam a estar em aberto. A triagem continua terminada, por isso ninguém vota neles até ela ser reaberta}}",
       "model": {
         "startsLater": "{name} começa quando os artigos chegarem",
         "nothingToRead": "{name} não tem mais artigos para ler",
-        "reads": "{name} lê {upTo, select, true {os artigos em aberto que ninguém decida antes, até {count, plural, one {# artigo} other {# artigos}} hoje} other {{all, select, true {{count, plural, one {o # artigo} other {todos os # artigos}}} other {{count, plural, one {o # artigo ainda não decidido} other {os # artigos ainda não decididos}}}}}}{when, select, gathered { quando todos os artigos chegarem} finished { quando a triagem for reaberta} paused { quando os modelos retomarem} credits { quando o espaço de trabalho tiver créditos suficientes para o artigo seguinte} waiting { quando chegar a vez desta triagem} save { assim que isto for guardado} other {}}"
+        "reads": "{name} lê {upTo, select, true {{count, plural, one {o # artigo em aberto} other {os # artigos em aberto}}} other {{all, select, true {{count, plural, one {o # artigo} other {todos os # artigos}}} other {{count, plural, one {o # artigo ainda não decidido} other {os # artigos ainda não decididos}}}}}}{when, select, gathered { quando todos os artigos chegarem} finished { quando a triagem for reaberta} paused { quando os modelos retomarem} credits { quando o espaço de trabalho tiver créditos suficientes para o artigo seguinte} waiting { quando chegar a vez desta triagem} save { assim que isto for guardado} other {}}{upTo, select, true {, e salta os que forem decididos antes de os ler} other {}}"
       },
       "person": {
         "invited": "{name} recebe um convite por email, e artigos quando aderir",
@@ -7864,7 +7866,7 @@
         "prune": "Os artigos excluídos são retirados da coleção de onde vieram",
         "keep": "Os artigos excluídos ficam na coleção de onde vieram"
       },
-      "withCredits": "{text}, por até {credits, plural, one {# crédito} other {# créditos}}{each, select, true { cada} other {}}",
+      "withCredits": "{text}, normalmente {credits, plural, one {# crédito} other {# créditos}}{each, select, true { cada} other {}}",
       "creditsChip": "{credits}{each, select, true { cada} other {}}",
       "moved": "{count, plural, one {# artigo passou} other {# artigos passaram}} de {from} para {to}",
       "noChange": "O resultado de nenhum artigo muda",
@@ -8350,7 +8352,7 @@
         "votesKeep": "{count, plural, one {# voto continua a contar} other {# votos continuam a contar}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Não lê PDF, por isso # artigo fica sem o seu voto} other {Não lê PDF, por isso # artigos ficam sem o seu voto}}} other {{count, plural, one {Não lê os PDF mais longos, por isso # artigo fica sem o seu voto} other {Não lê os PDF mais longos, por isso # artigos ficam sem o seu voto}}}}",
         "creditsFor": "{credits, plural, one {# crédito} other {# créditos}} por {count, plural, one {# artigo} other {# artigos}}",
-        "allRead": "Todos lidos",
+        "allRead": "Nada mais para ler",
         "none": "Ainda sem revisores",
         "addPerson": "Adicionar uma pessoa",
         "guestsLeft": "{count, plural, one {{names} vota como convidado na triagem de onde esta foi copiada e não está nesta. Partilhe-a com essa pessoa quando tiver começado.} other {{names} votam como convidados na triagem de onde esta foi copiada e não estão nesta. Partilhe-a com essas pessoas quando tiver começado.}}",
@@ -8407,6 +8409,8 @@
         "activity": "Atividade",
         "willDo": "O que guardar faz",
         "counting": "A calcular o que guardar faz",
+        "countFailed": "Não foi possível calcular o que guardar faz, por isso ainda não é possível guardar",
+        "countAgain": "Tentar novamente",
         "did": "O que foi feito ao guardar",
         "recheck": "Verificar de novo os artigos decididos",
         "recheckOn": "Cada artigo decidido é verificado com as novas definições. Os que aparecem acima recebem outro resultado.",

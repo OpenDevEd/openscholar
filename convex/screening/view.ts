@@ -473,6 +473,7 @@ export const getAction = defineUserQuery({
 export const get = userQuery(getAction);
 export const getForAssistant = assistantQuery(getAction);
 
+const CHANGED = new Set(["settings", "reviewerAdded", "reviewerRemoved", "madeViewer"]);
 /** Checks counted for a methods paragraph, saves of its settings counted, and votes counted for a person's pace. */
 const CHECKS_COUNTED = 400;
 const CHANGES_COUNTED = 200;
@@ -508,7 +509,8 @@ export const figuresAction = defineUserQuery({
       recent: Object.fromEntries(recent),
       startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
       checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0) },
-      changes: saves.filter((row) => row.code === "settings").length,
+      // What the methods paragraph says was changed: the settings, and who reviews.
+      changes: saves.filter((row) => CHANGED.has(row.code ?? "")).length,
     };
   },
 });

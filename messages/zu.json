@@ -7781,12 +7781,14 @@
   },
   "screening": {
     "effects": {
+      "counting": "Kubalwa okwenziwa yilokhu",
+      "countFailed": "Akukwazekanga ukubala okwenziwa yilokhu. Vala lokhu bese uzama futhi",
       "criterionUnwritten": "umbandela ongakabi nawo umbuzo",
       "reopens": "{count, plural, one {# iphepha liyavuleka futhi. Ukuskrini kuhlala kuqediwe, ngakho akekho olivotelayo kuze kuvulwe futhi} other {# amaphepha ayavuleka futhi. Ukuskrini kuhlala kuqediwe, ngakho akekho owavotelayo kuze kuvulwe futhi}}",
       "model": {
         "startsLater": "{name} iqala uma amaphepha esefikile",
         "nothingToRead": "{name} ayisenawo amaphepha okufunda",
-        "reads": "{name} ifunda {upTo, select, true {amaphepha avulekile okungekho muntu owaxazulula kuqala, {count, plural, one {# iphepha} other {# amaphepha}} namuhla} other {{all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}"
+        "reads": "{name} ifunda {upTo, select, true {{count, plural, one {# iphepha elivulekile} other {# amaphepha avulekile}}} other {{all, select, true {wonke {count, plural, one {# iphepha} other {# amaphepha}}} other {{count, plural, one {# iphepha elingakaxazululwa} other {# amaphepha angakaxazululwa}}}}}}{when, select, gathered { uma onke amaphepha esefikile} finished { uma ukuskrini sekuvulwe futhi} paused { uma amamodeli eseqhubeka} credits { uma isikhala sokusebenzela sesinamakhredithi anele ephepha elilandelayo} waiting { uma kufika ithuba lalokhu kuskrini} save { ngokushesha nje uma lokhu kugcinwa} other {}}{upTo, select, true {, yeqa lawo axazululwe ngaphambi kokuthi iwafunde} other {}}"
       },
       "person": {
         "invited": "{name} uthola isimemo nge-imeyili, kanye namaphepha uma esejoyinile",
@@ -7863,7 +7865,7 @@
         "prune": "Amaphepha akhishiwe ayasuswa eqoqweni avela kulo",
         "keep": "Amaphepha akhishiwe ahlala eqoqweni avela kulo"
       },
-      "withCredits": "{text}, kuze kufike ku-{credits, plural, one {# ikhredithi} other {# amakhredithi}}{each, select, true { ngalinye} other {}}",
+      "withCredits": "{text}, ngokuvamile {credits, plural, one {# ikhredithi} other {# amakhredithi}}{each, select, true { ngalinye} other {}}",
       "creditsChip": "{credits}{each, select, true { ngalinye} other {}}",
       "moved": "{count, plural, one {# iphepha lihanjisiwe} other {# amaphepha ahanjisiwe}} kusuka ku-{from} kuya ku-{to}",
       "noChange": "Awukho umphumela wephepha oshintshayo",
@@ -8349,7 +8351,7 @@
         "votesKeep": "{count, plural, one {# ivoti liqhubeka libalwa} other {# amavoti aqhubeka ebalwa}}",
         "pdfsMissed": "{why, select, text {{count, plural, one {Ayikwazi ukufunda ama-PDF, ngakho # iphepha alitholi voti kuyo} other {Ayikwazi ukufunda ama-PDF, ngakho # amaphepha awatholi voti kuyo}}} other {{count, plural, one {Ayikwazi ukufunda ama-PDF amade kakhulu, ngakho # iphepha alitholi voti kuyo} other {Ayikwazi ukufunda ama-PDF amade kakhulu, ngakho # amaphepha awatholi voti kuyo}}}}",
         "creditsFor": "{credits, plural, one {# ikhredithi} other {# amakhredithi}} {count, plural, one {e-# iphepha} other {ama-# amaphepha}}",
-        "allRead": "Konke kufundiwe",
+        "allRead": "Akusekho okokufunda",
         "none": "Abekho ababuyekezi okwamanje",
         "addPerson": "Engeza umuntu",
         "guestsLeft": "{count, plural, one {{names} uvota njengesivakashi ekuskrinini lokhu okukopishwe kukho, futhi akakho kulokhu. Yabelana naye ngakho uma sekuqalile.} other {{names} bavota njengezivakashi ekuskrinini lokhu okukopishwe kukho, futhi abekho kulokhu. Yabelana nabo ngakho uma sekuqalile.}}",
@@ -8406,6 +8408,8 @@
         "activity": "Umsebenzi",
         "willDo": "Okwenziwa wukugcina",
         "counting": "Kubalwa okwenziwa wukugcina",
+        "countFailed": "Akukwazekanga ukubala okwenziwa wukugcina, ngakho akukakwazi ukugcinwa",
+        "countAgain": "Zama futhi",
         "did": "Okwenziwe wukugcina",
         "recheck": "Hlola futhi amaphepha axazululiwe",
         "recheckOn": "Wonke amaphepha axazululiwe ahlolwa ngaphansi kwezilungiselelo ezintsha. Lawo abhalwe ngenhla athola omunye umphumela.",

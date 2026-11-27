@@ -7,9 +7,11 @@
 // picker, becomes a row of its own: a search, a collection, someone's collection or a record.
 
 import { SEARCH_PILL } from "./pieces";
+import { searchHistory } from "./address";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "motion/react";
@@ -38,7 +40,8 @@ import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/
 import { Chip } from "./parts";
 import { SourceRow } from "./source-row";
 
-type Filter = "all" | "yours" | "shared" | "library";
+const FILTERS = ["all", "yours", "shared", "library"] as const;
+type Filter = (typeof FILTERS)[number];
 /** Rows one page of the list holds, and a row's height with the line under it, as the other kinds' lists. */
 const PAGE = 5;
 const ROW = 57;
@@ -72,12 +75,18 @@ export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { 
   // The owners' photos are fetched with the lists, so their faces are there when the list first shows.
   for (const row of contents.flatMap((one) => one.rows ?? [])) if (row.owner?.image) preload(row.owner.image, { as: "image" });
   const libraries: ReaderLibrary[] = [...(listed ?? []), ...held.filter((one, at) => !listed?.some((library) => library.libraryId === one.library.libraryId) && held.findIndex((other) => other.library.libraryId === one.library.libraryId) === at).map(({ library }) => ({ ...library, ways: [], role: null }))];
-  const [picked, setLibraryId] = useState<string | null>(null);
+  // The community picked, what it lists, the search and the page are in the address: each change the list shows is a step in the history, and the letters of a search replace each other.
+  const [where, setWhere] = useQueryStates({ community: parseAsString, communityShow: parseAsStringLiteral(FILTERS), communityFind: parseAsString.withDefault(""), communityPage: parseAsInteger.withDefault(1) }, { history: "push", scroll: false });
+  const picked = where.community;
   // The library picked, else the one the form opened on, else the first.
   const library = libraries.find((one) => one.libraryId === (picked ?? opened[0]?.library.libraryId)) ?? libraries[0];
-  const [filter, setFilter] = useState<Filter>("all");
-  const [words, setWords] = useState("");
-  const [page, setPage] = useState(1);
+  const filter: Filter = where.communityShow ?? "all";
+  const words = where.communityFind;
+  const page = where.communityPage;
+  const setLibraryId = (id: string) => void setWhere({ community: id, communityPage: null });
+  const setFilter = (next: Filter) => void setWhere({ communityShow: next === "all" ? null : next, communityPage: null });
+  const setWords = (next: string) => void setWhere({ communityFind: next || null, communityPage: null }, searchHistory(words, next));
+  const setPage = (next: number) => void setWhere({ communityPage: next === 1 ? null : next });
   return {
     libraries,
     contents,
@@ -319,10 +328,7 @@ export function LibrarySources({
             <ListSearch
               box="min-w-40 flex-1"
               value={words}
-              onChange={(e) => {
-                setWords(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setWords(e.target.value)}
               placeholder={t("find")}
               aria-label={t("find")}
               className={SEARCH_PILL}

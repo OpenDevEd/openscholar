@@ -96,12 +96,12 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   const t = useTranslations("screening.frame");
   const words = useWords();
   const [kept, setKept] = useState<Over | null>(start);
-  const [addressed, setAddressed] = useOpenInAddress("over", OVERS);
+  const [addressed, setAddressed] = useOpenInAddress("over", OVERS, { inner: ["tab"] });
   const over = address ? addressed : kept;
   const setOver = (next: Over | null) => (address ? setAddressed(next) : setKept(next));
   // An email's "Turn off emails" link opens the screening with ?emails=off: it asks before it turns them off.
   const [emailsLink, setEmailsLink] = useQueryState("emails");
-  // The Export dialog's tab, in the address with it, so a reload or Back keeps it.
+  // The Export dialog's tab, in the address with it, so a reload keeps it. A dialog is one step in the history: its tabs replace each other there, and Back closes it.
   const [keptTab, setKeptTab] = useState<ExportTab>("papers");
   const [tabInAddress, setTabInAddress] = useQueryState("tab", parseAsStringLiteral(EXPORT_TABS).withOptions({ history: "replace", scroll: false }));
   const exportTab = address ? (tabInAddress ?? "papers") : keptTab;
@@ -206,6 +206,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, address
   return { ...controls, overlays };
 }
 
+/** What a confirmation says while the server counts what the change does, or once it couldn't: never a change of nothing. */
+const uncounted = (t: (key: "counting" | "countFailed") => string, counted: { data?: unknown; error?: unknown }) => (counted.data ? undefined : counted.error ? t("countFailed") : t("counting"));
+
 const failed = (t: T) => (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
 
 /**
@@ -244,10 +247,10 @@ function AddReviewer({ open, reviewer, onConfirm, onClose }: { open: Open; revie
               <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={onClose}>{screening.criteria.length ? t("add.markMustHave") : t("add.addCriteria")}</NextLink></Button>
             </Panel>
           ) : (
-            <EffectList lines={effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict })} />
+            <EffectList lines={!change || counted.data ? effectLines(say, screening, after, preview, { me: open.me, wallet: open.wallet, waiting: Boolean(open.waitingFor), openNow: open.counts.waiting + open.counts.conflict }) : []} none={change ? uncounted(say.t, counted) : undefined} />
           )}
           {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
-          {reviewer.model && open.wallet !== undefined ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
+          {reviewer.model && open.wallet !== undefined && counted.data ? <Credits cost={readingOf(after, reviewer.model, preview.joining[reviewer.id]?.reads ?? 0)} papers={preview.joining[reviewer.id]?.reads ?? 0} wallet={open.wallet} onAddCredits={onClose} /> : null}
         </>
       ) : null}
     </ConfirmChange>
@@ -272,8 +275,8 @@ export function TakeOff({ open, reviewer, viewer = false, onConfirm, onClose }: 
   const votes = reviewer?.tally?.cast ?? 0;
   const close = () => { setDiscard(false); onClose(); };
   return (
-    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isLoading} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
-      {reviewer ? <EffectList lines={[...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])]} moves={preview.moves} screening={screening.id} /> : null}
+    <ConfirmChange open={reviewer !== null} title={!reviewer ? "" : viewer ? t("takeOff.viewerTitle", { name: reviewer.name }) : me ? t("leave.title") : t("takeOff.title", { name: reviewer.name })} confirm={viewer ? t("takeOff.makeViewer") : me ? t("leave.confirm") : t("takeOff.confirm")} disabled={counted.isLoading || (Boolean(counted.error) && !counted.data)} onClose={close} onConfirm={() => void (reviewer && onConfirm(reviewer, discard).catch(failed(t)))}>
+      {reviewer ? <EffectList lines={counted.data ? [...effectLines(say, screening, withoutReviewer(screening, reviewer, discard, now), preview, { me: open.me }), ...(viewer ? [t("takeOff.asViewer")] : [])] : []} moves={preview.moves} none={uncounted(say.t, counted)} screening={screening.id} /> : null}
       {/* Their work stands unless whoever takes them off says otherwise: the votes stop counting only where that is asked for, and what it undoes shows above before it is done. */}
       {reviewer && votes && !viewer ? (
         <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">

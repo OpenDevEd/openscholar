@@ -10,7 +10,7 @@ import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
-import { parseAsStringLiteral, useQueryStates } from "nuqs";
+import { parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { FileText, Lock, TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "./parts";
 import { EASE } from "@/components/settings/model-map";
@@ -26,14 +26,14 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
 import { DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
-import { canConflict, gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
+import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -228,7 +228,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where a paper waits for more votes than one: never where the first vote, or a person's alone, settles it. */}
-      {open.counts.waiting && !screening.finishedAt && canConflict(screening.rule, readersOf(screening, open.invited).each, modelsOf(screening).length) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {open.counts.waiting && !screening.finishedAt && splitsIn(screening, 0, open.invited) ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -349,7 +349,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
         </>
       }
     >
-      {rows.length ? (
+      {rows.length || open.invited.length || gone.length ? (
         <div className="@container/reviewers">
         <div role="table" aria-label={t("reviewers.title")} className={cn(LIST, TABLE, "overflow-clip")}>
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
@@ -630,7 +630,7 @@ const UNREAD_PAGE = 8;
 function Unread({ open, model }: { open: Open; model: Reviewer }) {
   const id = open.screening.id;
   const t = useTranslations("screening.overview");
-  const papers = useCursorPage(api.screening.paperViews.list, inWorkspace(usePageWorkspace(), { jobId: id, reviewer: model.id, voted: "failed" as const }), UNREAD_PAGE);
+  const papers = useCursorPageAt("unreadPage", api.screening.paperViews.list, inWorkspace(usePageWorkspace(), { jobId: id, reviewer: model.id, voted: "failed" as const }), UNREAD_PAGE);
   return (
     <>
       <ScrollArea shades className="-mx-1 min-h-10 flex-1">
@@ -793,7 +793,7 @@ function Facts({ open }: { open: Open }) {
   const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
   const offSpent = spent - models.reduce((sum, model) => sum + open.spent(model), 0);
   // Just started: its papers are in and none has reached a model yet. Nothing is read, so nothing says every paper is.
-  const unreached = open.total > 0 && !screening.finishedAt && models.length > 0 && models.every((model) => theirsOf(model.tally) === 0);
+  const unreached = open.total > 0 && !screening.finishedAt && models.length > 0 && models.every((model) => (model.tally?.dealt ?? 0) === 0);
   // The readings that failed: the line under what was spent says so, as each model's row does.
   const unread = models.reduce((sum, model) => sum + (model.tally?.failed ?? 0), 0);
   // The workspace's credits are its members' to see: anyone else is told nothing of them.
@@ -886,7 +886,9 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
   // The latest checks, a page at a time once every one is asked for. The look it started with is its own row under them.
-  const read = useCursorPage(api.screening.view.checks, inWorkspace(workspaceId, sources.length ? { jobId: screening.id } : "skip"), ALL_CHECKS);
+  // Its page is in the address, so Back steps back through the pages; the latest checks are always the first page's.
+  const read = useCursorPageAt("checksPage", api.screening.view.checks, inWorkspace(workspaceId, sources.length ? { jobId: screening.id } : "skip"), ALL_CHECKS, { scroll: false });
+  const [, setChecksPage] = useQueryState("checksPage");
   // A screening that is not living and has no source to check has no checks to show. A living one whose sources can't gain papers keeps the part, shut, with why: its "Living" chip would otherwise promise checks that never come.
   if (!sources.length) {
     return screening.living ? (
@@ -978,7 +980,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           </AnimatePresence>
           {later > RECENT_CHECKS ? (
             <div className="flex flex-wrap items-center gap-2 px-4 py-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void setPlace({ checks: checks === "all" ? null : "all" })}>{checks === "all" ? t("checks.showLast", { count: RECENT_CHECKS }) : t("checks.seeEvery", { count: later })}</Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { void setPlace({ checks: checks === "all" ? null : "all" }); if (checks === "all") void setChecksPage(null); }}>{checks === "all" ? t("checks.showLast", { count: RECENT_CHECKS }) : t("checks.seeEvery", { count: later })}</Button>
               {checks === "all" && read.hasPages ? <span className="ms-auto flex items-center gap-1"><Button variant="ghost" size="xs" disabled={!read.canPrevious} onClick={read.previous}>{t("checks.later")}</Button><Button variant="ghost" size="xs" disabled={!read.canNext} onClick={read.next}>{t("checks.earlier")}</Button></span> : null}
             </div>
           ) : null}
