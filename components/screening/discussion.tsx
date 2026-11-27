@@ -92,7 +92,8 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   const send = () => {
     const words = text.trim();
     if (!words) return;
-    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setDraft((now) => ({ ...now, text: now.text.trim() ? `${words}\n\n${now.text}` : words })); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
+    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to && !owed ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setDraft((now) => ({ ...now, text: now.text.trim() ? `${words}\n\n${now.text}` : words })); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
+    // While someone waits for an answer from the person writing, the line is that answer, never a question to whoever was picked before.
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };
@@ -128,9 +129,9 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="mt-0.5 size-6 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-xs">
-                        <span className="truncate font-medium">{person.name}</span>
+                        <span className="min-w-0 truncate font-medium">{person.name}</span>
                         {line.by.id === me ? <YouTag /> : null}
-                        {asked ? <span className="shrink-0 text-muted-foreground">{t("discussion.asked", { who: asked })}</span> : null}
+                        {asked ? <span className="min-w-0 truncate text-muted-foreground">{t("discussion.asked", { who: asked })}</span> : null}
                         <span className="ms-auto shrink-0 text-muted-foreground">{ago(line.at)}</span>
                       </p>
                       <p className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>

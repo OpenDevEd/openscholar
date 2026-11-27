@@ -415,6 +415,8 @@ export const getAction = defineUserQuery({
       guest: v.optional(v.union(v.literal("viewer"), v.literal("editor"))),
       // How many votes of theirs were cast before a criterion became a must-have, and ask for a new one.
       flagged: v.number(),
+      // More of them than were counted: the count is a floor, and the queue's pages aren't worked out from it.
+      flaggedMore: v.optional(v.literal(true)),
       // The people it is shared with from outside its workspace, invitations still waiting included.
       guests: v.number(),
       // The invitations to vote on it that wait for an answer, for its workspace's members: who was asked. Its list of people has every invitation.
@@ -435,7 +437,7 @@ export const getAction = defineUserQuery({
       sourcesOf(ctx, jobId),
       job.targetCollectionId ? ctx.db.get("collections", job.targetCollectionId) : null,
     ]);
-    const flagged = reviewer ? (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).take(FLAGGED_COUNTED)).length : 0;
+    const flagged = reviewer ? (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).take(FLAGGED_COUNTED + 1)).length : 0;
     const guest = member ? null : ((await grantOf(ctx, jobId, actor.userId))?.role ?? null);
     // The first look in its sources is the screening starting: only a later one "brought new papers".
     const lately = await laterChecks(ctx, jobId);
@@ -465,7 +467,8 @@ export const getAction = defineUserQuery({
       // The workspace's credits are its members' to see.
       ...(member ? { credits: await availableCredits(ctx, job.workspaceId) } : {}),
       ...(guest ? { guest } : {}),
-      flagged,
+      flagged: Math.min(flagged, FLAGGED_COUNTED),
+      ...(flagged > FLAGGED_COUNTED ? { flaggedMore: true as const } : {}),
       guests: await countOf(ctx, itemGuestsOf(jobId)),
       // The invitations still waiting, which papers wait for as for anyone: a guest is told how many, and never whose address.
       invited: (await invitationsTo(ctx, jobId)).map((one) => (member ? { email: one.email, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) } : {})),

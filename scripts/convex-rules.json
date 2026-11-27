@@ -117,7 +117,7 @@
       "LATEST_COUNTED": "the papers a screening's last check brought, counted for the ones still open; its Papers page lists every one",
       "SAME_TITLE": "papers of one title and year in a screening, looked at for the one a new record is; versions of a paper share them and seldom more than a few do",
       "MOVE_LOOKED": "the far end of one person's queue, looked through for papers another person isn't on; a second move goes on from there",
-      "ANSWERED": "the questions that wait for one person on one screening, looked through for the ones on the paper they just wrote on",
+      "ANSWERED": "a paper's latest discussion lines, looked through for the questions to the person who just wrote on it",
       "PAIRS_MAX": "the pairs of reviewers a screening's overview draws agreement for; a screening with more reviewers than that many pairs shows the first",
       "CHECKS_COUNTED": "a screening's checks for new papers counted for its methods paragraph: the first of them",
       "CHANGES_COUNTED": "a screening's latest activity, looked through for how often its settings were changed",
@@ -163,7 +163,6 @@
       "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two",
       "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next",
       "DUE": "living screenings whose check is due, started in one run of the schedule; past it the run schedules itself for the rest",
-      "MOVE_MAX": "papers moved from one person to another in one write; a second move takes more",
       "STEP": "papers one step of a change to a screening's reviewers looks at; it reschedules itself until every open paper has been"
     }
   }

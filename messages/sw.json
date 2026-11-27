@@ -8112,6 +8112,7 @@
         "addedReviewers": "{count, plural, =1 {Umeongeza {names}} =2 {Umeongeza {names}} other {Umeongeza wakaguzi #}}",
         "removedReviewers": "{count, plural, =1 {Umewaondoa {names}} =2 {Umewaondoa {names}} other {Umewaondoa wakaguzi #}}",
         "rule": "Umebadilisha jinsi makala inavyoamuliwa",
+        "seeing": "Umebadilisha wakati wakaguzi wanaona kura nyingine",
         "destination": "Umebadilisha makala zilizojumuishwa zinakoenda",
         "collectionRenamed": "Umebadilisha jina la mkusanyiko wa uchujaji kuwa {name}",
         "goesTo": "Makala zilizojumuishwa zinaenda {name}",

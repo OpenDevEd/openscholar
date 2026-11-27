@@ -362,15 +362,19 @@ function Screen({ open }: { open: Open }) {
     // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
     const fromSheet = tablet && reasonSheet !== null;
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
-    // The next one down that still waits, or failing that the first that does: a paper skipped earlier comes round again once the end is reached.
-    const next = advance && queue !== "done" ? (items.find((one, index) => index > at && waits(one)) ?? items.find(waits)) : undefined;
+    // The next one down that still waits, then the queue's next page where this one ends with more to come, or failing both the first that waits here: a paper skipped earlier comes round again once the end is reached.
+    const later = advance && queue !== "done" ? items.find((one, index) => index > at && waits(one)) : undefined;
+    const nextPage = advance && queue !== "done" && !later && listed.canNext;
+    const next = later ?? (advance && queue !== "done" && !nextPage ? items.find(waits) : undefined);
     // Staying on the paper, the sheet steps back to it rather than leaving two entries of it.
-    setReasonFor(null, { inPlace: !(fromSheet && !next) });
+    setReasonFor(null, { inPlace: !(fromSheet && !next && !nextPage) });
     setWriting(null);
     if (next) {
       advanced.current = { paper: next.id, at: Date.now() };
       openIt(next, { inPlace: fromSheet });
     }
+    // The next paper is on the queue's next page: the page turns to it, as stepping past the last paper does.
+    else if (nextPage) go(items.length);
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
     else if (!picked && !fromSheet) void setPlace({ paper: paper.id }, { history: "replace" });
   };
@@ -525,7 +529,7 @@ function Screen({ open }: { open: Open }) {
       options={queues.map((which) => ({
         id: which,
         label: t(`queue.${which}`),
-        detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? (counted?.cast ?? 0) : conflicts} tone={QUEUE_TONE[which]} />,
+        detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? (counted?.cast ?? 0) : conflicts} more={which === "again" && open.flaggedMore} tone={QUEUE_TONE[which]} />,
       }))}
     />
   );
@@ -560,14 +564,14 @@ function Screen({ open }: { open: Open }) {
     );
   };
   // How many the queue holds, where it is counted: Done by your votes (all of them, or the decision it is narrowed to), the others by what is left. A search isn't counted, and its pager says only the page.
-  const queueTotal = searched ? undefined : queue === "done" ? (voted === "any" ? (counted?.cast ?? 0) : (counted?.[voted] ?? 0)) : left;
+  const queueTotal = searched || (queue === "again" && open.flaggedMore) ? undefined : queue === "done" ? (voted === "any" ? (counted?.cast ?? 0) : (counted?.[voted] ?? 0)) : left;
   const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queueTotal !== undefined ? { pageCount: Math.max(1, Math.ceil(queueTotal / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
   const findField = (className: string) => (
     <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className={SEARCH_PILL} />
   );
 
-  // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is.
-  const askedChip = open.asked && open.askedFirst ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: open.askedFirst })} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
+  // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is. A reviewer gets it here, with their own vote on it, in whichever queue it is for them; whoever only settles conflicts reads it in Papers, as the paper may be no conflict.
+  const askedChip = open.asked && open.askedFirst ? <LinkChip href={open.isReviewer ? screenHref(id, { paper: open.askedFirst }) : papersHref(id, { paper: open.askedFirst })} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
   // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list where it has no column.
   const queueFilters = (className: string) => (
     <>
@@ -981,7 +985,7 @@ function Screen({ open }: { open: Open }) {
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
               {/* Its place is held before the first vote too, so the bar keeps its rows when the way back appears. */}
-              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : <span aria-hidden className="invisible flex items-center gap-1 min-[87.5rem]:hidden"><span className="size-8" /><span className="size-6" /></span>}
+              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden">{last.mayUndo ? <TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint> : <span aria-hidden className="size-8" />}<span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : <span aria-hidden className="invisible flex items-center gap-1 min-[87.5rem]:hidden"><span className="size-8" /><span className="size-6" /></span>}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
                 <TooltipHint label={t("shortcuts.title")} onlyWhenClipped>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
@@ -989,7 +993,7 @@ function Screen({ open }: { open: Open }) {
                 </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
-                  {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer"))).map(([keys, what]) => (
+                  {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer")) && (what !== "undo" || Boolean(last?.mayUndo))).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
                       <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>

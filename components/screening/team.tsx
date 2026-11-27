@@ -38,12 +38,13 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   const [text, setText] = useState("");
   const workspaceId = useWorkspace();
   // The workspace's members whose name or email holds what was typed.
-  const read = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
+  const read = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, open || near ? { text: text.trim(), exclude, paginationOpts: { cursor: null, numItems: 20 } } : "skip")).data;
   // While the next letter's people are read, the last ones found stay, dimmed: the list never empties into placeholders under the typing.
   const [last, setLast] = useState(read);
   if (read !== undefined && read !== last) setLast(read);
   const found = read ?? last;
   const stale = read === undefined && last !== undefined;
+  // Rows found for what was typed before stay to look at, never to pick: Enter waits for the people the typing finds.
   const left = (found?.page ?? []).filter((person) => !exclude.includes(person.id));
   const email = /^\S+@\S+\.\S+$/.test(text.trim()) ? text.trim().toLowerCase() : null;
   // Someone typed as an address who is a member is added as that member, never invited.
@@ -78,7 +79,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
             {left.length ? (
               <CommandGroup heading={words.t("person.member")} className={cn("transition-opacity", stale && "opacity-60")}>
                 {left.map((person) => (
-                  <CommandItem key={person.id} value={person.id} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
+                  <CommandItem key={person.id} value={person.id} disabled={stale} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{person.name}</span>
@@ -90,7 +91,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
             ) : null}
             {email && !member ? (
               <CommandGroup heading={t("invite")}>
-                <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
+                <CommandItem value={email} disabled={stale} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>
@@ -129,7 +130,7 @@ export function AddModel({ taken, pdfs, onPick, children }: { /** The models on 
 }
 
 /** Asks before a change to a running screening, saying first what it will do. A change that can't be taken back, such as a deletion, is `destructive`: its button is red. */
-export function ConfirmChange({ open, title, confirm, cancel, disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
+export function ConfirmChange({ open, title, confirm, cancel, disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children?: ReactNode }) {
   const t = useTranslations("screening.list");
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -138,7 +139,7 @@ export function ConfirmChange({ open, title, confirm, cancel, disabled = false, 
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="sr-only">{t("confirm.what")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">{children}</div>
+        {children ? <div className="space-y-3">{children}</div> : null}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>{cancel ?? t("confirm.cancel")}</Button>
           <Button variant={variant} disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>

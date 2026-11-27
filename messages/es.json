@@ -8112,6 +8112,7 @@
         "addedReviewers": "{count, plural, =1 {Añadió a {names}} =2 {Añadió a {names}} other {Añadió # revisores}}",
         "removedReviewers": "{count, plural, =1 {Retiró a {names}} =2 {Retiró a {names}} other {Retiró a # revisores}}",
         "rule": "Cambió cómo se resuelve un artículo",
+        "seeing": "Cambió cuándo los revisores ven los demás votos",
         "destination": "Cambió adónde van los artículos incluidos",
         "collectionRenamed": "Renombró la colección del cribado como {name}",
         "goesTo": "Los artículos incluidos van a {name}",

@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {Kungezwe {names}} =2 {Kungezwe {names}} other {Kungezwe ababuyekezi abangu-#}}",
         "removedReviewers": "{count, plural, =1 {Kususwe {names}} =2 {Kususwe {names}} other {Kususwe ababuyekezi abangu-#}}",
         "rule": "Kushintshwe indlela iphepha elixazululwa ngayo",
+        "seeing": "Kushintshwe ukuthi ababuyekezi babona nini amanye amavoti",
         "destination": "Kushintshwe lapho amaphepha afakiwe aya khona",
         "collectionRenamed": "Iqoqo lokuskrini liqanjwe kabusha ngokuthi {name}",
         "goesTo": "Amaphepha afakiwe aya ku-{name}",

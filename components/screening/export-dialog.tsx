@@ -259,6 +259,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 {/* One reviewer's own file of their own votes leaves nothing out. */}
                 {whose === state.me ? null : leftOut}
                 {/* The file's columns over its first rows: a table may scroll sideways only where it can't fit. */}
+                {/* With no vote cast yet there is no row to show: the line under it says what the file holds instead, never a table of headings alone. */}
+                {voted.isLoading || sample.length ? (
                 <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle">
                   {/* The paper takes what the other columns leave, and only it and the free text are ever cut. */}
                   <table className="w-full min-w-[60rem] text-sm">
@@ -286,6 +288,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                     </tbody>
                   </table>
                 </ScrollArea>
+                ) : null}
                 {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
                 <p className="text-xs text-muted-foreground">
                   {/* How many the table shows is said once they are read: until then its room is held. */}

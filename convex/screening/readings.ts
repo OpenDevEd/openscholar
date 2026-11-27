@@ -49,7 +49,8 @@ export const context = internalQuery({
     if (!vote || !job || !paper || !reviewer || !model || !user) return null;
     return {
       jobId: job._id,
-      go: vote.status === "waiting" && reviewer.left === undefined && modelsFree(job),
+      // Never a paper whose source was taken out: it may still have a place waiting until the bookkeeping takes it out.
+      go: vote.status === "waiting" && !paper.withdrawn && reviewer.left === undefined && modelsFree(job),
       workspaceId: job.workspaceId,
       userId: user._id,
       clerkId: user.clerkId,

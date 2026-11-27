@@ -16,7 +16,7 @@ import { personOf } from "./view";
 import { logChange } from "./log";
 import { SCREENING_TEXT } from "./validators";
 
-/** Lines one page of a paper's discussion holds at most, and questions answered by one line. */
+/** Lines one page of a paper's discussion holds at most, and a paper's latest lines looked through for the questions a line answers. */
 const LINES = 100;
 const ANSWERED = 200;
 
@@ -96,9 +96,8 @@ export const say = workspaceMutation({
       const asked = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", to)).first();
       if (job.rule?.resolver !== to && (!asked || asked.left !== undefined)) throw createError("VALIDATION_ERROR", "Only someone on this screening can be asked.");
     }
-    // Writing on the paper answers every question that waited there for the writer.
-    const waiting = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", actor.userId).eq("open", true)).take(ANSWERED);
-    for (const line of waiting) if (line.resultId === paperId) await ctx.db.patch("screeningMessages", line._id, { open: undefined });
+    // Writing on the paper answers every question that waited there for the writer: the paper's own latest lines are read, however many questions wait for them on other papers.
+    for (const line of await ctx.db.query("screeningMessages").withIndex("by_result", (q) => q.eq("resultId", paperId)).order("desc").take(ANSWERED)) if (line.to === actor.userId && line.open) await ctx.db.patch("screeningMessages", line._id, { open: undefined });
     await ctx.db.insert("screeningMessages", { jobId, resultId: paperId, by: actor.userId, text: words, ...(to ? { to, open: true as const } : {}) });
     await ctx.db.patch("screeningResults", paperId, { messages: (paper.messages ?? 0) + 1 });
     if (to) {

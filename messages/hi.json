@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {{names} को जोड़ा} =2 {{names} को जोड़ा} other {# समीक्षक जोड़े}}",
         "removedReviewers": "{count, plural, =1 {{names} को हटाया} =2 {{names} को हटाया} other {# समीक्षक हटाए}}",
         "rule": "बदला कि लेख कैसे तय होता है",
+        "seeing": "बदला कि समीक्षक बाकी वोट कब देखते हैं",
         "destination": "बदला कि शामिल लेख कहाँ जाते हैं",
         "collectionRenamed": "स्क्रीनिंग के संग्रह का नाम बदलकर {name} किया",
         "goesTo": "शामिल लेख {name} में जाते हैं",

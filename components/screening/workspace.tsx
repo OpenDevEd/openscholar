@@ -4,7 +4,7 @@
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
 import { leaveBehind } from "./address";
-import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
+import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
@@ -96,13 +96,13 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Pending[] = []) {
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean, pending: Pending[] = [], /** The papers in conflict now, which split it whatever the rule says (./pieces.tsx `settleSays`). */ conflicts = 0) {
   const [{ each }, models, blind] = [readersOf(screening, pending), modelsOf(screening).length, blindOf(screening, pending)];
   return {
     who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
     // Where one vote settles each paper, "when all agree" would promise an agreement there is nobody to reach: the chip says whose vote it is.
-    when: settleSays(words, screening, pending),
+    when: settleSays(words, screening, pending, conflicts),
     // As advice, the models' votes settle nothing on a paper a person has: said beside the rule, where it changes what the rule means.
     advice: modelsAdvise(screening.rule, each, models) ? t("rule.advice") : null,
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
@@ -126,6 +126,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
   const read = useOpenScreening(id);
   const open = read ?? null;
+  // "Nothing new" stops being true by the clock alone, with nothing else to draw the strip again: a timer ends it.
+  useRedrawAt(open?.lastCheck?.added === 0 ? open.lastCheck.at + NOTHING_SHOWN_MS : null);
   // Changes to its settings that were started and not saved.
   const unsaved = useKept((kept) => Boolean(kept.drafts[id]));
   // A deleted screening's pages are left for good: every one of them is out of the way back (./address.ts `leaveBehind`).
@@ -252,7 +254,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   }
 
   const { screening } = open;
-  const facts = ruleFacts({ words, t }, screening, open.isReviewer, open.invited);
+  const facts = ruleFacts({ words, t }, screening, open.isReviewer, open.invited, open.counts.conflict);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.total;
   const workspace = screening.workspace;
@@ -289,7 +291,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const first = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : (others[0] ?? null))) : null;
   const narrowedTo = first ? [first, ...others.filter((one) => one !== first)] : [];
   const faceHref = (reviewer: Reviewer) => {
-    if (view !== "papers") return reviewerHref(id, reviewer) ?? papersHref(id, { reviewer: reviewer.id });
+    if (view !== "papers") return reviewerHref(id, reviewer);
     const now = narrowedTo.includes(reviewer.id) ? narrowedTo.filter((one) => one !== reviewer.id) : [...narrowedTo, reviewer.id];
     const next = new URLSearchParams(search);
     // One reviewer's kind of vote stays only while they are still the only one.
@@ -311,7 +313,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         linkOf={(reviewer) => {
           const on = narrowedTo.includes(reviewer.id);
           const who = { you: String(reviewer.id === open.me), name: reviewer.name };
-          return { href: faceHref(reviewer), on, says: on ? t("faces.takeOut", who) : narrowedTo.length ? t("faces.add", who) : votesBy(pieces, reviewer, open.me) };
+          const href = faceHref(reviewer);
+          return href === null ? null : { href, on, says: on ? t("faces.takeOut", who) : narrowedTo.length ? t("faces.add", who) : votesBy(pieces, reviewer, open.me) };
         }}
       />
       {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
@@ -468,6 +471,16 @@ function passingKind(open: Open, quiet: boolean): PassingKind | null {
 
 /** How long the row says a check found nothing: long enough for whoever asked for it to read it. */
 const NOTHING_SHOWN_MS = 60_000;
+
+/** Draws the page again at a moment, where what it shows stops being true by the clock alone. The timer is the outside system. */
+function useRedrawAt(at: number | null) {
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (at === null) return;
+    const timer = setTimeout(redraw, Math.max(0, at - Date.now()));
+    return () => clearTimeout(timer);
+  }, [at]);
+}
 
 /** Each kind of notice in the colour of what it is about: what waits for you is primary, a stop is warning, the rest are facts. */
 const BANNER_TONE: Record<BannerKind, Tone> = { credits: "warning", finished: "neutral", paused: "warning", arrived: "primary" };

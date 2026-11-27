@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {Added {names}} =2 {Added {names}} other {Added # reviewers}}",
         "removedReviewers": "{count, plural, =1 {Took {names} off} =2 {Took {names} off} other {Took # reviewers off}}",
         "rule": "Changed how a paper is settled",
+        "seeing": "Changed when reviewers see the other votes",
         "destination": "Changed where included papers go",
         "collectionRenamed": "Renamed the screening's collection to {name}",
         "goesTo": "Included papers go to {name}",

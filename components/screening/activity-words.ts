@@ -81,7 +81,8 @@ export function changeOpens(id: string, row: Logged, canChange: boolean): string
     case "papersMoved":
     case "paused":
     case "resumed": return overviewHref(id, "reviewers");
-    case "asked": { const paper = line(row, "paperId")?.detail; return paper ? screenHref(id, { queue: "conflicts", paper }) : undefined; }
+    // A question is opened on its paper in Papers, where anyone reading the activity sees what was asked: never in a queue the reader may have no part in.
+    case "asked": { const paper = line(row, "paperId")?.detail; return paper ? papersHref(id, { paper }) : undefined; }
     // Settings are opened only by whoever may change them: anyone else would land on a page that says they can't.
     case "settings": { if (!canChange) return undefined; const part = (row.more ?? []).find((one) => one.code === "part")?.detail; return settingsHref(id, part && isSetting(part) && part !== "name" && part !== "question" ? (part as "papers") : undefined); }
     case "renamed": return canChange ? settingsHref(id) : undefined;

@@ -116,9 +116,9 @@ export const kindIcon = (kind: string): AppIcon => (kind === "upload" || kind ==
 /** Each result's icon in its own colour. */
 export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
 /** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
-export function TabCount({ value, tone = "neutral" }: { value: number; tone?: Tone }) {
+export function TabCount({ value, more, tone = "neutral" }: { value: number; /** There are more than were counted: the count is a floor. */ more?: boolean; tone?: Tone }) {
   const words = useWords();
-  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{words.num(value)}</span>;
+  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{words.num(value)}{more ? "+" : null}</span>;
 }
 
 /**
@@ -257,11 +257,11 @@ type FaceLink = { href: string; says: string; /** One of the reviewers the row i
  * paper's "waiting on". As many as `max` show, then how many more, which opens them all where `more` says where.
  * With `linkOf` each face is a link, named by what it opens. Without it the row is a picture of who is on something.
  */
-export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }: { reviewers: Reviewer[]; me: string | undefined; max?: number; linkOf?: (reviewer: Reviewer) => FaceLink; more?: FaceLink; /** The size of a face, where the row has less room than a face's own. */ mark?: string; className?: string }) {
+export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }: { reviewers: Reviewer[]; me: string | undefined; max?: number; /** Null where a reviewer has nothing to open: their face is drawn, not linked. */ linkOf?: (reviewer: Reviewer) => FaceLink | null; more?: FaceLink; /** The size of a face, where the row has less room than a face's own. */ mark?: string; className?: string }) {
   const words = useWords();
   const faces = reviewers.slice(0, max);
   const links = linkOf ? faces.map(linkOf) : [];
-  const narrowed = links.some((link) => link.on);
+  const narrowed = links.some((link) => link?.on);
   const hidden = reviewers.length - faces.length;
   return (
     <span aria-hidden={linkOf ? undefined : true} className={cn("flex shrink-0 items-center", className)}>

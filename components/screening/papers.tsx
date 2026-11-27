@@ -55,7 +55,7 @@ import { searchHistory, useOpenInAddress } from "./address";
 import { givenReason, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
-import { Discussion, DiscussionShut } from "./discussion";
+import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -140,9 +140,13 @@ export function PapersPage() {
 
 function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening } = open;
+  // What is written in the drawer is kept for each paper, as Screen keeps it: stepping to the next paper and back finds it where it was, and a save refused after stepping on puts the note back on its own paper.
+  const [notes, setNotes] = useState<Record<string, PaperNotes>>({});
+  const [talks, setTalks] = useState<Record<string, DiscussionDraft>>({});
   const id = screening.id;
   const workspaceId = usePageWorkspace();
   const t = useTranslations("screening.papers");
+  const screenWords = useTranslations("screening.screen");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
   // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
@@ -430,7 +434,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           className={trigger}
           choices={[
             { value: "any" as Voted, label: t("filter.anyVote"), icon: <ListChecks />, count: countVoted("any") },
-            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: words.decision(decision), icon: <Icon />, tone, count: countVoted(decision) }; }),
+            // Votes kept from the person looking are no list to open: each decision says why, as the column's menu does.
+            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: words.decision(decision), icon: <Icon />, tone, ...(tally?.kept ? { shut: words.t("hiddenWhileToDo") } : { count: countVoted(decision) }) }; }),
             { value: "none" as Voted, label: words.t("noVote.yet"), icon: <Hourglass />, count: countVoted("none"), group: t("filter.noVote") },
             ...(countVoted("failed") ? [{ value: "failed" as Voted, label: words.t("noVote.failed"), icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: t("filter.noVote") }] : []),
             ...(settles(who) ? [{ value: "settled" as Voted, label: t("filter.settled"), icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: t("filter.decisions") }] : []),
@@ -684,7 +689,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     );
                                   })}
                                   {!one.tally || one.tally.waiting > 0 ? <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />{t("menu.papersWaiting", { you: String(one.id === open.me), name: shortName(one) })}</NextLink></DropdownMenuItem> : null}
-                                  {one.tally && !one.tally.waiting && (one.tally.kept || DECISIONS.every((decision) => !one.tally![decision])) ? <DropdownMenuItem disabled><Hourglass />{one.tally.kept ? words.t("hiddenWhileToDo") : words.t("noVote.yet")}</DropdownMenuItem> : null}
+                                  {/* A model's papers it couldn't read are a list of their own, as its row on the Overview opens them. */}
+                                  {one.tally?.failed ? <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "failed" })}><TriangleAlert />{words.t("noVote.failed")}</NextLink></DropdownMenuItem> : null}
+                                  {one.tally && !one.tally.waiting && !one.tally.failed && (one.tally.kept || DECISIONS.every((decision) => !one.tally![decision])) ? <DropdownMenuItem disabled><Hourglass />{one.tally.kept ? words.t("hiddenWhileToDo") : words.t("noVote.yet")}</DropdownMenuItem> : null}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableHead>
@@ -759,7 +766,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               <ListEmpty
                 icon={Layers}
                 action={anyFilter ? (
-                  <Button variant="outline" size="sm" onClick={clearFilters}>{t("chip.clearFilters")}</Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {/* Where more of the list is still to read, nothing found yet is said as such, with the way on, as Screen says it. */}
+                    {listed.canNext ? <Button variant="outline" size="sm" onClick={() => listed.next()}>{screenWords("queue.readFurther")}</Button> : null}
+                    <Button variant="outline" size="sm" onClick={clearFilters}>{t("chip.clearFilters")}</Button>
+                  </div>
                 ) : (
                   <>
                     {/* Nothing has got this far, and the papers that could are still short of a vote or split: each count opens them. */}
@@ -771,7 +782,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   </>
                 )}
               >
-                {anyFilter ? t("table.noMatch") : words.empty(filter, Boolean(screening.finishedAt))}
+                {anyFilter ? (listed.canNext ? screenWords("queue.noMatchYet") : t("table.noMatch")) : words.empty(filter, Boolean(screening.finishedAt))}
               </ListEmpty>
             )}
           </Wide>
@@ -789,7 +800,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <SheetDescription className="sr-only">{t("panel.says")}</SheetDescription>
           {/* Each paper has its own scroll, so the next one starts at its title and not where the last was left. */}
           {/* The paper before stays while the one asked for is read, dimmed and out of reach: a vote can only go to the paper the address names. */}
-          {paper ? <ScrollArea key={paper.id} shades inert={stale} className={cn("min-h-0 flex-1 transition-opacity", stale && "opacity-55")}><PaperPanel paper={paper} open={open} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
+          {paper ? <ScrollArea key={paper.id} shades inert={stale} className={cn("min-h-0 flex-1 transition-opacity", stale && "opacity-55")}><PaperPanel paper={paper} open={open} notes={notes[paper.id] ?? {}} setNotes={(update) => setNotes((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? {}) }))} talk={talks[paper.id]} onTalk={(update) => setTalks((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? { text: "", asking: null }) }))} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
         </SheetContent>
       </Sheet>
     </div>
@@ -934,7 +945,10 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
 }
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
-function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; canStep: { previous: boolean; next: boolean }; /** Where it is in the list, and how many the list holds where that is counted. */ place: { at: number; of?: number } }) {
+/** A note for a vote and one for a result, as written in the drawer and not yet saved. */
+type PaperNotes = Partial<Record<"vote" | "result", string>>;
+
+function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onStep, canStep, place }: { paper: Paper; open: Open; notes: PaperNotes; setNotes: (update: (now: PaperNotes) => PaperNotes) => void; talk: DiscussionDraft | undefined; onTalk: (update: (now: DiscussionDraft) => DiscussionDraft) => void; onClose: () => void; onStep: (by: 1 | -1) => void; canStep: { previous: boolean; next: boolean }; /** Where it is in the list, and how many the list holds where that is counted. */ place: { at: number; of?: number } }) {
   const t = useTranslations("screening.papers");
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
@@ -949,8 +963,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
   const [deciding, setDeciding] = useState<"vote" | "result" | null>(null);
   const [reasonFor, setReasonFor] = useState<"vote" | "result" | null>(null);
   // A note for your vote and one for the paper's result, apart: someone who both reviews it and settles it writes each in its own place, as on Screen.
-  // Each starts as what is saved, your vote's note or the result's, until it is written in: a vote changed here keeps its note, as on Screen.
-  const [notes, setNotes] = useState<Partial<Record<"vote" | "result", string>>>({});
+  // Each starts as what is saved, your vote's note or the result's, until it is written in (`notes`, which Papers keeps for each paper): a vote changed here keeps its note, as on Screen.
   // A vote just sent shows as cast until the server's answer comes, so the drawer never shows the vote before it.
   const [sent, setSent] = useState<{ paper: string; decision: Decision; reason?: string } | null>(null);
   const setNote = (kind: "vote" | "result", text: string) => setNotes((all) => ({ ...all, [kind]: text }));
@@ -982,7 +995,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
     const typed = noteOf(kind);
     // Refused, the editor the vote came from opens again with what was written, so nothing is written twice.
     const wasOpen = deciding === kind;
-    const refused = (error: unknown) => { toast.dismiss(shownToast); setNote(kind, typed); if (wasOpen) setDeciding(kind); notSaved(t, error); };
+    // The note sent comes back where it was left as sent, or emptied by the save: a newer one written meanwhile stays.
+    const refused = (error: unknown) => { toast.dismiss(shownToast); setNotes((all) => (all[kind] === undefined || all[kind] === typed ? { ...all, [kind]: typed } : all)); if (wasOpen) setDeciding(kind); notSaved(t, error); };
     // What was written is what is saved once the server has it: the field then shows the saved note, so the next change keeps it too.
     // A note changed again while the vote was being saved is kept: only the one sent gives way to the saved note.
     const done = () => { setSent(null); setNotes(({ [kind]: now, ...rest }) => (now === undefined || now === typed ? rest : { ...rest, [kind]: now })); };
@@ -1099,7 +1113,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       </Section>
 
       {/* What its reviewers said to each other, where its votes show and there is something to talk over. Where a rule keeps it shut, the rule stands in its place. */}
-      {visible ? <Discussion open={open} paper={paper} /> : <DiscussionShut open={open} />}
+      {visible ? <Discussion open={open} paper={paper} draft={talk} onDraft={onTalk} /> : <DiscussionShut open={open} />}
 
       {/* The paper's result: settled by a person where its reviewers disagree, and open to change after that. */}
       {state.resolvedBy ? (

@@ -8112,6 +8112,7 @@
         "addedReviewers": "{count, plural, =1 {أضاف {names}} =2 {أضاف {names}} zero {أضاف # مراجع} one {أضاف {names}} two {أضاف {names}} few {أضاف # مراجعين} many {أضاف # مراجعًا} other {أضاف # مراجع}}",
         "removedReviewers": "{count, plural, =1 {أزال {names}} =2 {أزال {names}} zero {أزال # مراجع} one {أزال {names}} two {أزال {names}} few {أزال # مراجعين} many {أزال # مراجعًا} other {أزال # مراجع}}",
         "rule": "غيّر طريقة حسم الورقة",
+        "seeing": "غيّر متى يرى المراجعون الأصوات الأخرى",
         "destination": "غيّر وجهة الأوراق المُدرَجة",
         "collectionRenamed": "أعاد تسمية مجموعة الفرز إلى {name}",
         "goesTo": "تذهب الأوراق المُدرَجة إلى {name}",

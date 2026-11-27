@@ -8111,6 +8111,7 @@
         "addedReviewers": "{count, plural, =1 {添加了 {names}} =2 {添加了 {names}} other {添加了 # 名审核人}}",
         "removedReviewers": "{count, plural, =1 {移出了 {names}} =2 {移出了 {names}} other {移出了 # 名审核人}}",
         "rule": "更改了论文的定案方式",
+        "seeing": "更改了审核人何时能看到其他人的投票",
         "destination": "更改了入选论文的去向",
         "collectionRenamed": "将筛选的合集重命名为 {name}",
         "goesTo": "入选论文保存到 {name}",

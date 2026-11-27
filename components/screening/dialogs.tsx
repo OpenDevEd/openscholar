@@ -162,7 +162,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   const room = useProtectedQuery(api.sharing.guests.room, shared).data;
   const guests = usePaginatedQuery(api.sharing.guests.list, shared, { initialNumItems: PAGE });
   const invited = usePaginatedQuery(api.sharing.guests.invited, shared, { initialNumItems: PAGE });
-  const membersRead = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && addAs === "reviewer" ? { text, paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
+  const membersRead = useProtectedQuery(api.screening.reviewers.candidates, inWorkspace(workspaceId, may && open && addAs === "reviewer" ? { text, exclude: peopleOf(screening).map((one) => one.id), paginationOpts: { cursor: null, numItems: SUGGESTED } } : "skip")).data;
   // While the next letter's members are read, the last ones found stay: the list never empties under the typing.
   const [lastMembers, setLastMembers] = useState(membersRead);
   if (membersRead !== undefined && membersRead !== lastMembers) setLastMembers(membersRead);
@@ -251,6 +251,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   query,
                   onQuery: setQuery,
                   candidates: loading && !candidates.length ? undefined : candidates,
+                  stale: addAs === "reviewer" && membersRead === undefined && members !== undefined,
                   more: outside.status === "CanLoadMore" || outside.status === "LoadingMore" ? { loading: outside.status === "LoadingMore", load: () => outside.loadMore(SUGGESTED) } : undefined,
                   // Someone invited to vote goes through the same question as anyone added as a reviewer.
                   invite: (email) => (addAs === "reviewer" ? onAdd(invitedReviewer(email, Date.now())) : void invite({ kind: "screening", id, email, role: "viewer" }).catch(failed)),

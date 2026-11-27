@@ -321,7 +321,7 @@ const MOVE_LOOKED = 400;
 
 /**
  * Counts the papers one person on a screening hasn't voted on yet that another person on it doesn't have: what can
- * be moved from the first to the second, counted up to 200.
+ * be moved from the first to the second, counted up to 200, among as many of their papers as a move looks through.
  */
 export const movable = workspaceQuery({
   args: { jobId: v.id("screeningJobs"), from: v.id("screeningReviewers"), to: v.id("screeningReviewers") },
@@ -331,9 +331,10 @@ export const movable = workspaceQuery({
     const [giver, taker] = await Promise.all([ctx.db.get("screeningReviewers", from), ctx.db.get("screeningReviewers", to)]);
     if (giver?.jobId !== jobId || taker?.jobId !== jobId) return 0;
     // The far end of the first person's queue, each paper looked at for the second person's place on it.
-    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_MAX);
+    const waiting = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", from).eq("status", "waiting")).order("desc").take(MOVE_LOOKED);
     const free = await Promise.all(waiting.map(async (vote) => !(await votesOf(ctx, vote.resultId)).some((one) => one.reviewerId === to)));
-    return free.filter(Boolean).length;
+    // As far down the queue as a move looks, and no more than a move takes: the count is what the move does.
+    return Math.min(free.filter(Boolean).length, MOVE_MAX);
   },
 });
 
@@ -388,7 +389,8 @@ export const reread = internalMutation({
       const paper = await ctx.db.get("screeningResults", vote.resultId);
       if (!paper) continue;
       // A paper its other votes settled meanwhile keeps its result, as one settled before a model joins does (`enlist`): the model lets go of it, and it isn't paid for again. A closed place would be one the rule still waits for.
-      await ctx.db.patch("screeningVotes", vote._id, isFinal(paper.result) ? { status: "discarded", error: undefined } : { ...modelRow(job, paper, reviewer), error: undefined });
+      // A paper whose source was taken out is in the screening no more: the model lets go of it too, and nothing is paid to read it.
+      await ctx.db.patch("screeningVotes", vote._id, isFinal(paper.result) || paper.withdrawn ? { status: "discarded", error: undefined } : { ...modelRow(job, paper, reviewer), error: undefined });
       await stamp(ctx, vote.resultId);
     }
     if (failed.length) {
@@ -409,16 +411,18 @@ const CANDIDATE_ROWS = 500;
  * name or email contains `text`. In a person's own workspace that is only themselves.
  */
 export const candidates = workspaceQuery({
-  args: { text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  args: { text: v.optional(v.string()), /** The people already on it, left out before a page is cut, so a page is never emptied by them. */ exclude: v.optional(v.array(v.string())), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ id: v.id("users"), name: v.string(), email: v.string(), imageUrl: v.optional(v.string()) })),
-  handler: async (ctx, { userId, workspaceId }, { text, paginationOpts }) => {
+  handler: async (ctx, { userId, workspaceId }, { text, exclude = [], paginationOpts }) => {
+    if (exclude.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", "Too many people to leave out");
+    const left = new Set<string>(exclude);
     const needle = text?.trim().toLowerCase() ?? "";
     const row = (user: Doc<"users">) => ({ id: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) });
     const matches = (user: Doc<"users">) => !needle || `${personName(user)}\n${user.email}`.toLowerCase().includes(needle);
     const workspace = await ctx.db.get("workspaces", workspaceId);
     if (workspace?.kind !== "organization") {
       const me = await ctx.db.get("users", userId);
-      return { page: me && matches(me) && !paginationOpts.cursor ? [row(me)] : [], isDone: true, continueCursor: "" };
+      return { page: me && matches(me) && !left.has(me._id) && !paginationOpts.cursor ? [row(me)] : [], isDone: true, continueCursor: "" };
     }
     const found = new Map<string, Doc<"users">>();
     const read = await stream(ctx.db, schema)
@@ -426,7 +430,7 @@ export const candidates = workspaceQuery({
       .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active"))
       .filterWith(async (membership) => {
         const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
-        if (user?.state !== "active" || !matches(user)) return false;
+        if (user?.state !== "active" || !matches(user) || left.has(user._id)) return false;
         found.set(membership.clerkUserId, user);
         return true;
       })
