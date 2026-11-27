@@ -7788,7 +7788,7 @@
       },
       "votesStay": "已投的票保持不变",
       "modelVotes": {
-        "advice": "在仍未定案的论文上，分配给人员的论文由人员的投票定案，模型的投票作为参考",
+        "advice": "仍未定案且已分配给人员的论文只按人员的投票定案，模型的投票作为参考",
         "vote": "在仍未定案的论文上，模型的一票算作一位审核人的一票"
       },
       "conflict": {
@@ -8104,7 +8104,7 @@
         "removedReviewers": "{count, plural, =1 {移除了 {names}} =2 {移除了 {names}} other {移除了 # 名审核人}}",
         "rule": "更改了论文的定案方式",
         "destination": "更改了入选论文的去向",
-        "collectionRenamed": "将其合集重命名为 {name}",
+        "collectionRenamed": "将筛选的合集重命名为 {name}",
         "goesTo": "入选论文保存到 {name}",
         "goesNowhere": "入选论文不保存到任何合集"
       },
@@ -8228,7 +8228,7 @@
         "rangeHeld": "第 {first} 至 {last} 篇论文已在本次筛选中并会保留，因此范围只能扩大。要移除它们，请移除该来源。",
         "checkedEvery": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
         "couldntBeRead": "无法读取",
-        "stoppedAfter": "{read, plural, other {读取 # / {total} 后停止}}",
+        "stoppedAfter": "{read, plural, other {读取停在 {total} 篇中的第 # 篇}}",
         "notSaved": "Openscholar 读取此来源时出错。",
         "readAgain": "重试",
         "loadingList": "正在加载列表",
@@ -8267,8 +8267,8 @@
         "help": "Openscholar 会按你选择的频率检查筛选的搜索、合集、社区、Zotero 文库和其他筛选中是否有新论文。只有新论文才会加入并分配给审核人。",
         "check": "检查新论文",
         "off": "关闭",
-        "checksAll": "{count, plural, =1 {检查其来源} other {检查其 # 个来源}}",
-        "checksSome": "{count, plural, other {检查其 # 个来源中的 {growing} 个}}",
+        "checksAll": "{count, plural, =1 {检查来源} other {检查全部 # 个来源}}",
+        "checksSome": "{count, plural, other {检查 # 个来源中的 {growing} 个}}",
         "nextCheck": "下次检查：{day}",
         "firstCheck": "首次检查：{day}",
         "firstOnSave": "保存后立即进行首次检查",
@@ -8355,9 +8355,9 @@
         "modelVotes": "模型的投票",
         "countAsVote": "与人员同等计票",
         "adviceOnly": "仅作参考",
-        "modelVotesVote": "与人员同等计票时，每个模型的一票算作一位审核人的一票，论文由人员和模型的投票共同定案。如果仅凭模型的投票就能压过论文上的每个人员，论文会转为冲突。",
-        "modelVotesAdvice": "仅作参考时，分配给人员的论文只按人员的投票定案，模型的投票显示在旁边。",
-        "modelVotesNever": "无论哪种方式，没有分配给任何人的论文都按模型的投票定案。",
+        "modelVotesVote": "模型的投票与人员同等计票时，每个模型的一票算作一位审核人的一票，论文由人员和模型的投票共同定案。如果仅凭模型的投票就能压过论文上的每个人员，论文会转为冲突。",
+        "modelVotesAdvice": "模型的投票仅作参考时，分配给人员的论文只按人员的投票定案，模型的投票显示在旁边。",
+        "modelVotesNever": "无论哪种方式，没有分配给任何人的论文都按模型的投票定案。在“首票决定”下，模型的投票对任何已分配给人员的论文都只作参考。",
         "addModel": "添加模型后可选择",
         "modelsUnderOne": "对分配给人员的论文仅作参考",
         "addPerson": "添加人员后可选择",
@@ -8501,10 +8501,10 @@
         "livingChip": "{every, select, day {持续更新<more>，每天加入新论文</more>} week {持续更新<more>，每周加入新论文</more>} other {持续更新<more>，每月加入新论文</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {你能看到所有论文和所有投票。你不是它的审核人，因此不会分到需要投票的论文。} other {你能看到所有论文和所有投票。你不是它的审核人，因此不会分到需要投票的论文。以审核人身份加入即可分到论文。}}",
+        "member": "{finished, select, true {你能看到所有论文和所有投票，但不会分到需要投票的论文。} other {你能看到所有论文和所有投票，但不会分到需要投票的论文。以审核人身份加入即可分到论文。}}",
         "viewer": "{workspace} 将它共享给了你。你能看到所有论文和所有投票，但不会分到需要投票的论文。",
         "guest": "访客",
-        "guestSays": "{personal, select, true {{workspace} 将它共享给了你。你对分到的论文投票。只有 {workspace} 可以更改其设置。} other {{workspace} 将它共享给了你。你对分到的论文投票。只有 {workspace} 的成员可以更改其设置。}}"
+        "guestSays": "{personal, select, true {{workspace} 将它共享给了你。你对分到的论文投票。只有 {workspace} 可以更改设置。} other {{workspace} 将它共享给了你。你对分到的论文投票。只有 {workspace} 的成员可以更改设置。}}"
       },
       "banner": {
         "checked": "已检查 {done, number} / {of, plural, other {# 个来源}}",
@@ -8545,7 +8545,7 @@
         "reviewersStay": "{own, select, true {其他审核人以访客身份留在筛选中} other {其他审核人留在筛选中，不在 {to} 中的以访客身份}}",
         "papersStay": "{own, select, true {已保存的论文留在原处，从现在起入选的论文保存到你自己的文库} other {已保存的论文留在原处，从现在起入选的论文保存到 {to} 的文库}}",
         "sourcesStay": "{own, select, true {来源留在你自己的工作区，筛选会继续在那里检查} other {来源留在 {from}，筛选会继续在那里检查}}",
-        "membersLose": "{from} 中不是其审核人的成员将无法再看到它",
+        "membersLose": "{from} 中不担任审核人的成员将无法再看到它",
         "nothingElse": "其他一切不变"
       },
       "finish": {
@@ -8591,7 +8591,7 @@
       },
       "credits": {
         "inWorkspace": "工作区现有 {credits} 积分",
-        "payFor": "{some, select, true {{credits} 积分约可支付其 {papers, plural, other {# 篇论文}}中的 {paid, number} 篇。之后会停止，直到添加积分。} other {{credits} 积分不足以支付其 {papers, plural, other {# 篇论文}}中的任何一篇。它会停在这里，直到添加积分。}}"
+        "payFor": "{some, select, true {{credits} 积分约可支付模型要阅读的 {papers, plural, other {# 篇论文}}中的 {paid, number} 篇。它会停在这里，直到添加积分。} other {{credits} 积分不足以支付模型要阅读的 {papers, plural, other {# 篇论文}}中的任何一篇。它会停在这里，直到添加积分。}}"
       },
       "activitySheet": {
         "says": "此筛选的所有更改，最新的在前",
@@ -8720,7 +8720,7 @@
         "askedYou": "{name} 问你",
         "waitingFor": "等待 {name} 回答",
         "asked": "问了 {who}",
-        "readOnly": "{empty, select, true {还没有人讨论这篇论文。} other {}}只有它的审核人和裁决冲突的人可以在这里发言。{join, select, true {以审核人身份加入即可发言。} other {}}",
+        "readOnly": "{empty, select, true {还没有人讨论这篇论文。} other {}}只有这篇论文的审核人和裁决冲突的人可以在这里发言。{join, select, true {以审核人身份加入即可发言。} other {}}",
         "whoFor": "发给谁",
         "to": "发给",
         "everyone": "所有人",
@@ -9147,15 +9147,15 @@
       "modelsReading": "模型正在阅读",
       "about": "关于{title}",
       "shut": {
-        "reviewer": "仅限审核人",
+        "reviewer": "仅限此筛选的审核人",
         "settler": "仅限裁决冲突的人",
         "member": "仅限工作区成员",
         "sources": "没有来源会加入论文"
       },
       "notReviewer": {
         "shared": "此筛选已共享给你阅读。只有审核人可以投票。",
-        "finished": "你不是此筛选的审核人，且筛选已完成。",
-        "join": "你不是此筛选的审核人。以审核人身份加入即可对论文投票。"
+        "finished": "你不是此筛选的审核人，且此筛选已完成。",
+        "join": "你不是此筛选的审核人。以审核人身份加入即可投票。"
       },
       "votesShut": "其他人的投票不予显示，以免影响你的判断。",
       "creditsShort": "还差 {short} 积分",
@@ -9355,7 +9355,7 @@
         "onTheirWay": "论文正在路上",
         "arrived": "已到达 {done, number} / {count, number}",
         "noneYet": "还没有分给你的论文",
-        "noneYours": "其中没有需要你投票的论文",
+        "noneYours": "这里没有需要你投票的论文",
         "allVoted": "你已对你的所有论文投票",
         "finished": "此筛选已完成",
         "unvoted": "{count, plural, other {你的论文中有 # 篇还没有你的投票}}",

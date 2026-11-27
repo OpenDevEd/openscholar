@@ -7789,7 +7789,7 @@
       },
       "votesStay": "Bereits abgegebene Stimmen bleiben, wie sie sind",
       "modelVotes": {
-        "advice": "Bei den noch offenen Artikeln entscheiden die Stimmen der Personen jeden, den eine Person hat, und die Stimmen der Modelle gelten als Empfehlung",
+        "advice": "Die noch offenen Artikel, die eine Person hat, werden allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle gelten als Empfehlung",
         "vote": "Die Stimme eines Modells zählt bei den noch offenen Artikeln wie die eines Reviewers"
       },
       "conflict": {
@@ -8105,7 +8105,7 @@
         "removedReviewers": "{count, plural, =1 {{names} entfernt} =2 {{names} entfernt} other {# Reviewer entfernt}}",
         "rule": "Geändert, wie ein Artikel entschieden wird",
         "destination": "Geändert, wohin eingeschlossene Artikel gehen",
-        "collectionRenamed": "Seine Sammlung in {name} umbenannt",
+        "collectionRenamed": "Die Sammlung des Screenings in {name} umbenannt",
         "goesTo": "Eingeschlossene Artikel gehen nach {name}",
         "goesNowhere": "Eingeschlossene Artikel gehen in keine Sammlung"
       },
@@ -8229,7 +8229,7 @@
         "rangeHeld": "Die Artikel {first} bis {last} sind bereits in diesem Screening und bleiben darin, der Bereich kann also nur größer werden. Um sie herauszunehmen, entfernen Sie die Quelle.",
         "checkedEvery": "{every, select, day {Jeden Tag abgefragt} week {Jede Woche abgefragt} other {Jeden Monat abgefragt}}",
         "couldntBeRead": "Nicht lesbar",
-        "stoppedAfter": "{read, plural, other {Nach # von {total} gestoppt}}",
+        "stoppedAfter": "{read, plural, other {Lesen bei # von {total} gestoppt}}",
         "notSaved": "Beim Lesen dieser Quelle ist in Openscholar ein Fehler aufgetreten.",
         "readAgain": "Erneut versuchen",
         "loadingList": "Liste wird geladen",
@@ -8268,8 +8268,8 @@
         "help": "Openscholar fragt nach dem von Ihnen gewählten Zeitplan die Quellen des Screenings nach neuen Artikeln ab: seine Suchen, Sammlungen, Communities, Zotero-Bibliotheken und anderen Screenings. Nur neue Artikel werden hinzugefügt und gehen an die Reviewer.",
         "check": "Neue Artikel abfragen",
         "off": "Aus",
-        "checksAll": "{count, plural, one {Fragt seine Quelle ab} other {Fragt seine # Quellen ab}}",
-        "checksSome": "{count, plural, other {Fragt {growing} seiner # Quellen ab}}",
+        "checksAll": "{count, plural, one {Fragt die Quelle ab} other {Fragt alle # Quellen ab}}",
+        "checksSome": "{count, plural, other {Fragt {growing} der # Quellen ab}}",
         "nextCheck": "Nächste Abfrage {day}",
         "firstCheck": "Erste Abfrage {day}",
         "firstOnSave": "Erste Abfrage, sobald dies gespeichert ist",
@@ -8356,9 +8356,9 @@
         "modelVotes": "Stimmen der Modelle",
         "countAsVote": "Wie eine Person zählen",
         "adviceOnly": "Nur Empfehlung",
-        "modelVotesVote": "Zählen sie wie die einer Person, ist die Stimme jedes Modells die eines Reviewers, und ein Artikel wird aus den Stimmen der Personen und der Modelle zusammen entschieden. Würden die Modelle allein jede Person an diesem Artikel überstimmen, ist der Artikel stattdessen im Konflikt.",
-        "modelVotesAdvice": "Als Empfehlung wird ein Artikel, den eine Person hat, allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle stehen neben ihren.",
-        "modelVotesNever": "So oder so wird ein Artikel, den keine Person bekommt, aus den Stimmen der Modelle entschieden.",
+        "modelVotesVote": "Zählen die Stimmen der Modelle wie die einer Person, ist jede davon die Stimme eines Reviewers, und ein Artikel wird aus den Stimmen der Personen und der Modelle zusammen entschieden. Würden die Modelle allein jede Person an diesem Artikel überstimmen, ist der Artikel stattdessen im Konflikt.",
+        "modelVotesAdvice": "Gelten sie nur als Empfehlung, wird ein Artikel, den eine Person hat, allein aus den Stimmen der Personen entschieden, und die Stimmen der Modelle stehen neben ihren.",
+        "modelVotesNever": "So oder so wird ein Artikel, den keine Person bekommt, aus den Stimmen der Modelle entschieden. Bei „Erste Stimme entscheidet“ gelten die Stimmen der Modelle bei jedem Artikel, den eine Person hat, als Empfehlung.",
         "addModel": "Fügen Sie ein Modell hinzu, um zu wählen",
         "modelsUnderOne": "Empfehlung bei Artikeln, die eine Person hat",
         "addPerson": "Fügen Sie eine Person hinzu, um zu wählen",
@@ -8502,10 +8502,10 @@
         "livingChip": "{every, select, day {Fortlaufend<more>, jeden Tag neue Artikel</more>} week {Fortlaufend<more>, jede Woche neue Artikel</more>} other {Fortlaufend<more>, jeden Monat neue Artikel</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {Sie sehen alle Artikel und alle Stimmen. Sie sind keiner seiner Reviewer und erhalten daher keine Artikel zum Abstimmen.} other {Sie sehen alle Artikel und alle Stimmen. Sie sind keiner seiner Reviewer und erhalten daher keine Artikel zum Abstimmen. Treten Sie als Reviewer bei, um welche zu erhalten.}}",
+        "member": "{finished, select, true {Sie sehen alle Artikel und alle Stimmen und erhalten keine Artikel zum Abstimmen.} other {Sie sehen alle Artikel und alle Stimmen und erhalten keine Artikel zum Abstimmen. Treten Sie als Reviewer bei, um welche zu erhalten.}}",
         "viewer": "{workspace} hat es mit Ihnen geteilt. Sie sehen alle Artikel und alle Stimmen und erhalten keine Artikel zum Abstimmen.",
         "guest": "Gast",
-        "guestSays": "{personal, select, true {{workspace} hat es mit Ihnen geteilt. Sie stimmen über die Artikel ab, die Sie erhalten. Nur {workspace} ändert seine Einstellungen.} other {{workspace} hat es mit Ihnen geteilt. Sie stimmen über die Artikel ab, die Sie erhalten. Nur die Mitglieder von {workspace} ändern seine Einstellungen.}}"
+        "guestSays": "{personal, select, true {{workspace} hat es mit Ihnen geteilt. Sie stimmen über die Artikel ab, die Sie erhalten. Nur {workspace} kann die Einstellungen ändern.} other {{workspace} hat es mit Ihnen geteilt. Sie stimmen über die Artikel ab, die Sie erhalten. Nur die Mitglieder von {workspace} können die Einstellungen ändern.}}"
       },
       "banner": {
         "checked": "{done, number} von {of, plural, one {# Quelle} other {# Quellen}} abgefragt",
@@ -8546,7 +8546,7 @@
         "reviewersStay": "{own, select, true {Die anderen Reviewer bleiben als Gäste dabei} other {Die anderen Reviewer bleiben dabei, als Gäste, wo sie nicht in {to} sind}}",
         "papersStay": "{own, select, true {Bereits gespeicherte Artikel bleiben, wo sie sind, und ab jetzt eingeschlossene Artikel werden in Ihrer eigenen Bibliothek gespeichert} other {Bereits gespeicherte Artikel bleiben, wo sie sind, und ab jetzt eingeschlossene Artikel werden in der Bibliothek von {to} gespeichert}}",
         "sourcesStay": "{own, select, true {Die Quellen bleiben in Ihrem eigenen Arbeitsbereich, und das Screening fragt sie weiterhin dort ab} other {Die Quellen bleiben in {from}, und das Screening fragt sie weiterhin dort ab}}",
-        "membersLose": "Mitglieder von {from}, die nicht seine Reviewer sind, sehen es nicht mehr",
+        "membersLose": "Mitglieder von {from}, die keine Reviewer dieses Screenings sind, sehen es nicht mehr",
         "nothingElse": "Sonst ändert sich nichts"
       },
       "finish": {
@@ -8592,7 +8592,7 @@
       },
       "credits": {
         "inWorkspace": "Jetzt {credits} Credits im Arbeitsbereich",
-        "payFor": "{some, select, true {{credits} Credits reichen für etwa {paid, number} seiner {papers, plural, one {# Artikel} other {# Artikel}}. Dort stoppt es, bis Credits hinzugefügt werden.} other {{credits} Credits reichen für keinen seiner {papers, plural, one {# Artikel} other {# Artikel}}. Dort stoppt es, bis Credits hinzugefügt werden.}}"
+        "payFor": "{some, select, true {{credits} Credits reichen für etwa {paid, number} {papers, plural, one {des # Artikels, den das Modell liest} other {der # Artikel, die das Modell liest}}. Dort stoppt es, bis Credits hinzugefügt werden.} other {{credits} Credits reichen für keinen {papers, plural, one {des # Artikels, den das Modell liest} other {der # Artikel, die das Modell liest}}. Dort stoppt es, bis Credits hinzugefügt werden.}}"
       },
       "activitySheet": {
         "says": "Alle Änderungen an diesem Screening, neueste zuerst",
@@ -8721,7 +8721,7 @@
         "askedYou": "{name} hat Sie gefragt",
         "waitingFor": "Wartet auf die Antwort von {name}",
         "asked": "hat {who} gefragt",
-        "readOnly": "{empty, select, true {Noch hat niemand über diesen Artikel geschrieben. } other {}}Nur seine Reviewer und die Person, die Konflikte entscheidet, schreiben hier.{join, select, true { Treten Sie als Reviewer bei, um zu schreiben.} other {}}",
+        "readOnly": "{empty, select, true {Noch hat niemand über diesen Artikel geschrieben. } other {}}Nur die Reviewer des Artikels und die Person, die Konflikte entscheidet, schreiben hier.{join, select, true { Treten Sie als Reviewer bei, um zu schreiben.} other {}}",
         "whoFor": "Für wen",
         "to": "An",
         "everyone": "Alle",
@@ -9129,7 +9129,7 @@
           "row": "Wartet auf die Abfrage"
         },
         "gathering": {
-          "says": "Ruft seine Artikel ab",
+          "says": "Ruft die Artikel ab",
           "row": "Wartet auf die Artikel"
         },
         "paused": {
@@ -9148,15 +9148,15 @@
       "modelsReading": "Modelle lesen",
       "about": "Über {title}",
       "shut": {
-        "reviewer": "Für seine Reviewer",
+        "reviewer": "Für die Reviewer des Screenings",
         "settler": "Für die Person, die Konflikte entscheidet",
         "member": "Für die Mitglieder des Arbeitsbereichs",
         "sources": "Keine Quelle erhält Artikel"
       },
       "notReviewer": {
         "shared": "Dieses Screening ist zum Lesen mit Ihnen geteilt. Nur seine Reviewer stimmen ab.",
-        "finished": "Sie sind keiner seiner Reviewer, und das Screening ist abgeschlossen.",
-        "join": "Sie sind keiner seiner Reviewer. Treten Sie als Reviewer bei, um über seine Artikel abzustimmen."
+        "finished": "Sie sind kein Reviewer dieses Screenings, und es ist abgeschlossen.",
+        "join": "Sie sind kein Reviewer dieses Screenings. Treten Sie als Reviewer bei, um abzustimmen."
       },
       "votesShut": "Die anderen Stimmen bleiben verborgen, damit sie Ihre nicht beeinflussen.",
       "creditsShort": "{short} Credits zu wenig",
@@ -9356,7 +9356,7 @@
         "onTheirWay": "Die Artikel sind unterwegs",
         "arrived": "{done, number} von {count, number} sind da",
         "noneYet": "Noch kein Artikel ist bei Ihnen angekommen",
-        "noneYours": "Über keinen seiner Artikel stimmen Sie ab",
+        "noneYours": "Über keinen der Artikel hier stimmen Sie ab",
         "allVoted": "Sie haben über alle Ihre Artikel abgestimmt",
         "finished": "Dieses Screening ist abgeschlossen",
         "unvoted": "{count, plural, one {# Ihrer Artikel hat keine Stimme von Ihnen} other {# Ihrer Artikel haben keine Stimme von Ihnen}}",

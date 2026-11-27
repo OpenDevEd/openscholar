@@ -43,7 +43,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, bylineOf, awaitedOn, DECISIONS, modelsOf, readersOf, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
@@ -577,8 +577,8 @@ function Screen({ open }: { open: Open }) {
   // Everyone's votes on the open paper. It is drawn in one of two places: under the paper from a laptop's width, and after your answers under it, where one column has to put the questions before the others' votes.
   const everyonesVotes = paper ? (
                     <Section
-                      // As advice the models' votes settle nothing on a paper you have: the heading says so.
-                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && modelsOf(screening).length && readersOf(screening).each ? t("votes.titleAdvice") : t("votes.title")}
+                      // As advice the models' votes settle nothing on a paper a person has: the heading says so on this paper's votes, never on a paper only models voted on.
+                      title={screening.rule.models === "advice" && screening.rule.settle !== "one" && cast.some((one) => one.reviewer.kind === "model") && cast.some((one) => one.reviewer.kind === "person") ? t("votes.titleAdvice") : t("votes.title")}
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (

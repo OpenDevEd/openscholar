@@ -7788,7 +7788,7 @@
       },
       "votesStay": "Les votes déjà émis restent tels quels",
       "modelVotes": {
-        "advice": "Sur les articles encore ouverts, les votes des personnes tranchent chaque article confié à une personne, et les votes des modèles servent d'avis",
+        "advice": "Les articles encore ouverts confiés à une personne sont tranchés sur les seuls votes des personnes, et les votes des modèles servent d'avis",
         "vote": "Le vote d'un modèle compte comme celui d'un évaluateur sur les articles encore ouverts"
       },
       "conflict": {
@@ -8104,7 +8104,7 @@
         "removedReviewers": "{count, plural, =1 {A retiré {names}} =2 {A retiré {names}} other {A retiré # évaluateurs}}",
         "rule": "A modifié la façon dont un article est décidé",
         "destination": "A changé la destination des articles inclus",
-        "collectionRenamed": "A renommé sa collection en {name}",
+        "collectionRenamed": "A renommé la collection du criblage en {name}",
         "goesTo": "Les articles inclus vont dans {name}",
         "goesNowhere": "Les articles inclus ne vont dans aucune collection"
       },
@@ -8228,7 +8228,7 @@
         "rangeHeld": "Les articles {first} à {last} sont déjà dans ce criblage et y restent : la plage ne peut que s'élargir. Pour les retirer, retirez la source.",
         "checkedEvery": "{every, select, day {Vérifié chaque jour} week {Vérifié chaque semaine} other {Vérifié chaque mois}}",
         "couldntBeRead": "Illisible",
-        "stoppedAfter": "{read, plural, other {Arrêté après # sur {total}}}",
+        "stoppedAfter": "{read, plural, other {Lecture arrêtée à # sur {total}}}",
         "notSaved": "Openscholar a rencontré une erreur en lisant cette source.",
         "readAgain": "Réessayer",
         "loadingList": "Chargement de la liste",
@@ -8267,8 +8267,8 @@
         "help": "Selon le calendrier que vous choisissez, Openscholar cherche de nouveaux articles dans les recherches, collections, communautés, bibliothèques Zotero et autres criblages qui alimentent ce criblage. Seuls les articles nouveaux sont ajoutés et vont aux évaluateurs.",
         "check": "Chercher de nouveaux articles",
         "off": "Désactivé",
-        "checksAll": "{count, plural, one {Vérifie sa source} other {Vérifie ses # sources}}",
-        "checksSome": "{count, plural, other {Vérifie {growing} de ses # sources}}",
+        "checksAll": "{count, plural, one {Vérifie la source} other {Vérifie toutes les # sources}}",
+        "checksSome": "{count, plural, other {Vérifie {growing} des # sources}}",
         "nextCheck": "Prochaine vérification {day}",
         "firstCheck": "Première vérification {day}",
         "firstOnSave": "Première vérification dès l'enregistrement",
@@ -8355,9 +8355,9 @@
         "modelVotes": "Votes des modèles",
         "countAsVote": "Compter comme une personne",
         "adviceOnly": "Avis seulement",
-        "modelVotesVote": "Compté comme celui d'une personne, le vote de chaque modèle vaut celui d'un évaluateur, et un article est tranché sur les votes des personnes et des modèles ensemble. Si les modèles l'emportaient à eux seuls sur chaque personne à qui l'article est confié, il est en désaccord à la place.",
-        "modelVotesAdvice": "Comme avis, un article confié à une personne est tranché sur les seuls votes des personnes, et les votes des modèles s'affichent à côté des leurs.",
-        "modelVotesNever": "Dans les deux cas, un article qui n'est confié à aucune personne est tranché sur les votes des modèles.",
+        "modelVotesVote": "Quand les votes des modèles comptent comme celui d'une personne, chacun vaut le vote d'un évaluateur, et un article est tranché sur les votes des personnes et des modèles ensemble. Si les modèles l'emportaient à eux seuls sur chaque personne à qui l'article est confié, il est en désaccord à la place.",
+        "modelVotesAdvice": "Quand ils ne servent que d'avis, un article confié à une personne est tranché sur les seuls votes des personnes, et les votes des modèles s'affichent à côté des leurs.",
+        "modelVotesNever": "Dans les deux cas, un article qui n'est confié à aucune personne est tranché sur les votes des modèles. Avec « Le premier vote décide », les votes des modèles servent d'avis sur tout article confié à une personne.",
         "addModel": "Ajoutez un modèle pour choisir",
         "modelsUnderOne": "Avis sur les articles confiés à une personne",
         "addPerson": "Ajoutez une personne pour choisir",
@@ -8501,10 +8501,10 @@
         "livingChip": "{every, select, day {Vivant<more>, nouveaux articles chaque jour</more>} week {Vivant<more>, nouveaux articles chaque semaine</more>} other {Vivant<more>, nouveaux articles chaque mois</more>}}"
       },
       "role": {
-        "member": "{finished, select, true {Vous voyez chaque article et chaque vote. Vous ne faites pas partie de ses évaluateurs, vous ne recevez donc aucun article sur lequel voter.} other {Vous voyez chaque article et chaque vote. Vous ne faites pas partie de ses évaluateurs, vous ne recevez donc aucun article sur lequel voter. Rejoignez-le comme évaluateur pour en recevoir.}}",
+        "member": "{finished, select, true {Vous voyez chaque article et chaque vote, et ne recevez aucun article sur lequel voter.} other {Vous voyez chaque article et chaque vote, et ne recevez aucun article sur lequel voter. Rejoignez-le comme évaluateur pour en recevoir.}}",
         "viewer": "{workspace} l'a partagé avec vous. Vous voyez chaque article et chaque vote, et vous ne recevez aucun article sur lequel voter.",
         "guest": "Invité",
-        "guestSays": "{personal, select, true {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Ses paramètres ne sont modifiés que par {workspace}.} other {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Seuls les membres de {workspace} modifient ses paramètres.}}"
+        "guestSays": "{personal, select, true {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Seul {workspace} peut modifier les paramètres.} other {{workspace} l'a partagé avec vous. Vous votez sur les articles que vous recevez. Seuls les membres de {workspace} peuvent modifier les paramètres.}}"
       },
       "banner": {
         "checked": "{done, number} sur {of, plural, one {# source vérifiée} other {# sources vérifiées}}",
@@ -8545,7 +8545,7 @@
         "reviewersStay": "{own, select, true {Les autres évaluateurs y restent, comme invités} other {Les autres évaluateurs y restent, comme invités s'ils ne sont pas dans {to}}}",
         "papersStay": "{own, select, true {Les articles déjà enregistrés restent où ils sont, et ceux inclus désormais sont enregistrés dans votre propre bibliothèque} other {Les articles déjà enregistrés restent où ils sont, et ceux inclus désormais sont enregistrés dans la bibliothèque de {to}}}",
         "sourcesStay": "{own, select, true {Les sources restent dans votre propre espace de travail, et le criblage continue à les vérifier là} other {Les sources restent dans {from}, et le criblage continue à les vérifier là}}",
-        "membersLose": "Les membres de {from} qui ne sont pas ses évaluateurs ne le voient plus",
+        "membersLose": "Les membres de {from} qui ne sont pas évaluateurs de ce criblage ne le voient plus",
         "nothingElse": "Rien d'autre ne change"
       },
       "finish": {
@@ -8591,7 +8591,7 @@
       },
       "credits": {
         "inWorkspace": "{credits} crédits dans l'espace de travail actuellement",
-        "payFor": "{some, select, true {{credits} crédits paient environ {paid, number} de ses {papers, plural, one {# article} other {# articles}}. Il s'arrête là jusqu'à ce que des crédits soient ajoutés.} other {{credits} crédits ne paient aucun de ses {papers, plural, one {# article} other {# articles}}. Il s'arrête là jusqu'à ce que des crédits soient ajoutés.}}"
+        "payFor": "{some, select, true {{credits} crédits paient environ {paid, number} des {papers, plural, one {# article} other {# articles}} que le modèle lit. Il s'arrête là jusqu'à ce que des crédits soient ajoutés.} other {{credits} crédits ne paient aucun des {papers, plural, one {# article} other {# articles}} que le modèle lit. Il s'arrête là jusqu'à ce que des crédits soient ajoutés.}}"
       },
       "activitySheet": {
         "says": "Chaque modification de ce criblage, de la plus récente à la plus ancienne",
@@ -8720,7 +8720,7 @@
         "askedYou": "{name} vous a demandé",
         "waitingFor": "En attente de la réponse de {name}",
         "asked": "a demandé à {who}",
-        "readOnly": "{empty, select, true {Personne n'a encore écrit sur cet article. } other {}}Seuls ses évaluateurs et la personne qui tranche les désaccords écrivent ici.{join, select, true { Rejoignez-le comme évaluateur pour écrire.} other {}}",
+        "readOnly": "{empty, select, true {Personne n'a encore écrit sur cet article. } other {}}Seuls les évaluateurs de l'article et la personne qui tranche les désaccords écrivent ici.{join, select, true { Rejoignez-le comme évaluateur pour écrire.} other {}}",
         "whoFor": "À qui il s'adresse",
         "to": "À",
         "everyone": "Tout le monde",
@@ -9128,7 +9128,7 @@
           "row": "En attente de la vérification"
         },
         "gathering": {
-          "says": "Récupération de ses articles",
+          "says": "Récupération des articles",
           "row": "En attente de l'arrivée des articles"
         },
         "paused": {
@@ -9147,15 +9147,15 @@
       "modelsReading": "Modèles en lecture",
       "about": "À propos de {title}",
       "shut": {
-        "reviewer": "Pour ses évaluateurs",
+        "reviewer": "Pour les évaluateurs du criblage",
         "settler": "Pour la personne qui tranche les désaccords",
         "member": "Pour les membres de l'espace de travail",
         "sources": "Aucune source ne reçoit de nouveaux articles"
       },
       "notReviewer": {
         "shared": "Ce criblage est partagé avec vous en lecture. Seuls ses évaluateurs votent.",
-        "finished": "Vous ne faites pas partie de ses évaluateurs, et le criblage est terminé.",
-        "join": "Vous ne faites pas partie de ses évaluateurs. Rejoignez-le comme évaluateur pour voter sur ses articles."
+        "finished": "Vous n'êtes pas évaluateur de ce criblage, et il est terminé.",
+        "join": "Vous n'êtes pas évaluateur de ce criblage. Rejoignez-le comme évaluateur pour voter."
       },
       "votesShut": "Les autres votes restent masqués pour ne pas influencer le vôtre.",
       "creditsShort": "Il manque {short} crédits",
@@ -9355,7 +9355,7 @@
         "onTheirWay": "Les articles arrivent",
         "arrived": "{done, number} sur {count, number} sont arrivés",
         "noneYet": "Aucun article ne vous est encore parvenu",
-        "noneYours": "Aucun de ses articles ne vous revient",
+        "noneYours": "Aucun des articles ici ne vous revient",
         "allVoted": "Vous avez voté sur tous vos articles",
         "finished": "Ce criblage est terminé",
         "unvoted": "{count, plural, one {# de vos articles est resté sans votre vote} other {# de vos articles sont restés sans votre vote}}",
