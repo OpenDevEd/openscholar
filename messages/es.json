@@ -5080,7 +5080,8 @@
       "goneDetail": "Pida a quien lo compartió que lo vuelva a compartir",
       "otherTitle": "Esta invitación se envió a otra dirección",
       "otherDetail": "Ábrala si esta cuenta también tiene esa dirección, o inicie sesión con la dirección a la que se envió",
-      "pointScreening": "Votar es gratis. {name} paga los modelos de IA del cribado."
+      "pointScreening": "{models, select, true {Votar es gratis. {name} paga los modelos de IA del cribado.} other {Votar es gratis.}}",
+      "pointLooking": "Verlo es gratis"
     },
     "notEmails": "{count, plural, one {Esto no es una dirección de correo: {values}. Corrígela o quítala para crear la organización.} other {Estas no son direcciones de correo: {values}. Corrígelas o quítalas para crear la organización.}}",
     "asRole": "como {role}",
@@ -5090,7 +5091,7 @@
       "screen": "{count, plural, one {# cribado le necesita} other {# cribados le necesitan}}",
       "screenWhy": "Artículos por cribar, conflictos por resolver, preguntas para usted o invitaciones por responder",
       "shared": "{count, plural, one {# invitación espera su respuesta} other {# invitaciones esperan su respuesta}}",
-      "sharedWhy": "Cribados, chats, búsquedas y extracciones compartidos con usted",
+      "sharedWhy": "Invitaciones a cribados, colecciones, búsquedas, chats, extracciones y perfiles de autor",
       "publish": "{count, plural, one {# informe está listo para publicarse} other {# informes están listos para publicarse}}",
       "publishWhy": "{count, plural, one {Se publica cuando usted lo active} other {Se publican cuando usted los active}}"
     }
@@ -8813,7 +8814,7 @@
       "empty": {
         "arriving": "Los artículos están en camino",
         "arrivingSays": "{reviewer, select, true {Aparecen aquí a medida que llegan de las fuentes. Puede empezar a cribar en cuanto lleguen los primeros.} other {Aparecen aquí a medida que llegan de las fuentes.}}",
-        "noPaper": "{sources, select, failed {No se pudieron leer las fuentes. La configuración dice por qué y puede volver a leerlas.} true {Las fuentes no tenían ningún artículo que se pueda cribar.} other {{canChange, select, true {Añada una fuente para dar artículos a los revisores.} other {Los artículos llegan cuando se añade una fuente.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {No se pudieron leer algunas fuentes. Vuelva a leerlas desde las fuentes.} other {No se pudieron leer algunas fuentes.}}} true {Las fuentes no tenían ningún artículo que se pueda cribar.} other {{canChange, select, true {Añada una fuente para dar artículos a los revisores.} other {Los artículos llegan cuando se añade una fuente.}}}}",
         "toSources": "{sources, select, failed {Ver las fuentes} true {Ver las fuentes} other {Añadir una fuente}}"
       },
       "progress": {
@@ -9441,7 +9442,7 @@
         "arrived": "Han llegado {done, number} de {count, number}",
         "noneYet": "Todavía no le ha llegado ningún artículo",
         "noneYours": "No le toca votar ninguno de los artículos de aquí",
-        "givenOut": "{count, plural, one {Cada artículo va a # persona} other {Cada artículo va a # personas}}, y los artículos de aquí fueron a otros antes de que usted se uniera. {living, select, true {Los artículos nuevos se comparten con usted a medida que llegan.} other {Se le pueden pasar artículos desde el Resumen.}}",
+        "givenOut": "{count, plural, one {Cada artículo va a # persona} other {Cada artículo va a # personas}}, y los artículos de aquí fueron a otros. {next, select, living {Los artículos nuevos se comparten con usted a medida que llegan.} move {Se le pueden pasar artículos desde el Resumen.} other {}}",
         "allVoted": "Ha votado todos sus artículos",
         "finished": "Este cribado ha terminado",
         "unvoted": "{count, plural, one {# de sus artículos no tiene su voto} other {# de sus artículos no tienen su voto}}",

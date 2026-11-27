@@ -16,7 +16,7 @@ import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform 
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { searchHistory, useOpenInAddress } from "./address";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, BookOpen, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowLeftFixed, ArrowRight, ArrowRightFixed, Asterisk, ChevronDown, ChevronRight, CircleCheck, BookOpen, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "./parts";
 import { NoPapers } from "./overview";
 import { EASE } from "@/components/settings/model-map";
@@ -286,7 +286,8 @@ function Screen({ open }: { open: Open }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number }>>([]);
+  // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number }>>([]);
   // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
@@ -360,9 +361,10 @@ function Screen({ open }: { open: Open }) {
     // Each vote after the first of a sitting adds the time since the one before to the person's pace. Five minutes or more is a break, not a paper.
     const gap = history.length ? (Date.now() - history.at(-1)!.at) / 1000 : Infinity;
     if (gap < 300) setKept({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
-    if (resolving) open.resolve(paper.id, decision, note, reason).catch(refused);
+    const stamped = (at: number | null) => { if (at !== null) (cast as { saved?: number }).saved = at; };
+    if (resolving) open.resolve(paper.id, decision, note, reason).then(stamped, refused);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
-    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).catch(refused);
+    else open.vote(paper.id, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note }).then(stamped, refused);
     // A vote cast from the phone's reasons sheet: the next paper takes the sheet's own entry, so Back from it shows the paper voted on and never opens the sheet again.
     const fromSheet = tablet && reasonSheet !== null;
     const waits = (one: Paper) => one.id !== paper.id && !dealtWith(one);
@@ -406,8 +408,9 @@ function Screen({ open }: { open: Open }) {
   };
   const undo = () => {
     if (!last?.mayUndo) return;
-    if (last.resolved) (last.settledBefore ? open.resolve(last.paper.id, last.settledBefore.final ?? null, last.settledBefore.note, last.settledBefore.reason) : open.resolve(last.paper.id, null)).catch(failed);
-    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null).catch(failed);
+    // Only while what it did still stands: a vote or settlement changed since, here or in another tab, is left as it is.
+    if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).catch(failed);
+    else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, last.saved === undefined ? {} : { onlyAt: last.saved }).catch(failed);
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
   };
@@ -841,8 +844,8 @@ function Screen({ open }: { open: Open }) {
                     >
                       {swipeable ? (
                         <>
-                          <motion.span aria-hidden style={{ opacity: includeShows }} className="pointer-events-none absolute start-0 top-0 z-10 -rotate-6 rounded-lg border-2 border-success bg-card px-2 py-0.5 text-sm font-bold ink-success">{words.decision("include")}</motion.span>
-                          <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute end-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">{words.decision("exclude")}</motion.span>
+                          <motion.span aria-hidden style={{ opacity: includeShows }} className="pointer-events-none absolute left-0 top-0 z-10 -rotate-6 rounded-lg border-2 border-success bg-card px-2 py-0.5 text-sm font-bold ink-success">{words.decision("include")}</motion.span>
+                          <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute right-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">{words.decision("exclude")}</motion.span>
                         </>
                       ) : null}
                       <h2 dir="auto" className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
@@ -1036,8 +1039,9 @@ function Screen({ open }: { open: Open }) {
                       {/* What a drag of the paper does, on a paper that can be dragged: one still to vote on. */}
                       {swipeable ? (
                         <div className="flex flex-wrap gap-1.5 border-t border-border-subtle pt-3">
-                          <StateChip tone="success" icon={ArrowRight}>{t("bar.dragRight")}</StateChip>
-                          <StateChip tone="destructive" icon={ArrowLeft}>{t("bar.dragLeft")}</StateChip>
+                          {/* A drag goes the same way on the glass in any language: its arrows don't turn round. */}
+                          <StateChip tone="success" icon={ArrowRightFixed}>{t("bar.dragRight")}</StateChip>
+                          <StateChip tone="destructive" icon={ArrowLeftFixed}>{t("bar.dragLeft")}</StateChip>
                         </div>
                       ) : null}
                     </PopoverContent>
@@ -1082,7 +1086,7 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Input dir="auto" maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
                         <Textarea maxLength={NOTE_LENGTH} data-note onKeyDown={leaveNote} rows={2} value={notes[noteKey(paper.id)] ?? savedNote(paper)} onChange={(event) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: event.target.value }))} placeholder={resolving || !othersRead(screening, open.me, open.invited) ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
@@ -1206,9 +1210,12 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]
+        // A screening's first papers arriving by a later check, after it started with none: on their way too.
+        : !open.total && open.screening.checking
+        ? [Hourglass, t("empty.onTheirWay"), null]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
         // Papers given out to someone else under a rule of so many people on each: said, so an empty To do isn't a fault.
-        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), living: String(Boolean(open.screening.living)) }) : null]
+        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), open.total && open.screening.rule.each !== "all" ? t("empty.givenOut", { count: Number(open.screening.rule.each), next: open.screening.finishedAt ? "none" : open.screening.living ? "living" : open.canChange ? "move" : "none" }) : null]
         // A finished screening takes no vote: the papers it left without theirs are said, not passed off as voted on.
         : open.screening.finishedAt && yours > voted + closed ? [CircleCheck, t("empty.finished"), t("empty.unvoted", { count: yours - voted - closed })]
         : !closed ? [CircleCheck, t("empty.allVoted"), null]

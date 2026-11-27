@@ -17,7 +17,7 @@ export const send = internalAction({
     const notice = await ctx.runQuery(internal.screening.notices.context, args);
     if (!notice) return null;
     try {
-      await sendInvitationEmail(requireInvitationMail(), { senderName: "Openscholar", to: notice.email, ...screeningNoticeMessage({ origin: requireAppUrl(), path: notice.path, name: notice.name, about: args.about, count: notice.count, ...(notice.more ? { more: true } : {}), ...(notice.by ? { by: notice.by } : {}) }) });
+      await sendInvitationEmail(requireInvitationMail(), { senderName: "Openscholar", to: notice.email, ...screeningNoticeMessage({ origin: requireAppUrl(), path: notice.path, name: notice.name, about: args.about, count: notice.count, ...(notice.more ? { more: true } : {}), ...(notice.finished ? { finished: true } : {}), ...(notice.living ? { living: true } : {}), ...(notice.by ? { by: notice.by } : {}) }) });
     } catch (error) {
       // An email that didn't go changes nothing in the screening: what it said is on its page.
       console.error("Screening email failed", { jobId: args.jobId, about: args.about, error });

@@ -5079,7 +5079,8 @@
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください",
-      "pointScreening": "投票は無料です。スクリーニングのAIモデルの費用は{name}が支払います。"
+      "pointScreening": "{models, select, true {投票は無料です。スクリーニングのAIモデルの費用は{name}が支払います。} other {投票は無料です。}}",
+      "pointLooking": "閲覧は無料です"
     },
     "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
     "asRole": "{role}として",
@@ -5089,7 +5090,7 @@
       "screen": "{count, plural, other {#件のスクリーニングがあなたを待っています}}",
       "screenWhy": "スクリーニングする論文、解決する対立、あなたへの質問、返事を待つ招待",
       "shared": "{count, plural, other {#件の招待が返事を待っています}}",
-      "sharedWhy": "あなたと共有されたスクリーニング、チャット、検索、抽出",
+      "sharedWhy": "スクリーニング、コレクション、検索、チャット、抽出、著者プロフィールへの招待",
       "publish": "{count, plural, other {#件のレポートを公開できます}}",
       "publishWhy": "{count, plural, other {有効にすると公開されます}}"
     }
@@ -8812,7 +8813,7 @@
       "empty": {
         "arriving": "論文を取得中です",
         "arrivingSays": "{reviewer, select, true {取得元から届いた論文がここに表示されます。最初の論文が届いたらすぐにスクリーニングを始められます。} other {取得元から届いた論文がここに表示されます。}}",
-        "noPaper": "{sources, select, failed {ソースを読み込めませんでした。設定に理由が表示され、読み込み直せます。} true {取得元にスクリーニングできる論文はありませんでした。} other {{canChange, select, true {ソースを追加すると、レビュアーに論文が届きます。} other {ソースが追加されると論文が届きます。}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {一部のソースを読み込めませんでした。ソースから読み込み直してください。} other {一部のソースを読み込めませんでした。}}} true {取得元にスクリーニングできる論文はありませんでした。} other {{canChange, select, true {ソースを追加すると、レビュアーに論文が届きます。} other {ソースが追加されると論文が届きます。}}}}",
         "toSources": "{sources, select, failed {ソースを見る} true {取得元を見る} other {取得元を追加}}"
       },
       "progress": {
@@ -9440,7 +9441,7 @@
         "arrived": "{count, number} 件中 {done, number} 件が届きました",
         "noneYet": "まだ論文は割り当てられていません",
         "noneYours": "ここにはあなたが投票する論文はありません",
-        "givenOut": "{count, plural, other {各論文は#人に割り当てられ}}、ここの論文はあなたの参加前にほかの人に割り当てられました。{living, select, true {新しい論文は届き次第あなたにも割り当てられます。} other {概要から論文をあなたに移せます。}}",
+        "givenOut": "{count, plural, other {各論文は#人に割り当てられ}}、ここの論文はほかの人に割り当てられました。{next, select, living {新しい論文は届き次第あなたにも割り当てられます。} move {概要から論文をあなたに移せます。} other {}}",
         "allVoted": "割り当てられた論文すべてに投票しました",
         "finished": "このスクリーニングは完了しています",
         "unvoted": "{count, plural, other {あなたの論文のうち # 件にまだ投票していません}}",

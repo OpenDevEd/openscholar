@@ -95,7 +95,8 @@ export function ScreeningsIndex() {
   const tally = useProtectedQuery(api.screening.view.tally, inWorkspace(here, {})).data;
   const elsewhere = useProtectedQuery(api.screening.view.elsewhere, inWorkspace(here, {})).data;
   const invitations = useWaitingInvitations();
-  const invited = (invitations ?? []).filter((row) => row.kind === "screening");
+  // The screenings the person is invited to, narrowed by the search as the list is.
+  const invited = (invitations ?? []).filter((row) => row.kind === "screening" && nameHas(row.name, searched));
   // "Needs you first" is the newest first with what waits for the person above them.
   const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE);
 
@@ -114,7 +115,8 @@ export function ScreeningsIndex() {
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
-  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
+  // An invitation needs the person as much as a vote does: counted in Needs you, as the rail's badge counts it.
+  const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length + (invitations ?? []).filter((row) => row.kind === "screening").length, open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
   const empty = counts !== undefined && counts.all === 0 && counts.you === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
@@ -147,8 +149,8 @@ export function ScreeningsIndex() {
                   <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
                 </div>
               ) : null}
-              <WaitingInvitations rows={invitations} kind="screening" />
-              <Elsewhere rows={elsewhere ?? []} />
+              <WaitingInvitations rows={invitations} kind="screening" text={searched} />
+              <Elsewhere rows={(elsewhere ?? []).filter((row) => nameHas(row.name, searched))} />
             </AutoHeight>
             <AutoHeight>
             {empty ? (

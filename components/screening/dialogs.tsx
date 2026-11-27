@@ -182,9 +182,11 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   const viewers = guests.results.filter((guest) => !on.has(guest.userId));
   const detail = (one: Reviewer) => (one.id === screening.createdBy ? t("peopleDialog.startedIt") : words.standsTo(one));
   // Someone in the workspace is put on it as a reviewer. Someone outside it is given it, to vote or to look.
+  // With every guest place taken, people from outside are offered no more: the workspace's own still are.
+  const guestsFull = room?.limit != null && room.used >= room.limit;
   const candidates = [
     ...(addAs === "reviewer" ? (members?.page ?? []).filter((person) => !on.has(person.id)).map((person) => ({ key: person.id as string, avatar: <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-9" />, name: person.name, detail: words.t("person.member"), pick: () => onAdd(personReviewer({ id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) }, Date.now())) })) : []),
-    ...[...new Map(outside.results.map((person) => [person.userId, person])).values()].map((person) => ({
+    ...[...new Map((guestsFull ? [] : outside.results).map((person) => [person.userId, person])).values()].map((person) => ({
       key: person.userId as string,
       avatar: <IdentityAvatar name={person.name || person.email} imageUrl={person.imageUrl} className="size-9" />,
       name: person.name || person.email,
@@ -255,8 +257,10 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   more: outside.status === "CanLoadMore" || outside.status === "LoadingMore" ? { loading: outside.status === "LoadingMore", load: () => outside.loadMore(SUGGESTED) } : undefined,
                   // Someone invited to vote goes through the same question as anyone added as a reviewer.
                   invite: (email) => (addAs === "reviewer" ? onAdd(invitedReviewer(email, Date.now())) : void invite({ kind: "screening", id, email, role: "viewer" }).catch(failed)),
-                  has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email),
-                  full: limit !== null && (room?.used ?? 0) >= limit ? t("peopleDialog.full", { workspace: workspace.name, count: limit }) : undefined,
+                  // A member typed by address is offered as the member, never invited: an invitation to them can't be sent.
+                  has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email) || (members?.page ?? []).some((person) => person.email?.toLowerCase() === email),
+                  // The plan's guest places are for people from outside: an organization's own members can still be added as reviewers once they are full.
+                  ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.full", { workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.full", { workspace: workspace.name, count: limit }) }) : {}),
                 }
               : undefined
           }

@@ -5080,7 +5080,8 @@
       "goneDetail": "Bitten Sie die Person, die ihn geteilt hat, ihn erneut zu teilen",
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
       "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde",
-      "pointScreening": "Abstimmen ist kostenlos. {name} bezahlt die KI-Modelle des Screenings."
+      "pointScreening": "{models, select, true {Abstimmen ist kostenlos. {name} bezahlt die KI-Modelle des Screenings.} other {Abstimmen ist kostenlos.}}",
+      "pointLooking": "Ansehen ist kostenlos"
     },
     "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
     "asRole": "als {role}",
@@ -5090,7 +5091,7 @@
       "screen": "{count, plural, one {# Screening braucht Sie} other {# Screenings brauchen Sie}}",
       "screenWhy": "Zu prüfende Artikel, zu klärende Konflikte, Fragen an Sie oder zu beantwortende Einladungen",
       "shared": "{count, plural, one {# Einladung wartet auf Ihre Antwort} other {# Einladungen warten auf Ihre Antwort}}",
-      "sharedWhy": "Mit Ihnen geteilte Screenings, Chats, Suchen und Extraktionen",
+      "sharedWhy": "Einladungen zu Screenings, Sammlungen, Suchen, Chats, Extraktionen und Autorenprofilen",
       "publish": "{count, plural, one {# Bericht ist bereit zur Veröffentlichung} other {# Berichte sind bereit zur Veröffentlichung}}",
       "publishWhy": "{count, plural, one {Er geht online, sobald Sie ihn aktivieren} other {Sie gehen online, sobald Sie sie aktivieren}}"
     }
@@ -8813,7 +8814,7 @@
       "empty": {
         "arriving": "Die Artikel sind unterwegs",
         "arrivingSays": "{reviewer, select, true {Sie erscheinen hier, sobald sie aus den Quellen ankommen. Sie können mit dem Prüfen beginnen, sobald die ersten da sind.} other {Sie erscheinen hier, sobald sie aus den Quellen ankommen.}}",
-        "noPaper": "{sources, select, failed {Die Quellen konnten nicht gelesen werden. Die Einstellungen sagen warum und können sie erneut lesen.} true {Die Quellen enthielten keinen Artikel, der geprüft werden kann.} other {{canChange, select, true {Fügen Sie eine Quelle hinzu, um den Reviewern Artikel zu geben.} other {Artikel kommen, sobald eine Quelle hinzugefügt ist.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {Einige Quellen konnten nicht gelesen werden. Lesen Sie sie bei den Quellen erneut.} other {Einige Quellen konnten nicht gelesen werden.}}} true {Die Quellen enthielten keinen Artikel, der geprüft werden kann.} other {{canChange, select, true {Fügen Sie eine Quelle hinzu, um den Reviewern Artikel zu geben.} other {Artikel kommen, sobald eine Quelle hinzugefügt ist.}}}}",
         "toSources": "{sources, select, failed {Quellen ansehen} true {Quellen ansehen} other {Quelle hinzufügen}}"
       },
       "progress": {
@@ -9441,7 +9442,7 @@
         "arrived": "{done, number} von {count, number} sind da",
         "noneYet": "Noch kein Artikel ist bei Ihnen angekommen",
         "noneYours": "Über keinen der Artikel hier stimmen Sie ab",
-        "givenOut": "{count, plural, one {Jeder Artikel geht an # Person} other {Jeder Artikel geht an # Personen}}, und die Artikel hier gingen an andere, bevor Sie beigetreten sind. {living, select, true {Neue Artikel werden mit Ihnen geteilt, sobald sie eintreffen.} other {Artikel können Ihnen in der Übersicht zugeteilt werden.}}",
+        "givenOut": "{count, plural, one {Jeder Artikel geht an # Person} other {Jeder Artikel geht an # Personen}}, und die Artikel hier gingen an andere. {next, select, living {Neue Artikel werden mit Ihnen geteilt, sobald sie eintreffen.} move {Artikel können Ihnen in der Übersicht zugeteilt werden.} other {}}",
         "allVoted": "Sie haben über alle Ihre Artikel abgestimmt",
         "finished": "Dieses Screening ist abgeschlossen",
         "unvoted": "{count, plural, one {# Ihrer Artikel hat keine Stimme von Ihnen} other {# Ihrer Artikel haben keine Stimme von Ihnen}}",

@@ -155,11 +155,13 @@ async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspac
 
 /** The screenings something may wait for one person on, in any workspace: the ones they review, and the open ones whose conflicts they settle, reviewer or not. */
 async function theirs(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
-  const [reviewing, settling] = await Promise.all([
+  // A finished screening the person settles is one too: a question put to them on it still waits for their answer.
+  const [reviewing, settling, settled] = await Promise.all([
     ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX),
     ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", userId).eq("status", "processing")).order("desc").take(MINE_MAX),
+    ctx.db.query("screeningJobs").withIndex("by_resolver_and_status", (q) => q.eq("rule.resolver", userId).eq("status", "completed")).order("desc").take(MINE_MAX),
   ]);
-  return [...new Set([...reviewing.map((row) => row.jobId), ...settling.map((job) => job._id)])];
+  return [...new Set([...reviewing.map((row) => row.jobId), ...settling.map((job) => job._id), ...settled.map((job) => job._id)])];
 }
 
 /** The summary of a screening for someone who may see it. */

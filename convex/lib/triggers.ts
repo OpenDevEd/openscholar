@@ -78,6 +78,14 @@ triggers.register("users", keepTextOfUser);
 // A community's count of people follows its team and its organization's admins (../evidenceLibraries/peopleCount.ts).
 triggers.register("itemAccess", recountOnGrant);
 triggers.register("organizationMemberships", recountOnMembership);
+// Someone who leaves an organization is taken off its screenings, as anyone taken off is: their votes stay, and the papers waiting for them go to the others (../screening/reviewers.ts `memberLeft`).
+triggers.register("organizationMemberships", async (ctx, change) => {
+  const was = change.oldDoc?.state === "active";
+  const is = change.newDoc?.state === "active";
+  const row = change.oldDoc ?? change.newDoc;
+  if (!was || is || !row) return;
+  await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { organizationId: Id<"organizations">; clerkUserId: string }, null>("screening/reviewers:memberLeft"), { organizationId: row.organizationId, clerkUserId: row.clerkUserId });
+});
 triggers.register("libraryOrganizationGrants", recountOnOrganizationGrant);
 triggers.register("itemAccess", countList((grant) => itemGuestsOf(grant.item)));
 triggers.register("itemInvitations", countList((invitation) => (invitation.state === "pending" ? itemGuestsOf(invitation.item) : null)));

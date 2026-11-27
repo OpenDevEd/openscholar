@@ -321,6 +321,25 @@ describe("what a change takes out", () => {
     }
   });
 
+  it("takes someone who leaves the organization off its screenings, keeping their votes and giving their papers to the others", async () => {
+    const made = await team(["ann", "ben", "cat"]);
+    const { jobId, papers } = await started(made, ["ann", "ben", "cat"], 2, { rule: { each: 2, settle: "all", blind: "after" } });
+    await run(made.t);
+    const vote = voter(made, jobId);
+    const benOn = (await standingOf(made.t, jobId)).papers.filter((one) => "ben" in one.on).map((one) => one.title);
+    // Ben votes on one of his papers, then leaves the organization.
+    const first = papers.find((one) => benOn.includes(one.title))!;
+    await vote("ben", first._id, "include");
+    await run(made.t);
+    const organizationId = await made.t.run(async (ctx) => (await ctx.db.get("workspaces", made.workspaceId))!.organizationId!);
+    await made.t.mutation(internal.screening.reviewers.memberLeft, { organizationId, clerkUserId: "ben" });
+    await run(made.t);
+    const after = await standingOf(made.t, jobId);
+    // His vote stays and counts; nothing waits for him any more.
+    expect(after.papers.find((one) => one.title === first.title)?.on.ben).toBe("include");
+    expect(after.papers.some((one) => one.on.ben === "waiting")).toBe(false);
+  });
+
   it("emails a colleague put on a screening, with the papers that wait for them or with none", async () => {
     const made = await team(["ann", "ben", "cat"]);
     const { workspaceId } = made;

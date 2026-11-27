@@ -139,7 +139,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
         <ListLoading label={t("loading")} />
       ) : (
         // Under an invitation, the empty list says how what it shares comes here.
-        <ListEmpty icon={needle ? SearchX : Share2}>{needle ? t("emptySearch") : invited ? t("emptyInvited") : kind ? t("emptyKind") : t("empty")}</ListEmpty>
+        <ListEmpty icon={needle ? SearchX : Share2}>{invited ? t("emptyInvited") : needle ? t("emptySearch") : kind ? t("emptyKind") : t("empty")}</ListEmpty>
       )}
       {status === "CanLoadMore" || status === "LoadingMore" ? (
         <div className="flex justify-center border-t border-border-subtle p-3">
@@ -191,7 +191,7 @@ export function GuestChips({ from, role, person = false, votes = false }: { from
       ) : null}
       <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-primary/10 px-2.5">
         <RoleLabel role={role === "viewer" ? "view" : "edit"} className="text-primary">
-          {role === "viewer" ? t("canView") : votes ? t("canVote") : t("canEdit")}
+          {t(roleWord(role, votes ? "screening" : "collection"))}
         </RoleLabel>
       </span>
     </>
@@ -317,7 +317,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       <ul className={LIST}>
         <Point lead={personal ? <WorkspaceTile workspace={personal} /> : <span className="size-8" />}>{invitation.kind === "screening" ? t("pointOwnScreening") : t("pointOwn")}</Point>
         {/* A screening's reviewers vote for nothing: its models are its workspace's to pay for. */}
-        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" && invitation.role === "editor" ? t("pointScreening", { name: invitation.from.name }) : t("pointCredits")}</Point>
+        <Point lead={<Tile icon={Coins} tint="#facc15" className="size-8" />}>{invitation.kind === "screening" ? (invitation.role === "editor" ? t("pointScreening", { name: invitation.from.name, models: String(invitation.models) }) : t("pointLooking")) : t("pointCredits")}</Point>
       </ul>
       <Button className="w-full" disabled={opening} onClick={open}>
         {t("open")}

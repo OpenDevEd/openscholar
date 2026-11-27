@@ -241,7 +241,7 @@ const GUESTS_PLACED = 100;
 export async function placeGuests(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const on = new Set((await reviewersOf(ctx, jobId)).flatMap((one) => (one.kind === "person" && one.left === undefined ? [one.userId] : [])));
   for (const grant of await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", jobId)).take(GUESTS_PLACED)) {
-    if (grant.role === "editor" && !on.has(grant.userId)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.guestChanged, { item: jobId, userId: grant.userId });
+    if (grant.role === "editor" && !on.has(grant.userId)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.guestChanged, { item: jobId, userId: grant.userId, reopened: true });
   }
 }
 

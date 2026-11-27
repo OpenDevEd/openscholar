@@ -13,7 +13,7 @@ const EDITS: Record<SharedKind, [label: string, can: string]> = {
   extraction: ["Can view", "Open, read and export this extraction."],
 };
 
-export function itemInvitationMessage({ origin, invitationId, email, kind, word, name, role, inviter, workspace, finished = false }: {
+export function itemInvitationMessage({ origin, invitationId, email, kind, word, name, role, inviter, workspace, finished = false, models = false }: {
   origin: string;
   invitationId: string;
   email: string;
@@ -26,18 +26,21 @@ export function itemInvitationMessage({ origin, invitationId, email, kind, word,
   workspace: string;
   /** A screening marked finished: its reviewers vote once it is reopened. */
   finished?: boolean;
+  /** A screening with AI models on it, which its workspace pays for. */
+  models?: boolean;
 }) {
   const acceptUrl = new URL(`/shared/${invitationId}`, origin).href;
   const identity = { name: "Openscholar", baseUrl: origin, logoUrl: new URL("/web-app-manifest-192x192.png", origin).href, accent: "#ed7b15" };
   const [label, can] = role === "editor" ? EDITS[kind] : ["Can view", `Open, read and export this ${word}.`];
   // Voting costs a screening's reviewers nothing: the workspace that runs it pays for its models. Anything else run on a shared item uses the person's own credits.
   const votes = kind === "screening" && role === "editor";
-  const paying = votes ? `Voting is free. ${workspace || inviter} pays for the screening's AI models.` : `Anything you run on it uses your own credits.`;
-  const when = votes && finished ? " The screening is finished for now: you can vote once it is reopened." : "";
+  // Looking at a screening runs nothing: it costs nothing.
+  const paying = votes ? `Voting is free.${models ? ` ${workspace || inviter} pays for the screening's AI models.` : ""}` : kind === "screening" ? "Looking at it is free." : `Anything you run on it uses your own credits.`;
+  const when = votes && finished ? " The screening is marked finished. You can vote once it is reopened." : "";
   const from = workspace && workspace !== inviter ? ` from ${workspace}` : "";
   return {
     subject: `${inviter} shared "${name}" with you`,
-    text: `${inviter} shared the ${word} "${name}"${from} with you on Openscholar.\n\n${can}${when}\n\nSign in with ${email} to open it:\n${acceptUrl}\n\nThis invitation expires in seven days. It gives access to this ${word} only. ${paying}`,
+    text: `${inviter} shared the ${word} "${name}"${from} with you on Openscholar.\n\n${can}${when}\n\nSign in with ${email}, then open it here.\n${acceptUrl}\n\nThis invitation expires in seven days. It gives access to this ${word} only. ${paying}`,
     html: renderLibraryEmail({
       identity,
       title: `${inviter} shared a ${word} with you`,

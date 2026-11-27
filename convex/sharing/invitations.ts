@@ -73,17 +73,25 @@ export const expire = internalMutation({
   },
 });
 
+/** Whether a shared screening is finished, and whether it has AI models on it, which its workspace pays for: what its invitation says of voting on it. Nothing of either for another kind. */
+async function screeningFacts(ctx: Pick<QueryCtx, "db">, shared: { kind: SharedKind; id: string }) {
+  if (shared.kind !== "screening") return { finished: false, models: false };
+  const jobId = shared.id as Id<"screeningJobs">;
+  const [job, model] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).filter((q) => q.and(q.eq(q.field("kind"), "model"), q.eq(q.field("left"), undefined))).first()]);
+  return { finished: job?.finishedAt !== undefined, models: model !== null };
+}
+
 /** What an invitation's email says, or null once it no longer waits or its item is gone. */
 export const readDelivery = internalQuery({
   args: { invitationId: v.id("itemInvitations") },
-  returns: v.union(v.null(), v.object({ email: v.string(), kind: sharedKindValidator, word: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string(), finished: v.boolean() })),
+  returns: v.union(v.null(), v.object({ email: v.string(), kind: sharedKindValidator, word: v.string(), name: v.string(), role: guestRoleValidator, inviter: v.string(), workspace: v.string(), finished: v.boolean(), models: v.boolean() })),
   handler: async (ctx, { invitationId }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
     if (!invitation || !shares(invitation) || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const shared = await invitedTo(ctx, invitation);
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     if (!shared || !inviter) return null;
-    return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId), finished: shared.kind === "screening" && (await ctx.db.get("screeningJobs", shared.id as Id<"screeningJobs">))?.finishedAt !== undefined };
+    return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId), ...(await screeningFacts(ctx, shared)) };
   },
 });
 
@@ -198,7 +206,7 @@ export const getAction = defineUserQuery({
   returns: v.union(
     v.null(),
     v.object({ state: v.literal("other") }),
-    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()), state: v.union(v.literal("pending"), v.literal("accepted")) }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()), state: v.union(v.literal("pending"), v.literal("accepted")), models: v.boolean() }),
   ),
   run: async (ctx, { userId }, { invitationId }) => {
     const id = ctx.db.normalizeId("itemInvitations", invitationId);
@@ -206,17 +214,18 @@ export const getAction = defineUserQuery({
     if (!invitation || !shares(invitation)) return null;
     const shared = await invitedTo(ctx, invitation);
     if (!shared) return null;
-    // One that was accepted shows only to whoever holds the place it gave.
-    const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId)) ? ("accepted" as const) : null;
+    // One that was accepted shows only to whoever holds the place it gave, or has it by having joined its workspace since.
+    const reader = await ctx.db.get("users", userId);
+    const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (reader && (await holds(ctx, shared, reader)))) ? ("accepted" as const) : null;
     if (!state) return null;
     // The link alone says nothing of the item: it may have been passed on. The address it was sent to does.
-    const reader = await ctx.db.get("users", userId);
     if (state === "pending" && !(reader && addressesOf(reader).includes(invitation.email))) return { state: "other" as const };
-    const inviter = await ctx.db.get("users", invitation.invitedBy);
+    const [inviter, from] = await Promise.all([ctx.db.get("users", invitation.invitedBy), workspaceFrom(ctx, shared.workspaceId)]);
     return {
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
-      by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
-      from: await workspaceFrom(ctx, shared.workspaceId), ...(shared.size === undefined ? {} : { size: shared.size }), state,
+      // Someone whose account is gone is named by the workspace they shared it from, as the list of invitations names them.
+      by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
+      from, ...(shared.size === undefined ? {} : { size: shared.size }), state, models: (await screeningFacts(ctx, shared)).models,
     };
   },
 });

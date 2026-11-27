@@ -5080,7 +5080,8 @@
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
       "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado",
-      "pointScreening": "Votar é grátis. {name} paga os modelos de IA da triagem."
+      "pointScreening": "{models, select, true {Votar é grátis. {name} paga os modelos de IA da triagem.} other {Votar é grátis.}}",
+      "pointLooking": "Vê-lo é grátis"
     },
     "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
     "asRole": "como {role}",
@@ -5090,7 +5091,7 @@
       "screen": "{count, plural, one {# triagem precisa de si} other {# triagens precisam de si}}",
       "screenWhy": "Artigos para triar, conflitos para resolver, perguntas para si ou convites para responder",
       "shared": "{count, plural, one {# convite espera a sua resposta} other {# convites esperam a sua resposta}}",
-      "sharedWhy": "Triagens, conversas, pesquisas e extrações partilhadas consigo",
+      "sharedWhy": "Convites para triagens, coleções, pesquisas, conversas, extrações e perfis de autor",
       "publish": "{count, plural, one {# relatório está pronto para publicar} other {# relatórios estão prontos para publicar}}",
       "publishWhy": "{count, plural, one {É publicado quando o ativar} other {São publicados quando os ativar}}"
     }
@@ -8813,7 +8814,7 @@
       "empty": {
         "arriving": "Os artigos estão a caminho",
         "arrivingSays": "{reviewer, select, true {Aparecem aqui à medida que chegam das fontes. Pode começar a triagem assim que chegarem os primeiros.} other {Aparecem aqui à medida que chegam das fontes.}}",
-        "noPaper": "{sources, select, failed {Não foi possível ler as fontes. As definições dizem porquê e podem lê-las de novo.} true {As fontes não tinham nenhum artigo que possa ser triado.} other {{canChange, select, true {Adicione uma fonte para dar artigos aos revisores.} other {Os artigos chegam quando uma fonte é adicionada.}}}}",
+        "noPaper": "{sources, select, failed {{canChange, select, true {Não foi possível ler algumas fontes. Leia-as de novo a partir das fontes.} other {Não foi possível ler algumas fontes.}}} true {As fontes não tinham nenhum artigo que possa ser triado.} other {{canChange, select, true {Adicione uma fonte para dar artigos aos revisores.} other {Os artigos chegam quando uma fonte é adicionada.}}}}",
         "toSources": "{sources, select, failed {Ver as fontes} true {Ver as fontes} other {Adicionar uma fonte}}"
       },
       "progress": {
@@ -9441,7 +9442,7 @@
         "arrived": "{done, number} de {count, number} chegaram",
         "noneYet": "Ainda não lhe chegou nenhum artigo",
         "noneYours": "Nenhum dos artigos aqui é para si votar",
-        "givenOut": "{count, plural, one {Cada artigo vai para # pessoa} other {Cada artigo vai para # pessoas}}, e os artigos daqui foram para outros antes de se juntar. {living, select, true {Os artigos novos são partilhados consigo à medida que chegam.} other {Podem passar-lhe artigos a partir da Visão geral.}}",
+        "givenOut": "{count, plural, one {Cada artigo vai para # pessoa} other {Cada artigo vai para # pessoas}}, e os artigos daqui foram para outros. {next, select, living {Os artigos novos são partilhados consigo à medida que chegam.} move {Podem passar-lhe artigos a partir da Visão geral.} other {}}",
         "allVoted": "Votou em todos os seus artigos",
         "finished": "Esta triagem está terminada",
         "unvoted": "{count, plural, one {# dos seus artigos não tem o seu voto} other {# dos seus artigos não têm o seu voto}}",
