@@ -580,7 +580,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Papers that are only a PDF none of its reviewers can read: they would wait for a vote nobody casts.
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const lacking: Block | null = unasked ?? (needsCriteria ? { text: t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.credits(owed - wallet) }) } : null);
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria", focus: "#new-criterion" } : overPapers !== null ? { text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" } : overModels !== null ? { text: t("block.overModels", { count: overModels }), section: "reviewers" } : orphaned ? { text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers", focus: "#add-person" } : owed > wallet && fresh ? { text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }) } : null);
   const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast: what a row's chips open.
   const votesOf = (reviewer: Reviewer) => reviewer.tally?.cast ?? 0;
@@ -1139,7 +1139,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length === draft.sources.length ? t("living.checksAll", { count: draft.sources.length }) : t("living.checksSome", { count: draft.sources.length, growing: growing(draft).length })}</Chip>
                       <Chip icon={Clock}>{saved?.living ? t("living.nextCheck", { day: words.day(draft.living.next) }) : fresh ? t("living.firstCheck", { day: words.day(draft.living.next) }) : t("living.firstOnSave")}</Chip>
-                      {models.length ? <Chip icon={Coins}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome) })}</Chip> : null}
+                      {models.length ? <Chip icon={Coins}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip> : null}
                     </div>
                   ) : (
                     <p className="bg-warning/10 px-4 py-2.5 text-sm ink-warning">{draft.sources.length ? t("living.noneGrow") : t("living.addToCheck")}</p>
@@ -1345,7 +1345,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
                                 {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText}>{t("reviewers.pdfsMissed", { why: pdfsMissed(reviewer.model, pdfs).why === "text" ? "text" : "long", count: pdfsMissed(reviewer.model, pdfs).papers })}</StateChip> : null}
                                 {due(reviewer) ? (
-                                  <Chip icon={Coins}>{t("reviewers.creditsFor", { credits: words.credits(due(reviewer)), count: left })}</Chip>
+                                  <Chip icon={Coins}>{t("reviewers.creditsFor", { credits: words.creditsOf(due(reviewer)), count: left })}</Chip>
                                 ) : null}
                                 {/* A paper it couldn't read shows beside what it still has to read: one never hides the other. */}
                                 {saved && unreadBy(reviewer) ? (
@@ -1554,26 +1554,26 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <ReviewerMark reviewer={model} className="size-5" />
                     <span className="min-w-0 truncate">{model.name}</span>
                     {!fresh && unreadBy(model) ? <StateChip tone="destructive" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model))}</StateChip> : allRead(model) ? <Chip icon={Check} className="h-5 px-1.5">{t("reviewers.allRead")}</Chip> : null}
-                    <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? t("cost.credits", { credits: words.credits(due(model)) }) : fresh ? <span className="text-muted-foreground">{t("cost.noPapers")}</span> : null}</span>
+                    <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? t("cost.credits", { credits: words.creditsOf(due(model)) }) : fresh ? <span className="text-muted-foreground">{t("cost.noPapers")}</span> : null}</span>
                   </JumpLink>
                 ))}
                 {pdfs.papers && models.length ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsRead", { count: pdfs.papers, pages: pdfs.pages, capped: String(Boolean(pdfCost)), credits: words.credits(pdfCost) })}</span></p> : null}
                 {pdfsUnpriced ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span>{t("cost.pdfsUnpriced")}</span></p> : null}
-                {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{t("cost.firstReading", { count: handedPdfs })}</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">{t("cost.upTo", { credits: words.credits(handedPdfs * lookCredits) })}</span></div> : null}
-                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.credits(reread) })}</span></div> : null}
-                <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.credits(cost) }) : t("cost.nothing")}</span></div>
-                <div role="img" aria-label={cost > wallet ? t("cost.overWallet", { credits: words.credits(cost - wallet) }) : t("cost.walletShare", { share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}>
+                {handedPdfs && lookCredits ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{t("cost.firstReading", { count: handedPdfs })}</span><span className="shrink-0 text-end tabular-nums text-muted-foreground">{t("cost.upTo", { credits: words.creditsOf(handedPdfs * lookCredits) })}</span></div> : null}
+                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.creditsOf(reread) })}</span></div> : null}
+                <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.creditsOf(cost) }) : t("cost.nothing")}</span></div>
+                <div role="img" aria-label={cost > wallet ? t("cost.overWallet", { credits: words.creditsOf(cost - wallet) }) : t("cost.walletShare", { share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}>
                   <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-warning" : "bg-primary"} />
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? t("cost.shareOf", { under: "true", share: format.number(0.01, { style: "percent" }) }) : t("cost.shareOf", { under: "false", share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}</span> : null}
                   <WorkspaceTag size="sm" workspace={saved ? lookOf(saved.workspace) : (here ?? { kind: "personal", name: workspace.name })}>{t("cost.inWorkspace", { credits: words.credits(wallet), workspace: workspace.name, own: String((saved ? saved.workspace.kind : here?.kind) === "personal" && (!saved || Boolean(open?.canChange))) })}</WorkspaceTag>
-                  {cost > wallet ? <StateChip tone="warning" icon={Coins}>{t("block.creditsShort", { credits: words.credits(cost - wallet) })}</StateChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
+                  {cost > wallet ? <StateChip tone="warning" icon={Coins}>{t("block.creditsShort", { credits: words.creditsOf(cost - wallet) })}</StateChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
                   {spentSoFar ? <Chip>{t("cost.spent", { credits: words.credits(spentSoFar) })}</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
                     <>
-                    <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.credits(perNew), pdf: String(pdfsCome) })}</Chip>
+                    <Chip icon={RefreshCw}>{t("living.perNew", { credits: words.creditsOf(perNew), pdf: String(pdfsCome) })}</Chip>
                     {lastCheck?.added ? <Chip icon={Coins}>{t("living.lastSpent", { spent: words.credits(lastCheck.added * perNew), count: lastCheck.added })}</Chip> : null}
                     </>
                   ) : null}
@@ -1592,7 +1592,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 max-lg:pe-[5.5rem]">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-0.5">
               <span className="text-sm">{t.rich("bar.toScreen", { count: papers, soFar, n: () => <span className="text-lg font-semibold tabular-nums"><AnimatedNumber value={papers} /></span>, m: (chunks) => <span className="text-muted-foreground">{chunks}</span> })}</span>
-              <span className="text-sm">{models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.credits(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
+              <span className="text-sm">{models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.creditsOf(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
               {stop ? <Blocker block={stop} /> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}

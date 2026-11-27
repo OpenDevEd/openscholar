@@ -7811,7 +7811,7 @@
       },
       "each": {
         "changes": "今後、各論文は{all, select, true {スクリーニングの全員（現在 {each, plural, other {# 人}}）} other {{each, plural, other {# 人}}}}に割り当てられます{changed, plural, =0 {} other {。未確定の論文 # 件は{more, select, true {{diff, plural, =1 {担当が 1 人増えます} other {担当が最大 # 人増えます}}} other {必要な投票数が減ります}}}}。投票済みの票はそのまま残ります",
-        "stillAll": "各論文は今も{each, plural, other {# 人}}に割り当てられます。後から追加された人は、未確定の論文すべてに加わります",
+        "stillAll": "各論文は今もスクリーニングの全員、現在は{each, plural, other {# 人}}に割り当てられます。後から追加された人は、未確定の論文すべてに加わります",
         "stillShare": "各論文は今も{each, plural, other {# 人}}に割り当てられます。後から追加された人は、すべてではなく、未確定の論文を均等に分けて受け持ちます"
       },
       "blind": {
@@ -7823,7 +7823,7 @@
         "votesStand": "人の投票はそのまま残ります。{count, plural, =1 {この基準} other {これらの基準}}ができる前に行われた投票だからです",
         "modelsStop": "モデルは {name} に答えなくなります。投票済みの票はそのまま残ります",
         "noLongerAsked": "{name} は今後尋ねられません。投票済みの票はそのまま残ります",
-        "becomesMust": "{name} が必須基準になります。今後は「いいえ」なら除外を示します。未確定の論文への人の投票は残り、再投票の印が付きます",
+        "becomesMust": "{name} が必須基準になります。今後は「いいえ」なら除外を示します。未確定の論文への人の投票は残り、「再投票」に移ります",
         "becomesNice": "{name} は望ましい基準になります。今後は「いいえ」でも除外を示しません。投票済みの票はそのまま残ります",
         "writeQuestion": "保存する前に基準の質問を書いてください",
         "modelsReworded": "モデルは今後読む論文について、書き直した {name} に答えます",
@@ -7855,7 +7855,7 @@
         "prune": "除外した論文を、元のコレクションから取り除きます",
         "keep": "除外した論文は元のコレクションに残ります"
       },
-      "withCredits": "{text}、最大 {credits} クレジット{each, select, true {（1 件あたり）} other {}}",
+      "withCredits": "{text}、最大 {credits, plural, other {# クレジット}}{each, select, true {（1 件あたり）} other {}}",
       "creditsChip": "{credits}{each, select, true {／件} other {}}",
       "moved": "{count, plural, other {論文 # 件}}を {from} から {to} に移しました",
       "noChange": "結果が変わる論文はありません",
@@ -7898,16 +7898,16 @@
           "name": "名前",
           "question": "研究課題",
           "papers": "取得元",
-          "newPapers": "新しい論文の探し方",
+          "newPapers": "新しい論文の確認方法",
           "criteria": "基準",
           "reviewers": "レビュアー",
-          "decided": "論文の結果の決まり方",
+          "decided": "論文の結果の確定方法",
           "goesTo": "採用した論文の保存先"
         },
         "changedIt": "変更しました",
         "added": "{what}を追加しました",
         "addedPapers": "論文を追加しました",
-        "removed": "{what}を外しました",
+        "removed": "{what}を削除しました",
         "removedPapers": "論文を削除しました",
         "screened": "{count, plural, other {論文 # 件}}をスクリーニングしました",
         "readAgain": "一部の論文をもう一度読み取りました",
@@ -7941,7 +7941,7 @@
         "ris": "RIS は EndNote や Mendeley に読み込めます",
         "csv": "CSV は Excel や Google スプレッドシートで開けます",
         "columns": "基準ごとに 1 列",
-        "ids": "各論文を ID と DOI で識別",
+        "ids": "各論文を Openscholar ID と DOI で識別",
         "svg": "SVG は Inkscape や Illustrator で開けます",
         "png": "PNG は Word や Google ドキュメントに貼り付けられます",
         "keeping": "分析用と保存用"
@@ -8070,7 +8070,7 @@
         "upload": "アップロード",
         "collection": "ライブラリ",
         "screening": "スクリーニング",
-        "evidenceLibrary": "コミュニティ",
+        "evidenceLibrary": "Evidence Community",
         "zotero": "Zotero",
         "dois": "DOI"
       },
@@ -8101,8 +8101,8 @@
         "renamedCriteria": "{count, plural, =1 {{names} の名前を変更} =2 {{names} の名前を変更} other {基準 # 件の名前を変更}}",
         "scoring": "採点を変更",
         "addedReviewers": "{count, plural, =1 {{names} を追加} =2 {{names} を追加} other {レビュアー # 人を追加}}",
-        "removedReviewers": "{count, plural, =1 {{names} を外す} =2 {{names} を外す} other {レビュアー # 人を外す}}",
-        "rule": "論文の結果の決まり方を変更",
+        "removedReviewers": "{count, plural, =1 {{names} を外しました} =2 {{names} を外しました} other {レビュアー # 人を外しました}}",
+        "rule": "論文の結果の確定方法を変更",
         "destination": "採用した論文の保存先を変更",
         "collectionRenamed": "スクリーニングのコレクションの名前を {name} に変更",
         "goesTo": "採用した論文は {name} に保存",
@@ -8128,10 +8128,10 @@
       "block": {
         "emptyCriterion": "空の基準に質問を書いてください",
         "needsCriterion": "{many, select, true {モデル用に基準を追加してください} other {モデル用に基準を追加してください}}",
-        "overPapers": "{personal, select, true {{count, plural, other {プランで一度にスクリーニングできるのは最大 # 件です}}} other {{count, plural, other {{workspace} のプランで一度にスクリーニングできるのは最大 # 件です}}}}",
+        "overPapers": "{personal, select, true {{count, plural, other {プランで 1 つのスクリーニングに含められる論文は最大 # 件です}}} other {{count, plural, other {{workspace} のプランで 1 つのスクリーニングに含められる論文は最大 # 件です}}}}",
         "overModels": "{count, plural, other {1 つのスクリーニングで使えるモデルは最大 # 個です}}",
         "orphaned": "{many, select, true {{count, plural, other {論文 # 件は PDF しかなく、これらのモデルでは読めません。人を追加してください}}} other {{count, plural, other {論文 # 件は PDF しかなく、このモデルでは読めません。人を追加してください}}}}",
-        "creditsShort": "{credits} クレジット不足",
+        "creditsShort": "{credits, plural, other {# クレジット不足}}",
         "reading": "論文を読み取り中",
         "addPapers": "開始するには論文を追加してください",
         "addReviewer": "開始するにはレビュアーを追加してください"
@@ -8152,7 +8152,7 @@
         "allSaved": "保存したすべての論文",
         "library": "このワークスペースのライブラリ",
         "finished": "完了したスクリーニング",
-        "running": "実行中のスクリーニング"
+        "running": "スクリーニング進行中"
       },
       "goes": {
         "collectionName": "コレクション名",
@@ -8166,8 +8166,8 @@
         "keepPrivate": "新しいコレクションを非公開にする",
         "aCollection": "コレクション",
         "yourLibrary": "あなたのライブラリ",
-        "aCommunity": "コミュニティ",
-        "readingCommunity": "コミュニティのコレクションを読み取り中",
+        "aCommunity": "Evidence Community",
+        "readingCommunity": "Evidence Community のコレクションを読み取り中",
         "prune": "除外した論文を {name} から削除",
         "excludedLeave": "除外した論文は削除",
         "othersStay": "保留または不一致の論文は残す"
@@ -8176,7 +8176,7 @@
         "papers": "論文",
         "criteria": "基準",
         "reviewers": "レビュアー",
-        "decided": "論文の結果の決まり方",
+        "decided": "論文の結果の確定方法",
         "goesTo": "採用した論文の保存先"
       },
       "summary": {
@@ -8187,7 +8187,7 @@
         "invited": "{count, plural, other {招待中 # 人}}",
         "nobody": "まだいません",
         "decided": "{you, select, true {{rule}、不一致はあなたが判定} other {{rule}、不一致は {name} が判定}}",
-        "withAdvice": "{decided}、AI の投票は助言として扱う"
+        "withAdvice": "{decided}、モデルの投票は助言として扱う"
       },
       "filledFrom": "<b>{name}</b> から入力しました",
       "openIt": "開く",
@@ -8206,7 +8206,7 @@
       },
       "papers": {
         "upToSources": "{count, plural, other {取得元は最大 # 件}}",
-        "helpFrom": "論文の取得元をすべて追加してください。検索、コレクション、コミュニティ、Zotero、ファイル、DOI などが使えます。2 つの取得元で見つかった論文は 1 回だけスクリーニングされます。",
+        "helpFrom": "論文の取得元をすべて追加してください。検索、コレクション、Evidence Communities、Zotero、ファイル、DOI などが使えます。2 つの取得元で見つかった論文は 1 回だけスクリーニングされます。",
         "helpRead": "スクリーニングではタイトルと要約を読みます。Openscholar のインデックスにあるレコードは、両方をそこから取ります。要約がなく PDF が付いている論文は、PDF を読みます。",
         "helpLeft": "要約も PDF もない論文、タイトルのないレコード、見つからない DOI、開けないファイルはスクリーニングできません。それぞれ除かれ、取得元の行に理由とともに一覧表示されます。",
         "stillReading": "読み取り中",
@@ -8222,7 +8222,7 @@
         "removedOnSave": "保存すると削除されます",
         "atStart": "{count, plural, other {開始時 # 件}}",
         "allOfIt": "すべて",
-        "all": "{count, plural, =1 {その 1 件のレコード} other {レコード # 件すべて}}",
+        "all": "{count, plural, =1 {その 1 件の論文} other {論文 # 件すべて}}",
         "inSource": "{count, plural, other {取得元に # 件}}",
         "readAsPdf": "{count, plural, other {# 件を PDF から読み取り}}",
         "duplicates": "{count, plural, other {重複 # 件をまとめました}}",
@@ -8230,7 +8230,7 @@
         "checkedEvery": "{every, select, day {毎日確認} week {毎週確認} other {毎月確認}}",
         "couldntBeRead": "読み取れませんでした",
         "stoppedAfter": "{read, plural, other {{total} 件中 # 件で読み取りを停止}}",
-        "notSaved": "Openscholar がこの取得元を読み取る際にエラーが発生しました。",
+        "notSaved": "この取得元を読み取れませんでした。",
         "readAgain": "もう一度試す",
         "loadingList": "リストを読み込み中",
         "keep": "残す",
@@ -8241,7 +8241,7 @@
         "everyDeep": "このコレクションと、その下にあるコレクションのすべての論文です。",
         "everyOne": "{count, plural, =1 {その中の論文 1 件です。} other {その中の論文 # 件すべてです。}}",
         "zoteroOrder": "Zotero に追加した古い順",
-        "handoffGone": "コミュニティから渡された内容をもう読み取れません。「コミュニティ」でレコードを選び直してください。",
+        "handoffGone": "この Evidence Community で選んだレコードを読み込めなくなりました。「Evidence Community」で選び直してください。",
         "addFrom": "論文の追加元",
         "findSource": "取得元を探す",
         "noneByName": "その名前のものはありません。",
@@ -8264,8 +8264,8 @@
         "title": "継続スクリーニング",
         "factFixed": "アップロードしたファイルや貼り付けた DOI に論文は増えません",
         "factEmail": "レビュアーにメールで知らせます",
-        "factCharge": "新しい論文ごとにモデルの費用がかかります",
-        "help": "Openscholar は、選んだ間隔でスクリーニングの検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングに新しい論文がないか確認します。追加されるのは新しい論文だけで、レビュアーに割り当てられます。",
+        "factCharge": "新しい論文ごとにモデルのクレジットがかかります",
+        "help": "Openscholar は、選んだ間隔でスクリーニングの検索、コレクション、Evidence Communities、Zotero ライブラリ、ほかのスクリーニングに新しい論文がないか確認します。追加されるのは新しい論文だけで、レビュアーに割り当てられます。",
         "check": "新しい論文を確認",
         "off": "オフ",
         "checksAll": "{count, plural, =1 {取得元を確認} other {取得元 # 件をすべて確認}}",
@@ -8273,16 +8273,16 @@
         "nextCheck": "次回の確認: {day}",
         "firstCheck": "初回の確認: {day}",
         "firstOnSave": "保存するとすぐに初回の確認",
-        "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits} クレジット、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits} クレジット}}",
-        "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
-        "addToCheck": "確認するには、検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
+        "perNew": "{pdf, select, true {新しい論文 1 件あたり {credits, plural, other {# クレジット}}、PDF から読み取る場合は追加料金} other {新しい論文 1 件あたり {credits, plural, other {# クレジット}}}}",
+        "noneGrow": "これらの取得元はどれも論文が増えません。確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
+        "addToCheck": "確認するには、検索、コレクション、Evidence Community、Zotero ライブラリ、ほかのスクリーニングを追加してください。",
         "lastSpent": "直近の{count, plural, other {論文 # 件}}で {spent}"
       },
       "criteria": {
         "helpTitle": "必須基準と望ましい基準",
         "factPeople": "人は直接投票します",
         "factModels": "モデルの投票は回答で決まります",
-        "help": "各基準は、はい・いいえで答える質問として書きます。モデルは各基準に「はい」「いいえ」「不明」で答えます。必須基準に「いいえ」があればモデルは除外に、「不明」があれば保留に投票します。望ましい基準でモデルが除外に投票することはありませんが、人はそれを理由にできます。質問の下の目安には、何が該当するかを書きます。レビュアーはスクリーニング画面で質問の下の「目安」から開き、モデルは質問と一緒に読みます。基準にマークする語は、人が投票する間、各要約でマークされます。",
+        "help": "各基準は、はい・いいえで答える質問として書きます。モデルは各基準に「はい」「いいえ」「不明」で答えます。必須基準に「いいえ」があればモデルは「除外」に、「不明」があれば「保留」に投票します。望ましい基準でモデルが「除外」に投票することはありませんが、人はそれを理由にできます。質問の下の目安には、何が該当するかを書きます。レビュアーはスクリーニング画面で質問の下の「目安」から開き、モデルは質問と一緒に読みます。基準にマークする語は、人が投票する間、各要約でマークされます。",
         "import": "{searches, plural, other {{count, plural, other {検索から質問 # 件を追加}}}}",
         "copyFrom": "スクリーニングからコピー",
         "copyAdds": "そのスクリーニングの基準と点数を、ここにある基準に追加します",
@@ -8328,14 +8328,14 @@
         "starsRange": "点、星 1〜5 個"
       },
       "reviewers": {
-        "factPeople": "人は無料",
+        "factPeople": "人にはクレジットがかかりません",
         "factModels": "モデルはクレジットを使います",
-        "help": "各レビュアーは、割り当てられた論文に採用、保留、除外のいずれかで投票します。人はタイトルと要約を読んで投票します。モデルは読んだ論文ごとにすべての基準に答え、その回答で投票が決まります。",
-        "aiModel": "AI モデル",
-        "aiModelAt": "推論の強さ {effort} の AI モデル",
+        "help": "各レビュアーは、割り当てられた論文に「採用」「保留」「除外」のいずれかで投票します。人はタイトルと要約を読んで投票します。モデルは読んだ論文ごとにすべての基準に答え、その回答で投票が決まります。",
+        "aiModel": "モデル",
+        "aiModelAt": "推論の強さ {effort} のモデル",
         "votesKeep": "{count, plural, other {# 票は引き続き数えられます}}",
         "pdfsMissed": "{why, select, text {{count, plural, other {PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}} other {{count, plural, other {最も長い PDF を読めないため、論文 # 件にはこのモデルの投票がつきません}}}}",
-        "creditsFor": "{count, plural, other {論文 # 件}}で {credits} クレジット",
+        "creditsFor": "{count, plural, other {論文 # 件}}で {credits, plural, other {# クレジット}}",
         "allRead": "すべて読み取り済み",
         "none": "レビュアーはまだいません",
         "addPerson": "人を追加",
@@ -8349,8 +8349,8 @@
         "help": "論文への投票がルールの求めるとおりに一致すれば、論文の結果が確定します。一致しなければ不一致になり、1 人が判定します。",
         "each": "各論文の担当人数",
         "factModels": "モデルは未確定の論文をすべて読みます",
-        "factEveryone": "「全員」には後から参加した人も含みます",
-        "eachHelp": "各モデルは、参加した時点で未確定の論文をすべて読みます。ここでは各論文に何人が投票するかを決めます。論文は、各人が読む件数がほぼ同じになるように割り当てられます。数を指定した場合、チームが増えてもその数のままです。「全員」は、今いる人と後から参加する人を含む、スクリーニングの全員です。",
+        "factEveryone": "「全員」には後から参加する人も含まれます",
+        "eachHelp": "各モデルは、参加した時点で未確定の論文をすべて読みます。ここでは各論文に何人が投票するかを決めます。論文は、各人が読む件数がほぼ同じになるように割り当てられます。数を指定した場合、人が加わってもその数のままです。「全員」は、今いる人と後から参加する人を含む、スクリーニングの全員です。",
         "everyone": "全員",
         "onePerson": "最初の投票で決まるため 1 人",
         "modelVotes": "モデルの投票",
@@ -8368,7 +8368,7 @@
         "ruleMeans": "<b>{label}。</b>{means}",
         "settledBy": "不一致を判定する人",
         "conflictsTitle": "不一致",
-        "conflictsHelp": "この人は論文へのすべての投票を見られ、その判定が論文の結果になります。",
+        "conflictsHelp": "この人は論文へのすべての投票を見られ、この人の選択が論文の結果になります。",
         "noConflicts": "このルールでは判定する不一致は起こりません",
         "whoSettles": "不一致を判定する人",
         "seeVotes": "レビュアーがほかの投票を見られるタイミング",
@@ -8380,14 +8380,14 @@
         "addReviewer": "論文の結果の確定のしかたを見るには、レビュアーを追加してください。",
         "modelSettles": "モデルの投票で結果が確定するのは、人に割り当てられていない論文だけです。それ以外の論文は、最初に投票した人の投票で決まります。"
       },
-      "goesHelp": "結果が採用の論文は、ライブラリまたはコミュニティで選んだコレクションに、「採点」で決まる星とともに追加されます。「保存しない」を選ぶと、スクリーニング内にだけ残ります。",
+      "goesHelp": "結果が採用の論文は、ライブラリまたは Evidence Community で選んだコレクションに、「採点」で決まる星とともに追加されます。「保存しない」を選ぶと、スクリーニング内にだけ残ります。",
       "summaryLabel": "概要",
       "changes": {
         "title": "変更",
-        "helpTitle": "実行中のスクリーニングの変更",
+        "helpTitle": "進行中のスクリーニングの変更",
         "factVotes": "投票済みの票は残ります",
         "factRemoved": "外したレビュアーは記録に残ります",
-        "help": "スクリーニングの実行中も完了後も、ここにあるものはすべて変更できます。「変更を保存」を選ぶまで何も保存されず、保存すると何が起きるかをこの欄で先に確認できます。",
+        "help": "スクリーニングの進行中も完了後も、ここにあるものはすべて変更できます。「変更を保存」を選ぶまで何も保存されません。「保存すると起きること」に、先に影響が一覧で表示されます。",
         "savedNow": "たった今保存しました",
         "activity": "アクティビティ",
         "willDo": "保存すると起きること",
@@ -8407,25 +8407,25 @@
       "cost": {
         "title": "費用",
         "helpTitle": "モデルとクレジット",
-        "factPeople": "人は無料",
+        "factPeople": "人にはクレジットがかかりません",
         "factAtOnce": "{count, plural, other {同時に # 件}}",
         "help": "各モデルの費用は、論文 1 件あたりのクレジットにスクリーニングする論文の数を掛けたものです。PDF 付きで届いた要約のない論文は PDF のすべてのページを読み、ページ数に応じて費用がかかります。{atOnce, select, none {} other {ワークスペースのプランでは、モデルが同時に読める論文は {atOnce} 件のため、別のスクリーニングのモデルが読み取り中に開始したスクリーニングは順番を待ちます。}}人は最初から投票できます。",
         "helpLiving": "継続スクリーニングでは、確認で見つかった新しい論文ごとにも費用がかかります。",
         "people": "人",
         "free": "無料",
-        "credits": "{credits} クレジット",
+        "credits": "{credits, plural, other {# クレジット}}",
         "noPapers": "論文はまだありません",
         "pdfsRead": "{count, plural, other {論文 # 件を PDF から読み取ります}}。計{pages, plural, other {# ページ}}{capped, select, true {です。費用はこのクレジットのうち最大 {credits} です。} other {です。}}",
-        "pdfsUnpriced": "PDF として加わる新しい論文は、ページ数に応じてここでの計算より高くなります。費用はスクリーニングが新しい取得元を読み取った後に表示されます。",
+        "pdfsUnpriced": "PDF として加わる新しい論文は、ページ数に応じて費用が高くなります。費用はスクリーニングが新しい取得元を読み取った後に表示されます。",
         "firstReading": "{count, plural, other {PDF # 件の初回の読み取り。追加時に支払い済み}}",
-        "upTo": "最大 {credits} クレジット",
+        "upTo": "最大 {credits, plural, other {# クレジット}}",
         "answering": "{count, plural, other {読み取り済みの論文で新しい基準に回答}}",
         "rereading": "この変更で再び開く論文の読み取り",
         "atMost": "{still, select, true {{soFar, select, true {現時点での残りの支払い、最大} other {残りの支払い、最大}}} other {{soFar, select, true {現時点での合計、最大} other {合計、最大}}}}",
         "resumed": "再開後の残りの支払い",
         "still": "残りの支払い",
         "nothing": "なし",
-        "overWallet": "ワークスペースの残高より {credits} クレジット多い",
+        "overWallet": "ワークスペースの残高より {credits, plural, other {# クレジット}}多い",
         "walletShare": "ワークスペースのクレジットの {share}",
         "shareOf": "{under, select, true {{share} 未満} other {{share}}}",
         "inWorkspace": "{own, select, true {{credits} 利用可能} other {{workspace} に {credits}}}",
@@ -8434,7 +8434,7 @@
       },
       "bar": {
         "toScreen": "<m>{soFar, select, true {{count, plural, other {現時点でスクリーニングする論文}}} other {{count, plural, other {スクリーニングする論文}}}}</m> <n></n> 件",
-        "cost": "<m>{still, select, true {{soFar, select, true {現時点での残りの支払い、最大} other {残りの支払い、最大}}} other {{soFar, select, true {現時点での合計、最大} other {合計、最大}}}}</m> <b>{credits} クレジット</b>",
+        "cost": "<m>{still, select, true {{soFar, select, true {現時点での残りの支払い、最大} other {残りの支払い、最大}}} other {{soFar, select, true {現時点での合計、最大} other {合計、最大}}}}</m> <b>{credits, plural, other {# クレジット}}</b>",
         "peopleOnly": "{handed, select, true {人のみ、これ以上の支払いなし} other {人のみ、クレジット不要}}",
         "addCredits": "クレジットを追加",
         "start": "スクリーニングを開始",
@@ -8449,8 +8449,8 @@
         "title": "新しいスクリーニング",
         "helpTitle": "スクリーニング",
         "factRead": "タイトルと要約、または論文の PDF",
-        "factWho": "人と AI モデル",
-        "help": "レビュアーは各論文のタイトルと要約を読み、採用、保留、除外のいずれかで投票します。要約がなく PDF が付いている論文は、PDF を読んで投票します。選んだルールで投票が結果になり、投票が分かれた論文は 1 人が判定します。"
+        "factWho": "人とモデル",
+        "help": "レビュアーは各論文のタイトルと要約を読み、「採用」「保留」「除外」のいずれかで投票します。要約がなく PDF が付いている論文は、PDF を読んで投票します。選んだルールで投票が結果になり、投票が分かれた論文は 1 人が判定します。"
       }
     },
     "frame": {
@@ -8486,9 +8486,9 @@
         "add": "{you, select, true {自分をフィルターに加える} other {{name} をフィルターに加える}}"
       },
       "rule": {
-        "advice": "AI の投票は参考です",
-        "title": "論文の結果の決まり方",
-        "eachPaper": "各論文に{who, select, both {{people, plural, other {# 人}}と{models, plural, other {AI モデル # 個}}} people {{people, plural, other {# 人}}} other {{models, plural, other {AI モデル # 個}}}}",
+        "advice": "モデルの投票は参考です",
+        "title": "論文の結果の確定方法",
+        "eachPaper": "各論文に{who, select, both {{people, plural, other {# 人}}と{models, plural, other {モデル # 個}}} people {{people, plural, other {# 人}}} other {{models, plural, other {モデル # 個}}}}",
         "noReviewer": "レビュアーはまだいません",
         "hiddenMine": "未投票の論文では投票を非表示",
         "hiddenTheirs": "レビュアーの未投票の論文では投票を非表示",
@@ -8496,9 +8496,9 @@
         "visibleFinished": "完了したため投票を表示",
         "conflictsGoTo": "不一致は {who} へ",
         "checks": "{every, select, day {毎日新しい論文を確認} week {毎週新しい論文を確認} other {毎月新しい論文を確認}}",
-        "chips": "これらのチップは、各論文に誰が投票するか、何で結果が確定するか、ほかの投票を誰が見られるかを示します。",
+        "chips": "各論文に誰が投票するか、何で結果が確定するか、ほかの投票を誰が見られるか。",
         "conflictOpen": "{you, select, true {不一致の論文は、あなたが判定するまで未確定のままです。} other {不一致の論文は、{name} が判定するまで未確定のままです。}}",
-        "living": "継続スクリーニングは、決まった間隔で取得元に新しい論文がないか確認し、新しい論文をスクリーニングします。アップロードしたファイルや貼り付けたリストに論文が増えることはありません。",
+        "living": "継続スクリーニングは、決まった間隔で取得元に新しい論文がないか確認し、新しい論文をスクリーニングします。アップロードしたファイルや貼り付けた DOI に論文が増えることはありません。",
         "livingChip": "{every, select, day {継続<more>、毎日新しい論文</more>} week {継続<more>、毎週新しい論文</more>} other {継続<more>、毎月新しい論文</more>}}"
       },
       "role": {
@@ -8591,8 +8591,8 @@
         "kept": "{me, select, true {あなたの投票は引き続き数えられます。} other {この人の投票は引き続き数えられます。}}"
       },
       "credits": {
-        "inWorkspace": "現在ワークスペースに {credits} クレジット",
-        "payFor": "{some, select, true {{credits} クレジットで、モデルが読む{papers, plural, other {論文 # 件}}のうち約 {paid, number} 件の費用を払えます。クレジットが追加されるまで、そこで止まります。} other {{credits} クレジットでは、モデルが読む{papers, plural, other {論文 # 件}}のどれの費用も払えません。クレジットが追加されるまで、そこで止まります。}}"
+        "inWorkspace": "現在ワークスペースに {credits, plural, other {# クレジット}}",
+        "payFor": "{some, select, true {{credits, plural, other {# クレジット}}で、モデルが読む{papers, plural, other {論文 # 件}}のうち約 {paid, number} 件の費用を払えます。クレジットが追加されるまで、そこで止まります。} other {{credits, plural, other {# クレジット}}では、モデルが読む{papers, plural, other {論文 # 件}}のどれの費用も払えません。クレジットが追加されるまで、そこで止まります。}}"
       },
       "activitySheet": {
         "says": "このスクリーニングへのすべての変更、新しい順",
@@ -8660,10 +8660,10 @@
       "firstUse": {
         "noneHere": "このワークスペースにはまだスクリーニングがありません",
         "title": "レビューに含める論文を決めましょう",
-        "text": "検索、コレクション、手元のファイルから論文を集め、基準を設定してスクリーニングします。自分で、同僚と、AI モデルで、またはそれらを組み合わせて行えます。"
+        "text": "検索、コレクション、手元のファイルから論文を集め、基準を設定してスクリーニングします。自分で、同僚と、または AI モデルで行えます。"
       },
       "legend": {
-        "label": "バーの色の意味",
+        "label": "バーの各部分の意味",
         "settled": "確定",
         "notYet": "未確定"
       },
@@ -8714,7 +8714,7 @@
       },
       "discussion": {
         "title": "ディスカッション",
-        "about": "{models, select, true {レビュアーと不一致を判定する人が、ここで論文について全員と、または 1 人と話し合います。1 人に宛てた書き込みは質問になり、その人が答えるまでスクリーニング一覧に残ります。モデルには質問できません。モデルが読んだ箇所を見るには、表でそのモデルの印を押してください。} other {レビュアーと不一致を判定する人が、ここで論文について全員と、または 1 人と話し合います。1 人に宛てた書き込みは質問になり、その人が答えるまでスクリーニング一覧に残ります。}}",
+        "about": "{models, select, true {レビュアーと不一致を判定する人が、ここで論文について全員と、または 1 人と話し合います。1 人に宛てた書き込みは質問になり、その人が答えるまで、その人のスクリーニングページの「要対応」に残ります。モデルには質問できません。モデルが読んだ箇所を見るには、表でそのモデルの印を押してください。} other {レビュアーと不一致を判定する人が、ここで論文について全員と、または 1 人と話し合います。1 人に宛てた書き込みは質問になり、その人が答えるまで、その人のスクリーニングページの「要対応」に残ります。}}",
         "blind": "このスクリーニングでは、論文がレビュアー本人の投票を待っている間だけ、その論文についての書き込みをそのレビュアーから隠します。",
         "shut": "レビュアーはここで論文について話し合います。あなたの投票に影響しないよう、内容は非表示になっています。",
         "notSent": "送信できませんでした。もう一度お試しください。",
@@ -8725,7 +8725,7 @@
         "whoFor": "宛先",
         "to": "宛先",
         "everyone": "全員",
-        "forOne": "{name} への質問です。この論文の投票を見られる人は全員読めます。{name} が答えるまで、その人のスクリーニング一覧に残ります。",
+        "forOne": "{name} への質問です。この論文の投票を見られる人は全員読めます。{name} が答えるまで、{name} のスクリーニングページの「要対応」に残ります。",
         "forAll": "この論文の投票を見られる人は全員読めます。1 人に質問するには、名前を選んでください。",
         "answerPlaceholder": "{name} に回答",
         "askPlaceholder": "{name} に質問",
@@ -8741,7 +8741,7 @@
         "onItsWay": "PDF を取得中です",
         "cantShow": "この PDF はここに表示できません。新しいタブで開いてください。"
       },
-      "perPaper": "論文 1 件あたり {credits} クレジット",
+      "perPaper": "論文 1 件あたり {credits, plural, other {# クレジット}}",
       "pickerCost": "論文 1 件あたりのクレジット"
     },
     "overview": {
@@ -8781,7 +8781,7 @@
         "move": "論文を移す",
         "agreement": "一致度",
         "helpTitle": "論文の割り当て方",
-        "eachOf": "各論文に{people, plural, other {# 人}}中 {each, number} 人が投票します",
+        "eachOf": "各論文に{each, plural, other {{people, plural, other {# 人}}中 # 人}}が投票します",
         "everyPerson": "全員がすべての論文に投票します",
         "modelsRead": "モデルは未確定の論文をすべて読みます",
         "sharing": "{share, select, true {各人は論文の一部に投票します。} other {各人はすべての論文に投票します。}}{models, select, true {各モデルは未確定の論文と、追加された新しい論文を読みます。モデルが加わる前に結果が確定した論文は読みません。} other {}}",
@@ -8798,7 +8798,7 @@
         "models": "モデル",
         "takenOff": "外されました",
         "invited": "招待中",
-        "thrownOut": "投票は無効",
+        "thrownOut": "数えられなくなった投票",
         "stillCount": "{count, plural, other {# 票は引き続き数えられます}}",
         "castNone": "投票なし",
         "nobody": "{change, select, true {この論文に投票する人はまだいません。ページ上部の「参加者」から人かモデルを追加してください。} other {この論文に投票する人はまだいません。}}"
@@ -8821,7 +8821,7 @@
       },
       "row": {
         "reading": "読み取り中",
-        "creditsSpent": "{credits} クレジット使用",
+        "creditsSpent": "{credits, plural, other {# クレジット使用}}",
         "done": "完了",
         "reminded": "{ago}にリマインド済み",
         "activeNow": "作業中",
@@ -8839,12 +8839,12 @@
         "noPeople": "比べる人がいません",
         "nothingYet": "比べるものはまだありません",
         "agrees": "{share, number, percent}<muted>{person, select, true { ほかの人と同じ投票} other { 人と同じ投票}}</muted>",
-        "missedOf": "採用 {included, number} 件中 {missed, number} 件を除外",
+        "missedOf": "採用 {included, number} 件中 {missed, number} 件に除外を投票",
         "ofPairs": "{count, plural, other {投票の組 # 件中}}",
         "more": "その他",
         "moreFor": "{name} のその他の操作",
         "seeVotes": "{mine, select, true {論文ページで自分の投票を見る} other {論文ページでこの人の投票を見る}}",
-        "creditsShort": "{credits} クレジット不足",
+        "creditsShort": "{credits, plural, other {# クレジット不足}}",
         "remind": "リマインドを送る",
         "moveAway": "論文を別の人に移す",
         "takeOff": "{mine, select, true {このスクリーニングから退出} other {このスクリーニングから外す}}"
@@ -8911,12 +8911,12 @@
       },
       "checks": {
         "title": "新しい論文の確認",
-        "shut": "{change, select, true {確認では、検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングから、このスクリーニングにまだない論文を探します。アップロードしたファイルや貼り付けたリストは中身が変わらないため、確認するものがありません。新しい論文を得るには、検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングを取得元として追加してください。} other {確認では、検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングから、このスクリーニングにまだない論文を探します。アップロードしたファイルや貼り付けたリストは中身が変わらないため、確認するものがありません。検索、コレクション、コミュニティ、Zotero ライブラリ、ほかのスクリーニングが取得元として追加されるまで、確認は行われません。}}",
+        "shut": "{change, select, true {確認では、このスクリーニングの検索、コレクション、Evidence Communities、Zotero ライブラリ、ほかのスクリーニングから、まだない論文を探します。アップロードしたファイルや貼り付けた DOI は変わりません。新しい論文を得るには、これらの取得元のいずれかを追加してください。} other {確認では、このスクリーニングの検索、コレクション、Evidence Communities、Zotero ライブラリ、ほかのスクリーニングから、まだない論文を探します。アップロードしたファイルや貼り付けた DOI は変わりません。これらの取得元のいずれかが追加されるまで、確認は行われません。}}",
         "helpTitle": "新しい論文の確認",
         "next": "次回の確認: {day}",
         "onlyAsked": "依頼したときだけ",
-        "skips": "{count, plural, other {固定の取得元 # 件は対象外}}",
-        "means": "確認では、各取得元の検索をもう一度実行し、このスクリーニングにまだない論文を追加します。アップロードしたファイルや貼り付けたリストは変わらないため、確認の対象外です。",
+        "skips": "{count, plural, other {変わらない取得元 # 件は対象外}}",
+        "means": "確認では、各取得元をもう一度読み、このスクリーニングにまだない論文を追加します。アップロードしたファイルや貼り付けた DOI は変わらないため、確認の対象外です。",
         "checkNow": "今すぐ確認",
         "every": "{every, select, day {毎日確認} week {毎週確認} other {毎月確認}}",
         "onlyWhenAsked": "依頼したときだけ確認",
@@ -8963,7 +8963,7 @@
         "title-desc": "タイトル、Z→A",
         "result": "結果",
         "newest": "出版日の新しい順",
-        "split": "意見が分かれた順",
+        "split": "投票が分かれた順",
         "points": "点数の高い順",
         "shut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかのレビュアーの投票を非表示にしています。この並び順ではそれが分かってしまいます"
       },
@@ -8982,7 +8982,7 @@
         "anyVote": "すべての投票",
         "noVote": "投票なし",
         "settled": "結果を判定",
-        "decisions": "判定",
+        "decisions": "確定",
         "added": "追加",
         "anyTime": "すべての期間",
         "atStart": "開始時",
@@ -9081,7 +9081,7 @@
       "why": {
         "nobodyCanVote": "この論文に投票できるレビュアーはまだいません",
         "waitingOnYou": "あなたの投票待ち",
-        "waitingOn": "投票待ち:",
+        "waitingOn": "投票待ちの人",
         "noVoteFrom": "投票なし:"
       },
       "pointsOf": "{max, plural, other {# 点}}中 {points, number} 点",
@@ -9114,8 +9114,8 @@
         "overrideTitle": "結果の上書き",
         "votesKept": "投票は残ります",
         "canReopen": "再開できます",
-        "overrideSays": "あなたの判定が、投票で決まった結果に置き換わります。投票は記録に残ります。再開するとあなたの判定は取り消され、再び投票で結果が決まります。",
-        "yetToVote": "{who, select, you {あなたはまだ投票していません。あなたの判定でこの投票なしに結果が確定し、この論文はあなたの一覧から外れます。} one {{names} はまだ投票していません。あなたの判定でこの投票なしに結果が確定し、この論文はその人の一覧から外れます。} withYou {{names} はまだ投票していません。あなたの判定でこれらの投票なしに結果が確定し、この論文はあなたたちの一覧から外れます。} other {{names} はまだ投票していません。あなたの判定でこれらの投票なしに結果が確定し、この論文はその人たちの一覧から外れます。}}",
+        "overrideSays": "あなたの選択が、投票で決まった結果に置き換わります。投票は記録に残ります。再開するとあなたの選択は取り消され、再び投票で結果が決まります。",
+        "yetToVote": "{who, select, you {あなたはまだ投票していません。あなたの選択でこの投票なしに結果が確定し、この論文はあなたの一覧から外れます。} one {{names} はまだ投票していません。あなたの選択でこの投票なしに結果が確定し、この論文はその人の一覧から外れます。} withYou {{names} はまだ投票していません。あなたの選択でこれらの投票なしに結果が確定し、この論文はあなたたちの一覧から外れます。} other {{names} はまだ投票していません。あなたの選択でこれらの投票なしに結果が確定し、この論文はその人たちの一覧から外れます。}}",
         "cancel": "キャンセル",
         "afterYouVote": "投票した後"
       }
@@ -9159,8 +9159,8 @@
         "join": "あなたはこのスクリーニングのレビュアーではありません。投票するには、レビュアーとして参加してください。"
       },
       "votesShut": "ほかの人の投票はあなたの投票に影響しないよう非表示になっています。",
-      "creditsShort": "{short} クレジット不足",
-      "retry": "{papers, plural, other {論文 # 件を {cost} クレジットでもう一度試す}}",
+      "creditsShort": "{short, plural, other {# クレジット不足}}",
+      "retry": "{papers, plural, other {論文 # 件を {cost, plural, other {# クレジット}}でもう一度試す}}",
       "votesBy": "{you, select, true {あなたの投票} other {{name} の投票}}",
       "openPapers": {
         "conflict": "不一致 {count, number} 件",
@@ -9219,7 +9219,7 @@
       "yourVote": "あなたの投票",
       "result": "結果",
       "answersDiffer": "回答が分かれています",
-      "nextAfter": "{settling, select, true {判定するたびに次の論文へ} other {投票するたびに次の論文へ}}",
+      "nextAfter": "{settling, select, true {結果を確定するたびに次の論文へ} other {投票するたびに次の論文へ}}",
       "settleConflicts": "{settle, select, true {{count, plural, other {不一致 # 件を判定}}} other {{count, plural, other {不一致 # 件を見る}}}}",
       "screenPapers": "{count, plural, other {論文 # 件をスクリーニング}}",
       "queue": {
@@ -9263,13 +9263,13 @@
         "exclude": "除外して、理由を選ぶ",
         "next": "投票せずに次の論文へ",
         "previous": "前の論文",
-        "undo": "{settling, select, true {直前の判定を取り消す} other {直前の投票を取り消す}}",
+        "undo": "{settling, select, true {直前の確定を取り消す} other {直前の投票を取り消す}}",
         "queue": "キューの表示を切り替え",
         "keys": "このショートカットを表示"
       },
       "votes": {
         "title": "全員の投票",
-        "titleAdvice": "投票と AI の助言",
+        "titleAdvice": "投票とモデルの助言",
         "forSettler": "{you, select, true {あなたが判定} other {{name} が判定}}",
         "waitingFrom": "{names} の投票待ち",
         "more": "{count, plural, other {ほか # 人}}",
@@ -9281,7 +9281,7 @@
         "pointsWhy": "回答は<b>{points}</b>を示しています。{many, select, true {必須基準である基準 {numbers}} other {必須基準である基準 {numbers}}}に「{answer, select, no {いいえ} other {不明}}」と答えています。まだ投票していません。",
         "allMet": "必須基準をすべて満たしているため、回答は<b>{points}</b>を示しています。まだ投票していません。",
         "againstLine": "あなたは{voted}に投票しました。回答は<b>{points}</b>を示しています。",
-        "pointsLine": "回答は<b>{points}</b>を示しています。まだ投票していません。"
+        "pointsLine": "回答は<b>{points}</b>を示しています。投票はまだ済んでいません。"
       },
       "paper": {
         "label": "論文",
@@ -9319,7 +9319,7 @@
         "withNote": "メモ付きで保存しました",
         "nowInConflicts": "不一致に移りました",
         "more": "この論文のその他の操作",
-        "dragRight": "右にドラッグして採用",
+        "dragRight": "論文を右にドラッグして採用",
         "dragLeft": "左にドラッグして除外",
         "undo": "取り消す",
         "alsoFailed": "{count, plural, other {ほか # 件}}",
@@ -9440,7 +9440,7 @@
         "aboutFiles": "文献ファイルは、データベースや文献管理ソフトからエクスポートしたファイルです。タイトルと要約のあるレコード 1 件が論文 1 件になります。",
         "aboutPdfs": "PDF は追加するとすぐに読み取られ、タイトルと DOI を取り出します。その DOI が Openscholar のインデックスにあれば、論文はインデックスのタイトルと要約で表示されます。なければ PDF そのものが論文になります。スクリーニングする人はそのファイルを読み、PDF を読める AI モデルもすべてのページを読みます。テキストしか読めないモデルや、それほど長い PDF を扱えないモデルは、その論文に投票しません。スキャンした PDF も同じように読みます。開けないファイルは除きます。",
         "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV、PDF、または DOI を並べたテキストファイルに対応。複数まとめて追加できます",
-        "pdfCost": "モデルが各 PDF の最初の数ページを読んでタイトルと DOI を取り出します。費用は PDF 1 件あたり最大 {credits} クレジットで、追加時に支払われます",
+        "pdfCost": "モデルが各 PDF の最初の数ページを読んでタイトルと DOI を取り出します。費用は PDF 1 件あたり最大 {credits, plural, other {# クレジット}}で、追加時に支払われます",
         "filesLabel": "アップロードするファイル",
         "choose": "ファイルを選ぶ",
         "sent": "{total, number} 件中 {sent, number} 件を送信",
@@ -9476,10 +9476,10 @@
         "loading": "Zotero を読み込み中",
         "loadingCollections": "コレクションを読み込み中",
         "notConnected": "Zotero は接続されていません",
-        "connectWhy": "接続すると、あなたのライブラリと参加しているグループから選べます。",
+        "connectWhy": "接続すると、あなたの Zotero ライブラリと Zotero グループから選べます。",
         "connect": "Zotero を接続",
         "withSubCollections": "サブコレクションを含む",
-        "aboutUnder": "下位のものを含めて約 {count, number} 件",
+        "aboutUnder": "サブコレクションを含めて約 {count, number} 件",
         "library": "Zotero ライブラリ",
         "findGroup": "グループを探す",
         "yours": "あなたのもの",
@@ -9496,7 +9496,7 @@
         "subAbout": "Zotero はコレクションに直接入っているアイテムだけを数え、ここでの件数も同じです。これをオンにすると、コレクションはその下にあるすべてのコレクションの論文と一緒に追加されます。合計はおおよそ Zotero の各コレクションの件数を足したもので、スクリーニングが読み取ると正確な数になります。",
         "readingCount": "コレクションを読み取り中、{total, number} 件中 {read, number} 件",
         "reading": "コレクションを読み取り中",
-        "failed": "Zotero を読み取れませんでした。ライブラリをもう一度開いてください。",
+        "failed": "Zotero を読み取れませんでした。Zotero ライブラリをもう一度開いてください。",
         "everyPaper": "{library} のすべての論文",
         "group": "Zotero グループ",
         "own": "あなたの Zotero ライブラリ",
@@ -9561,7 +9561,7 @@
         "rows": "{count, plural, other {# 行}}",
         "readings": "{count, plural, other {読み取り # 回}}",
         "changes": "{count, plural, other {変更 # 件}}",
-        "credits": "{count} クレジット"
+        "credits": "{count, plural, other {# クレジット}}"
       },
       "numberWord": "{n, select, 1 {1} 2 {2} 3 {3} 4 {4} 5 {5} 6 {6} 7 {7} 8 {8} 9 {9} 10 {10} other {{n}}}",
       "quoted": "「{text}」",
