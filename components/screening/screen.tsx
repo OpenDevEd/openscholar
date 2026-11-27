@@ -376,6 +376,8 @@ function Screen({ open }: { open: Open }) {
       // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.
       if (switching) return;
       const key = event.key.toLowerCase();
+      // A held vote key votes once: its repeats would land on the papers opened after it.
+      if (event.repeat && (key === "i" || key === "m" || key === "e")) return;
       // Inside a group of choices the arrow keys move between the choices, as they do everywhere.
       if (key.startsWith("arrow") && target?.closest("[role=radiogroup]")) return;
       const numbered = /^[1-9]$/.test(key) ? criteria[Number(key) - 1] : undefined;
