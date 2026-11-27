@@ -47,10 +47,10 @@
     "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
   },
   "role": {
-    "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
+    "member": "{finished, select, true {You see every paper and every vote, and get no papers to vote on.} other {You see every paper and every vote, and get no papers to vote on. Join as a reviewer to get some.}}",
     "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
     "guest": "Guest",
-    "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} changes its settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings.}}"
+    "guestSays": "{personal, select, true {{workspace} shared it with you. You vote on the papers you get. Only {workspace} can change the settings.} other {{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members can change the settings.}}"
   },
   "banner": {
     "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
@@ -91,7 +91,7 @@
     "reviewersStay": "{own, select, true {The other reviewers stay on it as guests} other {The other reviewers stay on it, as guests where they aren't in {to}}}",
     "papersStay": "{own, select, true {Papers already saved stay where they are, and papers included from now on are saved in your own library} other {Papers already saved stay where they are, and papers included from now on are saved in {to}'s library}}",
     "sourcesStay": "{own, select, true {The sources stay in your own workspace, and the screening goes on checking them there} other {The sources stay in {from}, and the screening goes on checking them there}}",
-    "membersLose": "Members of {from} who aren't its reviewers no longer see it",
+    "membersLose": "Members of {from} who aren't reviewers on it no longer see it",
     "nothingElse": "Nothing else changes"
   },
   "finish": {
@@ -137,7 +137,7 @@
   },
   "credits": {
     "inWorkspace": "{credits} credits in the workspace now",
-    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, one {# paper} other {# papers}}. It stops there until credits are added.}}"
+    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.} other {{credits} credits pay for none of the {papers, plural, one {# paper} other {# papers}} the model reads. It stops there until credits are added.}}"
   },
   "activitySheet": {
     "says": "Every change to this screening, newest first",
