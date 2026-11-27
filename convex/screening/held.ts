@@ -136,7 +136,8 @@ export async function withAbstracts(papers: SearchPaper[], spend: Spend | null):
   // ponytail: a pasted DOI no index holds, whose registry record has no abstract, is asked of the registries a second time here. Carry "already asked" with the paper if that ever costs.
   const byDoi = new Map(papers.flatMap((paper) => { const doi = lacks(paper) ? normalDoi(paper.doi) : null; return doi ? [[doi, paper.paper] as const] : []; }));
   for (const [doi, record] of byDoi.size ? await registered([...byDoi.keys()]) : []) if (record.abstract) found.set(byDoi.get(doi)!, record.abstract);
-  return found.size ? papers.map((paper) => (found.has(paper.paper) ? { ...paper, abstract: found.get(paper.paper)! } : paper)) : papers;
+  // Only a paper that came with no abstract takes one: two records of one work, one with its own, keep theirs.
+  return found.size ? papers.map((paper) => (!paper.abstract?.trim() && found.has(paper.paper) ? { ...paper, abstract: found.get(paper.paper)! } : paper)) : papers;
 }
 
 /**
