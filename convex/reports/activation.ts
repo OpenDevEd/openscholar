@@ -268,17 +268,18 @@ const KEPT = "This report can't go live now, so what you paid stays in your publ
 
 /**
  * Starts an activation, under the workspace's purchase lock: its record, whose id is the idempotency key of what it
- * buys and names its holds at Autumn, with what pays, the report's price and the code a card's part would be paid
- * with. `price` is what the page showed the report costs: one changed since is refused, so what is bought and what is
+ * buys and names its holds at Autumn, with what pays and the report's price. An event's `code` (`once`) is refused to
+ * someone who used it before. `price` is what the page showed the report costs: one changed since is refused, so what is bought and what is
  * spent are the one price the person saw. Refuses while a payment of the workspace's is still to be made, for this
  * report or another: what that payment buys lands in the same balance, and nothing else is spent from it until that
  * report has its own.
  */
 export const begin = internalMutation({
-  args: { actor: actorValidator, key: v.string(), payWith: payWithValidator, price: v.number(), code: v.optional(v.string()) },
+  args: { actor: actorValidator, key: v.string(), payWith: payWithValidator, price: v.number(), code: v.optional(v.string()), /** The code is an event's, which each person uses once. */ once: v.optional(v.boolean()) },
   returns: v.id("reportActivations"),
-  handler: async (ctx, { actor, key, payWith, price, code }) => {
+  handler: async (ctx, { actor, key, payWith, price, code, once }) => {
     const report = await activatable(ctx, actor, key);
+    if (code && once && (await usedBefore(ctx, actor.userId, code))) throw CODE_USED(code);
     if (await pendingOf(ctx, report._id)) throw createError("CONFLICT", STILL_PAYING);
     const other = await waitingOther(ctx, actor.workspaceId, report._id);
     if (other) throw createError("CONFLICT", `${other} is waiting for its payment. Open it and finish or cancel that first, then activate this one.`);
@@ -288,16 +289,16 @@ export const begin = internalMutation({
     if ((await priceFor(ctx, report)) !== price) throw createError("CONFLICT", "This report's price changed since this page read it. Check what is due, then activate again.", { reason: "changed" });
     // New reports closed, or this period's places taken: it waits for the next. Read here, with the row that takes the place.
     await refuseClosed(ctx, (await reportSettings(ctx)).intake);
-    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price, ...(code && { code }) });
+    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price });
   },
 });
 
-/** What a card buys for an activation, in dollars of the balance: kept with its record once that is known. */
+/** What a card buys for an activation, in dollars of the balance, and the code it buys with: kept with its record once that is known. A code is kept only once something is bought with it, in capitals, as an event's is looked up (`usedBefore`). */
 export const buying = internalMutation({
-  args: { activationId: v.id("reportActivations"), bought: v.number() },
+  args: { activationId: v.id("reportActivations"), bought: v.number(), code: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { activationId, bought }) => {
-    if (await ctx.db.get("reportActivations", activationId)) await ctx.db.patch("reportActivations", activationId, { bought });
+  handler: async (ctx, { activationId, bought, code }) => {
+    if (await ctx.db.get("reportActivations", activationId)) await ctx.db.patch("reportActivations", activationId, { bought, ...(code && { code: code.toUpperCase() }) });
     return null;
   },
 });
@@ -597,6 +598,31 @@ function outcomeOf(charged: AutumnCharge): { kind: "paid"; charge: Infer<typeof 
   return { kind: "paid", charge: { invoice: invoice?.stripe_id ?? "none", total: invoice?.total ?? 0, currency: invoice?.currency ?? "usd" } };
 }
 
+/** The start of the id of an event's reward in Autumn: each person takes what its codes give once. */
+const EVENT_REWARD = "event_";
+/** Whether a code is one of an event's, which each person uses once. */
+async function eventCode(code: string) {
+  const { coupons } = await autumn.coupons();
+  return coupons.some((coupon) => coupon.id.startsWith(EVENT_REWARD) && coupon.promo_codes.some((promo) => promo.code.toUpperCase() === code.toUpperCase()));
+}
+const CODE_USED = (code: string) => createError("VALIDATION_ERROR", `You've already used ${code}.`, { reason: "codeUsed" });
+
+/** The states of an activation that used its code: all but one the bank or the card refused. */
+const USED: Array<Doc<"reportActivations">["state"]> = ["charging", "pending", "live", "unused"];
+/** Whether this person activated a report with this code before, or is activating one with it now. */
+async function usedBefore(ctx: QueryCtx, userId: Id<"users">, code: string) {
+  for (const state of USED) {
+    if (await ctx.db.query("reportActivations").withIndex("by_by_and_code_and_state", (q) => q.eq("by", userId).eq("code", code.toUpperCase()).eq("state", state)).first()) return true;
+  }
+  return false;
+}
+
+export const usedCode = internalQuery({
+  args: { userId: v.id("users"), code: v.string() },
+  returns: v.boolean(),
+  handler: (ctx, { userId, code }) => usedBefore(ctx, userId, code),
+});
+
 /** A promotion code as typed: trimmed, and refused when it can't be one. */
 function codeOf(code: string | undefined) {
   const typed = code?.trim();
@@ -667,6 +693,7 @@ export const activate = action({
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
+    const once = code ? await eventCode(code) : false;
     const first: Prepared = await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
     if (first.pending) {
       if (first.pending.url) return { url: first.pending.url };
@@ -682,7 +709,7 @@ export const activate = action({
         // Recorded only once the lock is held, so an activation that never got it leaves nothing behind. Refused when
         // another tab made the report live, a payment of the workspace's is still to be made, or the report's price
         // changed, while this one waited.
-        const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, payWith, price, ...(code && { code }) });
+        const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, payWith, price, ...(code && { code, once }) });
         // The page read the balance before this; what is refused here sends it to read again.
         const changed = async (message: string): Promise<never> => {
           await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
@@ -706,7 +733,7 @@ export const activate = action({
             return await changed(CHANGED);
           }
           if (funds.currency) throw currencyRefused(funds.currency);
-          await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
+          await ctx.runMutation(internal.reports.activation.buying, { activationId, bought, ...(code && { code }) });
           // Nothing is bought while a payment of the customer's is open.
           await payableCustomer(first.customerId, {});
           const quote = () => autumn.previewAttach(first.customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, dollars(bought)).catch(refusedCode<AutumnPreview>(code));
@@ -714,7 +741,7 @@ export const activate = action({
           const sized = code ? size(1 - linesOf(quoted) / bought) : bought;
           if (Math.abs(sized - bought) > 0.005) {
             bought = sized;
-            await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
+            await ctx.runMutation(internal.reports.activation.buying, { activationId, bought, ...(code && { code }) });
             quoted = await quote();
           }
           // What a card pays now. A saved card pays what the Stripe credit leaves. With no card saved: nothing when the
@@ -851,6 +878,7 @@ export const quoteCode = action({
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
     if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
+    if ((await eventCode(code)) && (await ctx.runQuery(internal.reports.activation.usedCode, { userId: actor.userId, code }))) throw CODE_USED(code);
     const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: actor.workspaceId });
     const bought = dollars(Math.min(Math.max(cents(amount), BOUGHT_MIN), PRICE_MAX));
     const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, undefined, bought), autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, bought).catch(refusedCode<never>(code))]);

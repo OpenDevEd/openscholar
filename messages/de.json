@@ -6904,6 +6904,7 @@
           "unknownCode": "{code} ist kein Code, den wir kennen, oder er ist aufgebraucht.",
           "nothingOff": "{code} senkt den Preis für die Veröffentlichung eines Berichts nicht.",
           "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein.",
+          "codeUsed": "Sie haben {code} bereits verwendet.",
           "applyFirst": "Wenden Sie den Code an oder löschen Sie ihn, um zu aktivieren.",
           "typeFirst": "Geben Sie zuerst einen Code ein."
         },
