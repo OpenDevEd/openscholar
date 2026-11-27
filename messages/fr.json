@@ -9372,6 +9372,7 @@
         "voting": "Remarque pour les autres (facultatif)"
       },
       "settle": {
+        "changeTitle": "Trancher autrement",
         "title": "Trancher ce désaccord",
         "helpTitle": "Trancher un désaccord",
         "yourVote": "Votre vote d'évaluateur",
@@ -9398,6 +9399,7 @@
         "noneCanSplit": "Chaque article ici est tranché par un seul vote, aucun ne peut donc être en conflit"
       },
       "matrix": {
+        "earlierWording": "Certaines réponses ici ont été données à une formulation antérieure de ce critère",
         "nameYou": "{name}, vous",
         "theirVote": "Vote de {name}",
         "on": "{name}, {criterion}",

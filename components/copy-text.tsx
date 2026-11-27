@@ -12,6 +12,11 @@ let last: string | number | undefined;
  * text is on the page already (`shown`), as in a dialog the toast can't be reached from, that is selected instead.
  * Returns whether it copied.
  */
+/** Takes the last copy toast away, where what it is about has left the screen (another tab of a dialog). */
+export const dismissCopied = () => {
+  if (last !== undefined) toast.dismiss(last);
+};
+
 export async function copyText(text: string, words: { copied: string; failed: string; select: string; selected?: string }, shown?: HTMLElement | null) {
   let copied = true;
   try {

@@ -21,6 +21,7 @@ import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { focusContent } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -983,7 +984,8 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={notes[kind]} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
     ) : (
       <div className="space-y-2">
-        <Input maxLength={NOTE_LENGTH} value={notes[kind]} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="h-8 bg-card text-sm" />
+        {/* The note wraps and grows to a few lines, as on Screen: a long one stays in view as it is written. */}
+        <Textarea maxLength={NOTE_LENGTH} rows={1} value={notes[kind]} onChange={(event) => setNote(kind, event.target.value)} placeholder={kind === "vote" ? t("note.forOthers") : t("note.forRecord")} aria-label={t("note.label")} className="max-h-24 min-h-8 resize-none bg-card py-1.5 text-sm max-lg:min-h-14" />
         <div className="grid grid-cols-3 gap-2">
           {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className={kind === "vote" && mine?.decision === decision ? undefined : "bg-card"} onClick={() => (decision === "exclude" ? exclude(kind) : settle(kind, decision))} />)}
         </div>

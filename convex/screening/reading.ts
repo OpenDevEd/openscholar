@@ -31,6 +31,8 @@ export const readPaper = internalAction({
   returns: readingValidator,
   handler: async (ctx, { voteId }): Promise<typeof readingValidator.type> => {
     const context = await ctx.runQuery(internal.screening.readings.context, { voteId });
+    // When the criteria were read for the model: its answers are to them as they were then, and are dated from then.
+    const askedAt = Date.now();
     if (!context?.go) return { read: false, why: "held" };
     if (!context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
     const pricing = { input: context.model.input, output: context.model.output, ...(context.model.long ? { long: context.model.long } : {}) };
@@ -66,7 +68,7 @@ export const readPaper = internalAction({
       const sentences = sentencesOf(context.paper.abstract ?? "").length;
       const named = (at: number | null | undefined): at is number => typeof at === "number" && Number.isInteger(at) && at >= 0 && at < sentences;
       const passages = result.passages ? Object.fromEntries(context.criteria.flatMap((criterion, i) => (named(result.passages![questions[i]!]) ? [[criterion.key, result.passages![questions[i]!]!]] : []))) : undefined;
-      return { read: true, answers, confidences, ...(passages && Object.keys(passages).length ? { passages } : {}), credits };
+      return { read: true, answers, confidences, ...(passages && Object.keys(passages).length ? { passages } : {}), credits, askedAt };
     } catch (error) {
       // The workspace can't pay for this paper: its screening's models stop where they are until it can.
       if (outOfCredits(error)) return { read: false, why: "credits" };

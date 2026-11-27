@@ -9372,6 +9372,7 @@
         "voting": "ほかの人へのメモ（任意）"
       },
       "settle": {
+        "changeTitle": "判定を変更",
         "title": "この不一致を判定",
         "helpTitle": "不一致の判定",
         "yourVote": "レビュアーとしてのあなたの投票",
@@ -9398,6 +9399,7 @@
         "noneCanSplit": "ここでは各論文が1票で決まるため、対立になる論文はありません"
       },
       "matrix": {
+        "earlierWording": "ここにある回答の一部は、この基準を書き直す前の文言に対するものです",
         "nameYou": "{name}（あなた）",
         "theirVote": "{name} の投票",
         "on": "{name}、{criterion}",

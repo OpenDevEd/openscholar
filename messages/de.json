@@ -9373,6 +9373,7 @@
         "voting": "Notiz für die anderen (optional)"
       },
       "settle": {
+        "changeTitle": "Entscheidung ändern",
         "title": "Diesen Konflikt entscheiden",
         "helpTitle": "Einen Konflikt entscheiden",
         "yourVote": "Ihre Stimme als Reviewer",
@@ -9399,6 +9400,7 @@
         "noneCanSplit": "Jeder Artikel hier wird durch eine Stimme entschieden, also kann keiner in Konflikt geraten"
       },
       "matrix": {
+        "earlierWording": "Einige Antworten hier wurden zu einer früheren Formulierung dieses Kriteriums gegeben",
         "nameYou": "{name}, Sie",
         "theirVote": "Stimme von {name}",
         "on": "{name}, {criterion}",

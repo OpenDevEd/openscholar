@@ -9372,7 +9372,8 @@
         "voting": "Note for the others (optional)"
       },
       "settle": {
-        "title": "Settle this conflict",
+        "changeTitle": "Change how it is settled",
+          "title": "Settle this conflict",
         "helpTitle": "Settling a conflict",
         "yourVote": "Your vote as a reviewer",
         "rule": "Rule",
@@ -9398,7 +9399,8 @@
         "noneCanSplit": "Each paper here is settled by one vote, so none can be in conflict"
       },
       "matrix": {
-        "nameYou": "{name}, you",
+        "earlierWording": "Some answers here were given to an earlier wording of this criterion",
+          "nameYou": "{name}, you",
         "theirVote": "{name}'s vote",
         "on": "{name}, {criterion}",
         "differFor": "Show the answer that differs on {criterion}",

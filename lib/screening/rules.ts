@@ -23,6 +23,8 @@ export type Criterion = {
   /** Words the organiser marked, shown in the abstract while a person votes. */
   terms: string[];
   addedAt: number;
+  /** When its question was last reworded: answers given before then answered the earlier wording. */
+  changedAt?: number;
   /** What each answer is worth. Points only make stars: no vote follows from them. */
   points: Record<Answer, number>;
 };

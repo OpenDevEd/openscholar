@@ -3,7 +3,7 @@
 // What can be taken out of a screening: its papers, every vote, the flow of papers, a paragraph for the
 // methods section, and the whole record.
 
-import { copyText } from "@/components/copy-text";
+import { copyText, dismissCopied } from "@/components/copy-text";
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -53,7 +53,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // What was last taken out, so its button says so: a download gives no other sign. A file of every paper takes a moment to read: its button says so while it does.
   const [done, setDone] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const setTab = onTab;
+  // A copy toast is about the tab it was asked on: it goes with it, and never sits over another tab's buttons.
+  const setTab = (next: Parameters<typeof onTab>[0]) => { dismissCopied(); onTab(next); };
   // Whose votes the votes file holds: everyone's, or one reviewer's.
   // Whose votes and which papers are in the address with the dialog's tab: each choice is a step, and Forward or a reload shows the same file.
   const [chosen, setChosen] = useQueryStates({ whose: parseAsString.withDefault("all"), group: parseAsStringLiteral(GROUPS) }, { history: "push", scroll: false });

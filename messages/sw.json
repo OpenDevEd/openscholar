@@ -9373,6 +9373,7 @@
         "voting": "Dokezo kwa wengine (si lazima)"
       },
       "settle": {
+        "changeTitle": "Badilisha jinsi ilivyoamuliwa",
         "title": "Amua mgongano huu",
         "helpTitle": "Kuamua mgongano",
         "yourVote": "Kura yako kama mkaguzi",
@@ -9399,6 +9400,7 @@
         "noneCanSplit": "Kila makala hapa huamuliwa kwa kura moja, kwa hiyo hakuna inayoweza kuwa na mgongano"
       },
       "matrix": {
+        "earlierWording": "Baadhi ya majibu hapa yalitolewa kwa maneno ya awali ya kigezo hiki",
         "nameYou": "{name}, wewe",
         "theirVote": "Kura ya {name}",
         "on": "{name}, {criterion}",

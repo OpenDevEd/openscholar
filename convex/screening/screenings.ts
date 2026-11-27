@@ -70,7 +70,7 @@ export function criteriaFrom(sent: Infer<typeof criterionInput>[], kept: Criteri
     while (keys.has(key)) key = `c${crypto.randomUUID().slice(0, 8)}`;
     keys.add(key);
     const terms = [...new Set((one.terms ?? []).map((term) => term.trim().slice(0, SCREENING_TEXT.term)).filter(Boolean))].slice(0, MAX_TERMS);
-    return { key, text, short: (one.short?.trim() || shortOf(text)).slice(0, SCREENING_TEXT.short), must: one.must, ...(one.note?.trim() ? { note: one.note.trim() } : {}), terms, addedAt: before?.addedAt ?? now, points: one.points ?? before?.points ?? defaultPoints() };
+    return { key, text, short: (one.short?.trim() || shortOf(text)).slice(0, SCREENING_TEXT.short), must: one.must, ...(one.note?.trim() ? { note: one.note.trim() } : {}), terms, addedAt: before?.addedAt ?? now, ...(before && before.text !== text ? { changedAt: now } : before?.changedAt ? { changedAt: before.changedAt } : {}), points: one.points ?? before?.points ?? defaultPoints() };
   });
 }
 

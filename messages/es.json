@@ -9373,6 +9373,7 @@
         "voting": "Nota para los demás (opcional)"
       },
       "settle": {
+        "changeTitle": "Cambiar cómo está resuelto",
         "title": "Resolver este conflicto",
         "helpTitle": "Resolver un conflicto",
         "yourVote": "Su voto como revisor",
@@ -9399,6 +9400,7 @@
         "noneCanSplit": "Cada artículo aquí se decide con un voto, así que ninguno puede quedar en conflicto"
       },
       "matrix": {
+        "earlierWording": "Algunas respuestas de aquí se dieron a una redacción anterior de este criterio",
         "nameYou": "{name}, usted",
         "theirVote": "Voto de {name}",
         "on": "{name}, {criterion}",
