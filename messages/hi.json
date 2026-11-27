@@ -8119,7 +8119,8 @@
       "share": {
         "readsAll": "{you, select, true {आप हर लेख पढ़ते हैं} other {{name} हर लेख पढ़ते हैं}}",
         "about": "{more, select, true {{count, plural, one {हर व्यक्ति के लिए लगभग # लेख, और नए लेखों का हिस्सा} other {हर व्यक्ति के लिए लगभग # लेख, और नए लेखों का हिस्सा}}} other {{count, plural, one {हर व्यक्ति के लिए लगभग # लेख} other {हर व्यक्ति के लिए लगभग # लेख}}}}",
-        "range": "{more, select, true {हर व्यक्ति के लिए {least} से {most} लेख, और नए लेखों का हिस्सा} other {हर व्यक्ति के लिए {least} से {most} लेख}}"
+        "range": "{more, select, true {हर व्यक्ति के लिए {least} से {most} लेख, और नए लेखों का हिस्सा} other {हर व्यक्ति के लिए {least} से {most} लेख}}",
+        "onceJoined": "{count, plural, one {सभी आमंत्रित लोगों के जुड़ने पर हर व्यक्ति के लिए लगभग # लेख} other {सभी आमंत्रित लोगों के जुड़ने पर हर व्यक्ति के लिए लगभग # लेख}}"
       },
       "unsaved": "{count, plural, one {# बदलाव सहेजा नहीं गया} other {# बदलाव सहेजे नहीं गए}}",
       "unsavedCount": "{count, plural, other {# बिना सहेजे}}",

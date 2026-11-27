@@ -8119,7 +8119,8 @@
       "share": {
         "readsAll": "{you, select, true {You read every paper} other {{name} reads every paper}}",
         "about": "{more, select, true {{count, plural, one {About # paper for each person, and a share of the new ones} other {About # papers for each person, and a share of the new ones}}} other {{count, plural, one {About # paper for each person} other {About # papers for each person}}}}",
-        "range": "{more, select, true {{least} to {most} papers for each person, and a share of the new ones} other {{least} to {most} papers for each person}}"
+        "range": "{more, select, true {{least} to {most} papers for each person, and a share of the new ones} other {{least} to {most} papers for each person}}",
+        "onceJoined": "{count, plural, one {About # paper for each person once everyone invited joins} other {About # papers for each person once everyone invited joins}}"
       },
       "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
       "unsavedCount": "{count, plural, other {# unsaved}}",

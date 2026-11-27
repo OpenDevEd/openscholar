@@ -8119,7 +8119,8 @@
       "share": {
         "readsAll": "{you, select, true {あなたがすべての論文を読みます} other {{name} がすべての論文を読みます}}",
         "about": "{more, select, true {{count, plural, other {1 人あたり約 # 件と、新しい論文の一部}}} other {{count, plural, other {1 人あたり約 # 件}}}}",
-        "range": "{more, select, true {1 人あたり {least}〜{most} 件と、新しい論文の一部} other {1 人あたり {least}〜{most} 件}}"
+        "range": "{more, select, true {1 人あたり {least}〜{most} 件と、新しい論文の一部} other {1 人あたり {least}〜{most} 件}}",
+        "onceJoined": "{count, plural, other {招待した全員が参加すると、1人あたり約#件}}"
       },
       "unsaved": "{count, plural, other {未保存の変更 # 件}}",
       "unsavedCount": "{count, plural, other {未保存 # 件}}",
