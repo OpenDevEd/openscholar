@@ -1,4 +1,8 @@
 {
+  "invitedWaiting": "{count, plural, one {# invited reviewer} other {# invited reviewers}}",
+  "peopleHiddenUntilVote": "People's votes hidden until you vote",
+  "votesWereHiddenSays": "Votes were hidden from a reviewer only on papers that waited for their own vote. Now the screening is finished, every vote shows.",
+  "votesHiddenPeopleSays": "This screening hides other people's votes from a reviewer only on papers that still wait for that reviewer's own vote. The models' votes are advice, and show at any time.",
   "decision": {
     "include": "Include",
     "maybe": "Maybe",
@@ -20,6 +24,8 @@
     "invited": "Invited by email, votes once they join",
     "invitedFinished": "Invited by email. Votes once they have joined and this is reopened",
     "invitedToLook": "Invited by email, sees it once they join",
+    "notSent": "The invitation couldn't be sent",
+    "invitationEnds": "The invitation ends {when}",
     "toInvite": "Gets an invitation when you save",
     "toInviteAtStart": "Gets an invitation when you start",
     "invites": "Gets an invitation by email",
@@ -98,11 +104,15 @@
       "one": "First vote decides"
     },
     "means": {
+      "mostAdvice": "A paper is settled once every person given it has voted and more than half of them voted the same way. The models' votes are advice, and settle only a paper no person has. With no such majority it is a conflict.",
+      "allAdvice": "A paper is settled once every person given it has voted and all of them voted the same way. The models' votes are advice, and settle only a paper no person has. Any split among the people is a conflict.",
       "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
       "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. Where the models' votes count, at least one person has to be in that majority. With no such majority it is a conflict.",
       "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it. A model's vote settles only a paper no person has."
     },
     "says": {
+      "single": "Settled by one vote",
+      "person": "Settled by one person's vote",
       "all": "Settled when all agree",
       "most": "Settled when most agree",
       "one": "Settled by the first vote"

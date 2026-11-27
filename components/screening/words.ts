@@ -5,7 +5,8 @@
 // (how a paper is settled, why a record was left out, a reason for excluding). A page takes them from
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useSyncExternalStore } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { NAMED_REASONS, NO_REASON, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed, nameOn as nameOnScreening } from "./data";
 
@@ -18,11 +19,25 @@ const DAY = 86_400_000;
 /** The shared messages' translator and the formatter of numbers, dates and lists, for whichever language. `effort` names a model's reasoning effort as the model picker does, where the language isn't English. */
 type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter>; effort?: (level: string) => string; /** The clock "how long ago" is told by: a page's ticks each minute, so "just now" moves on. */ clock?: number };
 
+/** One clock for every page that tells how long ago: a single timer moves it on each minute, for as long as something reads it. */
+const minute = { at: 0, readers: new Set<() => void>(), timer: undefined as ReturnType<typeof setInterval> | undefined };
+const readMinute = (reader: () => void) => {
+  minute.readers.add(reader);
+  if (!minute.timer) {
+    minute.at = Date.now();
+    minute.timer = setInterval(() => { minute.at = Date.now(); minute.readers.forEach((one) => one()); }, 60_000);
+  }
+  return () => {
+    minute.readers.delete(reader);
+    if (!minute.readers.size) { clearInterval(minute.timer); minute.timer = undefined; }
+  };
+};
+
 /** The shared words of the reader's own language. */
 export function useWords() {
   const efforts = useTranslations("settingsAi.efforts");
-  // A clock that moves on each minute: every "how long ago" on the page is told by it, and the page draws again as it moves.
-  const clock = useNow({ updateInterval: 60_000 }).getTime();
+  // Every "how long ago" on the page is told by the one clock, and the page draws again as it moves on.
+  const clock = useSyncExternalStore(readMinute, () => minute.at || undefined, () => undefined);
   return wordsOf({ t: useTranslations("screening.words"), format: useFormatter(), effort: (level) => (efforts.has(level as "high") ? efforts(level as "high") : level), clock });
 }
 
@@ -121,6 +136,13 @@ export function wordsOf({ t, format, effort = (level) => level, clock }: Said) {
       t("started", { papers, sources, who: listed([people ? t("count.people", { count: people }) : "", models ? t("count.models", { count: models }) : ""].filter(Boolean)) || t("startedNobody") }),
     /** What stands where no paper has a result: on a Papers tab and in the Export dialog. "Yet" only while the screening is running. */
     empty: (result: Result | "all", finished: boolean) => (result === "all" || result === "conflict" || result === "waiting" ? t(`empty.${result}`) : t(`empty.${result}`, { finished: String(finished) })),
+    /** Where an invitation to vote or to look stands, wherever the screening lists it: one that couldn't be sent says so, and one about to end says when. */
+    invitedSays: (invitation: { failed: boolean; role: "editor" | "viewer"; expiresAt?: number }, finished: boolean) => {
+      const now = clock ?? Date.now();
+      if (invitation.failed) return t("person.notSent");
+      if (invitation.expiresAt !== undefined && invitation.expiresAt - now < 2 * DAY) return t("person.invitationEnds", { when: format.relativeTime(invitation.expiresAt, now) });
+      return t(invitation.role === "viewer" ? "person.invitedToLook" : finished ? "person.invitedFinished" : "person.invited");
+    },
     /** A date as a page shows it: how long ago for the last week, the day before that. */
     ago: (at: number, now = clock ?? Date.now()) => {
       const minutes = Math.max(0, Math.round((now - at) / 60_000));

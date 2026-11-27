@@ -7,7 +7,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Link2, UserPlus, X } from "@/components/icons";
+import { Check, Link2, Repeat, UserPlus, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
@@ -32,6 +32,8 @@ export type ShareEntry<R extends string> = {
   /** Whoever shares can change it. */
   onRole?: (role: R) => void;
   onRemove?: () => void;
+  /** Sends an invitation again. */
+  onResend?: () => void;
 };
 
 type ShareCandidate = { key: string; avatar: ReactNode; name: string; detail?: string; pick: () => void };
@@ -183,6 +185,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                           {fixed.label}
                         </RoleLabel>
                       ) : null}
+                      {entry.onResend ? <IconButton small label={t("resendTo", { name: entry.name })} icon={<Repeat className="size-3.5" />} onClick={entry.onResend} /> : null}
                       {entry.onRemove ? <IconButton small label={t("remove")} icon={<X className="size-3.5" />} onClick={entry.onRemove} /> : null}
                     </IdentityRow>
                   </motion.li>

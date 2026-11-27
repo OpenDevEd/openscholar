@@ -94,8 +94,8 @@ export function LibraryPageShell({
       </StickyPageHeader>
 
       {/* A wide page stops short of the assistant's button in the window's corner, so nothing in its card is ever under it. */}
-      {/* A wide page grows with the window up to the width it has on a 1440p screen (2560px, less the 5rem sidebar), and centres past that, so a 4K screen does not push everything to its edges. */}
-      <div className={wide ? "mx-auto w-full max-w-[155rem] p-4 sm:p-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
+      {/* A wide page grows with the window up to the width it has on a 1080p screen (1920px, less the 5rem sidebar), and centres past that, so a 4K screen does not push everything to its edges. */}
+      <div className={wide ? "mx-auto w-full max-w-[115rem] p-4 sm:p-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
         {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
         <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn className={fill ? FILL : undefined}>
           {intro ? <div className={cn("border-b border-border-subtle", stickyIntro && "rounded-t-2xl bg-card lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] lg:z-20")}>{intro}</div> : null}

@@ -79,14 +79,14 @@ const BAR_HEIGHT = "lg:min-h-[4.5rem]";
  */
 const PANE = "min-w-0 lg:min-h-0";
 /** From a window 1400px wide the page has three columns, the same for the bar under them: the queue, the paper, your answers. Under that, three would leave the paper a strip to read in (365px at 1280). */
-const WIDE = "min-[87.5rem]:grid-cols-[19rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[22rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+const WIDE = "min-[87.5rem]:grid-cols-[19rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[22rem_minmax(0,1fr)_32rem]";
 /** The same columns with the queue folded away: its column closes to nothing and the paper takes its width. The tracks keep their form, so the change slides. */
-const FOLDED = "min-[87.5rem]:grid-cols-[0rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[0rem_minmax(0,56rem)_minmax(28rem,1fr)]";
-/** The bar keeps its first part while the queue is folded. From 2xl, where the paper's column has a width of its own, the vote gives up the queue's width, so it still ends where the paper does and the last vote stays under the answers. */
-const BAR_FOLDED = "2xl:grid-cols-[22rem_minmax(0,34rem)_minmax(28rem,1fr)]";
+const FOLDED = "min-[87.5rem]:grid-cols-[0rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[0rem_minmax(0,1fr)_32rem]";
+/** The bar keeps its first part while the queue is folded. From 2xl the vote gives up the queue's width, so it still ends where the paper does and the last vote stays under the answers. */
+const BAR_FOLDED = "2xl:grid-cols-[22rem_minmax(0,1fr)_32rem]";
 const SLIDES = "min-[87.5rem]:transition-[grid-template-columns] min-[87.5rem]:duration-300 min-[87.5rem]:ease-out motion-reduce:transition-none";
-/** On a very wide window your answers and the last vote keep a width that reads, at the start of their column. */
-const BESIDE = "2xl:max-w-[36rem]";
+/** Your answers and the last vote fill their column: on a very wide window the paper takes the room, never a band left empty. */
+const BESIDE = "";
 /** From a laptop's width the queue's bar is a row of its own over the panes. Up to 1400px there are two columns under it: the paper, with your answers beside it, and the queue's list opens from the window's side. */
 const COLUMNS = "lg:max-[87.5rem]:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_minmax(0,1fr)]";
 /**
@@ -397,7 +397,8 @@ function Screen({ open }: { open: Open }) {
     else given[criterion] = answer;
     setAnswers((all) => ({ ...all, [paper.id]: given }));
     // On a paper you have voted on, the answer joins the vote at once.
-    if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).catch(failed);
+    // It stamps the vote anew: the step that cast it names the new moment, so Undo still takes it back.
+    if (mine && !resolving) open.vote(paper.id, { ...ballotOf(mine), answers: given }).then((at) => { const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved); if (at !== null && cast) cast.saved = at; }, failed);
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide || (advanced.current && Date.now() - advanced.current.at < 500 && (advanced.current.pageTurned || advanced.current.paper === paper.id))) return;
@@ -1020,7 +1021,7 @@ function Screen({ open }: { open: Open }) {
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
                   {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer")) && (what !== "undo" || Boolean(last?.mayUndo))).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
-                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
+                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key) => (rtl() ? ({ "→": "←", "←": "→" }[key] ?? key) : key)).map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>
                     </p>
                   ))}

@@ -941,6 +941,9 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
+    // Another reason is what its voter wrote: it stands beside the reason, as a settled paper's note does.
+    const written = reasonKey === OTHER_REASON ? cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note : undefined;
+    if (written) return <span className="flex min-w-0 items-center gap-2"><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
         {/* An excluded paper's reason narrows the table to it. A Maybe's unclear criterion names why and opens nothing: the list narrows by exclusion reasons only, and a link to it would open empty. */}

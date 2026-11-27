@@ -5009,6 +5009,8 @@
       "members": "{count, plural, other {# 位成员}}",
       "invited": "{when}已邀请",
       "notSent": "邮件未发出",
+      "sentAgain": "已再次向 {email} 发送邀请",
+      "resendTo": "再次向 {name} 发送邀请",
       "guests": "访客",
       "guestCount": "{count, plural, other {# 位访客}}",
       "noLimit": "无上限",
@@ -5054,6 +5056,8 @@
       "emptyKind": "还没有与你共享的这类内容",
       "emptySearch": "没有匹配的共享内容",
       "leave": "退出",
+      "leaveTitle": "退出 {name}？",
+      "leaveSays": "{kind, select, screening {你的投票仍然计入，你尚未投票的论文会交给其他审阅者。} other {}}它会从你的列表中移除。只有再次与你共享，你才能重新打开它。",
       "leaveFailed": "无法退出",
       "loading": "正在加载与你共享的内容",
       "more": "显示更多",
@@ -5073,12 +5077,14 @@
       "invitations": "邀请",
       "accept": "接受",
       "decline": "拒绝加入{name}的邀请",
+      "declineIt": "拒绝",
       "declined": "已拒绝加入{name}的邀请",
       "answerFailed": "操作未成功，请重试。",
       "goneTitle": "此链接已失效",
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
       "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录",
+      "otherAccount": "使用其他账户登录",
       "pointScreening": "{models, select, true {投票免费。{name} 支付筛选所用 AI 模型的费用。} other {投票免费。}}",
       "pointLooking": "查看免费",
       "finishedVote": "已标记为完成。重新打开后即可投票"
@@ -8069,7 +8075,7 @@
           },
           "columns": {
             "name": "列",
-            "what": "两个 CSV 文件中每列的内容"
+            "what": "论文和所有投票文件中每列的内容"
           }
         }
       },
@@ -8256,6 +8262,7 @@
         "helpRead": "筛选读取标题和摘要。Openscholar 索引中已有的记录会从索引获取这两项。自带 PDF 但没有摘要的论文会按 PDF 读取。",
         "helpLeft": "没有摘要也没有 PDF 的论文、没有标题的记录、找不到的 DOI 和无法打开的文件都无法筛选。它们会被排除在外，并在其来源的行中列出原因。",
         "stillReading": "仍在读取",
+        "sourcesLeft": "其来源留在 {workspace} 中。添加你自己的来源，在这里筛选其中的论文。",
         "found": "{soFar, select, true {目前找到 <n></n> 篇} other {找到 <n></n> 篇}}",
         "leftOut": "<n></n> 篇被排除在外",
         "merged": "已合并 <n></n> 个重复项",
@@ -8671,7 +8678,7 @@
         "finishedAdds": "此筛选已完成，因此在这里添加的人可以查看它。要添加审核人，请重新打开它，或在设置中添加，他们会在筛选重新打开后投票。",
         "addModel": "添加模型",
         "membersAdd": "{workspace} 的成员可以添加人员并更改每个人的权限。",
-        "full": "{workspace} 的套餐可将一个筛选共享给 {count, plural, other {# 名}}外部人员。移出一人才能再添加。",
+        "full": "{own, select, true {你的套餐} other {{workspace} 的套餐}}可将一个筛选共享给 {count, plural, other {# 名}}外部人员。撤回一份邀请，或在“人员”中移出一人，才能再添加。",
         "ownWorkspace": "它在他们自己的工作区中",
         "everyMember": "所有成员",
         "canChange": "可查看和更改",
@@ -8679,7 +8686,6 @@
         "votedOn": "{detail}，已投票 {done, number} / {of, number}",
         "modelRead": "{failed, select, true {{price}，处理了 {done, number} / {of, number}} other {{price}，已读取 {done, number} / {of, number}}}",
         "model": "模型",
-        "notSent": "邀请未能发送",
         "showMore": "显示更多人员",
         "reviewer": "审核人",
         "reviewerCan": "对分到的论文投票",
@@ -8755,6 +8761,7 @@
       "upToDate": "已是最新",
       "allSettled": "{finish, select, true {所有论文均已定案，可以完成} other {所有论文均已定案}}",
       "none": "{show, select, you {没有需要你处理的。} finished {没有已完成的筛选。} open {没有进行中的筛选。} other {没有筛选。}}",
+      "noneElse": "此工作区中没有其他需要你处理的内容。",
       "noneCalled": "{show, select, you {没有名为 {name} 且需要你处理的筛选。} finished {没有名为 {name} 的已完成筛选。} open {没有名为 {name} 的进行中筛选。} other {没有名为 {name} 的筛选。}}",
       "showEvery": "显示所有筛选",
       "pagerItems": "个筛选",
@@ -9008,7 +9015,7 @@
         "seeEvery": "查看全部 {count, number} 次检查",
         "atStart": "开始时",
         "startedWith": "{sources, plural, =0 {没有来源} other {{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}}}",
-        "finished": "{every, select, day {已完成期间不检查。重新打开即可恢复每天检查} week {已完成期间不检查。重新打开即可恢复每周检查} other {已完成期间不检查。重新打开即可恢复每月检查}}"
+        "finished": "{every, select, day {重新打开后将再次每天检查} week {重新打开后将再次每周检查} other {重新打开后将再次每月检查}}"
       },
       "flow": {
         "title": "PRISMA 流程",
@@ -9627,6 +9634,8 @@
         "invited": "已通过邮件邀请，加入后即可投票",
         "invitedFinished": "已通过邮件邀请。对方加入且筛选重新打开后即可投票",
         "invitedToLook": "已通过邮件邀请，加入后即可查看",
+        "notSent": "邀请未能发送",
+        "invitationEnds": "邀请将于{when}失效",
         "toInvite": "保存时会收到邀请",
         "toInviteAtStart": "开始时会收到邀请",
         "invites": "会通过邮件收到邀请",

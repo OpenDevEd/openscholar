@@ -64,7 +64,8 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       <DropdownMenuItem className={bar ? "xl:hidden" : undefined} onSelect={() => show("export")}><Download />{t("export")}</DropdownMenuItem>
       <DropdownMenuItem className={bar ? "sm:hidden" : undefined} onSelect={() => show("people")}><Users />{t("people")}</DropdownMenuItem>
       {/* Its emails go to its reviewers and to whoever settles its conflicts: each of them turns their own off here, and on again. */}
-      {live && (open.isReviewer || open.canResolve) ? (
+      {/* A finished screening's too: whoever an old email brought to stop them starts them again here. */}
+      {open.isReviewer || open.canResolve || open.guest === "editor" ? (
         <DropdownMenuItem onSelect={() => (open.emails ? show("stopEmails") : void open.setEmails(true).then(() => toast(t("menu.emailsOn"))).catch(failed(t)))}>
           {open.emails ? <><BellOff />{t("menu.stopEmails")}</> : <><Mail />{t("menu.emailAgain")}</>}
         </DropdownMenuItem>

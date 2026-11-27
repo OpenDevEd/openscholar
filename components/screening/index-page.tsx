@@ -86,7 +86,6 @@ export function ScreeningsIndex() {
   const begun = useKept((store) => store.drafts);
   const draft = Object.entries(begun).flatMap(([key, held]) => { const one = draftOf(key); return one && one.workspace === (here ?? "") ? [{ name: held.name.trim(), href: newHref(one.started) }] : []; })[0];
   const t = useTranslations("screening.list");
-  const tShared = useTranslations("workspaces.shared");
   const tp = useTranslations("screening.pieces");
   const words = useWords();
   const runBy = useRunBy("screeningJobs", { label: "startedBy", compact: true });
@@ -123,8 +122,8 @@ export function ScreeningsIndex() {
   const empty = counts !== undefined && counts.all === 0 && counts.you - invitedCount - (elsewhere?.length ?? 0) === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
-  // Under Needs you, an empty list below an invitation says how to answer it, not that nothing needs the person.
-  const none = searched ? t("noneCalled", { show, name: words.quoted(searched) }) : show === "you" && invited.length ? tShared("emptyInvited") : t("none", { show });
+  // Under Needs you, an empty list below invitations or screenings elsewhere says nothing else here needs the person, not that nothing does.
+  const none = searched ? t("noneCalled", { show, name: words.quoted(searched) }) : show === "you" && (invited.length || elsewhere?.length) ? t("noneElse") : t("none", { show });
   // A count still being read holds a digit's room, so the tabs keep their place when it arrives.
   const count = (value: number | undefined, tone?: "primary" | "success") => (value === undefined ? <span aria-hidden className="invisible tabular-nums">0</span> : <TabCount value={value} tone={tone} />);
 

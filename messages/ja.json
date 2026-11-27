@@ -5009,6 +5009,8 @@
       "members": "{count, plural, other {#人のメンバー}}",
       "invited": "{when}に招待",
       "notSent": "メールを送信できませんでした",
+      "sentAgain": "{email} に招待を再送しました",
+      "resendTo": "{name} に招待を再送",
       "guests": "ゲスト",
       "guestCount": "{count, plural, other {#人のゲスト}}",
       "noLimit": "上限なし",
@@ -5054,6 +5056,8 @@
       "emptyKind": "この種類の共有アイテムはまだありません",
       "emptySearch": "一致する共有アイテムはありません",
       "leave": "退出",
+      "leaveTitle": "{name} から抜けますか？",
+      "leaveSays": "{kind, select, screening {あなたの投票は引き続き数えられ、まだ投票していない論文は他のレビュアーに回ります。} other {}}リストから外れます。再び共有されない限り、もう一度開くことはできません。",
       "leaveFailed": "退出できませんでした",
       "loading": "共有アイテムを読み込んでいます",
       "more": "さらに表示",
@@ -5073,12 +5077,14 @@
       "invitations": "招待",
       "accept": "承諾",
       "decline": "{name}への招待を辞退",
+      "declineIt": "辞退する",
       "declined": "{name}への招待を辞退しました",
       "answerFailed": "うまくいきませんでした。もう一度お試しください。",
       "goneTitle": "このリンクはもう使えません",
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください",
+      "otherAccount": "別のアカウントでサインイン",
       "pointScreening": "{models, select, true {投票は無料です。スクリーニングのAIモデルの費用は{name}が支払います。} other {投票は無料です。}}",
       "pointLooking": "閲覧は無料です",
       "finishedVote": "完了になっています。再開されると投票できます"
@@ -8069,7 +8075,7 @@
           },
           "columns": {
             "name": "列",
-            "what": "2 つの CSV ファイルの各列に入っている内容"
+            "what": "論文とすべての投票のファイルの各列に入っている内容"
           }
         }
       },
@@ -8256,6 +8262,7 @@
         "helpRead": "スクリーニングではタイトルと要約を読みます。Openscholar のインデックスにあるレコードは、両方をそこから取ります。要約がなく PDF が付いている論文は、PDF を読みます。",
         "helpLeft": "要約も PDF もない論文、タイトルのないレコード、見つからない DOI、開けないファイルはスクリーニングできません。それぞれ除かれ、取得元の行に理由とともに一覧表示されます。",
         "stillReading": "読み取り中",
+        "sourcesLeft": "元のソースは {workspace} に残ります。ここで論文をスクリーニングするには、自分のソースを追加してください。",
         "found": "{soFar, select, true {現時点で <n></n> 件見つかりました} other {<n></n> 件見つかりました}}",
         "leftOut": "<n></n> 件を除外",
         "merged": "重複 <n></n> 件をまとめました",
@@ -8671,7 +8678,7 @@
         "finishedAdds": "このスクリーニングは完了しているため、ここで追加した人は閲覧できます。レビュアーを追加するには、再開するか、設定で追加してください。設定で追加した人は再開後に投票します。",
         "addModel": "モデルを追加",
         "membersAdd": "人の追加と、それぞれができることの変更は {workspace} のメンバーが行います。",
-        "full": "{workspace} のプランでは、スクリーニングを外部の{count, plural, other {# 人}}と共有できます。別の人を追加するには、誰かを外してください。",
+        "full": "{own, select, true {あなたのプランでは} other {{workspace} のプランでは}}、スクリーニングを外部の{count, plural, other {# 人}}と共有できます。別の人を追加するには、招待を取り消すか、参加者から誰かを外してください。",
         "ownWorkspace": "その人自身のワークスペースにあります",
         "everyMember": "メンバー全員",
         "canChange": "閲覧と変更ができます",
@@ -8679,7 +8686,6 @@
         "votedOn": "{detail}、{of, number} 件中 {done, number} 件に投票",
         "modelRead": "{failed, select, true {{price}、{of, number} 件中 {done, number} 件を処理} other {{price}、{of, number} 件中 {done, number} 件を読み取り}}",
         "model": "モデル",
-        "notSent": "招待を送れませんでした",
         "showMore": "さらに表示",
         "reviewer": "レビュアー",
         "reviewerCan": "割り当てられた論文に投票します",
@@ -8755,6 +8761,7 @@
       "upToDate": "最新です",
       "allSettled": "{finish, select, true {すべての論文の結果が確定しました。完了にできます} other {すべての論文の結果が確定しました}}",
       "none": "{show, select, you {対応が必要なものはありません。} finished {完了したスクリーニングはありません。} open {進行中のスクリーニングはありません。} other {スクリーニングはありません。}}",
+      "noneElse": "このワークスペースで他に対応が必要なものはありません。",
       "noneCalled": "{show, select, you {「{name}」という名前で対応が必要なものはありません。} finished {「{name}」という名前の完了したスクリーニングはありません。} open {「{name}」という名前の進行中のスクリーニングはありません。} other {「{name}」という名前のスクリーニングはありません。}}",
       "showEvery": "すべてのスクリーニングを表示",
       "pagerItems": "件",
@@ -9008,7 +9015,7 @@
         "seeEvery": "すべての確認を見る、計 {count, number} 件",
         "atStart": "開始時",
         "startedWith": "{sources, plural, =0 {ソースなし} other {{sources, plural, other {取得元 # 件}}から{known, select, true {{papers, plural, other {論文 # 件}}} other {論文}}}}",
-        "finished": "{every, select, day {完了している間は確認しません。再開すると再び毎日確認します} week {完了している間は確認しません。再開すると再び毎週確認します} other {完了している間は確認しません。再開すると再び毎月確認します}}"
+        "finished": "{every, select, day {再開すると再び毎日確認します} week {再開すると再び毎週確認します} other {再開すると再び毎月確認します}}"
       },
       "flow": {
         "title": "PRISMA フロー",
@@ -9627,6 +9634,8 @@
         "invited": "メールで招待済み。参加すると投票できます",
         "invitedFinished": "メールで招待済み。参加し、スクリーニングが再開されると投票できます",
         "invitedToLook": "メールで招待済み。参加すると閲覧できます",
+        "notSent": "招待を送れませんでした",
+        "invitationEnds": "招待の期限は{when}",
         "toInvite": "保存すると招待が送られます",
         "toInviteAtStart": "開始すると招待が送られます",
         "invites": "メールで招待が送られます",

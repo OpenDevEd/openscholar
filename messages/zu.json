@@ -5009,6 +5009,8 @@
       "members": "{count, plural, one {# ilungu} other {# amalungu}}",
       "invited": "Kumenyiwe {when}",
       "notSent": "Imeyili ayithunyelwanga",
+      "sentAgain": "Isimemo siphinde sathunyelwa ku-{email}",
+      "resendTo": "Thumela isimemo ku-{name} futhi",
       "guests": "Izivakashi",
       "guestCount": "{count, plural, one {# isivakashi} other {# izivakashi}}",
       "noLimit": "Akukho mkhawulo",
@@ -5054,6 +5056,8 @@
       "emptyKind": "Akukho okwabelwane nawe kwalolu hlobo okwamanje",
       "emptySearch": "Akukho okwabelwane nawe okuhambisanayo",
       "leave": "Shiya",
+      "leaveTitle": "Shiya i-{name}?",
+      "leaveSays": "{kind, select, screening {Amavoti akho ayaqhubeka ebalwa, futhi amaphepha obungakawavoteli aya kwabanye ababuyekezi. } other {}}Kuyaphuma ohlwini lwakho. Ungakuvula futhi kuphela uma kwabelwana nawe futhi.",
       "leaveFailed": "Ayikwazanga ukushiya lokhu",
       "loading": "Iyalayisha okwabelwane nawe",
       "more": "Bonisa okwengeziwe",
@@ -5073,12 +5077,14 @@
       "invitations": "Izimemo",
       "accept": "Yamukela",
       "decline": "Yenqaba isimemo sika-{name}",
+      "declineIt": "Yenqaba",
       "declined": "Isimemo sika-{name} senqatshiwe",
       "answerFailed": "Akuphumelelanga. Zama futhi.",
       "goneTitle": "Lo xhumanisi asisavulekile",
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo",
+      "otherAccount": "Ngena ngenye i-akhawunti",
       "pointScreening": "{models, select, true {Ukuvota kumahhala. U-{name} ukhokhela amamodeli e-AI okuhlunga.} other {Ukuvota kumahhala.}}",
       "pointLooking": "Ukulibuka kumahhala",
       "finishedVote": "Kumakwe ukuthi kuqediwe. Ungavota uma sekuvulwe kabusha"
@@ -8069,7 +8075,7 @@
           },
           "columns": {
             "name": "Amakholomu",
-            "what": "Lokho ikholomu ngayinye yamafayela amabili e-CSV ekuphethe"
+            "what": "Lokho ikholomu ngayinye ekuphethe emafayeleni e-Amaphepha ne-Onke amavoti"
           }
         }
       },
@@ -8256,6 +8262,7 @@
         "helpRead": "Ukuskrini kufunda isihloko nesifingqo. Irekhodi inkomba ka-Openscholar eyaziyo lithatha kokubili lapho. Iphepha elifika ne-PDF yalo futhi elingenasifingqo lifundwa njenge-PDF.",
         "helpLeft": "Iphepha elingenasifingqo nengenayo i-PDF, irekhodi elingenasihloko, i-DOI engatholakali nefayela elingavuleki akukwazi ukuskrinwa. Ngakunye kushiywa ngaphandle futhi kubhalwe nesizathu emugqeni womthombo okuvela kuwo.",
         "stillReading": "Kusafundwa",
+        "sourcesLeft": "Imithombo yayo ihlala ku-{workspace}. Engeza eyakho ukuze uskrine amaphepha ayo lapha.",
         "found": "{soFar, select, true {<n></n> atholakele kuze kube manje} other {<n></n> atholakele}}",
         "leftOut": "<n></n> ashiywe ngaphandle",
         "merged": "{count, plural, one {<n></n> ikhophi ihlanganisiwe} other {<n></n> amakhophi ahlanganisiwe}}",
@@ -8671,7 +8678,7 @@
         "finishedAdds": "Lokhu kuskrini kuqediwe, ngakho abantu abengezwa lapha bangakubuka. Ukuze wengeze umbuyekezi, kuvule futhi, noma umengeze ezilungiselelweni, lapho ezovota khona uma sekuvulwe futhi.",
         "addModel": "Engeza imodeli",
         "membersAdd": "Amalungu e-{workspace} engeza abantu futhi ashintsha lokho ngamunye angakwenza.",
-        "full": "Uhlelo lwe-{workspace} lwabelana ngokuskrini {count, plural, one {nomuntu ongu-#} other {nabantu abangu-#}} abangaphandle kwayo. Susa oyedwa ukuze wengeze omunye.",
+        "full": "{own, select, true {Uhlelo lwakho lwabelana} other {Uhlelo lwe-{workspace} lwabelana}} ngokuskrini {count, plural, one {nomuntu ongu-#} other {nabantu abangu-#}} abavela ngaphandle. Hoxisa isimemo, noma ususe othile kokuthi Abantu, ukuze wengeze omunye.",
         "ownWorkspace": "Kusesikhaleni sabo sokusebenzela",
         "everyMember": "Wonke amalungu",
         "canChange": "Angakubona futhi akushintshe",
@@ -8679,7 +8686,6 @@
         "votedOn": "{detail}, uvote ku-{done, number} kwa-{of, number}",
         "modelRead": "{failed, select, true {{price}, idlule ku-{done, number} kwa-{of, number}} other {{price}, ifunde {done, number} kwa-{of, number}}}",
         "model": "Imodeli",
-        "notSent": "Isimemo asikwazanga ukuthunyelwa",
         "showMore": "Bonisa abantu abengeziwe",
         "reviewer": "Umbuyekezi",
         "reviewerCan": "Uvota kumaphepha awatholayo",
@@ -8755,6 +8761,7 @@
       "upToDate": "Kusesikhathini",
       "allSettled": "{finish, select, true {Onke amaphepha axazululiwe, sekulungele ukuqedwa} other {Onke amaphepha axazululiwe}}",
       "none": "{show, select, you {Akukho okudinga wena.} finished {Azikho izinkuskrini eziqediwe.} open {Azikho izinkuskrini eziqhubekayo.} other {Azikho izinkuskrini.}}",
+      "noneElse": "Akukho okunye kule ndawo yokusebenzela okudinga wena.",
       "noneCalled": "{show, select, you {Akukho okubizwa ngokuthi {name} okudinga wena.} finished {Azikho izinkuskrini eziqediwe ezibizwa ngokuthi {name}.} open {Azikho izinkuskrini eziqhubekayo ezibizwa ngokuthi {name}.} other {Azikho izinkuskrini ezibizwa ngokuthi {name}.}}",
       "showEvery": "Bonisa zonke izinkuskrini",
       "pagerItems": "izinkuskrini",
@@ -9008,7 +9015,7 @@
         "seeEvery": "Bona konke ukuhlola, kukonke {count, number}",
         "atStart": "Ekuqaleni",
         "startedWith": "{sources, plural, =0 {Akukho mithombo} other {{known, select, true {{papers, plural, one {# iphepha} other {# amaphepha}}} other {Amaphepha}} avela ku-{sources, plural, one {# umthombo} other {# imithombo}}}}",
-        "finished": "{every, select, day {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe nsuku zonke} week {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe masonto onke} other {Akukho ukuhlola ngesikhathi kuqediwe. Kuvule futhi ukuze kuphinde kuhlolwe njalo ngenyanga}}"
+        "finished": "{every, select, day {Izophinde ihlole nsuku zonke uma isivulwe kabusha} week {Izophinde ihlole masonto onke uma isivulwe kabusha} other {Izophinde ihlole njalo ngenyanga uma isivulwe kabusha}}"
       },
       "flow": {
         "title": "Ukugeleza kwe-PRISMA",
@@ -9627,6 +9634,8 @@
         "invited": "Umenywe nge-imeyili, uvota uma esejoyinile",
         "invitedFinished": "Umenywe nge-imeyili. Uvota uma esejoyinile futhi ukuskrini sekuvulwe futhi",
         "invitedToLook": "Umenywe nge-imeyili, uyakubona uma esejoyinile",
+        "notSent": "Isimemo asikwazanga ukuthunyelwa",
+        "invitationEnds": "Isimemo siphela {when}",
         "toInvite": "Uthola isimemo uma ugcina",
         "toInviteAtStart": "Uthola isimemo uma uqala",
         "invites": "Uthola isimemo nge-imeyili",

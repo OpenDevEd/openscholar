@@ -26,9 +26,10 @@ async function paperOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">,
 /** Stamps a paper a person voted on or settled, for the bookkeeping worker: their vote or decision lets go of a result held through a change of settings. */
 const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">) => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, reopen: "vote" });
 
-/** A reason to exclude is one of the screening's criteria, or one of the others. */
-function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
-  if (reason !== undefined && !job.criteria?.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
+/** A reason to exclude is one of the screening's criteria, or one of the others. Undo puts back a vote as it was cast, by a criterion taken off since too. */
+function requireReason(job: Doc<"screeningJobs">, reason: string | undefined, undoing: boolean) {
+  const criteria = [...(job.criteria ?? []), ...(undoing ? (job.retiredCriteria ?? []) : [])];
+  if (reason !== undefined && !criteria.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
 const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by Undo or Take back: only while it is still the one cast at that moment, never one changed since. */ onlyAt: v.optional(v.number()) };
@@ -37,7 +38,7 @@ const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults
 async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyAt }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyAt?: number; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
-  requireReason(job, reason);
+  requireReason(job, reason, onlyAt !== undefined);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
@@ -48,7 +49,8 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
     await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined });
     return void (await stamp(ctx, paperId));
   }
-  const known = new Set(job.criteria?.map((criterion) => criterion.key));
+  // Undo puts back the answers as they were, to criteria taken off since too.
+  const known = new Set([...(job.criteria ?? []), ...(onlyAt !== undefined ? (job.retiredCriteria ?? []) : [])].map((criterion) => criterion.key));
   // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
   const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: Date.now(), flagged: undefined };
@@ -123,7 +125,7 @@ export const resolve = workspaceMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to settle a paper.");
     const paper = await paperOf(ctx, jobId, paperId);
     if (onlyAt !== undefined && paper.resolved?.at !== onlyAt) return null;
-    requireReason(job, reason);
+    requireReason(job, reason, onlyAt !== undefined);
     // A note too long is refused, as a vote's is: none is cut short without a word.
     if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
     const at = Date.now();

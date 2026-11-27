@@ -26,6 +26,7 @@ import { GuestMeter } from "@/components/workspaces/share-dialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { changeOpens, changeSays } from "./activity-words";
@@ -175,6 +176,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
   const unshare = useWorkspaceMutation(api.sharing.guests.remove);
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
+  const tShare = useTranslations("workspaces.share");
 
   const workspace = screening.workspace;
   const people = inOrder(peopleOf(screening), state.me);
@@ -262,7 +264,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   // A member typed by address is offered as the member, never invited: an invitation to them can't be sent.
                   has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email) || (members?.page ?? []).some((person) => person.email?.toLowerCase() === email),
                   // The plan's guest places are for people from outside: an organization's own members can still be added as reviewers once they are full.
-                  ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.full", { workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.full", { workspace: workspace.name, count: limit }) }) : {}),
+                  ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.full", { own: "false", workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.full", { own: String(workspace.kind !== "organization"), workspace: workspace.name, count: limit }) }) : {}),
                 }
               : undefined
           }
@@ -300,9 +302,11 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               key: invitation.email,
               avatar: <EmailAvatar />,
               name: invitation.email,
-              detail: invitation.delivery === "failed" ? t("peopleDialog.notSent") : invitation.role === "editor" ? words.t(finished ? "person.invitedFinished" : "person.invited") : words.t("person.invitedToLook"),
-              role: (invitation.role === "editor" ? "reviewer" : "viewer") as Role,
-              onRole: (role: Role) => void setRole({ kind: "screening", id, guest: { email: invitation.email }, role: GUEST_ROLE[role] }).catch(failed),
+              detail: words.invitedSays({ failed: invitation.delivery === "failed", role: invitation.role, expiresAt: invitation.expiresAt }, finished),
+              // Sending it again restarts its seven days, and sends an invitation that couldn't be sent.
+              onResend: () => void invite({ kind: "screening", id, email: invitation.email, role: invitation.role }).then(() => toast(tShare("sentAgain", { email: invitation.email })), failed),
+              // Made a reviewer from here while the screening is open, as a guest is.
+              ...(finished ? { role: { kind: invitation.role === "editor" ? ("edit" as const) : ("view" as const), label: t(invitation.role === "editor" ? "peopleDialog.reviewer" : "peopleDialog.viewer") } } : { role: (invitation.role === "editor" ? "reviewer" : "viewer") as Role, onRole: (role: Role) => void setRole({ kind: "screening", id, guest: { email: invitation.email }, role: GUEST_ROLE[role] }).catch(failed) }),
               onRemove: () => void unshare({ kind: "screening", id, guest: { email: invitation.email } }).catch(failed),
             })),
             // A role none of the roles is draws nothing beside the row.
@@ -334,7 +338,7 @@ export function useSharing(jobId: Id<"screeningJobs">) {
     /** Gives it to someone picked by name, to vote: a guest it is shared with already is made one who votes (convex/sharing/guests.ts `add`). */
     give: (personId: Id<"users">) => give({ kind: "screening", id: jobId, personId, role: "editor" }),
     /** Invites an address to vote. */
-    invite: (email: string) => invite({ kind: "screening", id: jobId, email, role: "editor" }),
+    invite: (email: string, replacing: string[] = []) => invite({ kind: "screening", id: jobId, email, role: "editor", ...(replacing.length ? { replacing } : {}) }),
     /** Takes back an invitation that waits for its answer. */
     uninvite: (email: string) => unshare({ kind: "screening", id: jobId, guest: { email } }),
     /** Makes a guest who votes one who looks. */

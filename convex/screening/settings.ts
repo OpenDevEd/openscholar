@@ -185,6 +185,9 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
+  // Someone who no longer settles its conflicts and doesn't review it can't answer the questions put to them as its settler: those close.
+  const was = job.rule?.resolver;
+  if (was && was !== saved.rule?.resolver && !plan.reviewers.some((one) => one.userId === was && one.left === undefined)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId: was });
   // A change to its rule or its criteria is a version of them from now on, which the whole record lists.
   if (JSON.stringify(job.rule) !== JSON.stringify(saved.rule) || JSON.stringify(job.criteria ?? []) !== JSON.stringify(saved.criteria ?? [])) await keepVersion(ctx, saved, actor.userId);
 

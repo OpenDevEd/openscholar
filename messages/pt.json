@@ -5010,6 +5010,8 @@
       "members": "{count, plural, one {# membro} other {# membros}}",
       "invited": "Convidado {when}",
       "notSent": "O email não foi enviado",
+      "sentAgain": "O convite foi enviado de novo para {email}",
+      "resendTo": "Enviar o convite de novo para {name}",
       "guests": "Convidados",
       "guestCount": "{count, plural, one {# convidado} other {# convidados}}",
       "noLimit": "Sem limite",
@@ -5055,6 +5057,8 @@
       "emptyKind": "Ainda não há nada partilhado consigo deste tipo",
       "emptySearch": "Nada partilhado consigo corresponde",
       "leave": "Sair",
+      "leaveTitle": "Sair de {name}?",
+      "leaveSays": "{kind, select, screening {Os seus votos continuam a contar, e os artigos em que não tinha votado passam para os outros revisores. } other {}}Sai da sua lista. Só poderá abri-lo de novo se for partilhado consigo outra vez.",
       "leaveFailed": "Não foi possível sair",
       "loading": "A carregar o que está partilhado consigo",
       "more": "Mostrar mais",
@@ -5074,12 +5078,14 @@
       "invitations": "Convites",
       "accept": "Aceitar",
       "decline": "Recusar o convite para {name}",
+      "declineIt": "Recusar",
       "declined": "Convite para {name} recusado",
       "answerFailed": "Não foi possível. Tente novamente.",
       "goneTitle": "Esta ligação já não está aberta",
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
       "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado",
+      "otherAccount": "Iniciar sessão com outra conta",
       "pointScreening": "{models, select, true {Votar é grátis. {name} paga os modelos de IA da triagem.} other {Votar é grátis.}}",
       "pointLooking": "Vê-lo é grátis",
       "finishedVote": "Marcado como concluído. Pode votar quando for reaberto"
@@ -8070,7 +8076,7 @@
           },
           "columns": {
             "name": "Colunas",
-            "what": "O que cada coluna dos dois ficheiros CSV contém"
+            "what": "O que cada coluna contém nos ficheiros de Artigos e Todos os votos"
           }
         }
       },
@@ -8257,6 +8263,7 @@
         "helpRead": "Uma triagem lê um título e um resumo. Um registo que o índice do Openscholar conhece vai buscar ambos lá. Um artigo que vem com o seu próprio PDF e não tem resumo é lido a partir do PDF.",
         "helpLeft": "Um artigo sem resumo nem PDF, um registo sem título, um DOI que não é encontrado e um ficheiro que não abre não podem ser triados. Cada um fica de fora e aparece na linha da sua fonte com o motivo.",
         "stillReading": "Ainda a ler",
+        "sourcesLeft": "As fontes ficam em {workspace}. Adicione as suas para fazer a triagem dos artigos aqui.",
         "found": "{soFar, select, true {<n></n> encontrados até agora} other {<n></n> encontrados}}",
         "leftOut": "<n></n> de fora",
         "merged": "{count, plural, one {<n></n> duplicado fundido} other {<n></n> duplicados fundidos}}",
@@ -8672,7 +8679,7 @@
         "finishedAdds": "Esta triagem está terminada, por isso as pessoas adicionadas aqui podem vê-la. Para adicionar um revisor, reabra-a, ou adicione-o nas Definições, onde vota depois de a triagem ser reaberta.",
         "addModel": "Adicionar um modelo",
         "membersAdd": "Os membros de {workspace} adicionam pessoas e alteram o que cada uma pode fazer.",
-        "full": "O plano de {workspace} partilha uma triagem com {count, plural, one {# pessoa} other {# pessoas}} de fora. Retire uma para adicionar outra.",
+        "full": "{own, select, true {O seu plano partilha} other {O plano de {workspace} partilha}} uma triagem com {count, plural, one {# pessoa} other {# pessoas}} de fora. Retire um convite, ou remova alguém em Pessoas, para adicionar outra.",
         "ownWorkspace": "Está no espaço de trabalho pessoal dessa pessoa",
         "everyMember": "Todos os membros",
         "canChange": "Pode ver e alterar",
@@ -8680,7 +8687,6 @@
         "votedOn": "{detail}, votou em {done, number} de {of, number}",
         "modelRead": "{failed, select, true {{price}, conseguiu ler {done, number} de {of, number}} other {{price}, leu {done, number} de {of, number}}}",
         "model": "Modelo",
-        "notSent": "Não foi possível enviar o convite",
         "showMore": "Mostrar mais pessoas",
         "reviewer": "Revisor",
         "reviewerCan": "Vota nos artigos que recebe",
@@ -8756,6 +8762,7 @@
       "upToDate": "Atualizada",
       "allSettled": "{finish, select, true {Todos os artigos estão decididos, pronto a terminar} other {Todos os artigos estão decididos}}",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
+      "noneElse": "Mais nada neste espaço de trabalho precisa de você.",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
       "pagerItems": "triagens",
@@ -9009,7 +9016,7 @@
         "seeEvery": "Ver todas as verificações, {count, number} no total",
         "atStart": "No início",
         "startedWith": "{sources, plural, =0 {Sem fontes} other {{known, select, true {{papers, plural, one {# artigo} other {# artigos}}} other {Artigos}} de {sources, plural, one {# fonte} other {# fontes}}}}",
-        "finished": "{every, select, day {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todos os dias} week {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todas as semanas} other {Sem verificações enquanto está terminada. Reabra-a para voltar a verificar todos os meses}}"
+        "finished": "{every, select, day {Volta a verificar todos os dias quando for reaberto} week {Volta a verificar todas as semanas quando for reaberto} other {Volta a verificar todos os meses quando for reaberto}}"
       },
       "flow": {
         "title": "Fluxo PRISMA",
@@ -9628,6 +9635,8 @@
         "invited": "Convidado por email, vota quando aderir",
         "invitedFinished": "Convidado por email. Vota depois de aderir e de a triagem ser reaberta",
         "invitedToLook": "Convidado por email, vê a triagem quando aderir",
+        "notSent": "Não foi possível enviar o convite",
+        "invitationEnds": "O convite expira {when}",
         "toInvite": "Recebe um convite quando guardar",
         "toInviteAtStart": "Recebe um convite quando iniciar",
         "invites": "Recebe um convite por email",

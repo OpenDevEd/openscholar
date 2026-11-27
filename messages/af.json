@@ -5010,6 +5010,8 @@
       "members": "{count, plural, one {# lid} other {# lede}}",
       "invited": "Uitgenooi {when}",
       "notSent": "Die e-pos is nie gestuur nie",
+      "sentAgain": "Die uitnodiging is weer aan {email} gestuur",
+      "resendTo": "Stuur die uitnodiging weer aan {name}",
       "guests": "Gaste",
       "guestCount": "{count, plural, one {# gas} other {# gaste}}",
       "noLimit": "Geen limiet nie",
@@ -5055,6 +5057,8 @@
       "emptyKind": "Niks van hierdie soort met jou gedeel nog nie",
       "emptySearch": "Niks wat met jou gedeel is, pas nie",
       "leave": "Verlaat",
+      "leaveTitle": "Verlaat {name}?",
+      "leaveSays": "{kind, select, screening {Jou stemme tel steeds, en die artikels waarop jy nog nie gestem het nie, gaan na die ander beoordelaars. } other {}}Dit verlaat jou lys. Jy kan dit net weer oopmaak as dit weer met jou gedeel word.",
       "leaveFailed": "Kon dit nie verlaat nie",
       "loading": "Laai wat met jou gedeel is",
       "more": "Wys meer",
@@ -5074,12 +5078,14 @@
       "invitations": "Uitnodigings",
       "accept": "Aanvaar",
       "decline": "Wys die uitnodiging na {name} van die hand",
+      "declineIt": "Wys van die hand",
       "declined": "Die uitnodiging na {name} is van die hand gewys",
       "answerFailed": "Dit het nie deurgegaan nie. Probeer weer.",
       "goneTitle": "Hierdie skakel is nie meer oop nie",
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is",
+      "otherAccount": "Meld aan met ’n ander rekening",
       "pointScreening": "{models, select, true {Stem is gratis. {name} betaal vir die sifting se KI-modelle.} other {Stem is gratis.}}",
       "pointLooking": "Om daarna te kyk is gratis",
       "finishedVote": "As klaar gemerk. Jy kan stem sodra dit heropen word"
@@ -8070,7 +8076,7 @@
           },
           "columns": {
             "name": "Kolomme",
-            "what": "Wat elke kolom van die twee CSV-lêers bevat"
+            "what": "Wat elke kolom bevat in die lêers van Artikels en Elke stem"
           }
         }
       },
@@ -8257,6 +8263,7 @@
         "helpRead": "’n Siftering lees ’n titel en ’n opsomming. ’n Rekord wat Openscholar se indeks ken, neem albei daarvandaan. ’n Artikel wat met sy eie PDF kom en geen opsomming het nie, word as die PDF gelees.",
         "helpLeft": "’n Artikel sonder opsomming en sonder PDF, ’n rekord sonder titel, ’n DOI wat nie gevind word nie en ’n lêer wat nie oopgaan nie, kan nie gesif word nie. Elkeen word uitgelaat en met die rede op sy bron se ry gelys.",
         "stillReading": "Lees nog",
+        "sourcesLeft": "Sy bronne bly in {workspace}. Voeg jou eie by om hul artikels hier te sif.",
         "found": "{soFar, select, true {<n></n> tot dusver gevind} other {<n></n> gevind}}",
         "leftOut": "<n></n> uitgelaat",
         "merged": "{count, plural, one {<n></n> duplikaat saamgevoeg} other {<n></n> duplikate saamgevoeg}}",
@@ -8672,7 +8679,7 @@
         "finishedAdds": "Hierdie siftering is klaar, so mense wat hier bygevoeg word, kan daarna kyk. Om ’n beoordelaar by te voeg, heropen dit, of voeg hulle in Instellings by, waar hulle stem sodra dit heropen is.",
         "addModel": "Voeg ’n model by",
         "membersAdd": "Lede van {workspace} voeg mense by en verander wat elkeen mag doen.",
-        "full": "{workspace} se plan deel ’n siftering met {count, plural, one {# persoon} other {# mense}} buite dit. Haal een af om nog een by te voeg.",
+        "full": "{own, select, true {Jou plan deel} other {{workspace} se plan deel}} ’n siftering met {count, plural, one {# persoon} other {# mense}} van buite. Trek ’n uitnodiging terug, of verwyder iemand in Mense, om nog een by te voeg.",
         "ownWorkspace": "Dit is in hul eie werkruimte",
         "everyMember": "Elke lid",
         "canChange": "Kan dit sien en verander",
@@ -8680,7 +8687,6 @@
         "votedOn": "{detail}, op {done, number} van {of, number} gestem",
         "modelRead": "{failed, select, true {{price}, deur {done, number} van {of, number} gekom} other {{price}, {done, number} van {of, number} gelees}}",
         "model": "Model",
-        "notSent": "Die uitnodiging kon nie gestuur word nie",
         "showMore": "Wys meer mense",
         "reviewer": "Beoordelaar",
         "reviewerCan": "Stem op die artikels wat hulle kry",
@@ -8756,6 +8762,7 @@
       "upToDate": "Op datum",
       "allSettled": "{finish, select, true {Elke artikel is beslis, gereed om af te sluit} other {Elke artikel is beslis}}",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
+      "noneElse": "Niks anders in hierdie werkruimte het jou nodig nie.",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
       "pagerItems": "sifterings",
@@ -9009,7 +9016,7 @@
         "seeEvery": "Sien elke kontrole, {count, number} altesaam",
         "atStart": "By die begin",
         "startedWith": "{sources, plural, =0 {Geen bronne} other {{known, select, true {{papers, plural, one {# artikel} other {# artikels}}} other {Artikels}} uit {sources, plural, one {# bron} other {# bronne}}}}",
-        "finished": "{every, select, day {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke dag te kontroleer} week {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke week te kontroleer} other {Geen kontroles terwyl dit klaar is nie. Heropen dit om weer elke maand te kontroleer}}"
+        "finished": "{every, select, day {Kyk weer elke dag sodra dit heropen is} week {Kyk weer elke week sodra dit heropen is} other {Kyk weer elke maand sodra dit heropen is}}"
       },
       "flow": {
         "title": "PRISMA-vloei",
@@ -9628,6 +9635,8 @@
         "invited": "Per e-pos uitgenooi, stem sodra hulle aansluit",
         "invitedFinished": "Per e-pos uitgenooi. Stem sodra hulle aangesluit het en dit heropen is",
         "invitedToLook": "Per e-pos uitgenooi, sien dit sodra hulle aansluit",
+        "notSent": "Die uitnodiging kon nie gestuur word nie",
+        "invitationEnds": "Die uitnodiging verval {when}",
         "toInvite": "Kry ’n uitnodiging wanneer jy stoor",
         "toInviteAtStart": "Kry ’n uitnodiging wanneer jy begin",
         "invites": "Kry ’n uitnodiging per e-pos",
