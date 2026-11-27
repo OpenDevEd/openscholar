@@ -9145,7 +9145,6 @@
         "settledWithoutYou": "حُسمت دون صوتك",
         "waitingForYou": "بانتظار صوتك",
         "settleConflict": "احسم هذا التعارض",
-        "everyonesVotes": "أصوات الجميع",
         "reopen": "إعادة الفتح",
         "waitingToSettle": "{you, select, true {بانتظار أن تحسمها} other {بانتظار أن يحسمها {name}}}",
         "everyConflict": "كل التعارضات",

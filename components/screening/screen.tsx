@@ -39,7 +39,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, leansOpen, modelsAdvise, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, leansOpen, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -66,6 +66,7 @@ const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" 
 const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
 /** The queue's sheet is open: the one value its key in the address takes. */
 const LIST_OPEN = ["open"] as const;
+const WHY_OPEN = ["reasons"] as const;
 const ANSWER_KEY: Record<Answer, string> = { yes: "Y", no: "N", unclear: "U" };
 /** The bar is one row of controls on a wide screen, and grows by a row where a note is being written. */
 const BAR_HEIGHT = "lg:min-h-[4.5rem]";
@@ -197,7 +198,12 @@ function Screen({ open }: { open: Open }) {
   const items = kept ? insertAt(listed.items, stood?.id === paper.id ? Math.min(stood.at, listed.items.length) : 0, paper) : listed.items;
   const at = paper ? items.findIndex((one) => one.id === paper.id) : -1;
   const sentences = useMemo(() => sentencesOf(paper?.abstract ?? ""), [paper?.abstract]);
-  const [reasonFor, setReasonFor] = useState<string | null>(null);
+  // Why a paper is excluded: on a phone a sheet over the page, a step in the history as the queue's sheet is, so Back closes it and stays on the paper (./address.ts). A menu beside the button on a wider screen is a choice in progress, not a step.
+  const [reasonMenu, setReasonMenu] = useState<string | null>(null);
+  const [reasonSheet, setReasonSheet] = useOpenInAddress("why", WHY_OPEN);
+  const reasonFor = tablet ? (reasonSheet && paper ? paper.id : null) : reasonMenu;
+  /** Opens or closes the reasons. Closed by what takes its own step (a vote, another paper), the sheet goes in place; dismissed, it steps back. */
+  const setReasonFor = (next: string | null, { inPlace = true }: { inPlace?: boolean } = {}) => (tablet ? setReasonSheet(next ? "reasons" : null, { inPlace }) : setReasonMenu(next));
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
   const [keysOpen, setKeysOpen] = useState(false);
@@ -326,7 +332,8 @@ function Screen({ open }: { open: Open }) {
     const note = (notes[paper.id] !== undefined ? notes[paper.id] : resolving ? "" : (mine?.note ?? "")).trim() || undefined;
     // A reason no criterion covers is written down: the note field asks for it, and the vote is saved once there is one.
     if (decision === "exclude" && reason === OTHER_REASON && !note) {
-      setReasonFor(null);
+      // The sheet steps back before the note opens, so Back from the note leaves the paper as it was.
+      setReasonFor(null, { inPlace: false });
       return setWriting(paper.id);
     }
     const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() };
@@ -651,7 +658,7 @@ function Screen({ open }: { open: Open }) {
   const everyonesVotes = paper ? (
                     <Section
                       // As advice the models' votes settle nothing on a paper a person has: the heading says so on this paper's votes, never on a paper only models voted on.
-                      title={modelsAdvise(screening.rule, cast.filter((one) => one.reviewer.kind === "person").length, cast.filter((one) => one.reviewer.kind === "model").length) ? t("votes.titleAdvice") : t("votes.title")}
+                      title={t(votesTitle(screening.rule, cast))}
                       help={<VotesHelp blind={blind} />}
                       aside={
                         !visible ? (
@@ -1133,7 +1140,7 @@ function Screen({ open }: { open: Open }) {
 
       {/* On a phone the reasons open from the foot of the screen. */}
       {paper && tablet ? (
-        <Sheet open={reasonFor === paper.id} onOpenChange={(next) => !next && setReasonFor(null)}>
+        <Sheet open={reasonFor === paper.id} onOpenChange={(next) => !next && setReasonFor(null, { inPlace: false })}>
           <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 p-0">
             <SheetHeader className="border-b border-border-subtle p-4">
               <SheetTitle>{t("exclude.why")}</SheetTitle>

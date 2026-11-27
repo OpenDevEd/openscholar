@@ -46,7 +46,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -1046,7 +1046,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
       ) : null}
 
       {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
-      <Section title={t("panel.everyonesVotes")} help={<VotesHelp blind={blind} side="left" />} aside={shut.kept ? <HiddenChip blind={blind} /> : undefined}>
+      <Section title={screen(votesTitle(screening.rule, cast))} help={<VotesHelp blind={blind} side="left" />} aside={shut.kept ? <HiddenChip blind={blind} /> : undefined}>
           <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={shut.none} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
         {shut.kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, blind, cast, open.me)}</ShutNote> : null}
         {!shut.none ? (

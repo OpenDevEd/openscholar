@@ -9144,7 +9144,6 @@
         "settledWithoutYou": "未等你的投票就已定案",
         "waitingForYou": "等待你投票",
         "settleConflict": "裁决此冲突",
-        "everyonesVotes": "所有人的投票",
         "reopen": "重新打开",
         "waitingToSettle": "{you, select, true {等待你裁决} other {等待 {name} 裁决}}",
         "everyConflict": "所有冲突",

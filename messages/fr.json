@@ -9144,7 +9144,6 @@
         "settledWithoutYou": "Tranché sans votre vote",
         "waitingForYou": "En attente de votre vote",
         "settleConflict": "Trancher ce désaccord",
-        "everyonesVotes": "Les votes de chacun",
         "reopen": "Rouvrir",
         "waitingToSettle": "{you, select, true {Attend que vous le tranchiez} other {Attend que {name} le tranche}}",
         "everyConflict": "Tous les désaccords",

@@ -9145,7 +9145,6 @@
         "settledWithoutYou": "Sonder jou stem beslis",
         "waitingForYou": "Wag vir jou stem",
         "settleConflict": "Beslis hierdie konflik",
-        "everyonesVotes": "Almal se stemme",
         "reopen": "Heropen",
         "waitingToSettle": "{you, select, true {Wag dat jy dit beslis} other {Wag dat {name} dit beslis}}",
         "everyConflict": "Elke konflik",

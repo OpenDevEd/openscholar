@@ -1456,8 +1456,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <Settler person={personIn(draft, draft.createdBy)} you={draft.createdBy === me} />}
               </RuleRow>
               {/* With one person on each paper and the models as advice there is no vote to hide: the row says so beside the choice, which counts again once more people read each paper. */}
-              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) ? { detail: hidesVotes(draft.rule, each) ? t("decided.seeingAdvice") : t("decided.seeingNothing") } : {})}>
-                <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
+              <RuleRow name={t("decided.seeVotes")} help={<Help title={t("decided.seeingTitle")}>{t("decided.seeingHelp")}</Help>} {...(draft.rule.blind === "after" && models.length && advisory(draft.rule) && hidesVotes(draft.rule, each) ? { detail: t("decided.seeingAdvice") } : {})}>
+                {/* With one person on each paper and the models only advising, there is no vote to hide: the row says so in the choice's place, as a rule that doesn't apply does, and the choice comes back once more people read each paper. */}
+                {models.length && advisory(draft.rule) && !hidesVotes(draft.rule, each) ? (
+                  <span className="text-sm text-muted-foreground">{t("decided.seeingNothing")}</span>
+                ) : (
+                  <Segmented label={t("decided.seeVotes")} value={draft.rule.blind} onChange={(next) => set({ rule: { ...draft.rule, blind: next } })} options={[{ id: "after" as const, label: t("decided.after") }, { id: "always" as const, label: t("decided.always") }]} />
+                )}
               </RuleRow>
               {/* What the rule does, on three made-up papers. */}
               <div className="space-y-2 bg-inset px-4 py-3">
