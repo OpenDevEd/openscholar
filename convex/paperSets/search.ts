@@ -185,7 +185,7 @@ export async function searchPapers(
   { searchId, first, last }: { searchId: string; first: number; last: number },
   snapshot?: SearchSnapshot,
   run: { resume?: string; goesOn: boolean } = { goesOn: false },
-): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string; taken: number }> {
+): Promise<{ papers: SearchPaper[]; twins: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string; taken: number }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId: reader.userId, workspaceId: reader.workspaceId, searchId });
@@ -193,10 +193,16 @@ export async function searchPapers(
   const { request, rating } = taken;
 
   const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId));
-  // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
-  const ids = new Set<string>();
-  const papers = works.map(toPaper).filter((paper) => !ids.has(paper.paper) && ids.add(paper.paper));
-  return { papers: await keptByRating(ctx, reader.userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
+  // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice. A second
+  // record our index holds of one work comes back apart (`twins`), for a screening to count as a duplicate merged.
+  const [ids, records] = [new Set<string>(), new Set<string>()];
+  const [papers, twins]: SearchPaper[][] = [[], []];
+  for (const paper of works.map(toPaper)) {
+    if (!ids.has(paper.paper)) { ids.add(paper.paper); papers.push(paper); }
+    else if (paper.record && !records.has(paper.record)) twins.push(paper);
+    if (paper.record) records.add(paper.record);
+  }
+  return { papers: await keptByRating(ctx, reader.userId, papers, rating), twins: await keptByRating(ctx, reader.userId, twins, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
 }
 
 /** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */
