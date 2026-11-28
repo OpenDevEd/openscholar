@@ -7964,7 +7964,8 @@
         "says": "Faili ni kama ungezipakua, bila kilichofichwa kwako. Majibu yanakuja kwako.",
         "send": "Tuma",
         "sent": "{count, plural, one {Faili imetumwa kwa {to}} other {Faili # zimetumwa kwa {to}}}",
-        "failed": "Faili hazikutumwa"
+        "failed": "Faili hazikutumwa",
+        "tooLarge": "{count, plural, one {Faili hii ni kubwa mno kwa barua pepe. Ipakue badala yake.} other {Faili hizi ni kubwa mno kwa barua pepe moja. Tuma chache, au uzipakue.}}"
       },
       "title": "Hamisha",
       "description": "Makala, kila kura, mchoro wa PRISMA, aya ya mbinu na kumbukumbu nzima",

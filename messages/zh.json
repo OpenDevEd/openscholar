@@ -7963,7 +7963,8 @@
         "says": "文件与你下载时相同，不含对你隐藏的内容。回复会发给你。",
         "send": "发送",
         "sent": "{count, plural, other {已将 # 个文件发送给 {to}}}",
-        "failed": "文件未发送"
+        "failed": "文件未发送",
+        "tooLarge": "{count, plural, one {此文件太大，无法通过邮件发送。请改为下载。} other {这些文件太大，无法放在一封邮件中。请少选几个，或下载它们。}}"
       },
       "title": "导出",
       "description": "论文、所有投票、PRISMA 流程图、方法段落和完整记录",

@@ -131,6 +131,9 @@ export function exportFilename(name: string, format: ExportFormat, part = 1) {
 
 /** How long an export's link waits for its next part to be fetched; the browser fetches it at once. */
 export const EXPORT_LINK_MS = 2 * 60_000;
+
+/** How large the files one email sends may be together (convex/screening/sending.ts): a Node action takes them whole, and its arguments take 5 MiB at most. */
+export const EMAILED_FILES_BYTES = 4 * 1024 * 1024;
 /** How long the page waits for a part it opened to start before it calls the export failed. */
 const PART_START_MS = 30_000;
 

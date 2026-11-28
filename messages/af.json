@@ -7964,7 +7964,8 @@
         "says": "Die lêers is soos jy hulle sou aflaai, sonder wat vir jou versteek is. Antwoorde kom na jou.",
         "send": "Stuur",
         "sent": "{count, plural, one {Lêer na {to} gestuur} other {# lêers na {to} gestuur}}",
-        "failed": "Die lêers is nie gestuur nie"
+        "failed": "Die lêers is nie gestuur nie",
+        "tooLarge": "{count, plural, one {Hierdie lêer is te groot vir 'n e-pos. Laai dit eerder af.} other {Hierdie lêers is saam te groot vir een e-pos. Stuur minder, of laai hulle af.}}"
       },
       "title": "Voer uit",
       "description": "Die artikels, elke stem, die PRISMA-diagram, ’n metodeparagraaf en die hele rekord",

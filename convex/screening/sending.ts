@@ -14,11 +14,11 @@ import { rateLimit } from "../lib/rateLimit";
 import { workspaceAction } from "../lib/userActions";
 import { standingOn } from "./access";
 import { nameOf } from "./dealing";
+import { EMAILED_FILES_BYTES } from "../../lib/export";
 import { screeningPath } from "../../lib/screening/links";
 
-/** Files one email carries at most, how large they may be together, and how long a note may be. The files go to a Node action whole, and its arguments take 5 MiB at most: 4 MiB of files leaves room for the rest. */
+/** Files one email carries at most, and how long a note may be. How large they may be together is `EMAILED_FILES_BYTES`. */
 const FILES_MAX = 6;
-const BYTES_MAX = 4 * 1024 * 1024;
 const NOTE_MAX = 2_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const fileValidator = v.object({ name: v.string(), type: v.string(), body: v.string(), base64: v.optional(v.boolean()) });
@@ -39,7 +39,7 @@ export const sendFiles = workspaceAction({
     if (!files.length || files.length > FILES_MAX) throw createError("VALIDATION_ERROR", `Send 1 to ${FILES_MAX} files at a time.`);
     if (!files.every(exported)) throw createError("VALIDATION_ERROR", "Only Export's own files can be sent.");
     if ((note?.length ?? 0) > NOTE_MAX) throw createError("VALIDATION_ERROR", "That note is too long.");
-    if (new TextEncoder().encode(JSON.stringify(files)).length > BYTES_MAX) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
+    if (new TextEncoder().encode(JSON.stringify(files)).length > EMAILED_FILES_BYTES) throw createError("VALIDATION_ERROR", "These files are too large for one email. Send fewer, or download them.");
     const about: { name: string; path: string; by: string; replyTo?: string; opens: boolean } = await ctx.runQuery(internal.screening.sending.about, { jobId, userId: actor.userId, workspaceId: actor.workspaceId, to: address });
     await ctx.runMutation(internal.screening.sending.spend, { userId: actor.userId });
     await ctx.runAction(internal.screening.filesMail.send, { ...about, to: address, files: files.map((one) => ({ name: shortName(one.name), type: one.type, body: one.body, ...(one.base64 ? { base64: true } : {}) })), ...(note?.trim() ? { note: note.trim() } : {}) });

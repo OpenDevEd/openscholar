@@ -7964,7 +7964,8 @@
         "says": "Os arquivos são como os baixaria, sem o que está oculto para você. As respostas chegam a você.",
         "send": "Enviar",
         "sent": "{count, plural, one {Arquivo enviado para {to}} other {# arquivos enviados para {to}}}",
-        "failed": "Os arquivos não foram enviados"
+        "failed": "Os arquivos não foram enviados",
+        "tooLarge": "{count, plural, one {Este arquivo é grande demais para um e-mail. Baixe-o em vez disso.} other {Estes arquivos são grandes demais para um único e-mail. Envie menos ou baixe-os.}}"
       },
       "title": "Exportar",
       "description": "Os artigos, todos os votos, o diagrama PRISMA, um parágrafo de métodos e o registo completo",

@@ -7963,7 +7963,8 @@
         "says": "Les fichiers sont tels que vous les téléchargeriez, sans ce qui vous est caché. Les réponses vous parviennent.",
         "send": "Envoyer",
         "sent": "{count, plural, one {Fichier envoyé à {to}} other {# fichiers envoyés à {to}}}",
-        "failed": "Les fichiers n’ont pas été envoyés"
+        "failed": "Les fichiers n’ont pas été envoyés",
+        "tooLarge": "{count, plural, one {Ce fichier est trop volumineux pour un e-mail. Téléchargez-le plutôt.} other {Ces fichiers sont trop volumineux pour un seul e-mail. Envoyez-en moins, ou téléchargez-les.}}"
       },
       "title": "Exporter",
       "description": "Les articles, chaque vote, le diagramme PRISMA, un paragraphe de méthodes et le dossier complet",

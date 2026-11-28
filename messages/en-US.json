@@ -7963,7 +7963,8 @@
         "says": "The files are as you would download them, with what is hidden from you left out. Replies come to you.",
         "send": "Send",
         "sent": "{count, plural, one {Sent the file to {to}} other {Sent # files to {to}}}",
-        "failed": "The files weren’t sent"
+        "failed": "The files weren’t sent",
+        "tooLarge": "{count, plural, one {This file is too large for an email. Download it instead.} other {These files are too large for one email. Send fewer, or download them.}}"
       },
       "title": "Export",
       "description": "The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record",

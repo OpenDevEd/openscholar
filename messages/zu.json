@@ -7963,7 +7963,8 @@
         "says": "Amafayela anjengoba ubungawalanda, ngaphandle kwalokho okufihliwe kuwe. Izimpendulo zifika kuwe.",
         "send": "Thumela",
         "sent": "{count, plural, one {Ifayela lithunyelwe ku-{to}} other {Amafayela angu-# athunyelwe ku-{to}}}",
-        "failed": "Amafayela awathunyelwanga"
+        "failed": "Amafayela awathunyelwanga",
+        "tooLarge": "{count, plural, one {Leli fayela likhulu kakhulu ukuthi lingathunyelwa nge-imeyili. Lilande esikhundleni salokho.} other {Lawa mafayela makhulu kakhulu ukuthi angangena ku-imeyili eyodwa. Thumela ambalwa, noma uwalande.}}"
       },
       "title": "Landa",
       "description": "Amaphepha, onke amavoti, umdwebo we-PRISMA, isigaba sezindlela kanye nerekhodi lonke",
