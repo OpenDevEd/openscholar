@@ -9,7 +9,7 @@ import { leaveBehind } from "./address";
 import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { AnimatePresence, MotionConfig } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
@@ -18,7 +18,6 @@ import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-h
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "./parts";
-import { EASE } from "@/components/settings/model-map";
 import { Opening } from "@/components/ui/opening";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -28,7 +27,7 @@ import { FadeRow } from "@/components/ui/fade-row";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
@@ -215,8 +214,11 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // While it is read the frame holds its place: the name the list showed, or a line where it will be, the strip of pages, and lines where the page will be.
   if (read === undefined || goingHome) {
     const name = listedNames.get(id);
+    // The same frame as the loaded page, element for element (MotionConfig, the page, its wrapper, the shell): when the screening arrives it fills in, never drawn again from the top.
     return (
+      <MotionConfig reducedMotion="user">
       <PageWrapper className={view === "screen" ? "lg:[&>footer]:hidden" : undefined}>
+        <div className={`contents ${AVATARS_FADE_IN} [&_[data-sticky-page-header]_h1]:min-w-32 @7xl:[&_[data-sticky-page-header]_h1]:min-w-64`}>
         <LibraryPageShell
           wide
           fill={view === "screen"}
@@ -247,7 +249,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         >
           <ListRowsSkeleton rows={6} height={64} icon={false} label={t("loading")} />
         </LibraryPageShell>
+        </div>
       </PageWrapper>
+      </MotionConfig>
     );
   }
   if (!open) {
@@ -425,7 +429,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             intro={
               <div ref={strip} className="@container/strip">
                 {stripOf(rule, passing)}
-                {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
+                {/* Hidden on Settings and Screen, never taken out: drawn anew on the next tab, the faces' pictures would blink. */}
+                <div className={cn("flex items-center gap-2 px-4 pb-3 sm:hidden", (view === "settings" || view === "screen") && "hidden")}>{team}</div>
                 {/* The row is for what asks something of the person: it slides in and out, and changes only when the screening's state does. What passes by itself is the chip in the tabs' row. */}
                 <AutoHeight>
                   <Banner kind={banner} open={open} workspace={workspace.name} onReopen={reopen} onResume={resume} />
@@ -433,10 +438,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
               </div>
             }
           >
-            {/* Each page rises in as it opens. */}
-            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
+            {/* A tab's page takes the place of the last at once, as every other page with tabs does: no fade that reads as the page loading again. */}
+            <div className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
               <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity"), takeOff: overlays.takeOff }}>{children}</Workspace>
-            </motion.div>
+            </div>
           </LibraryPageShell>
         </div>
 

@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {Up to <n></n> {count, plural, one {paper} other {papers}}} other {<n></n> {count, plural, one {paper} other {papers}}}}",
         "toScreen": "<n></n> to screen",
         "readingIt": "Reading it",
+        "stoppedFinished": "Reading stopped when it was finished, and goes on when it is reopened",
         "leftOutCount": "{count, plural, other {# left out}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# more since it started}}} one {{count, plural, other {# more since it started}}, # duplicate merged} other {{count, plural, other {# more since it started}}, # duplicates merged}}",
         "newTab": "(opens in a new tab)",
@@ -8628,7 +8629,7 @@
         "votesShow": "The votes that were hidden from reviewers show to everyone on it",
         "modelsStop": "The models stop reading",
         "checksStop": "It stops checking for new papers",
-        "arrivingStops": "Papers still arriving from its sources stop arriving. Reopen it to read on from where they stopped",
+        "arrivingStops": "Papers still coming in from the sources stop. Reopening the screening reads on from where they stopped",
         "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
       },
       "delete": {

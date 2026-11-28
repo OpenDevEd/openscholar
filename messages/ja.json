@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {最大 <n></n> {count, plural, other {件}}} other {<n></n> {count, plural, other {件}}}}",
         "toScreen": "スクリーニング対象 <n></n> 件",
         "readingIt": "読み取り中",
+        "stoppedFinished": "完了時に読み込みは止まり、再開すると続きから読みます",
         "leftOutCount": "{count, plural, other {# 件を除外}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {開始後に # 件増加}}} other {{count, plural, other {開始後に # 件増加}}、重複 # 件をまとめました}}",
         "newTab": "（新しいタブで開きます）",

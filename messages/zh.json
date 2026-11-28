@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {最多 <n></n> {count, plural, other {篇论文}}} other {<n></n> {count, plural, other {篇论文}}}}",
         "toScreen": "<n></n> 篇待筛选",
         "readingIt": "正在读取",
+        "stoppedFinished": "完成时读取已停止,重新打开后继续",
         "leftOutCount": "{count, plural, other {# 篇被排除在外}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {开始后新增 # 篇}}} other {{count, plural, other {开始后新增 # 篇}}，已合并 # 个重复项}}",
         "newTab": "（在新标签页中打开）",

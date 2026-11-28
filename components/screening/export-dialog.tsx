@@ -11,7 +11,7 @@ import { useConvex } from "convex/react";
 import { toast } from "sonner";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { innerStep } from "./address";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { Layers, ArrowRight, Check, ChevronRight, Copy, Download, Info, Mail } from "@/components/icons";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";

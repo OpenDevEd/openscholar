@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { ListEmpty, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useConvex } from "convex/react";
 import { Spinner } from "@/components/ui/spinner";
@@ -34,6 +34,7 @@ import { FadeRow } from "@/components/ui/fade-row";
 import { SELECT_TRIGGER } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -57,6 +58,7 @@ import { givenReason, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { everyPaper, fileName, risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
+import { useInHand } from "./drafts";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -147,8 +149,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const backwards = useRtl();
   const { screening } = open;
   // What is written in the drawer is kept for each paper, as Screen keeps it: stepping to the next paper and back finds it where it was, and a save refused after stepping on puts the note back on its own paper.
-  const [notes, setNotes] = useState<Record<string, PaperNotes>>({});
-  const [talks, setTalks] = useState<Record<string, DiscussionDraft>>({});
+  const [notes, setNotes] = useInHand("paperNotes");
+  const [talks, setTalks] = useInHand("paperTalks");
   const id = screening.id;
   const workspaceId = usePageWorkspace();
   const t = useTranslations("screening.papers");
@@ -229,6 +231,13 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const tabCounts = anyNarrow ? (countable ? (under ?? undefined) : undefined) : open.counts;
   const countOf = (result: Result | "all") => (!tabCounts ? undefined : result === "all" ? (anyNarrow ? RESULTS.reduce((sum, one) => sum + tabCounts[one], 0) : open.total) : tabCounts[result]);
   const total = countOf(filter);
+  // Another list asked for (another tab, filter, search or order), not another page of the same: its rows show as skeletons under the table's head until they come, and a tab the counts say is empty says so at once. Never the last list's rows under the new tab.
+  const asked = JSON.stringify([matching, sort]);
+  const [arrivedList, setArrivedList] = useState(asked);
+  if (!listed.isLoading && !listed.isStale && arrivedList !== asked) setArrivedList(asked);
+  const otherList = arrivedList !== asked;
+  const emptyNow = otherList && total === 0;
+  const rowsPending = otherList && !emptyNow;
   // A count the server is still reading holds a digit's room, so the tabs don't widen when it arrives. Where none will come the tab has no number.
   const pending = countable && !under ? <span aria-hidden className="invisible tabular-nums">0</span> : undefined;
   // Every paper the table is narrowed to, read for a selection of them all: the pages after this one, a page at a time.
@@ -296,7 +305,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       // Inside the paper's own drawer the keys still step; the drawer closes itself on Escape. Any other dialog or menu keeps its keys.
-      if (target?.closest("[role=menu], [role=listbox], [role=dialog]:not([data-paper-drawer])") || event.key === "Escape") return;
+      if (target?.closest("[role=menu], [role=listbox], [role=alertdialog], [role=dialog]:not([data-paper-drawer])") || event.key === "Escape") return;
       if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
       // The arrows go the way the drawer's chevrons point: in a right-to-left language, Next is on the left.
       if (event.key === "j" || event.key === (backwards ? "ArrowLeft" : "ArrowRight")) step(1);
@@ -650,9 +659,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                 <div aria-hidden style={{ height: 2 * ROW }} className="border-b border-border-subtle @max-2xl/papers:hidden" />
                 <ListRowsSkeleton rows={Math.min(total ?? PAGE, PAGE)} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2" />
               </>
-            ) : shown.length ? (
+            ) : (shown.length || rowsPending) && !emptyNow ? (
               <>
                 {/* As wide as the column and no wider: the frame around it scrolls sideways for the table, and would let a long title stretch the list. */}
+                {rowsPending ? <ListRowsSkeleton rows={Math.min(total ?? PAGE, PAGE)} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2 @2xl/papers:hidden" /> : (
                 <ul className="w-[100cqw] divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
                     const isOpen = paper?.id === one.id;
@@ -674,6 +684,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                     );
                   })}
                 </ul>
+                )}
                 <table className="w-full table-fixed text-sm @max-2xl/papers:hidden" style={{ minWidth: `${tableWidth}rem` }}>
                   <TableHeader className={cn("z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] [&_tr]:border-b-0", fits && cn("sticky", UNDER_FRAME))}>
                     <TableRow className="hover:bg-transparent">
@@ -756,7 +767,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                     </TableRow>
                   </TableHeader>
                   <TableBody className="border-t border-border-subtle">
-                    {shown.map((one) => {
+                    {rowsPending ? Array.from({ length: Math.min(total ?? PAGE, PAGE) }, (_, at) => (
+                      <TableRow key={`pending:${at}`} aria-hidden style={{ height: ROW }}>
+                        <TableCell colSpan={99} className="px-4"><SkeletonBar className={cn("h-3", at % 3 === 0 ? "w-3/5" : at % 3 === 1 ? "w-2/5" : "w-1/2")} /></TableCell>
+                      </TableRow>
+                    )) : shown.map((one) => {
                       const cast = castOf(screening, one);
                       const state = settledOf(one);
                       const waitsForMe = open.isReviewer && !screening.finishedAt && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);

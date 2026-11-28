@@ -108,6 +108,7 @@ function toReviewer(row: Summary["reviewers"][number]): Reviewer {
     ...(row.left === undefined ? {} : { left: row.left }),
     ...(row.discarded === undefined ? {} : { discarded: row.discarded }),
     ...(row.reminded === undefined ? {} : { reminded: row.reminded }),
+    ...(row.quiet ? { quiet: true as const } : {}),
     tally: { dealt, cast, include, maybe, exclude, failed, waiting, closed, spent, missed, ...(row.kept ? { kept: true } : {}) },
   };
 }

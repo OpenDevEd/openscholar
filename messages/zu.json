@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {Afika ku-<n></n> {count, plural, one {iphepha} other {amaphepha}}} other {<n></n> {count, plural, one {iphepha} other {amaphepha}}}}",
         "toScreen": "<n></n> okuskrinwa",
         "readingIt": "Liyafundwa",
+        "stoppedFinished": "Ukufunda kwama lapho kuqedwa, futhi kuyaqhubeka uma kuvulwa futhi",
         "leftOutCount": "{count, plural, other {# ashiywe ngaphandle}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# engeziwe kusukela kwaqala}}} one {{count, plural, other {# engeziwe kusukela kwaqala}}, # ikhophi ihlanganisiwe} other {{count, plural, other {# engeziwe kusukela kwaqala}}, # amakhophi ahlanganisiwe}}",
         "newTab": "(kuvuleka kuthebhu entsha)",

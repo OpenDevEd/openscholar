@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {Jusqu'à <n></n> {count, plural, one {article} other {articles}}} other {<n></n> {count, plural, one {article} other {articles}}}}",
         "toScreen": "<n></n> à cribler",
         "readingIt": "Lecture en cours",
+        "stoppedFinished": "La lecture s’est arrêtée à la fin du criblage et reprend à sa réouverture",
         "leftOutCount": "{count, plural, one {# écarté} other {# écartés}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# de plus depuis le démarrage}}} one {{count, plural, other {# de plus depuis le démarrage}}, # doublon fusionné} other {{count, plural, other {# de plus depuis le démarrage}}, # doublons fusionnés}}",
         "newTab": "(s'ouvre dans un nouvel onglet)",

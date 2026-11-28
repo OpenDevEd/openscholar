@@ -8275,6 +8275,7 @@
         "link": "{upTo, select, true {Tot <n></n> {count, plural, one {artikel} other {artikels}}} other {<n></n> {count, plural, one {artikel} other {artikels}}}}",
         "toScreen": "<n></n> om te sif",
         "readingIt": "Word gelees",
+        "stoppedFinished": "Die lees het gestop toe dit afgehandel is, en gaan voort wanneer dit heropen word",
         "leftOutCount": "{count, plural, other {# uitgelaat}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# meer sedert dit begin het}}} one {{count, plural, other {# meer sedert dit begin het}}, # duplikaat saamgevoeg} other {{count, plural, other {# meer sedert dit begin het}}, # duplikate saamgevoeg}}",
         "newTab": "(maak in ’n nuwe oortjie oop)",

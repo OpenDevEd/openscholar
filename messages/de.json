@@ -8275,6 +8275,7 @@
         "link": "{upTo, select, true {Bis zu <n></n> {count, plural, one {Artikel} other {Artikel}}} other {<n></n> {count, plural, one {Artikel} other {Artikel}}}}",
         "toScreen": "<n></n> zu prüfen",
         "readingIt": "Wird gelesen",
+        "stoppedFinished": "Das Lesen stoppte beim Abschließen und geht beim erneuten Öffnen weiter",
         "leftOutCount": "{count, plural, other {# ausgelassen}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# mehr seit dem Start}}} one {{count, plural, other {# mehr seit dem Start}}, # Duplikat zusammengeführt} other {{count, plural, other {# mehr seit dem Start}}, # Duplikate zusammengeführt}}",
         "newTab": "(öffnet in neuem Tab)",

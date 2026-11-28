@@ -346,6 +346,8 @@ export const reviewerViewValidator = v.object({
   left: v.optional(v.number()),
   discarded: v.optional(v.number()),
   reminded: v.optional(v.number()),
+  /** They turned off this screening's emails: no reminder reaches them. */
+  quiet: v.optional(v.literal(true)),
   // Papers given to them, the ones they voted on by how, the ones a model couldn't read, the ones that still wait for them, and what a model has cost.
   dealt: v.number(),
   cast: v.number(),

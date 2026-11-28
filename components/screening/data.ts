@@ -65,6 +65,8 @@ export type Reviewer = {
   discarded?: number;
   /** When the person was last sent a reminder. */
   reminded?: number;
+  /** They turned off its emails: no reminder reaches them. */
+  quiet?: true;
   tally?: Tally;
 };
 export const personReviewer = (person: Person, addedAt: number): Reviewer => ({ id: person.id, kind: "person", name: person.name, imageUrl: person.imageUrl, addedAt, ...(person.guest ? { guest: true } : {}) });

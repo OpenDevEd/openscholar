@@ -8275,6 +8275,7 @@
         "link": "{upTo, select, true {Hadi makala <n></n>} other {Makala <n></n>}}",
         "toScreen": "<n></n> za kuchuja",
         "readingIt": "Inaisoma",
+        "stoppedFinished": "Usomaji ulisimama ilipokamilishwa, na unaendelea itakapofunguliwa tena",
         "leftOutCount": "{count, plural, other {# zimeachwa}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# zaidi tangu ulipoanza}}} one {{count, plural, other {# zaidi tangu ulipoanza}}, rudio # limeunganishwa} other {{count, plural, other {# zaidi tangu ulipoanza}}, marudio # yameunganishwa}}",
         "newTab": "(inafunguka kwenye kichupo kipya)",

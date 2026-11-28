@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {अधिकतम <n></n> {count, plural, one {लेख} other {लेख}}} other {<n></n> {count, plural, one {लेख} other {लेख}}}}",
         "toScreen": "स्क्रीन करने को <n></n>",
         "readingIt": "इसे पढ़ा जा रहा है",
+        "stoppedFinished": "समाप्त करने पर पढ़ना रुक गया, और फिर से खोलने पर आगे चलेगा",
         "leftOutCount": "{count, plural, other {# छोड़े गए}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {शुरू होने के बाद # और}}} one {{count, plural, other {शुरू होने के बाद # और}}, # डुप्लिकेट मिलाया गया} other {{count, plural, other {शुरू होने के बाद # और}}, # डुप्लिकेट मिलाए गए}}",
         "newTab": "(नए टैब में खुलता है)",

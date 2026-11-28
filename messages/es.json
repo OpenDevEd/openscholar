@@ -8275,6 +8275,7 @@
         "link": "{upTo, select, true {Hasta <n></n> {count, plural, one {artículo} other {artículos}}} other {<n></n> {count, plural, one {artículo} other {artículos}}}}",
         "toScreen": "<n></n> para cribar",
         "readingIt": "Leyéndolo",
+        "stoppedFinished": "La lectura se detuvo al terminarlo y sigue cuando se vuelva a abrir",
         "leftOutCount": "{count, plural, one {# descartado} other {# descartados}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# más desde que empezó}}} one {{count, plural, other {# más desde que empezó}}, # duplicado fusionado} other {{count, plural, other {# más desde que empezó}}, # duplicados fusionados}}",
         "newTab": "(se abre en una pestaña nueva)",

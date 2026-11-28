@@ -13,7 +13,7 @@ import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { searchHistory, useOpenInAddress } from "./address";
 import { ArrowLeft, ArrowLeftFixed, ArrowRight, ArrowRightFixed, Asterisk, ChevronDown, ChevronRight, CircleCheck, BookOpen, Clock, Eye, GitCompare, Highlighter, History, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
@@ -50,7 +50,7 @@ import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
 import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
-import { useKept } from "./drafts";
+import { useInHand, useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
 import { useRtl, useWords } from "./words";
@@ -208,7 +208,7 @@ function Screen({ open }: { open: Open }) {
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
   // What is being written in each paper's discussion, and to whom.
-  const [talks, setTalks] = useState<Record<string, DiscussionDraft>>({});
+  const [talks, setTalks] = useInHand("talks");
   const [keysOpen, setKeysOpen] = useState(false);
   const article = useRef<HTMLDivElement>(null);
   // A pane's scroll and the keyboard's focus are the outside systems. A paper that has just been drawn starts at its title, not where the last one was left. Where nothing else holds the keyboard, the paper takes it, so the arrows, Space and Page Down read on through a long paper as they would scroll a page.
@@ -286,8 +286,8 @@ function Screen({ open }: { open: Open }) {
     if (open && !listing && !picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(() => setListingOpen("open"));
     else setListingOpen(open ? "open" : null, how);
   };
-  const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useInHand("answers");
+  const [notes, setNotes] = useInHand("notes");
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
@@ -454,7 +454,7 @@ function Screen({ open }: { open: Open }) {
   const onKey = useEffectEvent(
     (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=alertdialog], [role=menu], [role=listbox]")) return;
       // Cmd or Ctrl with Z takes the last vote back, as Z does: the undo everyone reaches for first. Any other key with a modifier is the browser's.
       if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z" && !switching) {
         event.preventDefault();
@@ -667,9 +667,11 @@ function Screen({ open }: { open: Open }) {
   // Only a pending vote that moves a count (a first vote, a conflict settled) makes the counts lag; changing a vote moves none.
   // A queue the counts already say is empty says so at once. A choice of votes in Done is said in the list's own layout, its filters kept, never as "nothing voted yet".
   const known = !searched && !narrowed && !picked && queueTotal === 0 && !since.some((one) => (!one.resolved && one.queue === "todo" && one.before === null) || (one.resolved && one.paper.result === "conflict") || (queue === "done" && voted !== "any" && !one.resolved));
-  const reading = listed.isLoading;
+  // The first read of the queue. A read while another list is asked for (and the look one row past a full page that follows it) is the switch's own: its skeletons stand in the panes.
+  const reading = listed.isLoading && !switching;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
-  if (reading && (queue === "done" || left > 0 || narrowed)) {
+  // So is another queue picked from an empty one: with no paper up, it shows this until its papers come, never the empty queue it left.
+  if ((reading && (queue === "done" || left > 0 || narrowed)) || (otherQueue && !paper && !known)) {
     return (
       <div role="status" aria-label={t("queue.loading")} className={cn("grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, folded ? FOLDED : WIDE)}>
         {open.isReviewer ? <div className={cn("lg:col-start-1 lg:row-start-1 min-[87.5rem]:col-end-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -684,7 +686,7 @@ function Screen({ open }: { open: Open }) {
     );
   }
   // A queue read on past pages of papers no longer in it (a source taken out) is not empty while more is still to read: it says so, with Read further, below.
-  if (reading || (switching && known) || (!paper && !narrowed && !opening && !listed.canNext)) {
+  if (reading || (switching && known) || (!switching && !paper && !narrowed && !opening && !listed.canNext)) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
@@ -694,7 +696,8 @@ function Screen({ open }: { open: Open }) {
   }
 
   const voteButton = (decision: Decision) => {
-    const on = resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision;
+    // While another queue is read, the paper up is the last queue's: no vote of it stands lit under the new tab.
+    const on = !otherQueue && (resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision);
     return (
       <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : (event) => event.detail < 2 && press(decision)}>
         <Kbd className={cn("pointer-coarse:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>

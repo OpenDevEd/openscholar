@@ -8275,6 +8275,7 @@
         "link": "{upTo, select, true {حتى <n></n> {count, plural, zero {ورقة} one {ورقة} two {ورقة} few {أوراق} many {ورقة} other {ورقة}}} other {<n></n> {count, plural, zero {ورقة} one {ورقة} two {ورقة} few {أوراق} many {ورقة} other {ورقة}}}}",
         "toScreen": "<n></n> للفرز",
         "readingIt": "جارٍ قراءته",
+        "stoppedFinished": "توقفت القراءة عند إنهائه، وتتابع عند إعادة فتحه",
         "leftOutCount": "{count, plural, other {# متروكة}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# أخرى منذ البدء}}} zero {{count, plural, other {# أخرى منذ البدء}}، ودُمجت # نسخة مكررة} one {{count, plural, other {# أخرى منذ البدء}}، ودُمجت نسخة مكررة واحدة} two {{count, plural, other {# أخرى منذ البدء}}، ودُمجت نسختان مكررتان} few {{count, plural, other {# أخرى منذ البدء}}، ودُمجت # نسخ مكررة} many {{count, plural, other {# أخرى منذ البدء}}، ودُمجت # نسخة مكررة} other {{count, plural, other {# أخرى منذ البدء}}، ودُمجت # نسخة مكررة}}",
         "newTab": "(تُفتح في علامة تبويب جديدة)",
