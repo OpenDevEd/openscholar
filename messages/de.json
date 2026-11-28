@@ -9316,7 +9316,9 @@
       "previousPaper": "Vorheriger Artikel",
       "nextPaper": "Nächster Artikel",
       "messages": "{count, plural, one {# Nachricht} other {# Nachrichten}}",
-      "discuss": "Diskutieren"
+      "discuss": "Diskutieren",
+      "heldChip": "Vor einer Änderung beibehalten",
+      "heldHelp": "Dieses Ergebnis wurde vor der Änderung der Einstellungen entschieden und bleibt bestehen. Es ändert sich, wenn jemand über das Paper abstimmt oder die entschiedenen Paper unter den neuen Einstellungen erneut geprüft werden."
     },
     "screen": {
       "notSaved": "Das wurde nicht gespeichert. Versuchen Sie es erneut.",

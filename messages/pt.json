@@ -9316,7 +9316,9 @@
       "previousPaper": "Artigo anterior",
       "nextPaper": "Artigo seguinte",
       "messages": "{count, plural, one {# mensagem} other {# mensagens}}",
-      "discuss": "Discutir"
+      "discuss": "Discutir",
+      "heldChip": "Mantido de antes de uma alteração",
+      "heldHelp": "Este resultado foi decidido antes de as definições mudarem e mantém-se. Muda quando alguém vota no artigo ou quando os artigos decididos são verificados de novo com as novas definições."
     },
     "screen": {
       "notSaved": "Não foi guardado. Tente novamente.",

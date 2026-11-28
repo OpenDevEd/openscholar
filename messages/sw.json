@@ -9316,7 +9316,9 @@
       "previousPaper": "Makala iliyotangulia",
       "nextPaper": "Makala inayofuata",
       "messages": "{count, plural, one {ujumbe #} other {ujumbe #}}",
-      "discuss": "Jadili"
+      "discuss": "Jadili",
+      "heldChip": "Imehifadhiwa kutoka kabla ya mabadiliko",
+      "heldHelp": "Matokeo haya yaliamuliwa kabla mipangilio haijabadilika, na yanabaki yalivyo. Yanabadilika mtu anapopigia kura makala, au makala yaliyoamuliwa yanapokaguliwa tena chini ya mipangilio mipya."
     },
     "screen": {
       "notSaved": "Haikuhifadhiwa. Jaribu tena.",

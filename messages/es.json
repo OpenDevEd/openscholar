@@ -9316,7 +9316,9 @@
       "previousPaper": "Artículo anterior",
       "nextPaper": "Artículo siguiente",
       "messages": "{count, plural, one {# mensaje} other {# mensajes}}",
-      "discuss": "Comentar"
+      "discuss": "Comentar",
+      "heldChip": "Conservado de antes de un cambio",
+      "heldHelp": "Este resultado se decidió antes de cambiar los ajustes y se mantiene. Cambia cuando alguien vota el artículo o cuando los artículos decididos se revisan de nuevo con los ajustes nuevos."
     },
     "screen": {
       "notSaved": "No se guardó. Inténtelo de nuevo.",

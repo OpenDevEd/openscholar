@@ -9315,7 +9315,9 @@
       "previousPaper": "Article précédent",
       "nextPaper": "Article suivant",
       "messages": "{count, plural, one {# message} other {# messages}}",
-      "discuss": "Discuter"
+      "discuss": "Discuter",
+      "heldChip": "Conservé d’avant une modification",
+      "heldHelp": "Ce résultat a été arrêté avant la modification des paramètres et reste tel quel. Il change quand quelqu’un vote sur l’article ou quand les articles arrêtés sont revérifiés selon les nouveaux paramètres."
     },
     "screen": {
       "notSaved": "L'enregistrement a échoué. Réessayez.",

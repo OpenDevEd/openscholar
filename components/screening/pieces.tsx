@@ -950,3 +950,14 @@ export function Sentence({ at, text, quoted, terms, lit }: { at: number; text: s
 
 /** A chip that holds a sentence: on a narrow screen it wraps inside the row, its icon on the first line, rather than running past the edge. */
 export const SENTENCE_CHIP = "h-auto min-h-6 shrink items-start whitespace-normal py-1 [&>svg]:mt-px";
+
+/** Beside a result settled before the settings changed, which stands as it was: why it may not be what the votes now shown give. */
+export function HeldChip() {
+  const t = useTranslations("screening.pieces");
+  return (
+    <span className="flex items-center gap-0.5">
+      <Chip icon={Lock}>{t("heldChip")}</Chip>
+      <Help title={t("heldChip")}>{t("heldHelp")}</Help>
+    </span>
+  );
+}

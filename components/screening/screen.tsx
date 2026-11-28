@@ -49,7 +49,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useInHand, useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -750,6 +750,7 @@ function Screen({ open }: { open: Open }) {
                           <>
                             <span className="text-xs text-muted-foreground">{t("result")}</span>
                             <ResultChip result={state.result} />
+                            {paper.held ? <HeldChip /> : null}
                             {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">{t("votes.forSettler", { you: String(settlesHere), name: settler })}</span></> : null}
                             {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">{t("votes.waitingFrom", { names: words.listed([...waitsOn.slice(0, 2), ...(waitsOn.length > 2 ? [t("votes.more", { count: waitsOn.length - 2 })] : [])]) })}</span> : null}
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">{t("votes.settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}</span> : null}

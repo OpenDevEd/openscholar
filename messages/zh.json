@@ -9315,7 +9315,9 @@
       "previousPaper": "上一篇论文",
       "nextPaper": "下一篇论文",
       "messages": "{count, plural, other {# 条消息}}",
-      "discuss": "讨论"
+      "discuss": "讨论",
+      "heldChip": "保留自更改之前",
+      "heldHelp": "此结果在设置更改前已确定,并保持原样。有人对该论文投票,或按新设置重新检查已确定的论文时,它才会改变。"
     },
     "screen": {
       "notSaved": "未能保存，请重试。",

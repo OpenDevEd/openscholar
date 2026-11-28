@@ -9316,7 +9316,9 @@
       "previousPaper": "Vorige artikel",
       "nextPaper": "Volgende artikel",
       "messages": "{count, plural, one {# boodskap} other {# boodskappe}}",
-      "discuss": "Bespreek"
+      "discuss": "Bespreek",
+      "heldChip": "Behou van voor ’n verandering",
+      "heldHelp": "Hierdie uitslag is besleg voordat die instellings verander het, en bly soos dit was. Dit verander wanneer iemand oor die artikel stem, of wanneer die beslegte artikels weer onder die nuwe instellings nagegaan word."
     },
     "screen": {
       "notSaved": "Dit is nie gestoor nie. Probeer weer.",

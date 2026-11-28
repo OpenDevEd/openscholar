@@ -9315,7 +9315,9 @@
       "previousPaper": "前の論文",
       "nextPaper": "次の論文",
       "messages": "{count, plural, other {メッセージ # 件}}",
-      "discuss": "話し合う"
+      "discuss": "話し合う",
+      "heldChip": "変更前のまま保持",
+      "heldHelp": "この結果は設定の変更前に確定し、そのまま残っています。誰かがこの論文に投票するか、確定済みの論文が新しい設定で再確認されると変わります。"
     },
     "screen": {
       "notSaved": "保存できませんでした。もう一度お試しください。",

@@ -430,6 +430,8 @@ export const paperViewValidator = v.object({
   fileName: v.optional(v.string()),
   // It left the screening with its source: shown where an address still names it, and voted on by nobody.
   withdrawn: v.optional(v.literal(true)),
+  // Its result was settled before the settings changed and stands as it was, whatever the votes under the new rule would give, until someone votes on it or the settled papers are checked again.
+  held: v.optional(v.literal(true)),
   // When it was settled, where it is: the whole record reads its result against the rule in force then.
   settledAt: v.optional(v.number()),
   key: v.string(),

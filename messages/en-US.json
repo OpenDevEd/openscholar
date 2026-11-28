@@ -9315,7 +9315,9 @@
       "previousPaper": "Previous paper",
       "nextPaper": "Next paper",
       "messages": "{count, plural, one {# message} other {# messages}}",
-      "discuss": "Discuss"
+      "discuss": "Discuss",
+      "heldChip": "Kept from before a change",
+      "heldHelp": "This result was settled before the settings changed, and stands as it was. It moves when someone votes on the paper, or when the settled papers are checked again under the new settings."
     },
     "screen": {
       "notSaved": "That wasn't saved. Try again.",

@@ -9315,7 +9315,9 @@
       "previousPaper": "Iphepha langaphambilini",
       "nextPaper": "Iphepha elilandelayo",
       "messages": "{count, plural, one {# umlayezo} other {# imilayezo}}",
-      "discuss": "Xoxa"
+      "discuss": "Xoxa",
+      "heldChip": "Kugcinwe kusukela ngaphambi koshintsho",
+      "heldHelp": "Lo mphumela wanqunywa ngaphambi kokuthi izilungiselelo zishintshe, futhi uhlala unjalo. Uyashintsha uma othile evotela iphepha, noma uma amaphepha anqunyiwe ehlolwa futhi ngaphansi kwezilungiselelo ezintsha."
     },
     "screen": {
       "notSaved": "Lokho akugcinwanga. Zama futhi.",
