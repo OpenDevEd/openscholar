@@ -8764,7 +8764,6 @@
       "forYouToScreen": "{count, plural, other {# okokuthi uskrine}}",
       "conflictsToSettle": "{count, plural, one {# ukungqubuzana okuxazululwayo} other {# ukungqubuzana okuxazululwayo}}",
       "questionsForYou": "{count, plural, one {# umbuzo wakho} other {# imibuzo yakho}}",
-      "finishedIncluded": "{included} afakiwe",
       "waitingForVotes": "{count} alinde amavoti",
       "inConflictFor": "{count} ayangqubuzana, alinde u-{who} ukuthi akuxazulule",
       "upToDate": "Kusesikhathini",

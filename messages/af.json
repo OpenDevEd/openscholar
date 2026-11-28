@@ -8765,7 +8765,6 @@
       "forYouToScreen": "{count, plural, other {# vir jou om te sif}}",
       "conflictsToSettle": "{count, plural, one {# konflik om te beslis} other {# konflikte om te beslis}}",
       "questionsForYou": "{count, plural, one {# vraag vir jou} other {# vrae vir jou}}",
-      "finishedIncluded": "{included} ingesluit",
       "waitingForVotes": "{count} wag vir stemme",
       "inConflictFor": "{count} in konflik, vir {who} om te beslis",
       "upToDate": "Op datum",

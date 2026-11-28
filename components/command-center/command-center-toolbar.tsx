@@ -79,7 +79,8 @@ export function CommandCenterFilters<TSort extends string>({
             {sortOptions.map((option) => <span key={option.value} aria-hidden className="invisible whitespace-nowrap [grid-area:1/1]">{option.label}</span>)}
           </span>
         </SelectTrigger>
-        <SelectContent>
+        {/* Under its field and as wide as it, as every field's list opens. */}
+        <SelectContent position="popper" className="w-(--radix-select-trigger-width) min-w-0">
           {sortOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

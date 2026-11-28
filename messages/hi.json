@@ -8764,7 +8764,6 @@
       "forYouToScreen": "{count, plural, other {आपके स्क्रीन करने को #}}",
       "conflictsToSettle": "{count, plural, one {सुलझाने को # मतभेद} other {सुलझाने को # मतभेद}}",
       "questionsForYou": "{count, plural, one {आपके लिए # प्रश्न} other {आपके लिए # प्रश्न}}",
-      "finishedIncluded": "{included} शामिल",
       "waitingForVotes": "{count} वोट की प्रतीक्षा में",
       "inConflictFor": "{count} मतभेद में, {who} के सुलझाने को",
       "upToDate": "अद्यतन",

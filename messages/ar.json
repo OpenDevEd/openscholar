@@ -8765,7 +8765,6 @@
       "forYouToScreen": "{count, plural, zero {# ورقة لتفرزها} one {ورقة واحدة لتفرزها} two {ورقتان لتفرزهما} few {# أوراق لتفرزها} many {# ورقة لتفرزها} other {# ورقة لتفرزها}}",
       "conflictsToSettle": "{count, plural, zero {# تعارض لتحسمها} one {تعارض واحد لتحسمه} two {تعارضان لتحسمهما} few {# تعارضات لتحسمها} many {# تعارضًا لتحسمها} other {# تعارض لتحسمها}}",
       "questionsForYou": "{count, plural, zero {# سؤال لك} one {سؤال واحد لك} two {سؤالان لك} few {# أسئلة لك} many {# سؤالًا لك} other {# سؤال لك}}",
-      "finishedIncluded": "{included} مُدرَجة",
       "waitingForVotes": "{count} بانتظار الأصوات",
       "inConflictFor": "{count} في تعارض، يحسمها {who}",
       "upToDate": "محدّث",

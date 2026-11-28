@@ -8764,7 +8764,6 @@
       "forYouToScreen": "{count, plural, other {# 篇待你筛选}}",
       "conflictsToSettle": "{count, plural, other {# 个冲突待裁决}}",
       "questionsForYou": "{count, plural, other {# 个问你的问题}}",
-      "finishedIncluded": "{included} 篇入选",
       "waitingForVotes": "{count} 篇等待投票",
       "inConflictFor": "{count} 篇有冲突，由 {who} 裁决",
       "upToDate": "已是最新",

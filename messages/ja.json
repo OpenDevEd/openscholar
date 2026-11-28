@@ -8764,7 +8764,6 @@
       "forYouToScreen": "{count, plural, other {あなたがスクリーニングする論文 # 件}}",
       "conflictsToSettle": "{count, plural, other {判定する不一致 # 件}}",
       "questionsForYou": "{count, plural, other {あなたへの質問 # 件}}",
-      "finishedIncluded": "{included} 件を採用",
       "waitingForVotes": "投票待ち {count} 件",
       "inConflictFor": "不一致 {count} 件、{who} が判定",
       "upToDate": "最新です",

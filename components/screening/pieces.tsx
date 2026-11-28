@@ -368,6 +368,9 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
   const t = useTranslations("screening.pieces");
   const picked = choices.find((one) => one.value === value) ?? choices[0]!;
   const changed = picked !== choices[0];
+  // A reason several choices are shut for is said once, under them all, never under each.
+  const shut = choices.flatMap((one) => (one.shut ? [one.shut] : []));
+  const once = shut.length > 1 && shut.every((reason) => reason === shut[0]) ? shut[0] : undefined;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -390,13 +393,20 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
               // A long name runs onto a second line, and the sign, the count and the tick stay on its first.
               <DropdownMenuItem key={one.value} role="menuitemradio" aria-checked={one.value === value} disabled={Boolean(one.shut)} onSelect={() => onChange(one.value)} className="items-start data-[disabled]:opacity-100">
                 {one.icon ? <span className={cn(SIGN, "h-5", TONE[one.tone ?? "neutral"].ink, one.shut && "opacity-50")}>{one.icon}</span> : null}
-                <span className="min-w-0 flex-1"><span className={cn(one.shut && "opacity-50")}>{one.label}</span>{/* The lock sits on the reason's first line, in a box one line high, however far the reason runs. */}{one.shut ? <span className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground"><span className="flex h-4 shrink-0 items-center"><Lock aria-hidden className="size-3" /></span>{one.shut}</span> : null}</span>
+                <span className="min-w-0 flex-1"><span className={cn(one.shut && "opacity-50")}>{one.label}</span>{/* The lock sits on the reason's first line, in a box one line high, however far the reason runs. */}{one.shut && !once ? <span className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground"><span className="flex h-4 shrink-0 items-center"><Lock aria-hidden className="size-3" /></span>{one.shut}</span> : null}</span>
+                {one.shut && once ? <span className="flex h-5 items-center text-muted-foreground"><Lock aria-label={once} className="size-3" /></span> : null}
                 {one.count !== undefined ? <span className="ps-3 text-xs leading-5"><span className="sr-only">, </span><TabCount value={one.count} tone={one.tone} /></span> : null}
                 <span className="flex h-5 items-center"><Check aria-hidden className={cn("size-4", one.value !== value && "invisible")} /></span>
               </DropdownMenuItem>
             ))}
           </div>
         ))}
+        {once ? (
+          <>
+            <DropdownMenuSeparator />
+            <p className="flex items-start gap-1.5 px-2 py-1.5 text-xs text-muted-foreground"><span className="flex h-4 shrink-0 items-center"><Lock aria-hidden className="size-3" /></span>{once}</p>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -8765,7 +8765,6 @@
       "forYouToScreen": "{count, plural, other {# para que usted cribe}}",
       "conflictsToSettle": "{count, plural, one {# conflicto que resolver} other {# conflictos que resolver}}",
       "questionsForYou": "{count, plural, one {# pregunta para usted} other {# preguntas para usted}}",
-      "finishedIncluded": "{included} incluidos",
       "waitingForVotes": "{count} esperando votos",
       "inConflictFor": "{count} en conflicto, que resuelve {who}",
       "upToDate": "Al día",
