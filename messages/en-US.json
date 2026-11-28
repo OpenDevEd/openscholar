@@ -8687,7 +8687,7 @@
         "fullHere": "{own, select, true {Your plan shares} other {{workspace}’s plan shares}} a screening with {count, plural, one {# person} other {# people}} from outside. Take back an invitation, or remove someone, to add another.",
         "ownWorkspace": "It is in their own workspace",
         "everyMember": "Every member",
-        "canChange": "Can see and change it",
+        "canChange": "Can see and change the screening",
         "startedIt": "Started it",
         "votedOn": "{detail}, voted on {done, number} of {of, number}",
         "modelRead": "{failed, select, true {{price}, got through {done, number} of {of, number}} other {{price}, read {done, number} of {of, number}}}",

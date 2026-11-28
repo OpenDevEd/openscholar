@@ -883,7 +883,8 @@ function Screen({ open }: { open: Open }) {
                         </p>
                         )}
                         {/* What the marked words are, under the text they are in: they were taken for evidence someone had picked. */}
-                        {criteria.some((criterion) => criterion.terms.length) ? <p className="text-xs text-muted-foreground">{t.rich("paper.marked", { mark: (chunk) => <mark className="rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</p> : null}
+                        {/* Only where a word is marked in this paper's text: a PDF marks its own, and so says it. */}
+                        {(() => { const pattern = termsPattern(criteria.flatMap((c) => c.terms)); return Boolean(pattern) && (Boolean(paper.pdf) || sentences.some((sentence) => new RegExp(pattern!.source, pattern!.flags.replace("g", "")).test(sentence))); })() ? <p className="text-xs text-muted-foreground">{t.rich("paper.marked", { mark: (chunk) => <mark className="rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</p> : null}
                       </div>
                     </motion.article>
 
