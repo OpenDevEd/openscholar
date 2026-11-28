@@ -9454,6 +9454,7 @@
       "settle": {
         "changeTitle": "更改裁决",
         "title": "裁决此冲突",
+        "votedReasons": "投票中给出的理由",
         "helpTitle": "裁决冲突",
         "yourVote": "你作为审核人的投票",
         "rule": "规则",

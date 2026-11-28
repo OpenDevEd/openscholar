@@ -9454,6 +9454,7 @@
       "settle": {
         "changeTitle": "判定を変更",
         "title": "この不一致を判定",
+        "votedReasons": "投票で挙げられた理由",
         "helpTitle": "不一致の判定",
         "yourVote": "レビュアーとしてのあなたの投票",
         "rule": "ルール",

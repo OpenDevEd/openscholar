@@ -9455,6 +9455,7 @@
       "settle": {
         "changeTitle": "Verander hoe dit beslis is",
         "title": "Beslis hierdie konflik",
+        "votedReasons": "Redes in die stemme",
         "helpTitle": "Hoe om ’n konflik te beslis",
         "yourVote": "Jou stem as beoordelaar",
         "rule": "Reël",

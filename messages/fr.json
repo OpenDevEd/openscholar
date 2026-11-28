@@ -9454,6 +9454,7 @@
       "settle": {
         "changeTitle": "Trancher autrement",
         "title": "Trancher ce désaccord",
+        "votedReasons": "Motifs donnés dans les votes",
         "helpTitle": "Trancher un désaccord",
         "yourVote": "Votre vote d'évaluateur",
         "rule": "Règle",

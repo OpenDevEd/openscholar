@@ -9455,6 +9455,7 @@
       "settle": {
         "changeTitle": "Alterar como está resolvido",
         "title": "Resolver este conflito",
+        "votedReasons": "Motivos dados nos votos",
         "helpTitle": "Resolver um conflito",
         "yourVote": "O seu voto como revisor",
         "rule": "Regra",

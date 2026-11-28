@@ -9453,7 +9453,8 @@
       },
       "settle": {
         "changeTitle": "Change how it is settled",
-          "title": "Settle this conflict",
+        "title": "Settle this conflict",
+        "votedReasons": "Reasons in the votes",
         "helpTitle": "Settling a conflict",
         "yourVote": "Your vote as a reviewer",
         "rule": "Rule",

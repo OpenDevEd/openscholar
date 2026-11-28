@@ -47,7 +47,8 @@ export function YouTag({ className }: { className?: string }) {
 
 /** A name, cut where it runs out of room, with You after yours. */
 /** An address offers its line breaks after "@" and each ".", so it wraps between its parts, not mid-word ("exam / ple.com"). It breaks inside a part only where that part alone is wider than the line (`break-word`, which keeps a part whole when the row is laid out). */
-const breakable = (name: string) => (name.includes("@") ? name.split(/(?<=[@.])/).flatMap((part, at) => (at ? [<wbr key={at} />, part] : [part])) : name);
+/** An address may break after its @, a dot, a plus, a hyphen or an underscore: where it ends a line, it ends a part of the address, never the middle of one. */
+const breakable = (name: string) => (name.includes("@") ? name.split(/(?<=[@.+\-_])/).flatMap((part, at) => (at ? [<wbr key={at} />, part] : [part])) : name);
 
 export function PersonName({ name, you = false, wrap = false, className }: { name: string; you?: boolean; /** Where a second line costs nothing, a long name or an address runs onto it and is read whole. */ wrap?: boolean; className?: string }) {
   return (

@@ -258,7 +258,11 @@ function Screen({ open }: { open: Open }) {
     if (!picked && paper) void setPlace({ paper: paper.id }, { history: "replace" }).then(next);
     else next();
   };
+  // The paper a vote moved on from. Voted on, it leaves To do, so the step back from the paper it moved to is to it, as Back is: never to the one before it.
+  const [cameFrom, setCameFrom] = useState<{ to: string; from: Paper } | null>(null);
+  const back = cameFrom && cameFrom.to === paper?.id && !items.some((one) => one.id === cameFrom.from.id) ? cameFrom.from : null;
   const go = (index: number) => {
+    if (back && index === at - 1) return openIt(back);
     if (index >= items.length && listed.canNext) return turn(listed.next);
     if (index < 0 && listed.canPrevious) return turn(listed.previous, true);
     const next = items[Math.max(0, Math.min(items.length - 1, index))];
@@ -341,7 +345,9 @@ function Screen({ open }: { open: Open }) {
   const settler = words.nameOn(screening, screening.rule.resolver);
 
   // What a paper can be excluded for: no reason, which Enter gives, a duplicate, or another reason, which is written in the note. Each has its key.
-  const reasonGroups = words.excludeGroups();
+  // Settling, the reasons the excluding votes gave are offered under those: the settler takes one rather than writing it again.
+  const votedReasons = resolving ? [...new Set(cast.flatMap((one) => (one.vote?.decision === "exclude" && one.vote.reason && criteria.some((criterion) => criterion.key === one.vote!.reason) ? [one.vote.reason] : [])))] : [];
+  const reasonGroups: Array<{ name: string; list: Array<{ key: string; hotkey?: string }> }> = [...words.excludeGroups(), ...(votedReasons.length ? [{ name: t("settle.votedReasons"), list: votedReasons.map((key) => ({ key })) }] : [])];
   const reasons = reasonGroups.flatMap((group) => group.list);
 
   const decideOn = (decision: Decision, reason?: string) => {
@@ -386,6 +392,7 @@ function Screen({ open }: { open: Open }) {
     setWriting(null);
     if (next) {
       advanced.current = { paper: next.id, at: Date.now() };
+      setCameFrom({ to: next.id, from: paper });
       openIt(next, { inPlace: fromSheet });
     }
     // The next paper is on the queue's next page: the page turns to it, as stepping past the last paper does.
@@ -1040,7 +1047,7 @@ function Screen({ open }: { open: Open }) {
                 <span className="font-medium">{queue === "done" && kept && !otherQueue ? t("bar.notInList") : queue === "done" || !decideLook || floor ? ((!otherQueue && at < 0) || (queueTotal !== undefined && shownAt > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(shownAt) : t("bar.atOf", { at: shownAt, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
-              <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
+              <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious || Boolean(back)} canNext={at < items.length - 1 || listed.canNext} />
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
               {/* Its place is held before the first vote too, so the bar keeps its rows when the way back appears. */}
