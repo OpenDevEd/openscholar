@@ -8499,6 +8499,7 @@
         "peopleOnly": "{handed, select, true {人のみ、これ以上の支払いなし} other {人のみ、クレジット不要}}",
         "addCredits": "クレジットを追加",
         "start": "スクリーニングを開始",
+        "toFix": "{saving, select, true {保存} other {開始}}する前に直す点が{count, plural, other {# 件}}あります",
         "moved": "{count, plural, other {論文 # 件の結果が変わります}}",
         "review": "確認",
         "discard": "破棄",

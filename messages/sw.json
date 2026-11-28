@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {Watu pekee, hakuna cha ziada kulipa} other {Watu pekee, hakuna krediti}}",
         "addCredits": "Ongeza krediti",
         "start": "Anza uchujaji",
+        "toFix": "{count, plural, one {Jambo # la kurekebisha kabla ya {saving, select, true {kuhifadhi} other {kuanza}}} other {Mambo # ya kurekebisha kabla ya {saving, select, true {kuhifadhi} other {kuanza}}}}",
         "moved": "{count, plural, one {Makala # inabadilisha matokeo} other {Makala # zinabadilisha matokeo}}",
         "review": "Kagua",
         "discard": "Tupa",

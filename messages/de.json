@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {Nur Personen, nichts mehr zu zahlen} other {Nur Personen, keine Credits}}",
         "addCredits": "Credits hinzufügen",
         "start": "Screening starten",
+        "toFix": "{count, plural, one {# Punkt vor dem {saving, select, true {Speichern} other {Starten}} beheben} other {# Punkte vor dem {saving, select, true {Speichern} other {Starten}} beheben}}",
         "moved": "{count, plural, one {# Artikel ändert sein Ergebnis} other {# Artikel ändern ihr Ergebnis}}",
         "review": "Überprüfen",
         "discard": "Verwerfen",

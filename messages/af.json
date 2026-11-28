@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {Net mense, niks meer om te betaal nie} other {Net mense, geen krediete nie}}",
         "addCredits": "Voeg krediete by",
         "start": "Begin siftering",
+        "toFix": "{count, plural, one {# ding om reg te stel voor {saving, select, true {jy stoor} other {jy begin}}} other {# dinge om reg te stel voor {saving, select, true {jy stoor} other {jy begin}}}}",
         "moved": "{count, plural, one {# artikel verander van uitslag} other {# artikels verander van uitslag}}",
         "review": "Hersien",
         "discard": "Gooi weg",

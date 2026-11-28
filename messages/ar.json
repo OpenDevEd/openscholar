@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {أشخاص فقط، لا شيء آخر للدفع} other {أشخاص فقط، بلا أرصدة}}",
         "addCredits": "إضافة أرصدة",
         "start": "بدء الفرز",
+        "toFix": "{count, plural, zero {لا شيء للإصلاح} one {أمر واحد للإصلاح قبل {saving, select, true {الحفظ} other {البدء}}} two {أمران للإصلاح قبل {saving, select, true {الحفظ} other {البدء}}} few {# أمور للإصلاح قبل {saving, select, true {الحفظ} other {البدء}}} many {# أمرًا للإصلاح قبل {saving, select, true {الحفظ} other {البدء}}} other {# أمر للإصلاح قبل {saving, select, true {الحفظ} other {البدء}}}}",
         "moved": "{count, plural, zero {تتغير نتيجة # ورقة} one {تتغير نتيجة ورقة واحدة} two {تتغير نتيجة ورقتين} few {تتغير نتيجة # أوراق} many {تتغير نتيجة # ورقة} other {تتغير نتيجة # ورقة}}",
         "review": "مراجعة",
         "discard": "تجاهل",
