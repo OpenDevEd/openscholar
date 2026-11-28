@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "已检查 {done, number} / {of, plural, other {# 个来源}}",
-        "arrived": "{ago}加入了 <link>{count, plural, other {# 篇新论文}}</link>",
-        "screenNew": "先筛选你的 {count, plural, other {# 篇新论文}}",
         "arrivedForYou": "{count, plural, other {{ago}加入了 # 篇分给你的新论文}}",
         "nothing": "上次检查没有发现新论文",
         "counting": "<done></done> / {of, number}",
@@ -9062,6 +9060,7 @@
         "points": "分数最高",
         "shut": "这次筛选会隐藏其他审核人在你尚未投票的论文上的投票，而这种排序会泄露这些投票",
         "byVote": "只看一位审核人时，论文按该审核人投票的先后顺序排列",
+        "byVoteMany": "仅限这些审阅者都投过票的论文,按其中第一位的投票顺序排列",
         "byVoteLabel": "按投票顺序",
         "bySearch": "搜索时，论文按匹配程度从高到低排列",
         "bySearchLabel": "最佳匹配优先",
@@ -9315,7 +9314,10 @@
       "previousPaper": "上一篇论文",
       "nextPaper": "下一篇论文",
       "messages": "{count, plural, other {# 条消息}}",
-      "discuss": "讨论"
+      "discuss": "讨论",
+      "heldChip": "保留自更改之前",
+      "heldHelp": "此结果在设置更改前已确定,并保持原样。有人对该论文投票,或按新设置重新检查已确定的论文时,它才会改变。",
+      "noPdfVote": "{names} 无法读取 PDF,因此对这篇论文没有投票"
     },
     "screen": {
       "notSaved": "未能保存，请重试。",

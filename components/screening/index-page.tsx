@@ -113,8 +113,8 @@ export function ScreeningsIndex() {
   const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? sharedShown : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
-  // Another tab, order, search or person asked for: until its rows come it shows skeletons, or at once says it is empty where its count is 0. Never the last tab's rows under the new one. Needs you is read with the page, so it has no wait.
-  const askedList = JSON.stringify([show, sort, runBy.by ?? null, searched]);
+  // Another tab or person asked for (a search typed or another order keeps the rows up, dimmed): until its rows come it shows skeletons, or at once says it is empty where its count is 0. Never the last tab's rows under the new one. Needs you is read with the page, so it has no wait.
+  const askedList = JSON.stringify([show, runBy.by ?? null]);
   const [arrivedList, setArrivedList] = useState(askedList);
   if ((show === "you" || (!listed.isLoading && !listed.isStale)) && arrivedList !== askedList) setArrivedList(askedList);
   const otherList = arrivedList !== askedList;
@@ -330,7 +330,7 @@ export function ScreeningsIndex() {
                 )}
                 </AutoHeight>
                 {/* The total is the tabs' own count, with the screenings shared from outside, which the first page shows on top of its own; the pages are its own screenings'. Under "Needs you first" the rows that wait are drawn first, out of the pages' order, so neither a total nor a range is said there. */}
-                {show !== "you" && listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset + (listed.page > 1 ? sharedShown.length : 0), shown: sort === "you" ? 0 : listed.items.length + (listed.page === 1 ? sharedShown.length : 0), ...(searched || runBy.by || !counts || !tally || sort === "you" ? {} : { total: show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all, pageCount: Math.max(1, Math.ceil((show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished) / PAGE)) }) }} /> : null}
+                {show !== "you" && listed.hasPages && !otherList ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("pagerItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset + (listed.page > 1 ? sharedShown.length : 0), shown: sort === "you" ? 0 : listed.items.length + (listed.page === 1 ? sharedShown.length : 0), ...(searched || runBy.by || !counts || !tally || sort === "you" ? {} : { total: show === "open" ? counts.open : show === "finished" ? counts.finished : counts.all, pageCount: Math.max(1, Math.ceil((show === "open" ? tally.open : show === "finished" ? tally.finished : tally.open + tally.finished) / PAGE)) }) }} /> : null}
               </>
             )}
             </AutoHeight>
@@ -346,7 +346,7 @@ export function ScreeningsIndex() {
 
 /** A group's labelled row before its first screening on the page, under the default order. */
 /** The screenings that wait for the person in another workspace. This list holds this workspace's own, so each of those is a link to where it is. */
-function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number; askedFirst?: string; askedWhere?: "conflicts" | "screen" | "papers" }> }) {
+function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number; askedFirst?: string; askedWhere?: "conflicts" | "screen" | "done" | "papers" }> }) {
   const t = useTranslations("screening.list");
   const words = useWords();
   if (!rows.length) return null;

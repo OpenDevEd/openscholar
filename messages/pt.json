@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} de {of, plural, one {# fonte verificada} other {# fontes verificadas}}",
-        "arrived": "<link>{count, plural, one {# artigo novo} other {# artigos novos}}</link> chegaram {ago}",
-        "screenNew": "Faça primeiro a triagem {count, plural, one {do seu # artigo novo} other {dos seus # artigos novos}}",
         "arrivedForYou": "{count, plural, one {# artigo novo para si chegou {ago}} other {# artigos novos para si chegaram {ago}}}",
         "nothing": "A última verificação não encontrou artigos novos",
         "counting": "<done></done> de {of, number}",
@@ -9063,6 +9061,7 @@
         "points": "Mais pontos",
         "shut": "Esta triagem oculta os votos dos outros revisores nos artigos em que ainda não votou, e esta ordem revelá-los-ia",
         "byVote": "Com a lista limitada a um revisor, os artigos aparecem pela ordem em que esse revisor votou neles",
+        "byVoteMany": "Limitados aos artigos em que todos estes revisores votaram, vêm na ordem em que o primeiro votou",
         "byVoteLabel": "Pela ordem dos votos",
         "bySearch": "Durante uma pesquisa, os artigos aparecem pela ordem de correspondência, da melhor para a pior",
         "bySearchLabel": "Melhor correspondência primeiro",
@@ -9316,7 +9315,10 @@
       "previousPaper": "Artigo anterior",
       "nextPaper": "Artigo seguinte",
       "messages": "{count, plural, one {# mensagem} other {# mensagens}}",
-      "discuss": "Discutir"
+      "discuss": "Discutir",
+      "heldChip": "Mantido de antes de uma alteração",
+      "heldHelp": "Este resultado foi decidido antes de as definições mudarem e mantém-se. Muda quando alguém vota no artigo ou quando os artigos decididos são verificados de novo com as novas definições.",
+      "noPdfVote": "{names} não {count, plural, one {consegue} other {conseguem}} ler PDFs, por isso não {count, plural, one {tem} other {têm}} voto neste artigo"
     },
     "screen": {
       "notSaved": "Não foi guardado. Tente novamente.",

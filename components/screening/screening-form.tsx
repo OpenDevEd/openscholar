@@ -80,6 +80,8 @@ type Kind = "search" | "upload" | "collection" | "screening" | "evidenceLibrary"
 /** This part's messages, and the shared words, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.form">>;
 type Say = { words: Words; t: T; effects: EffectsSay };
+/** The source tabs that hold something while it is being added: a file, pasted DOIs, picked collections. */
+const PANELS: readonly string[] = ["upload", "dois", "zotero", "evidenceLibrary"];
 const KINDS: Array<{ id: Kind; icon: AppIcon }> = [
   { id: "search", icon: SOURCE_ICON.search },
   // A file follows a search: the two ways most people bring papers. On a phone the row shows its first three or four, and someone who came with a file looks for it there.
@@ -387,6 +389,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The search is read while the form shows, so the store has it whether the person came from its results or from a link.
   useWatchedSearch(fromSearch ?? undefined);
   const picked = useSearchHistoryStore((state) => (fromSearch ? state.searchHistory.find((item) => item.id === fromSearch) : undefined));
+  // Its filters, named as the search's row in the form names them when it is added there: one search, said the same way however it came.
+  const pickedFilters = useFilterLabels(picked ?? {}).join("\n");
   const copiedRead = useOpenScreening(!id && from ? from : "");
   const copied = !id && from ? (copiedRead?.screening ?? undefined) : undefined;
   // Who is making it, what the workspace has to pay its models with, and a screening whose models would read before this one's.
@@ -401,7 +405,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!copied && picked) {
       const criteria = searchOffer(picked, tc("noQuery")).questions?.map((question) => criterionFrom(question)) ?? [];
       const asked = picked.latestQuestion?.trim() ?? "";
-      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom(searchOffer(picked, tc("noQuery")))], criteria, scoring: defaultScoring(criteria) };
+      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom({ ...searchOffer(picked, tc("noQuery")), ...(pickedFilters ? { filters: pickedFilters.split("\n") } : {}) })], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
@@ -415,7 +419,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     const mine = (one: Reviewer) => one.kind === "model" || (here && !one.guest);
     return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set && here).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: [...(here ? [] : start.reviewers), ...activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id }))], rule: here ? copied.rule : { ...copied.rule, resolver: start.rule.resolver }, scoring: copied.scoring, destination: here ? { ...copied.destination, name: "" } : start.destination };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
-  }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
+  }, [setup?.me.id, copied?.id, picked?.id, pickedFilters, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
   // The guests who vote on the screening this one is copied from, by name: they are not on the copy, and the form says how they get on it.
   // A copy made in another workspace takes none of the people: it says nothing of whom it left behind, the person copying it among them.
@@ -502,6 +506,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Where papers are added from is a tab in the address: each one picked is a step, so Back returns to the tab before.
   const [kindInAddress, setKind] = useQueryState("addFrom", parseAsStringLiteral(KINDS.map((one) => one.id)).withOptions({ history: "push", scroll: false }));
   const kind: Kind = kindInAddress ?? (fromHandoff && !id ? "evidenceLibrary" : "search");
+  // The tabs that hold what is being added, kept drawn from the first time each is opened.
+  const [panelsOpened, setPanelsOpened] = useState<Kind[]>([]);
+  if (PANELS.includes(kind) && !panelsOpened.includes(kind)) setPanelsOpened([...panelsOpened, kind]);
   // The search in the Search and Screening tabs is in the address: starting and clearing it are steps, as in every list.
   const [find, setFindIn] = useQueryState("addFind", parseAsString.withDefault("").withOptions({ scroll: false }));
   const setFind = (next: string) => void setFindIn(next || null, searchHistory(find, next));
@@ -1163,7 +1170,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : (
                                         <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
                                       )}
-                                      {halted ? <Chip key="halted" icon={Clock} className="h-5 self-center">{halted}</Chip> : null}
+                                      {/* A sentence, on a line of its own, so it wraps rather than being cut on a narrow screen. */}{halted ? <span key="halted" className="flex basis-full items-start gap-1.5 text-xs text-muted-foreground"><Clock aria-hidden className="mt-0.5 size-3.5 shrink-0" />{halted}</span> : null}
                                       {range}
                                     </div>
                                     {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}
@@ -1299,11 +1306,12 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <TabsContent value={kind}>
                     {/* The tabs are different heights: the frame slides from one to the next, and what is under it moves with it. */}
                     <AutoHeight>
-                    {kind === "upload" ? <UploadTab sources={draft.sources} onAdd={pick} {...(lookCredits === undefined ? {} : { lookCredits })} />
-                    : kind === "dois" ? <DoiTab sources={draft.sources} onAdd={pick} />
-                    : kind === "zotero" ? <ZoteroTab sources={draft.sources} onAdd={pick} />
-                    : kind === "evidenceLibrary" ? <CommunityTab sources={draft.sources} onAdd={pick} />
-                    : (
+                    {/* A tab that holds what is being added (a file and its columns, pasted DOIs, picked collections) stays drawn once opened, hidden while another is: going to another tab and back loses none of it. */}
+                    {panelsOpened.includes("upload") ? <div hidden={kind !== "upload"}><UploadTab sources={draft.sources} onAdd={pick} {...(lookCredits === undefined ? {} : { lookCredits })} /></div> : null}
+                    {panelsOpened.includes("dois") ? <div hidden={kind !== "dois"}><DoiTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {panelsOpened.includes("zotero") ? <div hidden={kind !== "zotero"}><ZoteroTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {panelsOpened.includes("evidenceLibrary") ? <div hidden={kind !== "evidenceLibrary"}><CommunityTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {PANELS.includes(kind) ? null : (
                     <div className="space-y-2">
                       {/* A search is found by its words and a screening by its name. The library's collections are few enough to page through. */}
                       {kind !== "collection" ? (
@@ -1835,7 +1843,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 max-lg:pe-[5.5rem]">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-0.5">
               <span className="text-sm">{t.rich("bar.toScreen", { count: papers, soFar, n: () => <span className="text-lg font-semibold tabular-nums"><AnimatedNumber value={papers} /></span>, m: (chunks) => <span className="text-muted-foreground">{chunks}</span> })}</span>
-              <span className="text-sm">{models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.creditsOf(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
+              <span className="text-sm">{models.length && !cost ? <span className="text-muted-foreground">{t("cost.total")} <span className="font-semibold text-foreground">{t("cost.free")}</span></span> : models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.creditsOf(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
               {tried && fixes.length ? <Blocker block={{ ...fixes[0]!, text: t("bar.toFix", { count: fixes.length, saving: "false" }) }} /> : tried && problems.length ? <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Spinner className="size-3.5" />{problems[0]!.text}</span> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}

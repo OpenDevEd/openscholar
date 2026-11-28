@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{done, number} kwa-{of, plural, one {# umthombo} other {# imithombo}} ihloliwe",
-        "arrived": "<link>{count, plural, one {# iphepha elisha} other {# amaphepha amasha}}</link> kufike {ago}",
-        "screenNew": "Skrina {count, plural, one {iphepha lakho elisha elingu-#} other {amaphepha akho amasha angu-#}} kuqala",
         "arrivedForYou": "{count, plural, one {Iphepha lakho elisha elingu-# lifike {ago}} other {Amaphepha akho amasha angu-# afike {ago}}}",
         "nothing": "Ukuhlola kokugcina akutholanga maphepha amasha",
         "counting": "<done></done> kwa-{of, number}",
@@ -9062,6 +9060,7 @@
         "points": "Amaphoyinti amaningi",
         "shut": "Lokhu kuskrini kufihla amavoti abanye ababuyekezi emaphepheni ongakavoti kuwo, futhi lolu hlelo beluzowadalula",
         "byVote": "Uma uhlu lunciphiselwe kumbuyekezi oyedwa, amaphepha avela ngohlelo avotwe ngalo yilowo mbuyekezi",
+        "byVoteMany": "Kugcinwe emaphepheni abawavotele bonke laba babuyekezi, eza ngokulandelana okuvote ngakho owokuqala wabo",
         "byVoteLabel": "Njengoba evotiwe",
         "bySearch": "Ngesikhathi usesha, amaphepha ahambisana kakhulu avela kuqala",
         "bySearchLabel": "Ahambisana kakhulu kuqala",
@@ -9315,7 +9314,10 @@
       "previousPaper": "Iphepha langaphambilini",
       "nextPaper": "Iphepha elilandelayo",
       "messages": "{count, plural, one {# umlayezo} other {# imilayezo}}",
-      "discuss": "Xoxa"
+      "discuss": "Xoxa",
+      "heldChip": "Kugcinwe kusukela ngaphambi koshintsho",
+      "heldHelp": "Lo mphumela wanqunywa ngaphambi kokuthi izilungiselelo zishintshe, futhi uhlala unjalo. Uyashintsha uma othile evotela iphepha, noma uma amaphepha anqunyiwe ehlolwa futhi ngaphansi kwezilungiselelo ezintsha.",
+      "noPdfVote": "{names} akakwazi ukufunda ama-PDF, ngakho akanalo ivoti kuleli phepha"
     },
     "screen": {
       "notSaved": "Lokho akugcinwanga. Zama futhi.",

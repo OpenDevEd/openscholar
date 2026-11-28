@@ -21,7 +21,7 @@ import { Building2, Check, CircleCheck, Coins, FileSearch, Folder, ListFilter, L
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
 import { LIST, Tile } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { PersonTag, RoleLabel } from "@/components/ui/identity";
@@ -85,11 +85,11 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
   const needle = useDeferredValue(text.trim());
   const counts = useProtectedQuery(api.sharing.shared.counts, inWorkspace(workspaceId, {})).data ?? initial?.counts;
   const { results, status, loadMore } = usePaginatedQuery(api.sharing.shared.list, inWorkspace(workspaceId, { sort, ...(kind ? { kind } : {}), ...(needle ? { text: needle } : {}) }), { initialNumItems: SHARED_PAGE });
-  // The rows shown: the view asked for once it's read, and until then the ones shown last, which at first are the page's own.
+  // The rows shown: the view asked for once it's read. Until then, at first the page's own rows; after that, another kind, order or search shows the list loading, or its empty state at once where the counts say the kind has none. Never the last view's rows, nor its empty state, under the new one.
   const loading = status === "LoadingFirstPage";
   const [kept, keep] = useState(initial?.rows);
   if (!loading && kept !== results) keep(results);
-  const rows = loading ? kept : results;
+  const rows = !loading ? results : kept === initial?.rows ? kept : kind && !needle && counts?.[kind] === 0 ? [] : undefined;
   // The invitations come with the page, from the first frame: the rows never move down for them.
   const invitations = useWaitingInvitations(initial?.invitations);
   const invited = (invitations ?? []).some((row) => (!kind || row.kind === kind) && nameHas(row.name, needle));
@@ -152,7 +152,8 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
           ))}
         </div>
       ) : !rows ? (
-        <ListLoading label={t("loading")} />
+        // As many rows as the kind holds, up to a page, where it is counted.
+        <ListRowsSkeleton rows={Math.max(1, Math.min(kind ? (counts?.[kind] ?? SHARED_PAGE) : SHARED_PAGE, SHARED_PAGE))} height={64} label={t("loading")} />
       ) : (
         // Under an invitation, the empty list says how what it shares comes here.
         <ListEmpty icon={needle ? SearchX : Share2}>{invited ? t("emptyInvited") : needle ? t("emptySearch") : kind ? t("emptyKind") : t("empty")}</ListEmpty>

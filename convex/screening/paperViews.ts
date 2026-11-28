@@ -72,6 +72,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
     id: paper._id,
     key: paper.paperKey,
     ...(paper.withdrawn ? { withdrawn: true as const } : {}),
+    ...(paper.kept !== undefined && paper.result === paper.kept ? { held: true as const } : {}),
     ...(paper.fileName ? { fileName: paper.fileName } : {}),
     ...(paper.settledAt !== undefined && isFinal(result) ? { settledAt: paper.settledAt } : {}),
     title: paper.title,

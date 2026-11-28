@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} de {of, plural, one {# fuente comprobada} other {# fuentes comprobadas}}",
-        "arrived": "{count, plural, one {Llegó <link># artículo nuevo</link>} other {Llegaron <link># artículos nuevos</link>}} {ago}",
-        "screenNew": "Cribe primero sus {count, plural, one {# artículo nuevo} other {# artículos nuevos}}",
         "arrivedForYou": "{count, plural, one {Llegó # artículo nuevo para usted {ago}} other {Llegaron # artículos nuevos para usted {ago}}}",
         "nothing": "La última comprobación no encontró artículos nuevos",
         "counting": "<done></done> de {of, number}",
@@ -9063,6 +9061,7 @@
         "points": "Más puntos",
         "shut": "Este cribado oculta los votos de los demás revisores en los artículos que usted aún no ha votado, y este orden los delataría",
         "byVote": "Con la lista limitada a un revisor, los artículos aparecen en el orden en que los votó",
+        "byVoteMany": "Limitados a los artículos que todos estos revisores votaron, aparecen en el orden en que votó el primero",
         "byVoteLabel": "Según se votaron",
         "bySearch": "Durante una búsqueda, los artículos que mejor coinciden aparecen primero",
         "bySearchLabel": "Mejor coincidencia primero",
@@ -9316,7 +9315,10 @@
       "previousPaper": "Artículo anterior",
       "nextPaper": "Artículo siguiente",
       "messages": "{count, plural, one {# mensaje} other {# mensajes}}",
-      "discuss": "Comentar"
+      "discuss": "Comentar",
+      "heldChip": "Conservado de antes de un cambio",
+      "heldHelp": "Este resultado se decidió antes de cambiar los ajustes y se mantiene. Cambia cuando alguien vota el artículo o cuando los artículos decididos se revisan de nuevo con los ajustes nuevos.",
+      "noPdfVote": "{names} no {count, plural, one {puede} other {pueden}} leer PDF, así que no {count, plural, one {tiene} other {tienen}} voto en este artículo"
     },
     "screen": {
       "notSaved": "No se guardó. Inténtelo de nuevo.",

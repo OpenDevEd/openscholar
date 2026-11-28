@@ -30,6 +30,7 @@ import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
 import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, termsPattern, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
+import { readsPdfs } from "@/lib/assistant/files";
 import { papersHref } from "./links";
 import { useRtl, useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -775,15 +776,21 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
 /** The reasons to exclude as rows to press: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. The same three as the menu on Screen. */
 /** Whether the pointer is a mouse: a phone gets no focus put on a row for keys it has none of, which would move its sheet. */
 const finePointer = () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches;
-export function ReasonRows({ criteria, many = false, titled = true, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** Whether the question is said over the rows; a sheet that has it as its own title leaves it out. */ titled?: boolean; onPick: (reason: string) => void }) {
+/** The reasons the excluding votes on a paper gave, offered to whoever settles it, under the usual ones: taken rather than written again. */
+export const votedReasonGroup = (name: string, criteria: Pick<Criterion, "key">[], cast: Array<{ vote?: { decision: string; reason?: string } | null }>) => {
+  const keys = [...new Set(cast.flatMap((one) => (one.vote?.decision === "exclude" && one.vote.reason && criteria.some((criterion) => criterion.key === one.vote!.reason) ? [one.vote.reason] : [])))];
+  return keys.length ? [{ name, list: keys.map((key) => ({ key })) }] : [];
+};
+
+export function ReasonRows({ criteria, many = false, titled = true, extra = [], onPick }: { criteria: Criterion[]; /** Groups offered under the usual reasons: the votes' own, when settling. */ extra?: Array<{ name: string; list: Array<{ key: string; hotkey?: string }> }>; /** The reason is for several papers picked together. */ many?: boolean; /** Whether the question is said over the rows; a sheet that has it as its own title leaves it out. */ titled?: boolean; onPick: (reason: string) => void }) {
   const words = useWords();
-  const groups = words.excludeGroups(many);
+  const groups: Array<{ name: string; list: Array<{ key: string; hotkey?: string }> }> = [...words.excludeGroups(many), ...extra];
   const all = groups.flatMap((group) => group.list);
   // The keys Screen's menu answers to, answered here too: Enter for no reason, the first letter for the others. Enter on a row with the focus picks that row.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === "Enter" && (event.target as HTMLElement).closest("button")) return;
-    const reason = all.find((one) => one.hotkey.toLowerCase() === event.key.toLowerCase());
+    const reason = all.find((one) => one.hotkey?.toLowerCase() === event.key.toLowerCase());
     if (!reason) return;
     event.preventDefault();
     onPick(reason.key);
@@ -950,3 +957,24 @@ export function Sentence({ at, text, quoted, terms, lit }: { at: number; text: s
 
 /** A chip that holds a sentence: on a narrow screen it wraps inside the row, its icon on the first line, rather than running past the edge. */
 export const SENTENCE_CHIP = "h-auto min-h-6 shrink items-start whitespace-normal py-1 [&>svg]:mt-px";
+
+/** Beside a result settled before the settings changed, which stands as it was: why it may not be what the votes now shown give. */
+export function HeldChip() {
+  const t = useTranslations("screening.pieces");
+  return (
+    <span className="flex items-center gap-0.5">
+      <Chip icon={Lock}>{t("heldChip")}</Chip>
+      <Help title={t("heldChip")}>{t("heldHelp")}</Help>
+    </span>
+  );
+}
+
+/** Under a PDF paper's votes, the models on the screening that can't read a PDF and so have no place on it: why their column is empty. */
+export function NoPdfVote({ screening, paper, cast }: { screening: Pick<Screening, "reviewers">; paper: { pdf?: unknown }; cast: Array<{ reviewer: { id: string } }> }) {
+  const t = useTranslations("screening.pieces");
+  const format = useFormatter();
+  if (!paper.pdf) return null;
+  const blind = screening.reviewers.filter((one) => one.kind === "model" && !one.left && one.model && !readsPdfs(one.model.inputs) && !cast.some((place) => place.reviewer.id === one.id));
+  if (!blind.length) return null;
+  return <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" />{t("noPdfVote", { names: format.list(blind.map((one) => one.name), { type: "conjunction" }), count: blind.length })}</p>;
+}

@@ -132,7 +132,7 @@ export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJob
 }
 
 /** Where a question put to someone is opened for them to answer. */
-export type AskedWhere = "conflicts" | "screen" | "papers";
+export type AskedWhere = "conflicts" | "screen" | "done" | "papers";
 
 /**
  * What waits for one person on one screening: papers for their vote and conflicts for them to settle, none once it
@@ -141,9 +141,11 @@ export type AskedWhere = "conflicts" | "screen" | "papers";
 export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null, progress: Doc<"screeningJobProgress"> | null) {
   const open = job.finishedAt === undefined;
   const asked = await askedOf(ctx, job._id, userId);
-  // Where the first question is answered: on Screen among the conflicts by whoever settles a paper in conflict, on Screen by one of its reviewers, and in Papers by anyone else.
+  // Where the first question is answered: on Screen among the conflicts by whoever settles a paper in conflict, on Screen by one of its reviewers (in Done once they voted on it), and in Papers by anyone else.
   const first = asked[0] ? await ctx.db.get("screeningResults", asked[0]) : null;
-  const askedWhere: AskedWhere | undefined = first ? (job.rule?.resolver === userId && first.result === "conflict" ? "conflicts" : reviewer && reviewer.left === undefined ? "screen" : "papers") : undefined;
+  // A reviewer who has voted on the paper finds it in Done, never under a To do that doesn't hold it.
+  const voted = first && reviewer && reviewer.left === undefined ? (await ctx.db.query("screeningVotes").withIndex("by_result_and_reviewer", (q) => q.eq("resultId", first._id).eq("reviewerId", reviewer._id)).first())?.status === "cast" : false;
+  const askedWhere: AskedWhere | undefined = first ? (job.rule?.resolver === userId && first.result === "conflict" ? "conflicts" : reviewer && reviewer.left === undefined ? (voted ? "done" : "screen") : "papers") : undefined;
   return {
     forYou: open && reviewer && reviewer.left === undefined ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0,
     conflicts: open && job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0,

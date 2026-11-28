@@ -370,7 +370,7 @@ export const invitedViewValidator = capped(v.optional(v.array(v.object({ /** Sho
 export const ELSEWHERE_MAX = 20;
 /** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
 /** Where a question put to someone is opened for them to answer (./dealing.ts `waitsOn`). */
-export const askedWhereValidator = v.union(v.literal("conflicts"), v.literal("screen"), v.literal("papers"));
+export const askedWhereValidator = v.union(v.literal("conflicts"), v.literal("screen"), v.literal("done"), v.literal("papers"));
 export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number(), asked: v.number(), askedFirst: v.optional(v.id("screeningResults")), askedWhere: v.optional(askedWhereValidator) })), ELSEWHERE_MAX);
 
 /** What tells a source from another of the same name, as the list it was picked from said it: a few short facts. */
@@ -430,6 +430,8 @@ export const paperViewValidator = v.object({
   fileName: v.optional(v.string()),
   // It left the screening with its source: shown where an address still names it, and voted on by nobody.
   withdrawn: v.optional(v.literal(true)),
+  // Its result was settled before the settings changed and stands as it was, whatever the votes under the new rule would give, until someone votes on it or the settled papers are checked again.
+  held: v.optional(v.literal(true)),
   // When it was settled, where it is: the whole record reads its result against the rule in force then.
   settledAt: v.optional(v.number()),
   key: v.string(),

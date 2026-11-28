@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} kati ya {of, plural, one {chanzo #} other {vyanzo #}} vimekaguliwa",
-        "arrived": "<link>{count, plural, one {Makala # mpya} other {Makala # mpya}}</link> zimefika {ago}",
-        "screenNew": "Chuja kwanza {count, plural, one {makala yako # mpya} other {makala zako # mpya}}",
         "arrivedForYou": "{count, plural, one {Makala # mpya kwa ajili yako imefika {ago}} other {Makala # mpya kwa ajili yako zimefika {ago}}}",
         "nothing": "Ukaguzi wa mwisho haukupata makala mpya",
         "counting": "<done></done> kati ya {of, number}",
@@ -9063,6 +9061,7 @@
         "points": "Pointi nyingi zaidi",
         "shut": "Uchujaji huu unaficha kura za wakaguzi wengine kwenye makala ambazo bado hujapigia kura, na mpangilio huu ungezifichua",
         "byVote": "Orodha ikipunguzwa kwa mkaguzi mmoja, makala zinakuja kwa mpangilio ambao mkaguzi huyo alizipigia kura",
+        "byVoteMany": "Zikiwa ni makala ambazo wakaguzi hawa wote walizipigia kura, zinakuja kwa mpangilio ambao wa kwanza wao alipiga kura",
         "byVoteLabel": "Kama zilivyopigiwa kura",
         "bySearch": "Unapotafuta, makala zinakuja kwa mpangilio wa jinsi zinavyolingana vizuri zaidi",
         "bySearchLabel": "Zinazolingana zaidi kwanza",
@@ -9316,7 +9315,10 @@
       "previousPaper": "Makala iliyotangulia",
       "nextPaper": "Makala inayofuata",
       "messages": "{count, plural, one {ujumbe #} other {ujumbe #}}",
-      "discuss": "Jadili"
+      "discuss": "Jadili",
+      "heldChip": "Imehifadhiwa kutoka kabla ya mabadiliko",
+      "heldHelp": "Matokeo haya yaliamuliwa kabla mipangilio haijabadilika, na yanabaki yalivyo. Yanabadilika mtu anapopigia kura makala, au makala yaliyoamuliwa yanapokaguliwa tena chini ya mipangilio mipya.",
+      "noPdfVote": "{names} hawezi kusoma PDF, kwa hivyo hakuna kura yake kwenye makala hii"
     },
     "screen": {
       "notSaved": "Haikuhifadhiwa. Jaribu tena.",

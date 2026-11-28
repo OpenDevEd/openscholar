@@ -206,7 +206,8 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
         confirm={t("stopEmails.confirm")}
         cancel={t("stopEmails.cancel")}
         onClose={() => { close(); void setEmailsLink(null); }}
-        onConfirm={() => void state.setEmails(false).then(() => { close(); void setEmailsLink(null); toast(t("menu.emailsOff")); }).catch(failed(t))}
+        // The email's link leaves the address first: once the emails are off, the dialog that says they already were never opens for a frame.
+        onConfirm={() => { void setEmailsLink(null); void state.setEmails(false).then(() => { close(); toast(t("menu.emailsOff")); }).catch(failed(t)); }}
       >
         <p className="text-sm text-muted-foreground">{t("stopEmails.says")}</p>
       </ConfirmChange>

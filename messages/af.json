@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} van {of, plural, one {# bron} other {# bronne}} gekontroleer",
-        "arrived": "<link>{count, plural, one {# nuwe artikel} other {# nuwe artikels}}</link> het {ago} ingekom",
-        "screenNew": "Sif eers jou {count, plural, one {# nuwe artikel} other {# nuwe artikels}}",
         "arrivedForYou": "{count, plural, one {# nuwe artikel vir jou het {ago} ingekom} other {# nuwe artikels vir jou het {ago} ingekom}}",
         "nothing": "Die laaste kontrole het geen nuwe artikels gevind nie",
         "counting": "<done></done> van {of, number}",
@@ -9063,6 +9061,7 @@
         "points": "Meeste punte",
         "shut": "Hierdie siftering versteek ander beoordelaars se stemme op die artikels waarop jy nog moet stem, en hierdie volgorde sou hulle verklap",
         "byVote": "Vernou tot een beoordelaar, kom die artikels in die volgorde waarin daardie beoordelaar daarop gestem het",
+        "byVoteMany": "Beperk tot die artikels waaroor al hierdie beoordelaars gestem het, kom hulle in die volgorde waarin die eerste van hulle gestem het",
         "byVoteLabel": "Soos daarop gestem",
         "bySearch": "Terwyl jy soek, kom die artikels in die volgorde waarin hulle die beste pas",
         "bySearchLabel": "Beste passing eerste",
@@ -9316,7 +9315,10 @@
       "previousPaper": "Vorige artikel",
       "nextPaper": "Volgende artikel",
       "messages": "{count, plural, one {# boodskap} other {# boodskappe}}",
-      "discuss": "Bespreek"
+      "discuss": "Bespreek",
+      "heldChip": "Behou van voor ’n verandering",
+      "heldHelp": "Hierdie uitslag is besleg voordat die instellings verander het, en bly soos dit was. Dit verander wanneer iemand oor die artikel stem, of wanneer die beslegte artikels weer onder die nuwe instellings nagegaan word.",
+      "noPdfVote": "{names} kan nie PDF's lees nie, so {count, plural, one {dit het} other {hulle het}} geen stem oor hierdie artikel nie"
     },
     "screen": {
       "notSaved": "Dit is nie gestoor nie. Probeer weer.",

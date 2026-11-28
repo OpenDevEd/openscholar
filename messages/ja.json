@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{of, plural, other {取得元 # 件}}中 {done, number} 件を確認済み",
-        "arrived": "{ago}に<link>{count, plural, other {新しい論文 # 件}}</link>が届きました",
-        "screenNew": "まず{count, plural, other {新しい論文 # 件}}をスクリーニングしてください",
         "arrivedForYou": "{count, plural, other {{ago}に、あなたに割り当てられた新しい論文 # 件が届きました}}",
         "nothing": "前回の確認では新しい論文はありませんでした",
         "counting": "{of, number} 件中 <done></done> 件",
@@ -9062,6 +9060,7 @@
         "points": "点数の高い順",
         "shut": "このスクリーニングでは、あなたがまだ投票していない論文へのほかのレビュアーの投票を非表示にしています。この並び順ではそれが分かってしまいます",
         "byVote": "レビュアー 1 人に絞り込んでいるときは、そのレビュアーが投票した順に論文が並びます",
+        "byVoteMany": "これらの査読者全員が投票した論文に絞ると、最初の査読者が投票した順に並びます",
         "byVoteLabel": "投票順",
         "bySearch": "検索中は、一致度の高い順に論文が並びます",
         "bySearchLabel": "一致度の高い順",
@@ -9315,7 +9314,10 @@
       "previousPaper": "前の論文",
       "nextPaper": "次の論文",
       "messages": "{count, plural, other {メッセージ # 件}}",
-      "discuss": "話し合う"
+      "discuss": "話し合う",
+      "heldChip": "変更前のまま保持",
+      "heldHelp": "この結果は設定の変更前に確定し、そのまま残っています。誰かがこの論文に投票するか、確定済みの論文が新しい設定で再確認されると変わります。",
+      "noPdfVote": "{names} はPDFを読めないため、この論文への投票はありません"
     },
     "screen": {
       "notSaved": "保存できませんでした。もう一度お試しください。",

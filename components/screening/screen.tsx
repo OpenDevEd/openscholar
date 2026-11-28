@@ -49,7 +49,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, Sentence, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useInHand, useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -259,8 +259,9 @@ function Screen({ open }: { open: Open }) {
     else next();
   };
   // The paper a vote moved on from. Voted on, it leaves To do, so the step back from the paper it moved to is to it, as Back is: never to the one before it.
-  const [cameFrom, setCameFrom] = useState<{ to: string; from: Paper } | null>(null);
-  const back = cameFrom && cameFrom.to === paper?.id && !items.some((one) => one.id === cameFrom.from.id) ? cameFrom.from : null;
+  const [cameFrom, setCameFrom] = useState<{ to: string | null; page?: number; from: Paper } | null>(null);
+  const arrivedFrom = cameFrom && (cameFrom.to === null ? at === 0 && listed.page === cameFrom.page : cameFrom.to === paper?.id);
+  const back = cameFrom && arrivedFrom && !items.some((one) => one.id === cameFrom.from.id) ? cameFrom.from : null;
   const go = (index: number) => {
     if (back && index === at - 1) return openIt(back);
     if (index >= items.length && listed.canNext) return turn(listed.next);
@@ -330,9 +331,10 @@ function Screen({ open }: { open: Open }) {
   // A page turned and not read yet counts too.
   const switching = (arrivedList !== holding || listed.isStale) && !picked;
   // Another queue picked: until its papers arrive its rows and paper show as skeletons in their places, never the last queue's papers under the new tab.
-  const otherQueue = switching && arrivedList.split(":")[1] !== queue;
+  // By the list alone, a paper named in the address or not: Back to a queue with its paper named, or a link to a paper in another queue, shows that queue's rows as skeletons too, never the last queue's under its tab. The named paper is read by itself, so it shows.
+  const otherQueue = arrivedList !== holding && arrivedList.split(":")[1] !== queue;
   // Where the open paper stands in its queue. Another queue opens at its first paper, which its count already places.
-  const shownAt = otherQueue ? 1 : listed.offset + at + 1;
+  const shownAt = otherQueue && !picked ? 1 : listed.offset + at + 1;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
   // A paper that left with its source, named by an address from before, is read and voted on by nobody.
   const gone = Boolean(paper?.withdrawn);
@@ -346,8 +348,8 @@ function Screen({ open }: { open: Open }) {
 
   // What a paper can be excluded for: no reason, which Enter gives, a duplicate, or another reason, which is written in the note. Each has its key.
   // Settling, the reasons the excluding votes gave are offered under those: the settler takes one rather than writing it again.
-  const votedReasons = resolving ? [...new Set(cast.flatMap((one) => (one.vote?.decision === "exclude" && one.vote.reason && criteria.some((criterion) => criterion.key === one.vote!.reason) ? [one.vote.reason] : [])))] : [];
-  const reasonGroups: Array<{ name: string; list: Array<{ key: string; hotkey?: string }> }> = [...words.excludeGroups(), ...(votedReasons.length ? [{ name: t("settle.votedReasons"), list: votedReasons.map((key) => ({ key })) }] : [])];
+  const votedGroup = resolving ? votedReasonGroup(t("settle.votedReasons"), criteria, cast) : [];
+  const reasonGroups: Array<{ name: string; list: Array<{ key: string; hotkey?: string }> }> = [...words.excludeGroups(), ...votedGroup];
   const reasons = reasonGroups.flatMap((group) => group.list);
 
   const decideOn = (decision: Decision, reason?: string) => {
@@ -405,6 +407,8 @@ function Screen({ open }: { open: Open }) {
     // The next paper is on the queue's next page: the page turns to it, as stepping past the last paper does.
     else if (nextPage) {
       advanced.current = { paper: paper.id, at: Date.now(), pageTurned: true };
+      // The paper it moves to isn't known until the page comes: the step back is from that page's first.
+      setCameFrom({ to: null, page: listed.page + 1, from: paper });
       go(items.length);
     }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
@@ -426,7 +430,11 @@ function Screen({ open }: { open: Open }) {
       // And one that had no reason takes the must-have its answers now fail, as an exclusion cast with them would.
       const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
       const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
-      const saving = open.vote(paper.id, ballot).then((at) => { if (at !== null && cast) cast.saved = at; }, failed);
+      // Saved, the answers are the vote's own: in hand they would stand over a change made since on another page. Any given while it saved stay.
+      const saving = open.vote(paper.id, ballot).then((at) => {
+        if (at !== null && cast) cast.saved = at;
+        setAnswers(({ [paper.id]: was, ...rest }) => (was === given || was === undefined ? rest : { ...rest, [paper.id]: was }));
+      }, failed);
       if (cast) cast.pending = Promise.all([cast.pending, saving]);
     }
   };
@@ -633,7 +641,8 @@ function Screen({ open }: { open: Open }) {
   );
 
   // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is. It opens where the question is answered (./links.ts `askedHref`).
-  const askedChip = open.asked && open.askedFirst ? <LinkChip href={askedHref(id, open.askedFirst, open.askedWhere)} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
+  // On the paper it opens, it goes to the question itself, in the paper's discussion, rather than doing nothing.
+  const askedChip = open.asked && open.askedFirst ? <LinkChip href={askedHref(id, open.askedFirst, open.askedWhere)} onClick={(event) => { if (paper?.id === open.askedFirst) { event.preventDefault(); toDiscussion(); } }} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
   // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list where it has no column.
   const queueFilters = (className: string) => (
     <>
@@ -678,33 +687,35 @@ function Screen({ open }: { open: Open }) {
   const reading = listed.isLoading && !switching;
   // A queue the counts say holds papers is read in the place it will take: its rows from 1400px, and a paper in the pane beside them. Done has no count, and a search may find some.
   // So is another queue picked from an empty one: with no paper up, it shows this until its papers come, never the empty queue it left.
-  if ((reading && (queue === "done" || left > 0 || narrowed)) || (otherQueue && !paper && !known)) {
+  // A queue the counts say is empty says so from its first read too, never a skeleton or a spinner first.
+  if ((reading && !known && (queue === "done" || left > 0 || narrowed)) || (otherQueue && !paper && !known)) {
     return (
-      <div role="status" aria-label={t("queue.loading")} className={cn("grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, folded ? FOLDED : WIDE)}>
+      <div className="contents"><div role="status" aria-label={t("queue.loading")} className={cn("grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, folded ? FOLDED : WIDE)}>
         {open.isReviewer ? <div className={cn("lg:col-start-1 lg:row-start-1 min-[87.5rem]:col-end-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
         <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:block min-[87.5rem]:overflow-hidden", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
           <div className="w-[19rem] min-[110rem]:w-[22rem]">
             <div className="p-3"><SkeletonBar className="h-8 w-full rounded-full" /></div>
-            <ListRowsSkeleton rows={Math.min(left || QUEUE_PAGE, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
+            <ListRowsSkeleton rows={Math.max(1, Math.min(queueTotal ?? QUEUE_PAGE, QUEUE_PAGE))} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
           </div>
         </div>
         <PaperSkeleton className="lg:col-start-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
-      </div>
+      </div></div>
     );
   }
   // A queue read on past pages of papers no longer in it (a source taken out) is not empty while more is still to read: it says so, with Read further, below.
   if (reading || (switching && known) || (!switching && !paper && !narrowed && !opening && !listed.canNext)) {
     return (
-      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-        {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} />}</div>
-      </div>
+      <div className="contents"><div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        {/* A question put to the person stays in reach with nothing left to screen: an empty queue never hides it. */}
+        {open.isReviewer ? <div className={cn("flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div>{askedChip}</div> : null}
+        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading && !known ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} />}</div>
+      </div></div>
     );
   }
 
   const voteButton = (decision: Decision) => {
     // While another queue is read, the paper up is the last queue's: no vote of it stands lit under the new tab.
-    const on = !otherQueue && (resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision);
+    const on = !(otherQueue && !picked) && (resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision);
     return (
       <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : (event) => event.detail < 2 && press(decision)}>
         <Kbd className={cn("pointer-coarse:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
@@ -750,6 +761,7 @@ function Screen({ open }: { open: Open }) {
                           <>
                             <span className="text-xs text-muted-foreground">{t("result")}</span>
                             <ResultChip result={state.result} />
+                            {paper.held ? <HeldChip /> : null}
                             {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">{t("votes.forSettler", { you: String(settlesHere), name: settler })}</span></> : null}
                             {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">{t("votes.waitingFrom", { names: words.listed([...waitsOn.slice(0, 2), ...(waitsOn.length > 2 ? [t("votes.more", { count: waitsOn.length - 2 })] : [])]) })}</span> : null}
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">{t("votes.settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}</span> : null}
@@ -776,6 +788,7 @@ function Screen({ open }: { open: Open }) {
                       </div>
                       </ScrollArea>
                       {shut.kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, blind, cast, open.me)}</ShutNote> : null}
+                      <NoPdfVote screening={screening} paper={paper} cast={cast} />
                     </Section>
   ) : null;
 
@@ -807,7 +820,8 @@ function Screen({ open }: { open: Open }) {
   ) : null;
 
   return (
-    <>
+    // Every state of the page (read, empty, its papers) has the same frame down to the queue's tabs, element for element: going from one to another never draws the tabs anew, so their highlight slides and the tab pressed keeps the keyboard.
+    <div className="contents">
       <div aria-busy={switching || undefined} className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE, "*:not-first:transition-opacity", switching && "*:not-first:pointer-events-none *:not-first:opacity-60")}>
         {/* The queue's bar: its tabs and the way to its list, over the queue and the paper from a laptop's width. The button has one place and one look. From 1400px it hides the queue's pane and shows it again, and under that it opens the list over the page. */}
         {/* With no paper to show, the bar has the whole width, as there are no answers to sit beside. */}
@@ -866,11 +880,11 @@ function Screen({ open }: { open: Open }) {
                 </ul>
               )}
             </ScrollArea>
-            {listed.hasPages ? <div className="flex justify-center border-t border-border-subtle px-2 py-1.5">{pager("w-28")}</div> : null}
+            {listed.hasPages && !otherQueue ? <div className="flex justify-center border-t border-border-subtle px-2 py-1.5">{pager("w-28")}</div> : null}
           </div>
         </div>
 
-        {otherQueue ? (
+        {otherQueue && !picked ? (
           <>
             <PaperSkeleton label={t("queue.loading")} className="lg:col-start-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
             <div className={cn("space-y-3 border-t border-border-subtle p-5 lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}><SkeletonBar className="h-4 w-1/3" /><SkeletonBar className="h-28 w-full rounded-2xl" /></div>
@@ -1255,12 +1269,12 @@ function Screen({ open }: { open: Open }) {
               <SheetDescription className="sr-only">{t("exclude.pick")}</SheetDescription>
             </SheetHeader>
             <ScrollArea shades className="min-h-0 flex-1">
-              <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} titled={false} onPick={(reason) => decideOn("exclude", reason)} /></div>
+              <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} titled={false} extra={votedGroup} onPick={(reason) => decideOn("exclude", reason)} /></div>
             </ScrollArea>
           </SheetContent>
         </Sheet>
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -1278,7 +1292,9 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
   const [yours, voted, closed] = [tally?.dealt ?? 0, tally?.cast ?? 0, tally?.closed ?? 0];
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
     // Someone who doesn't vote reads the papers in conflict here: an empty page says there are none, then what they are to the screening.
-    ? [Eye, splitsIn(open.screening, open.counts.conflict, open.invited) ? t("empty.noConflictPaper") : t("empty.noneCanSplit"), notReviewerSays(pieces, open.canChange, Boolean(open.screening.finishedAt))]
+    // A finished one leads with why there is nothing to do here, never with a rule about conflicts nobody asked about.
+    ? open.screening.finishedAt ? [Eye, notReviewerSays(pieces, open.canChange, true), null]
+    : [Eye, splitsIn(open.screening, open.counts.conflict, open.invited) ? t("empty.noConflictPaper") : t("empty.noneCanSplit"), notReviewerSays(pieces, open.canChange, false)]
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]
