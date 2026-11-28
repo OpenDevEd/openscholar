@@ -8949,7 +8949,10 @@
         "mean": "Kappa de Cohen moyen par paire",
         "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}.{left, plural, =0 {} one { L'autre paire a voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.} other { Les # autres paires ont voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.}}",
         "splitMost": "Tous les articles, les plus partagés d'abord",
-        "noneYet": "Aucun pour l'instant",
+        "sameCount": "Même vote sur {same, number} de {papers, plural, one {# article} other {# articles}}",
+        "thin": "{count, plural, one {# paire a} other {# paires ont}} moins de {least, number} articles en commun, trop peu pour comparer",
+        "allPairs": "Afficher les {count, number} paires",
+        "fewerPairs": "Afficher moins",
         "cell": "{a} et {b}, kappa {kappa}, même vote sur {share, number, percent} de {papers, plural, one {# article} other {# articles}}"
       },
       "kappa": {

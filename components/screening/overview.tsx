@@ -34,7 +34,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
-import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result, shortName } from "./data";
+import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result } from "./data";
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { papersHref, reviewerHref, screenHref, settingsHref } from "./links";
@@ -50,6 +50,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const PLACE = {
   sort: parseAsStringLiteral(["voted", "agrees"] as const),
   checks: parseAsStringLiteral(["all"] as const),
+  pairs: parseAsStringLiteral(["all"] as const),
 };
 
 /** Papers still to be voted on, hatched wherever a bar shows them, so they never read as excluded ones. */
@@ -746,14 +747,20 @@ function KappaHelp() {
 }
 
 /** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
+/** The fewest papers two reviewers vote on in common for their agreement to be listed, and how many pairs the list shows before "Show all". */
+const MIN_SHARED = 3;
+const PAIRS_SHOWN = 6;
+
 function Agreement({ open, figures }: { open: Open; figures: Figures | undefined }) {
   const { screening } = open;
   const t = useTranslations("screening.overview");
-  const tp = useTranslations("screening.pieces");
   const words = useWords();
   const format = useFormatter();
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
+  // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
+  const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  const allPairs = every === "all";
   if (reviewers.length < 3) return null;
   const known = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.kappa] : []));
   // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
@@ -761,7 +768,10 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
   const kept = screening.reviewers.some((one) => one.tally?.kept);
-  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? words.t("you") : shortName(reviewer));
+  // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
+  const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
+  const thin = pairs.filter((one) => !one.pair || one.pair.papers < MIN_SHARED);
+  const shownPairs = allPairs ? compared : compared.slice(0, PAIRS_SHOWN);
 
   return (
     <Section
@@ -795,9 +805,10 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
           </div>
           {/* Each pair that has voted on the same papers, the one that agrees least first: who, how often they voted alike, and the figure. Each opens the papers they both voted on. */}
-          <ul className={cn(LIST, "grid @5xl/overview:grid-cols-2 @5xl/overview:divide-y-0 @5xl/overview:[&>li]:border-b @5xl/overview:[&>li]:border-border-subtle @5xl/overview:[&>li:nth-child(odd)]:border-e @5xl/overview:[&>li:last-child:nth-child(odd)]:col-span-2 @5xl/overview:[&>li:last-child:nth-child(odd)]:border-e-0 @5xl/overview:[&>li:last-child]:border-b-0")}>
-            {pairs.flatMap((one) => (one.pair ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2)).map(({ a, b, pair }) => (
-              <li key={`${a.id}:${b.id}`}>
+          <ul className={cn(LIST, "grid @5xl/overview:grid-cols-2 @5xl/overview:divide-y-0 @5xl/overview:[&>li]:border-b @5xl/overview:[&>li]:border-border-subtle @5xl/overview:[&>li:nth-child(odd)]:border-e @5xl/overview:[&>li:last-child]:border-b-0")}>
+            {shownPairs.map(({ a, b, pair }, at) => (
+              // Two to a row on a wide card: a last one alone takes the whole row, so no half of it stands empty.
+              <li key={`${a.id}:${b.id}`} className={cn(at === shownPairs.length - 1 && shownPairs.length % 2 === 1 && "@5xl/overview:col-span-2 @5xl/overview:border-e-0")}>
                 <NextLink href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
                   <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-7" /><ReviewerMark reviewer={a} className="-ms-2 size-7 ring-2 ring-card" /></span>
                   <span className="min-w-0 space-y-1.5">
@@ -811,11 +822,19 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
                 </NextLink>
               </li>
             ))}
-            {/* The pairs with no paper in common yet, in one line rather than a square each. */}
-            {pairs.some((one) => !one.pair) ? (
+            {/* More pairs than the list shows: the rest one press away, in place. */}
+            {compared.length > PAIRS_SHOWN ? (
+              <li className="@5xl/overview:col-span-2">
+                <button type="button" onClick={() => void setPlace({ pairs: allPairs ? null : "all" })} className="flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40">
+                  {allPairs ? t("agreement.fewerPairs") : t("agreement.allPairs", { count: compared.length })}
+                </button>
+              </li>
+            ) : null}
+            {/* The pairs with too few papers in common for the figure to mean much, in one line rather than a row each. */}
+            {thin.length ? (
               <li className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground @5xl/overview:col-span-2">
-                <Faces reviewers={[...new Map(pairs.filter((one) => !one.pair).flatMap((one) => [one.a, one.b]).map((one) => [one.id, one])).values()]} me={open.me} max={5} mark="size-6" />
-                <span>{t("agreement.notYet", { count: pairs.filter((one) => !one.pair).length })}</span>
+                <Faces reviewers={[...new Map(thin.flatMap((one) => [one.a, one.b]).map((one) => [one.id, one])).values()]} me={open.me} max={5} mark="size-6" />
+                <span>{t("agreement.thin", { count: thin.length, least: MIN_SHARED })}</span>
               </li>
             ) : null}
           </ul>
@@ -827,7 +846,6 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
 }
 
 /** A reviewer pair's row in the phone's list. */
-const PAIR_ROW = "flex items-center gap-3 px-4 py-2.5 text-sm";
 
 // ── Facts ────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1176,7 +1194,3 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   );
 }
 
-/** A name that opens its papers where it has any, and stands as a name, with nothing to press, where it has none (./links.ts `reviewerHref`). */
-function LinkOr({ href, className, children, ...rest }: Omit<ComponentProps<typeof NextLink>, "href"> & { href: string | null }) {
-  return href ? <NextLink href={href} className={className} {...rest}>{children}</NextLink> : <span className={className}>{children}</span>;
-}

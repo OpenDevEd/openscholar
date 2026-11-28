@@ -8950,7 +8950,10 @@
         "mean": "Mittleres paarweises Cohen's Kappa",
         "across": "0 ist nicht besser als Zufall, 1 ist volle Übereinstimmung. Über {pairs, plural, one {# Paar} other {# Paare}} von Reviewern, {range, select, true {je {min, number} bis {max, number} Artikel} other {{min, plural, one {je # Artikel} other {je # Artikel}}}}.{left, plural, =0 {} one { Das andere Paar hat bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.} other { Die anderen # Paare haben bei jedem Artikel gleich abgestimmt, und dann lässt sich Kappa nicht berechnen.}}",
         "splitMost": "Alle Artikel, die umstrittensten zuerst",
-        "noneYet": "Noch keine",
+        "sameCount": "Gleiche Stimme bei {same, number} von {papers, plural, one {# Artikel} other {# Artikeln}}",
+        "thin": "{count, plural, one {# Paar hat} other {# Paare haben}} weniger als {least, number} gemeinsame Artikel, zu wenige für einen Vergleich",
+        "allPairs": "Alle {count, number} Paare zeigen",
+        "fewerPairs": "Weniger zeigen",
         "cell": "{a} und {b}, Kappa {kappa}, gleiche Stimme bei {share, number, percent} von {papers, plural, one {# Artikel} other {# Artikeln}}"
       },
       "kappa": {

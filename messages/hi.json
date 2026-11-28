@@ -8949,7 +8949,10 @@
         "mean": "जोड़ीवार Cohen's kappa का औसत",
         "across": "0 का मतलब संयोग से बेहतर नहीं, 1 का मतलब पूरी सहमति। समीक्षकों के {pairs, plural, one {# जोड़े} other {# जोड़ों}} में, {range, select, true {हर एक में {min, number} से {max, number} लेख} other {{min, plural, one {हर एक में # लेख} other {हर एक में # लेख}}}}।{left, plural, =0 {} one { बाकी एक जोड़े ने हर लेख पर एक ही तरह वोट दिया, ऐसे में kappa नहीं निकाला जा सकता।} other { बाकी # जोड़ों ने हर लेख पर एक ही तरह वोट दिया, ऐसे में kappa नहीं निकाला जा सकता।}}",
         "splitMost": "सभी लेख, सबसे ज़्यादा बँटे हुए पहले",
-        "noneYet": "अभी कोई नहीं",
+        "sameCount": "{papers, plural, one {# लेख} other {# लेखों}} में से {same, number} पर एक जैसा वोट",
+        "thin": "{count, plural, one {# जोड़ी के} other {# जोड़ियों के}} {least, number} से कम साझा लेख हैं, अभी तुलना के लिए बहुत कम",
+        "allPairs": "सभी {count, number} जोड़ियाँ दिखाएँ",
+        "fewerPairs": "कम दिखाएँ",
         "cell": "{a} और {b}, kappa {kappa}, {papers, plural, one {# लेख} other {# लेखों}} में से {share, number, percent} पर एक जैसा वोट"
       },
       "kappa": {

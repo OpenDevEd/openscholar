@@ -8950,7 +8950,10 @@
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
         "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}.{left, plural, =0 {} one { Die ander paar het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.} other { Die ander # pare het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.}}",
         "splitMost": "Elke artikel, die mees verdeelde eerste",
-        "noneYet": "Nog geen",
+        "sameCount": "Dieselfde stem op {same, number} van {papers, plural, one {# artikel} other {# artikels}}",
+        "thin": "{count, plural, one {# paar het} other {# pare het}} minder as {least, number} artikels in gemeen, te min om nou te vergelyk",
+        "allPairs": "Wys al {count, number} pare",
+        "fewerPairs": "Wys minder",
         "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
       },
       "kappa": {

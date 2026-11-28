@@ -8950,7 +8950,10 @@
         "mean": "Kappa de Cohen médio entre pares",
         "across": "0 não é melhor do que o acaso, 1 é concordância total. Em {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {{min, number} a {max, number} artigos cada} other {{min, plural, one {# artigo cada} other {# artigos cada}}}}.{left, plural, =0 {} one { O outro par votou da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.} other { Os outros # pares votaram da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.}}",
         "splitMost": "Todos os artigos, os mais divididos primeiro",
-        "noneYet": "Ainda nenhum",
+        "sameCount": "Mesmo voto em {same, number} de {papers, plural, one {# artigo} other {# artigos}}",
+        "thin": "{count, plural, one {# par tem} other {# pares têm}} menos de {least, number} artigos em comum, poucos para comparar ainda",
+        "allPairs": "Mostrar os {count, number} pares",
+        "fewerPairs": "Mostrar menos",
         "cell": "{a} e {b}, kappa {kappa}, mesmo voto em {share, number, percent} de {papers, plural, one {# artigo} other {# artigos}}"
       },
       "kappa": {

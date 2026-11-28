@@ -8949,7 +8949,10 @@
         "mean": "两两 Cohen's kappa 的平均值",
         "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}。{left, plural, =0 {} other {其余 # 对在每篇论文上都投了同样的票，这种情况下无法计算 kappa。}}",
         "splitMost": "全部论文，分歧最大的在前",
-        "noneYet": "暂无",
+        "sameCount": "{papers, plural, other {# 篇论文}}中有 {same, number} 篇投票相同",
+        "thin": "{count, plural, other {# 对}}共同论文少于 {least, number} 篇，暂时太少无法比较",
+        "allPairs": "显示全部 {count, number} 对",
+        "fewerPairs": "显示较少",
         "cell": "{a} 与 {b}，kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
       },
       "kappa": {
