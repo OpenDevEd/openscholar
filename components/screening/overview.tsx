@@ -762,14 +762,15 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const allPairs = every === "all";
   if (reviewers.length < 3) return null;
-  const known = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.kappa] : []));
+  // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
+  const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
+  // The figure over them is of the same pairs: one too thin to list counts in no figure either.
+  const known = compared.flatMap((one) => (one.pair.kappa != null ? [one.pair.kappa] : []));
   // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
-  const shared = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.papers] : []));
+  const shared = compared.flatMap((one) => (one.pair.kappa != null ? [one.pair.papers] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
   const kept = screening.reviewers.some((one) => one.tally?.kept);
-  // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
-  const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
   const thin = pairs.filter((one) => !one.pair || one.pair.papers < MIN_SHARED);
   const shownPairs = allPairs ? compared : compared.slice(0, PAIRS_SHOWN);
 
@@ -788,9 +789,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
     >
       {/* The figures arrive after the page: until they do a block holds the note's room, and the frame slides to what comes. */}
       <AutoHeight>
-      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : !pairs.some((one) => one.pair) ? (
+      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : !compared.length ? (
         // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
-        kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{t("agreement.none")}</EmptyNote>
+        kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{pairs.some((one) => one.pair) ? t("agreement.thin", { count: thin.length, least: MIN_SHARED }) : t("agreement.none")}</EmptyNote>
       ) : (
         <div className="space-y-3">
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
@@ -799,7 +800,7 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall, t("kappa.none"))}</span>
               <span className="text-sm">
                 <span className="font-medium">{t("agreement.mean")}</span>
-                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, left: pairs.filter((one) => one.pair).length - known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
+                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, left: compared.length - known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>

@@ -215,7 +215,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
   const reads = Boolean(change.addSources?.length || change.ranges?.length);
   if (change.living && !job.living && !reads) await check(ctx, saved, actor.userId);
-  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId, saved.totalPapers);
+  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId);
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
   if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {

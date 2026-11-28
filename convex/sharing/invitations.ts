@@ -27,9 +27,9 @@ const invitationArgs = { kind: sharedKindValidator, id: v.string(), email: v.str
 
 /** Checks an invitation and keeps it, ready to send. Sending one again restarts its seven days and takes no second place. */
 export const prepare = internalMutation({
-  args: { ...actingValidator, ...invitationArgs },
+  args: { ...actingValidator, ...invitationArgs, /** When this sending ends, set by the caller so it can name this sending later. */ endsAt: v.optional(v.number()) },
   returns: v.id("itemInvitations"),
-  handler: async (ctx, { userId, workspaceId, author, kind, id, role, replacing = [], ...args }) => {
+  handler: async (ctx, { userId, workspaceId, author, kind, id, role, replacing = [], endsAt, ...args }) => {
     requireRole(kind, role);
     const actor = await actingAs(ctx, userId, workspaceId, author);
     const shared = await sharedIn(ctx, actor, kind, id);
@@ -55,7 +55,7 @@ export const prepare = internalMutation({
       const theirs = await ctx.db.query("itemInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
       if (theirs.length >= MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
     }
-    const values = { kind, item: shared.id, email, role, invitedBy: userId, expiresAt: Date.now() + WEEK, state: "pending" as const, delivery: "queued" as const };
+    const values = { kind, item: shared.id, email, role, invitedBy: userId, expiresAt: endsAt ?? Date.now() + WEEK, state: "pending" as const, delivery: "queued" as const };
     const invitationId = existing?._id ?? (await ctx.db.insert("itemInvitations", values));
     if (existing) await ctx.db.replace("itemInvitations", existing._id, values);
     await ctx.scheduler.runAt(values.expiresAt, internal.sharing.invitations.expire, { invitationId });
@@ -98,13 +98,6 @@ export const readDelivery = internalQuery({
     if (!shared || !inviter) return null;
     return { email: invitation.email, kind: shared.kind, word: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId), ...(await screeningFacts(ctx, shared)) };
   },
-});
-
-/** When an invitation ends: which sending of it a caller made, since each sending restarts its seven days. */
-export const endsAt = internalQuery({
-  args: { invitationId: v.id("itemInvitations") },
-  returns: v.union(v.number(), v.null()),
-  handler: async (ctx, { invitationId }) => (await ctx.db.get("itemInvitations", invitationId))?.expiresAt ?? null,
 });
 
 /** Undoes a replacement whose email couldn't be sent: the invitations it took back wait again, and it is taken back. */
@@ -201,14 +194,14 @@ export const inviteAction = defineChangingAction({
   run: async (ctx, { userId, workspaceId, author }, { replacing, ...args }) => {
     // Taking invitations back in the same step is the Settings save's own: the assistant asks for one invitation, and takes nothing back with it.
     const replaced = author === "user" && replacing?.length ? replacing : undefined;
-    const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args, ...(replaced ? { replacing: replaced } : {}) });
-    // This attempt, by when it ends: a later sending of the same invitation ends later, and is never undone by this one failing.
-    const attempt: number | null = replaced ? await ctx.runQuery(internal.sharing.invitations.endsAt, { invitationId }) : null;
+    // This sending, by when it ends, set here: a later sending of the same invitation ends later, and is never undone by this one failing.
+    const attempt = Date.now() + WEEK;
+    const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args, endsAt: attempt, ...(replaced ? { replacing: replaced } : {}) });
     try {
       await ctx.runAction(internal.sharing.mail.deliver, { invitationId });
     } catch (error) {
       // An invitation that took others' place and couldn't be sent gives it back: theirs wait again, in one step, and nothing settles between.
-      if (replaced && attempt !== null) await ctx.runMutation(internal.sharing.invitations.unreplace, { invitationId, emails: replaced, attempt });
+      if (replaced) await ctx.runMutation(internal.sharing.invitations.unreplace, { invitationId, emails: replaced, attempt });
       throw error;
     }
     return null;

@@ -290,7 +290,7 @@ export const open = internalMutation({
     await keepVersion(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId);
     // Papers read before it started are given out now. The ones still to arrive are dealt as they come, by the look that is reading them.
     if (adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.deal, { jobId, cursor: null });
-    else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
+    else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId);
     await logChange(ctx, { userId, author }, { _id: jobId, workspaceId }, "started", { detail: title, more: [{ code: "sources", count: sources.length }, ...(people.length ? [{ code: "people", count: people.length }] : []), ...(picked.length ? [{ code: "models", count: picked.length }] : [])] });
     return { jobId };
   },

@@ -4,6 +4,7 @@
  * that workspace, so one under way finishes where it began. Its papers, votes, criteria and activity are its own and
  * go with it by its ID. What is the workspace's stays: the collection its papers were saved to.
  */
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -55,7 +56,11 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
     ...(job.rule && !settlesThere ? { rule: { ...job.rule, resolver: by } } : {}),
   });
   // Who settles conflicts passing to whoever moved it is a change of the rule: the whole record lists it.
-  if (job.rule && !settlesThere) await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
+  if (job.rule && !settlesThere) {
+    await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
+    // The questions put to the one who settled them go with it to whoever moved it.
+    if (job.rule.resolver !== by) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: job.rule.resolver, to: by });
+  }
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
   for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });
   for (const person of outside) await give(ctx, shared, person, "editor", { userId: by, author: "user" });

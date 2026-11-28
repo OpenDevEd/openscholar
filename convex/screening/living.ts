@@ -28,7 +28,7 @@ export async function check(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<
   if (!sources.length) return false;
   // Read again from its start, as it stands now: what it had merged and left out is counted again as it is read.
   for (const source of sources) await ctx.db.patch("screeningSources", source._id, readAgain(source));
-  await startCheck(ctx, job, by, job.totalPapers, true);
+  await startCheck(ctx, job, by, true);
   return true;
 }
 
@@ -57,7 +57,7 @@ async function readInTurn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"u
   if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return;
   const [first, last] = await Promise.all([firstCheck(ctx, job._id), ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first()]);
   if (last && last._id === first?._id && job.finishedAt === undefined) await readOn(ctx, job, by);
-  else await startCheck(ctx, job, by, job.totalPapers);
+  else await startCheck(ctx, job, by);
 }
 
 export const readSourceAgain = workspaceMutation({
@@ -135,7 +135,8 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   // The look it started with says nothing: it is the screening starting. A later look from no papers (one that started empty) is a check like any other, and reopens it.
   if ((await firstCheck(ctx, job._id))?._id === check._id) return;
   const now = Date.now();
-  if (check.added && job.finishedAt !== undefined) {
+  // Only a check asked for once it was finished reopens it: one already under way when it was marked finished doesn't undo that.
+  if (check.added && job.finishedAt !== undefined && check.at >= job.finishedAt) {
     await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now) });
     await placeGuests(ctx, job._id);
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId: job._id, cursor: null });

@@ -286,6 +286,26 @@ describe("what a change takes out", () => {
     expect(((await about("ann"))?.count ?? 0) + ((await about("ben"))?.count ?? 0)).toBe(3);
   });
 
+  it("places the papers of every look after the ones the screening has, and counts them all", async () => {
+    const made = await team(["ann"]);
+    const { workspaceId } = made;
+    const { jobId } = await started(made, ["ann"], 2);
+    await run(made.t);
+    // A source added in Settings, and a check asked for while that look reads: one look, after the papers there are.
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "saved" }, name: "Saved papers" }] } });
+    await made.as.ann!.mutation(api.screening.living.checkNow, { workspaceId, jobId });
+    await give(made.t, jobId, 1, [paper(7), paper(8), paper(9)]);
+    await run(made.t);
+    const { job, places, running } = await made.t.run(async (ctx) => ({
+      job: (await ctx.db.get("screeningJobs", jobId))!,
+      places: (await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((one) => one.place),
+      running: (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).collect()).length,
+    }));
+    expect(job.totalPapers).toBe(5);
+    expect(new Set(places).size).toBe(places.length);
+    expect(running).toBe(0);
+  });
+
   it("counts a check for new papers as a later search, and not a save that reads a source it adds", async () => {
     const made = await team(["ann"]);
     const { workspaceId } = made;

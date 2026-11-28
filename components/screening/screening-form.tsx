@@ -198,7 +198,9 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     // A guest already reviewing it may settle its conflicts too (the server checks they are on it): only someone invited and not joined yet can't.
     ...(differs("rule") ? { rule: ruleOf(draft, activeReviewers(draft).filter((one) => one.kind === "person" && !one.email)) } : {}),
     ...(differs("living") ? { living: draft.living?.every ?? null } : {}),
-    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune && draft.sources.some(prunes) } : {}),
+    ...(differs("destination") ? { saveTo: saveToOf(say, draft) } : {}),
+    // Taking excluded papers out of where they came from goes with the last source it can take them out of, whatever else changes.
+    ...(differs("destination") || (Boolean(saved.destination.prune) && !draft.sources.some(prunes)) ? { prune: draft.destination.prune && draft.sources.some(prunes) } : {}),
     ...(draft.sources.some((source) => !saved.sources.some((one) => one.id === source.id)) ? { addSources: draft.sources.filter((source) => !saved.sources.some((one) => one.id === source.id)).map(sourceOf) } : {}),
     ...(saved.sources.some((source) => !draft.sources.some((one) => one.id === source.id)) ? { removeSources: saved.sources.filter((source) => !draft.sources.some((one) => one.id === source.id)).map((source) => source.id as Id<"screeningSources">) } : {}),
     ...(ranged.length ? { ranges: ranged.map((source) => ({ sourceId: source.id as Id<"screeningSources">, ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) })) } : {}),
