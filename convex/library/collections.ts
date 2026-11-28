@@ -8,7 +8,8 @@ import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../lib/functions";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import type { saveToValidator } from "../screening/validators";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery, workspaceMutation } from "../lib/userActions";
@@ -45,6 +46,17 @@ export async function collectionAllowed(ctx: QueryCtx, { userId, workspaceId }: 
     throw createError("VALIDATION_ERROR", `Your plan allows ${most.toLocaleString("en")} collections. Delete one to make another.`);
   }
   return { trimmed, counted };
+}
+
+/** Where a screening's included papers go, as its fields: a collection, or nowhere. Here beside `newCollection`, so the screening modules that set it load nothing more. */
+export async function screeningDestination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
+  if (!saveTo) return {};
+  if (saveTo.kind === "none") return { unsaved: true as const };
+  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
+  // A library collection is checked, or made, by the start before the job is: it comes as `libraryDestination`.
+  if (saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection") return { unsaved: true as const };
+  if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
+  return { targetCollectionId: saveTo.collectionId };
 }
 
 /** Makes an empty collection named `name` in the writer's workspace, and counts it. */

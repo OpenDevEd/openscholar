@@ -8,7 +8,7 @@ import { internalMutation } from "../lib/functions";
 import { defaultStars, shortOf, type Answer } from "../../lib/screening/rules";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { bookkeepLater } from "../screening/bookkeeping";
-import { doiKeyOf, titleKeyOf } from "../screening/gathering";
+import { doiKeyOf, titleKeyOf } from "../screening/checks";
 
 /**
  * Brings the screenings from before a screening had reviewers into that shape (plans/screening-reviewers): the model

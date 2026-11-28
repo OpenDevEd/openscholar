@@ -20,7 +20,7 @@ import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import { parseSearchParamsFromUrl } from "../../lib/search-params/parsers";
 import { paramsToBucketSearchFilters } from "../../lib/bucket/search-filters";
-import { isRatingFilterActive } from "../../lib/utils";
+import { isRatingFilterActive } from "../../lib/search/rating-filter";
 import { locales } from "../../i18n/config";
 import { BUILT_IN_LENSES, SIGNED_OUT_PER_ADDRESS } from "./overviewValidators";
 import { writeOverview } from "./overviewWriter";

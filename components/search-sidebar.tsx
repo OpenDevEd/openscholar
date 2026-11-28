@@ -28,7 +28,6 @@ import {
 import {
   cn,
   isDateFilterActive,
-  isRatingFilterActive,
   isCountryFilterActive,
   isCitesFilterActive,
   isCitedByFilterActive,
@@ -36,6 +35,7 @@ import {
   isReviewFilterActive,
   DEFAULT_FILTERS,
 } from "@/lib/utils";
+import { isRatingFilterActive } from "@/lib/search/rating-filter";
 import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
 import { getFieldLabel, type FilterT } from "@/lib/filters";

@@ -25,8 +25,8 @@ import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
 import { noticeOf } from "./notices";
 import { countDealt, dealable, keepVersion, settlerFor, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
-import { modelFor, modelInput, modelsLimit, NEEDS_CRITERIA } from "./screenings";
-import { startWaitingVotes } from "./slots";
+import { modelFor, modelInput, NEEDS_CRITERIA } from "./screenings";
+import { modelsLimit, startWaitingVotes } from "./slots";
 
 type Reviewer = Doc<"screeningReviewers">;
 

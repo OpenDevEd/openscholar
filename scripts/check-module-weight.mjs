@@ -13,7 +13,9 @@
 // - the generated validator for a community's configuration (about 4 MB) only in the modules that validate or migrate a
 //   configuration. On 2026-11-10 it was in 85 of 435 modules, `http.ts` among them, through a constant or an error class
 //   that lived beside it: each community record Openscholar received spent about 85 ms of its 125 ms loading it.
-// This fails on any other module either one comes into, and prints the imports that bring it there.
+// - zod (about 730 KB) never in the modules the app's pages call: screening, sharing, the library, accounts, billing,
+//   organizations, paper sets and extraction.
+// This fails on any other module one comes into, and prints the imports that bring it there.
 //
 // Node actions ("use node") are left out: their runtime keeps modules loaded between calls.
 
@@ -43,6 +45,16 @@ const HEAVY = [
       /^convex\/research\/papers\.ts$/,
     ],
     instead: "Call the assistant through an `internal.assistant.*` reference (ctx.runMutation, ctx.runQuery or the scheduler), and move a shared constant or type to lib/assistant/.",
+  },
+  {
+    // About 730 KB, measured 2026-11-28: it came into every module through the schema (a list of DOCiD's funder types
+    // whose module built zod schemas), and into every screening module through one constant beside the community client.
+    // Taking it out halved the median module, from 1.3 MB to 610 KB. Code that checks a reply from another service
+    // (the assistant, reports, communities) still needs it; the modules the app's pages call on every load don't.
+    name: "zod",
+    loads: (file) => file.includes("node_modules/zod/"),
+    mayLoad: [/^convex\/(?!(screening|sharing|library|users|billing|organizations|paperSets|extraction)\/)/],
+    instead: "Import the constant or type from a module that builds no zod schema, or move it to one (as LIBRARY_CHANGE_MAX moved to lib/evidence-libraries/reader-sources.ts).",
   },
   {
     name: "the community configuration validator",

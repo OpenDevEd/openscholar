@@ -12,6 +12,7 @@ import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue, studyDesignFilterValue, VENUE_TYPES } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
+import { RATING_RANGE } from './search/rating-filter'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -21,7 +22,7 @@ export const DEFAULT_FILTERS = {
   yearRange: () => [MIN_YEAR, new Date().getFullYear()] as [number, number],
   isYearRangeEnabled: false, // Default is no year filter (unchecked)
   dateRange: undefined as DateRange | undefined,
-  ratingRange: [0, 5] as [number, number],
+  ratingRange: RATING_RANGE,
   onlyRatedPapers: false,
   selectedRegions: [] as string[],
   selectedCountryFocus: [] as string[],
@@ -129,11 +130,6 @@ const isFilterAtDefault = {
   },
   isYearRangeEnabled: (enabled?: boolean) => enabled === undefined || enabled === DEFAULT_FILTERS.isYearRangeEnabled,
   dateRange: (range?: DateRange) => !range,
-  ratingRange: (range?: [number, number]) => {
-    if (!range) return true;
-    return range[0] === DEFAULT_FILTERS.ratingRange[0] && range[1] === DEFAULT_FILTERS.ratingRange[1];
-  },
-  onlyRatedPapers: (value?: boolean) => value === undefined || value === DEFAULT_FILTERS.onlyRatedPapers,
   selectedRegions: (regions?: string[]) => !regions || regions.length === 0,
   selectedCountryFocus: (focus?: string[]) => !focus || focus.length === 0,
   citesItemId: (id?: string) => !id || id === DEFAULT_FILTERS.citesItemId,
@@ -142,15 +138,6 @@ const isFilterAtDefault = {
   reviewFilter: (value?: boolean) => value === undefined || value === DEFAULT_FILTERS.reviewFilter,
 };
 
-// Helper to check if rating filter is active (combines range and onlyRatedPapers)
-export const isRatingFilterActive = (range?: [number, number], onlyRated?: boolean) => {
-  // If onlyRatedPapers is false, the filter is inactive regardless of range
-  if (onlyRated === false) {
-    return false;
-  }
-  // If onlyRatedPapers is true, check if either the toggle or range is non-default
-  return !isFilterAtDefault.onlyRatedPapers(onlyRated) || !isFilterAtDefault.ratingRange(range);
-};
 
 // Helper to check if any date/year filter is active based on current filter type
 export const isDateFilterActive = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isYearRangeEnabled?: boolean) => {

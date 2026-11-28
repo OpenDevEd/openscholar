@@ -15,6 +15,13 @@ export type LibrarySet = { kind: "evidenceLibrary"; libraryId: LibraryRow["libra
 /** A source the form holds outside the libraries' lists: one pasted, picked before, or run again, with its library. */
 export type HeldRow = { library: Pick<ReaderLibrary, "libraryId" | "name" | "address" | "faviconUrl">; row: LibraryRow };
 
+/**
+ * Most records one change to a community collection takes. Here, with nothing heavy beside it, rather than in the
+ * client that sends the change (convex/evidenceLibraries/sourceClient.ts), whose zod would load into every
+ * screening query that counts against it.
+ */
+export const LIBRARY_CHANGE_MAX = 500;
+
 /** One key per source, whichever list it came from. */
 export const rowKey = (row: Pick<LibraryRow, "libraryId" | "source">) => `${row.libraryId}:${JSON.stringify(row.source)}`;
 export const setOfRow = (row: LibraryRow): LibrarySet => ({ kind: "evidenceLibrary", libraryId: row.libraryId, source: row.source });

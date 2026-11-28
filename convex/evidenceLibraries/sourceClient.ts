@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 import { LIBRARY_SOURCE_MAX, type LibrarySource } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_CHANGE_MAX } from "../../lib/evidence-libraries/reader-sources";
 
 export const LIBRARY_CONTRACT = "1";
 /** Most records one batch reads. */
@@ -156,8 +157,6 @@ export async function createReaderCollection(fetchImpl: typeof fetch, target: Li
   return (await call(fetchImpl, target, `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections`, z.object({ collection: collectionSchema }), { body: collection })).collection;
 }
 
-/** Most records one change to a collection takes. */
-export const LIBRARY_CHANGE_MAX = 500;
 
 /** Puts records into a collection the person owns or edits, or takes them out: `changed` are the keys that went in or came out, `missing` records the library doesn't show. */
 export async function changeCollectionRecords(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, keys: string[], change: "add" | "remove") {

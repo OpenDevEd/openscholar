@@ -17,7 +17,7 @@ import type { InWorkspace } from "../workspaces/actor";
 import { screeningRevision } from "../screening/accounting";
 import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
-import { isRatingFilterActive } from "../../lib/utils";
+import { isRatingFilterActive } from "../../lib/search/rating-filter";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_JOB_SOURCES } from "./jobSources";
 import { bucketItemInputValidator } from "./validators";

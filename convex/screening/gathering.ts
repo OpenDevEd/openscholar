@@ -14,7 +14,7 @@ import { createError, readConvexErrorData } from "../lib/errors";
 import { identityOf } from "../lib/paperRef";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
-import { normalDoi, parsePaperKey } from "../../lib/papers/paper-ref";
+import { parsePaperKey } from "../../lib/papers/paper-ref";
 import { keepLibraryKeys, resolveLibraryKeys } from "../evidenceLibraries/sources";
 import { requirePaperKey } from "../library/find";
 import { heldPapers } from "../paperSets/held";
@@ -23,17 +23,17 @@ import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type Search
 import { actorIn } from "../workspaces/actor";
 import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, dealable, dealNew, firstCheck, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
+import { countDealt, dealable, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
 import { progressRow, shelve, withMoved } from "./bookkeeping";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
 import { papersIn } from "./estimate";
 import { pdfBand } from "../../lib/pricing/estimate";
-import { plainTitle } from "../../lib/screening/files";
 import { readersFor } from "../../lib/screening/rules";
 import { handedPapers, handedStart, withAbstracts, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
+import { doiKeyOf, nextPlace, QUIET_MS, titleKeyOf } from "./checks";
 import { startWaitingVotes } from "./slots";
 import { leftOutWhyValidator, MAX_SOURCE_ROWS, SCREENING_TEXT, screeningPaperInputValidator, sourceSetValidator } from "./validators";
 
@@ -44,8 +44,7 @@ type Why = Infer<typeof leftOutWhyValidator>;
 const READ_STEP = PAGE_SIZE;
 /** How long one reading action reads before it hands on to the next: well inside an action's ten minutes. */
 const READ_ACTION_MS = 4 * 60_000;
-/** How long a check may go without a step before its reading is set off again, and how often that is tried before it is left as failed. */
-const QUIET_MS = 15 * 60_000;
+/** How often a check that went quiet (`QUIET_MS`, ./checks.ts) is set off again before it is left as failed. */
 const RESTARTS = 3;
 /** Places one `fill` gives at most. A step's papers are given in as many fills as that takes: a paper that goes to many reviewers is many rows, and a transaction holds only so many (`npm run test:size` proves a step at the most it writes). */
 const FILL_PLACES = 2_000;
@@ -56,9 +55,6 @@ const FAILURE_SHOWN = 600;
 /** How often one fill is tried before its source is left as failed. */
 const FILL_TRIES = 5;
 
-/** What makes two records one paper where their sources name them differently: the DOI, then the title with the year. */
-export const doiKeyOf = (doi: string | undefined | null) => normalDoi(doi) ?? undefined;
-export const titleKeyOf = (title: string, year: number | undefined) => `${plainTitle(title)}|${year ?? ""}`;
 
 type Reading = { gone?: true; places: number; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
@@ -498,38 +494,6 @@ export const end = internalMutation({
     return null;
   },
 });
-
-/**
- * Has a screening that isn't started yet read the sources it was just given. They all belong to its first look: the
- * one it has goes on where it ended, so none of its papers counts as one a later check brought.
- */
-export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
-  const check = await firstCheck(ctx, job._id);
-  if (!check) return void (await startCheck(ctx, job, by));
-  if (check.state === "running") return;
-  await ctx.db.patch("screeningChecks", check._id, { state: "running", endedAt: undefined, beat: Date.now() });
-  await ctx.db.patch("screeningJobs", job._id, { reading: true });
-  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId: check._id });
-  await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId: check._id, restarts: 0 });
-}
-
-/** The place after the last paper a screening has, whichever look placed it: where the next paper goes, and how many it has had. */
-export const nextPlace = async (ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">) =>
-  ((await ctx.db.query("screeningResults").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).order("desc").first())?.place ?? -1) + 1;
-
-/** Starts a look in a screening's sources: every source that isn't taken out is read again from where it stands. */
-export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users"> | undefined, search = false) {
-  // One look at a time: a look under way reads what was added too. A new one starts after every paper the screening has, read now rather than from what the caller held.
-  const running = await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first();
-  if (running) return running._id;
-  const from = Math.max((await ctx.db.get("screeningJobs", job._id))?.totalPapers ?? job.totalPapers, await nextPlace(ctx, job._id));
-  const checkId = await ctx.db.insert("screeningChecks", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), ...(search ? { search } : {}), state: "running", from, found: 0, added: 0, beat: Date.now() });
-  // Papers are arriving while it reads, whichever look it is: a check asked for meanwhile joins it.
-  await ctx.db.patch("screeningJobs", job._id, { reading: true });
-  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });
-  await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId, restarts: 0 });
-  return checkId;
-}
 
 /**
  * The watch on a check's reading. A reading action hands on to the next every few minutes, and one cut short by the
