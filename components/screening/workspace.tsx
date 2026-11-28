@@ -359,7 +359,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <div className={cn("min-w-0 max-sm:order-last max-sm:basis-full", view !== "overview" && "max-sm:hidden")}>
       {/* They wrap onto a second line rather than scroll out of sight: what each chip says is the rule. */}
       <div className="flex flex-wrap items-center gap-2">
-        <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
+        {/* On Settings it goes to the reviewers there, where they are changed, not away to the Overview. */}<LinkChip href={view === "settings" ? settingsHref(id, "reviewers") : overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
         <Chip icon={Check}>{facts.when}</Chip>
         {facts.advice ? <Chip icon={AiIcon}>{facts.advice}</Chip> : null}
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>

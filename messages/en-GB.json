@@ -9060,6 +9060,7 @@
         "points": "Most points",
         "shut": "This screening hides other reviewers' votes on the papers you have yet to vote on, and this order would give them away",
         "byVote": "Kept to one reviewer, the papers come in the order they voted on them",
+        "byVoteMany": "Kept to the papers these reviewers all voted on, they come in the order the first of them voted",
         "byVoteLabel": "In the order they voted",
         "bySearch": "While searching, the papers come in the order they best match",
         "bySearchLabel": "Best match first",
@@ -9315,7 +9316,8 @@
       "messages": "{count, plural, one {# message} other {# messages}}",
       "discuss": "Discuss",
       "heldChip": "Kept from before a change",
-      "heldHelp": "This result was settled before the settings changed, and stands as it was. It moves when someone votes on the paper, or when the settled papers are checked again under the new settings."
+      "heldHelp": "This result was settled before the settings changed, and stands as it was. It moves when someone votes on the paper, or when the settled papers are checked again under the new settings.",
+      "noPdfVote": "{names} can't read PDFs, so {count, plural, one {it has} other {they have}} no vote on this paper"
     },
     "screen": {
       "notSaved": "That wasn't saved. Try again.",

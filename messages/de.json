@@ -9061,6 +9061,7 @@
         "points": "Meiste Punkte",
         "shut": "Dieses Screening verbirgt die Stimmen der anderen Reviewer bei den Artikeln, über die Sie noch abstimmen, und diese Reihenfolge würde sie verraten",
         "byVote": "Ist die Liste auf einen Reviewer beschränkt, erscheinen die Artikel in der Reihenfolge, in der er über sie abgestimmt hat",
+        "byVoteMany": "Beschränkt auf die Paper, über die alle diese Prüfenden abgestimmt haben, kommen sie in der Reihenfolge, in der die erste Person abstimmte",
         "byVoteLabel": "In der Reihenfolge der Stimmen",
         "bySearch": "Während einer Suche erscheinen die Artikel mit der besten Übereinstimmung zuerst",
         "bySearchLabel": "Beste Übereinstimmung zuerst",
@@ -9316,7 +9317,8 @@
       "messages": "{count, plural, one {# Nachricht} other {# Nachrichten}}",
       "discuss": "Diskutieren",
       "heldChip": "Vor einer Änderung beibehalten",
-      "heldHelp": "Dieses Ergebnis wurde vor der Änderung der Einstellungen entschieden und bleibt bestehen. Es ändert sich, wenn jemand über das Paper abstimmt oder die entschiedenen Paper unter den neuen Einstellungen erneut geprüft werden."
+      "heldHelp": "Dieses Ergebnis wurde vor der Änderung der Einstellungen entschieden und bleibt bestehen. Es ändert sich, wenn jemand über das Paper abstimmt oder die entschiedenen Paper unter den neuen Einstellungen erneut geprüft werden.",
+      "noPdfVote": "{names} {count, plural, one {kann} other {können}} keine PDFs lesen und {count, plural, one {hat} other {haben}} daher keine Stimme zu diesem Paper"
     },
     "screen": {
       "notSaved": "Das wurde nicht gespeichert. Versuchen Sie es erneut.",

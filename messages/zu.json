@@ -9060,6 +9060,7 @@
         "points": "Amaphoyinti amaningi",
         "shut": "Lokhu kuskrini kufihla amavoti abanye ababuyekezi emaphepheni ongakavoti kuwo, futhi lolu hlelo beluzowadalula",
         "byVote": "Uma uhlu lunciphiselwe kumbuyekezi oyedwa, amaphepha avela ngohlelo avotwe ngalo yilowo mbuyekezi",
+        "byVoteMany": "Kugcinwe emaphepheni abawavotele bonke laba babuyekezi, eza ngokulandelana okuvote ngakho owokuqala wabo",
         "byVoteLabel": "Njengoba evotiwe",
         "bySearch": "Ngesikhathi usesha, amaphepha ahambisana kakhulu avela kuqala",
         "bySearchLabel": "Ahambisana kakhulu kuqala",
@@ -9315,7 +9316,8 @@
       "messages": "{count, plural, one {# umlayezo} other {# imilayezo}}",
       "discuss": "Xoxa",
       "heldChip": "Kugcinwe kusukela ngaphambi koshintsho",
-      "heldHelp": "Lo mphumela wanqunywa ngaphambi kokuthi izilungiselelo zishintshe, futhi uhlala unjalo. Uyashintsha uma othile evotela iphepha, noma uma amaphepha anqunyiwe ehlolwa futhi ngaphansi kwezilungiselelo ezintsha."
+      "heldHelp": "Lo mphumela wanqunywa ngaphambi kokuthi izilungiselelo zishintshe, futhi uhlala unjalo. Uyashintsha uma othile evotela iphepha, noma uma amaphepha anqunyiwe ehlolwa futhi ngaphansi kwezilungiselelo ezintsha.",
+      "noPdfVote": "{names} akakwazi ukufunda ama-PDF, ngakho akanalo ivoti kuleli phepha"
     },
     "screen": {
       "notSaved": "Lokho akugcinwanga. Zama futhi.",

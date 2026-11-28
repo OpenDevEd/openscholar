@@ -9060,6 +9060,7 @@
         "points": "Plus de points",
         "shut": "Ce criblage masque les votes des autres évaluateurs sur les articles où vous n'avez pas encore voté, et cet ordre les révélerait",
         "byVote": "Quand la liste est limitée à un évaluateur, les articles apparaissent dans l'ordre de ses votes",
+        "byVoteMany": "Limités aux articles sur lesquels tous ces relecteurs ont voté, ils viennent dans l’ordre où le premier a voté",
         "byVoteLabel": "Ordre des votes",
         "bySearch": "Pendant une recherche, les articles qui correspondent le mieux apparaissent en premier",
         "bySearchLabel": "Meilleure correspondance d'abord",
@@ -9315,7 +9316,8 @@
       "messages": "{count, plural, one {# message} other {# messages}}",
       "discuss": "Discuter",
       "heldChip": "Conservé d’avant une modification",
-      "heldHelp": "Ce résultat a été arrêté avant la modification des paramètres et reste tel quel. Il change quand quelqu’un vote sur l’article ou quand les articles arrêtés sont revérifiés selon les nouveaux paramètres."
+      "heldHelp": "Ce résultat a été arrêté avant la modification des paramètres et reste tel quel. Il change quand quelqu’un vote sur l’article ou quand les articles arrêtés sont revérifiés selon les nouveaux paramètres.",
+      "noPdfVote": "{names} ne {count, plural, one {peut} other {peuvent}} pas lire les PDF, et n’{count, plural, one {a} other {ont}} donc pas de vote sur cet article"
     },
     "screen": {
       "notSaved": "L'enregistrement a échoué. Réessayez.",

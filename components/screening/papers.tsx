@@ -48,7 +48,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, Sentence, HeldChip, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -539,7 +539,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={fixedOrder ? "added" : sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: one === "added" && fixedOrder ? t(`sort.${fixedOrder}Label`) : t(`sort.${one}`), icon: <Icon />, ...(one !== "added" && fixedOrder ? { shut: t(`sort.${fixedOrder}`) } : open.keepsVotes && (one === "split" || one === "points") ? { shut: blindOf(screening, open.invited) === "people" ? t("sort.peopleShut") : t("sort.shut") } : {}) }; })} />
+    <FilterMenu name={t("filter.order")} lead={<ArrowUpDown className="size-3.5" />} value={fixedOrder ? "added" : sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.filter((one) => one !== "split" || twoVotes || place.sort === "split").map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: one === "added" && fixedOrder ? t(`sort.${fixedOrder}Label`) : t(`sort.${one}`), icon: <Icon />, ...(one !== "added" && fixedOrder ? { shut: fixedOrder === "byVote" && also.length ? t("sort.byVoteMany") : t(`sort.${fixedOrder}`) } : open.keepsVotes && (one === "split" || one === "points") ? { shut: blindOf(screening, open.invited) === "people" ? t("sort.peopleShut") : t("sort.shut") } : {}) }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
@@ -1185,6 +1185,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
       <Section title={screen(votesTitle(screening.rule, cast))} help={<VotesHelp blind={blind} side="left" />} aside={shut.kept ? <HiddenChip blind={blind} /> : undefined}>
           <ScrollArea axis="x" shades className="rounded-2xl border border-border-subtle"><div className="p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={shut.none} settled={Boolean(state.final)} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div></ScrollArea>
         {shut.kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, blind, cast, open.me)}</ShutNote> : null}
+        <NoPdfVote screening={screening} paper={paper} cast={cast} />
         {!shut.none ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {

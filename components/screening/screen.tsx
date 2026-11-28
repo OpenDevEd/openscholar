@@ -49,7 +49,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, Sentence, HeldChip, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useInHand, useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -641,7 +641,8 @@ function Screen({ open }: { open: Open }) {
   );
 
   // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is. It opens where the question is answered (./links.ts `askedHref`).
-  const askedChip = open.asked && open.askedFirst ? <LinkChip href={askedHref(id, open.askedFirst, open.askedWhere)} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
+  // On the paper it opens, it goes to the question itself, in the paper's discussion, rather than doing nothing.
+  const askedChip = open.asked && open.askedFirst ? <LinkChip href={askedHref(id, open.askedFirst, open.askedWhere)} onClick={(event) => { if (paper?.id === open.askedFirst) { event.preventDefault(); toDiscussion(); } }} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
   // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list where it has no column.
   const queueFilters = (className: string) => (
     <>
@@ -705,7 +706,8 @@ function Screen({ open }: { open: Open }) {
   if (reading || (switching && known) || (!switching && !paper && !narrowed && !opening && !listed.canNext)) {
     return (
       <div className="contents"><div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-        {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
+        {/* A question put to the person stays in reach with nothing left to screen: an empty queue never hides it. */}
+        {open.isReviewer ? <div className={cn("flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div>{askedChip}</div> : null}
         <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading && !known ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} />}</div>
       </div></div>
     );
@@ -786,6 +788,7 @@ function Screen({ open }: { open: Open }) {
                       </div>
                       </ScrollArea>
                       {shut.kept ? <ShutNote by="vote">{VOTES_SHUT(pieces, blind, cast, open.me)}</ShutNote> : null}
+                      <NoPdfVote screening={screening} paper={paper} cast={cast} />
                     </Section>
   ) : null;
 
@@ -1289,7 +1292,9 @@ function QueueEmpty({ open, queue }: { open: Open; queue: Queue }) {
   const [yours, voted, closed] = [tally?.dealt ?? 0, tally?.cast ?? 0, tally?.closed ?? 0];
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
     // Someone who doesn't vote reads the papers in conflict here: an empty page says there are none, then what they are to the screening.
-    ? [Eye, splitsIn(open.screening, open.counts.conflict, open.invited) ? t("empty.noConflictPaper") : t("empty.noneCanSplit"), notReviewerSays(pieces, open.canChange, Boolean(open.screening.finishedAt))]
+    // A finished one leads with why there is nothing to do here, never with a rule about conflicts nobody asked about.
+    ? open.screening.finishedAt ? [Eye, notReviewerSays(pieces, open.canChange, true), null]
+    : [Eye, splitsIn(open.screening, open.counts.conflict, open.invited) ? t("empty.noConflictPaper") : t("empty.noneCanSplit"), notReviewerSays(pieces, open.canChange, false)]
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]

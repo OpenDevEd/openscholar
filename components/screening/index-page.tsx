@@ -346,7 +346,7 @@ export function ScreeningsIndex() {
 
 /** A group's labelled row before its first screening on the page, under the default order. */
 /** The screenings that wait for the person in another workspace. This list holds this workspace's own, so each of those is a link to where it is. */
-function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number; askedFirst?: string; askedWhere?: "conflicts" | "screen" | "papers" }> }) {
+function Elsewhere({ rows }: { rows: Array<{ id: string; name: string; in: string; slug?: string; forYou: number; conflicts: number; asked: number; askedFirst?: string; askedWhere?: "conflicts" | "screen" | "done" | "papers" }> }) {
   const t = useTranslations("screening.list");
   const words = useWords();
   if (!rows.length) return null;

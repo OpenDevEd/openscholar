@@ -39,7 +39,7 @@ export const screenHref = (id: string, query?: { queue?: "again" | "done" | "con
  * `sort`: added, title, newest, split or points. `paper`: the paper open beside the table.
  */
 /** Where a question put to the person looking is answered: among the conflicts, on Screen with their own vote, or in Papers (convex/screening/dealing.ts `waitsOn`). */
-export const askedHref = (id: string, paper: string, where: "conflicts" | "screen" | "papers" = "papers") => (where === "conflicts" ? screenHref(id, { queue: "conflicts", paper }) : where === "screen" ? screenHref(id, { paper }) : papersHref(id, { paper }));
+export const askedHref = (id: string, paper: string, where: "conflicts" | "screen" | "done" | "papers" = "papers") => (where === "conflicts" ? screenHref(id, { queue: "conflicts", paper }) : where === "done" ? screenHref(id, { queue: "done", paper }) : where === "screen" ? screenHref(id, { paper }) : papersHref(id, { paper }));
 export const papersHref = (id: string, query?: { result?: string; source?: string; added?: string; reviewer?: string; voted?: string; with?: string; reason?: string; sort?: string; paper?: string }) => withQuery(`${BASE}/${id}/papers`, query);
 /**
  * A reviewer's papers: the ones they voted on, or, before their first vote, the ones that wait for it, or a model's

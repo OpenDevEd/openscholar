@@ -30,6 +30,7 @@ import { ourPaperPage } from "@/lib/papers/page-address";
 import { useFormatter, useTranslations } from "next-intl";
 import { type Blind, type Pending, type RetiredCriterion, type Screening, RESULTS, inOrder, termsPattern, modelsOf, questionOf, readersOf, splitsIn, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
+import { readsPdfs } from "@/lib/assistant/files";
 import { papersHref } from "./links";
 import { useRtl, useWords, type Words } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -966,4 +967,14 @@ export function HeldChip() {
       <Help title={t("heldChip")}>{t("heldHelp")}</Help>
     </span>
   );
+}
+
+/** Under a PDF paper's votes, the models on the screening that can't read a PDF and so have no place on it: why their column is empty. */
+export function NoPdfVote({ screening, paper, cast }: { screening: Pick<Screening, "reviewers">; paper: { pdf?: unknown }; cast: Array<{ reviewer: { id: string } }> }) {
+  const t = useTranslations("screening.pieces");
+  const format = useFormatter();
+  if (!paper.pdf) return null;
+  const blind = screening.reviewers.filter((one) => one.kind === "model" && !one.left && one.model && !readsPdfs(one.model.inputs) && !cast.some((place) => place.reviewer.id === one.id));
+  if (!blind.length) return null;
+  return <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><FileText aria-hidden className="mt-0.5 size-3.5 shrink-0" />{t("noPdfVote", { names: format.list(blind.map((one) => one.name), { type: "conjunction" }), count: blind.length })}</p>;
 }
