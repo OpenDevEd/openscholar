@@ -591,8 +591,12 @@ describe("a vote asked for again", () => {
     const flagged = () => made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.reviewerId === ann)!.flagged);
     expect(await flagged()).toBe(true);
     const key = criteria[0]!.key;
-    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answers: { [key]: "yes" }, answersOnly: true });
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answered: { key, answer: "yes" } });
     expect(await flagged()).toBe(true);
+    // An answer to another criterion, from another tab that never saw the first, joins it: neither takes the other's place.
+    const other = criteria[1]!.key;
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answered: { key: other, answer: "unclear" } });
+    expect(await made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.reviewerId === ann)!.answers)).toEqual({ [key]: "yes", [other]: "unclear" });
     await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answers: { [key]: "yes" } });
     expect(await flagged()).toBeFalsy();
   });

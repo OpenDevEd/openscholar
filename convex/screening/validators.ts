@@ -422,6 +422,8 @@ export const voteViewValidator = v.object({
   reason: v.optional(v.string()),
   note: v.optional(v.string()),
   at: v.number(),
+  /** When it was cast, where its answers were changed since (`at` is then when they were): what the files call when it was voted. */
+  castAt: v.optional(v.number()),
   flagged: v.optional(v.boolean()),
   confidences: voteConfidencesValidator,
   passages: optionalPassagesValidator,

@@ -40,7 +40,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { skeletonRows, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
-import { decide, givenReason, leansOpen, NO_REASON, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
+import { decide, givenReason, leansOpen, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -434,12 +434,9 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
     // It stamps the vote anew: the step that cast it names the new moment, and Undo waits for it, so Undo still takes the vote back.
     if (mine && !resolving) {
       const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved);
-      // An exclusion that rested on this criterion failing rests on what the answers say now: another failed must-have, the note, or no reason.
-      // And one that had no reason takes the must-have its answers now fail, as an exclusion cast with them would.
-      const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
-      const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
+      // Only this answer goes: it joins the vote as it stands now, which works out what an exclusion rests on (convex/screening/voting.ts), so another tab's answer to another criterion stays.
       // Saved, the answers are the vote's own: in hand they would stand over a change made since on another page. Any given while it saved stay.
-      const saving = open.vote(paper.id, ballot, { answersOnly: true }).then((at) => {
+      const saving = open.vote(paper.id, ballotOf(mine), { answered: { key: criterion, answer: given[criterion] ?? null } }).then((at) => {
         if (at !== null && cast) cast.saved = at;
         setAnswers(({ [paper.id]: was, ...rest }) => (was === given || was === undefined ? rest : { ...rest, [paper.id]: was }));
       }, failed);

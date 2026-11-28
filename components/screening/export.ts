@@ -296,7 +296,7 @@ export const votesCsv = (screening: Screening, papers: Paper[], whose?: string) 
       return [
         paper.id, doiOf(paper) ?? "", paper.title, paper.year ?? "", reviewer.name, kindOf(reviewer), status, vote ? DECISION_LABEL[vote.decision] : "",
         vote?.reason ? failedLabel(vote.reason, reasonCriteria(screening)) : "", ...criteria.map((criterion) => vote?.answers[criterion.key] ?? ""), vote?.note ?? "", RESULT_LABEL[settled.result],
-        settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "", settled.note ?? "", vote ? iso(vote.at) : "",
+        settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "", settled.note ?? "", vote ? iso(vote.castAt ?? vote.at) : "",
       ];
     }),
   ]);
@@ -557,7 +557,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
       reason: vote.reason ?? null,
       answers: vote.answers,
       note: vote.note ?? null,
-      voted_at: iso(vote.at),
+      voted_at: iso(vote.castAt ?? vote.at),
+      ...(vote.castAt ? { answers_changed_at: iso(vote.at) } : {}),
       ...(reviewer.kind === "model" ? { read: Object.fromEntries(reasonCriteria(screening).flatMap((criterion) => { const [sentence, confidence] = [vote.passages?.[criterion.key], vote.confidences?.[criterion.key]]; return vote.answers[criterion.key] ? [[criterion.key, { passage: sentence === undefined || sentence === null ? null : (sentencesOf(paper.abstract)[sentence] ?? null), confidence: confidence === undefined ? null : Number(confidence.toFixed(2)) }]] : []; })) } : {}),
     }] : [])),
     // Who was on a paper and cast no vote on it: someone who has yet to, someone the paper was settled without, a model that couldn't read it.
