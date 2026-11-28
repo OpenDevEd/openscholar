@@ -12,7 +12,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Chip } from "./parts";
@@ -98,7 +98,7 @@ export function ScreeningsIndex() {
   // The screenings the person is invited to, narrowed by the search as the list is.
   const invited = (invitations ?? []).filter((row) => row.kind === "screening" && nameHas(row.name, searched));
   // "Needs you first" is the newest first with what waits for the person above them.
-  const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE);
+  const listed = useCursorPageAt("page", api.screening.view.list, inWorkspace(here, show === "you" ? "skip" : { show, sort: sort === "you" ? ("newest" as const) : sort, ...(runBy.by ? { by: runBy.by } : {}), ...(searched ? { text: searched } : {}) }), PAGE, { list: JSON.stringify([show, runBy.by ?? null]) });
 
   const fits = (row: Summary) => nameHas(row.name, searched) && (!runBy.by || row.createdBy.id === runBy.by);
   const needing = (row: Summary) => row.forYou + row.conflicts + row.asked > 0;
@@ -114,10 +114,7 @@ export function ScreeningsIndex() {
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
   // Another tab or person asked for (a search typed or another order keeps the rows up, dimmed): until its rows come it shows skeletons, or at once says it is empty where its count is 0. Never the last tab's rows under the new one. Needs you is read with the page, so it has no wait.
-  const askedList = JSON.stringify([show, runBy.by ?? null]);
-  const [arrivedList, setArrivedList] = useState(askedList);
-  if ((show === "you" || (!listed.isLoading && !listed.isStale)) && arrivedList !== askedList) setArrivedList(askedList);
-  const otherList = arrivedList !== askedList;
+  const otherList = listed.isOther;
   const listRows = otherList ? [] : rows;
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
@@ -237,7 +234,7 @@ export function ScreeningsIndex() {
                 {(loading && !rows.length) || (otherList && counts?.[show] !== 0) ? (
                   <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? UNCOUNTED_ROWS, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
                 ) : (
-                <ul className={cn("divide-y divide-border-subtle", listed.isStale && "pointer-events-none opacity-60")}>
+                <ul className={cn("divide-y divide-border-subtle", listed.isStale && STALE_ROWS)}>
                   {listRows.map(({ row, group }, i) => {
                     const id = row.id;
                     const me = row.me as string;

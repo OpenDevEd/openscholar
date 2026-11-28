@@ -21,7 +21,7 @@ import { Building2, Check, CircleCheck, Coins, FileSearch, Folder, ListFilter, L
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { LIST, Tile } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { PersonTag, RoleLabel } from "@/components/ui/identity";
@@ -146,7 +146,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
       <WaitingInvitations rows={invitations} {...(kind ? { kind } : {})} text={needle} />
       {rows?.length ? (
         // Rows of the view before stay, dimmed and still, until the one asked for arrives.
-        <div className={cn("divide-y divide-border-subtle", loading && "pointer-events-none opacity-60")}>
+        <div className={cn("divide-y divide-border-subtle", loading && STALE_ROWS)}>
           {rows.map((item) => (
             <Row key={item.id} item={item} />
           ))}

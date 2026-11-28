@@ -29,6 +29,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 /**
  * Combined sort options for the library sort dropdown.
@@ -375,7 +376,7 @@ function CollectionFilterSection({
 
           {/* Vertical list */}
           <div
-            className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
+            className={cn("space-y-0.5", collections.isStale && STALE_ROWS)}
             // A full page's height while there are pages; while the first loads, the rows the count says it will have.
             style={showPagination ? { minHeight: FULL_PAGE_PX } : collections.isLoading && totalCollections ? { minHeight: (Math.min(totalCollections, PAGE_SIZE) + 1) * ROW_PX - 2 } : undefined}
           >

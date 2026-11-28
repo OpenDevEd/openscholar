@@ -62,6 +62,7 @@ import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 const PAGE_SIZE = 20;
 
@@ -617,7 +618,7 @@ export function LibraryPageClient() {
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
                     {/* Only the cards rate in the open collection. Focus mode keeps the person's own rating, on its stars, its shortcuts and its phone control alike. */}
                     <CollectionRatingContext.Provider value={collectionScope}>
-                    <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
+                    <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && STALE_ROWS)}>
                       {pageResults.map((paper, index) => {
                         const globalIndex = pageStart + index;
                         return (

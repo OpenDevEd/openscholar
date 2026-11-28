@@ -17,7 +17,7 @@ import { PUBLIC_PER_PAGE } from "@/lib/evidence-libraries/directory";
 import type { Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
-import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
+import { LIST_FILTER, ListEmpty, ListLoading, STALE_ROWS } from "./list-controls";
 import { FadeImage } from "@/components/ui/fade-image";
 import { ApplyCorner } from "./applications/apply-corner";
 import { fromCard, type Standing } from "./applications/apply-dialog";
@@ -79,7 +79,7 @@ export function PublicCommunities({ search, preloaded, heading, signedIn = false
           <ul
             key={read.items.map((community) => community._id).join(",")}
             // One column of the panel's width on a phone: an implicit column would be as wide as a card's whole name.
-            className={cn("grid grid-cols-1 content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
+            className={cn("grid grid-cols-1 content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && STALE_ROWS)}
             inert={read.isStale || undefined}
           >
             {read.items.map((community) => <CommunityCard key={community._id} community={community} signedIn={signedIn} standing={standing.get(community._id)} />)}

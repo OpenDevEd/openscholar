@@ -29,6 +29,7 @@ import { modelKey, type Person } from "./data";
 import { paperCredits, pdfsMissed } from "./store";
 import { useWords } from "./words";
 import type { Pdfs } from "@/lib/pricing/estimate";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
 export function AddPerson({ exclude, screening, freeing = 0, onPick, children }: { exclude: string[]; /** A saved screening: whoever it is shared with from outside, or invited to, is on it already, and never invited again. */ screening?: string; /** Invitations this form takes back on Save: their places are free for the ones it adds. */ freeing?: number; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
@@ -95,7 +96,7 @@ export function AddPerson({ exclude, screening, freeing = 0, onPick, children }:
             ) : null}
             <CommandEmpty>{email || found === undefined ? null : <><span className="block font-medium">{text.trim() ? t("nobodyByName") : t("nobodyElse")}</span><span className="mt-1 block text-muted-foreground">{outsideFull ?? t("inviteHint")}</span></>}</CommandEmpty>
             {left.length ? (
-              <CommandGroup heading={words.t("person.member")} className={cn("transition-opacity", stale && "opacity-60")}>
+              <CommandGroup heading={words.t("person.member")} className={cn(stale && STALE_ROWS)}>
                 {left.map((person) => (
                   <CommandItem key={person.id} value={person.id} disabled={stale} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />

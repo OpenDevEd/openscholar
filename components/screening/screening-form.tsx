@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { FileText, GitCompare, AiIcon, Ban, Hash, Upload, Check, ChevronDown, ChevronRight, Clock, Coins, Copy, ExternalLink, FileX, Folder, FolderPlus, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Trash2, TriangleAlert, Undo2, UserPlus, Users, X, type AppIcon, RotateCcw, Repeat } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListRowsSkeleton, ListSearch, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { LibrarySelect, useLibrarySources, useRowLabel } from "./library-sources";
@@ -1325,7 +1325,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       ) : null}
                       {/* While a list is read, and while it runs to more than a page, it keeps a page's height, so a short last page moves nothing under it. A list that turns out shorter slides to its own height. */}
                       <AutoHeight>
-                      <div className={cn("divide-y divide-border-subtle transition-opacity", offered.pager?.isStale && "pointer-events-none opacity-60")} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
+                      <div className={cn("divide-y divide-border-subtle", offered.pager?.isStale && STALE_ROWS)} style={{ minHeight: offered.loading || offered.pager?.hasPages ? OFFER_PAGE * 57 : undefined }}>
                         {offered.loading && !offered.rows.length ? <ListRowsSkeleton rows={OFFER_PAGE} height={57} label={t("papers.loadingList")} /> : null}
                         {offered.rows.map((offer) => { const search = searchOf.get(offer.ref); const row = { offer, ...searchLook(offer), icon: kindIcon(offer.set.kind), added: taken_(offer.ref) }; return search ? <SearchOfferRow key={offer.ref} {...row} search={search} onAdd={(filters) => pick(filters.length ? { ...offer, filters } : offer)} /> : <OfferRow key={offer.ref} {...row} onAdd={() => pick(offer)} />; })}
                         {!offered.rows.length && !offered.loading ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{typed ? t("papers.noneByName") : kind === "screening" ? (here?.kind === "personal" ? t("papers.noneOwnIncluded") : t("papers.noneIncluded", { workspace: workspace.name })) : kind === "search" ? t("papers.noSearches") : t("papers.nothingHere")}</p> : null}
@@ -2047,7 +2047,7 @@ function Merged({ jobId, sourceId, total, open, sources }: { jobId: Id<"screenin
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
       {rows.isLoading ? <ListRowsSkeleton rows={Math.min(total, LEFT_PAGE)} height={45} icon={false} label={t("papers.loadingList")} className="[&>div]:px-0" /> : (
-      <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
+      <ul className={cn("divide-y divide-border-subtle", rows.isStale && STALE_ROWS)} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => {
           // The source that brought the paper this record is the same as: another one, or this one where it lists the paper more than once.
           const from = row.paper?.sourceId === sourceId ? t("papers.mergedSame") : row.paper ? t("papers.mergedFrom", { source: sources.find((one) => one.id === row.paper!.sourceId)?.name ?? t("papers.mergedElsewhere") }) : t("papers.mergedGone");
@@ -2102,7 +2102,7 @@ function LeftOut({ jobId, sourceId, total, dois = false, onList }: { jobId: Id<"
     <div className="space-y-2">
       {/* The list holds its rows' height from the first frame: how many there are is known before they are read. */}
       {rows.isLoading ? <ListRowsSkeleton rows={Math.min(total, LEFT_PAGE)} height={45} icon={false} label={t("papers.loadingList")} className="[&>div]:px-0" /> : (
-      <ul className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
+      <ul className={cn("divide-y divide-border-subtle", rows.isStale && STALE_ROWS)} style={{ minHeight: Math.min(total, LEFT_PAGE) * 45 }}>
         {rows.items.map((row) => (
           <li key={row.id} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
             {/* A title is read in full here: this list is where someone finds out what was left out. */}

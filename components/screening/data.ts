@@ -410,19 +410,6 @@ export const day = (at: number) => {
   const date = new Date(at);
   return `${date.getDate()} ${MONTHS[date.getMonth()]}${date.getFullYear() === new Date().getFullYear() ? "" : ` ${date.getFullYear()}`}`;
 };
-/** A date as a page shows it: how long ago for the last week, the day before that. */
-export function ago(at: number, now = Date.now()) {
-  const minutes = Math.max(0, Math.round((now - at) / 60_000));
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  // Days are counted on the calendar: a vote cast late yesterday was cast yesterday, not "18 h ago".
-  const midnight = (time: number) => new Date(time).setHours(0, 0, 0, 0);
-  const days = Math.round((midnight(now) - midnight(at)) / DAY);
-  if (days <= 0) return `${Math.round(minutes / 60)} h ago`;
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  return day(at);
-}
 
 /** An abstract cut into its sentences, the way a model that names a passage counts them (lib/screening/passages.ts). */
 export { sentencesOf } from "@/lib/screening/passages";

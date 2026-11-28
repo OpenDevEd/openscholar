@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
-import { ListEmpty, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListRowsSkeleton, ListSearch, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { SamePageLink as NextLink } from "./same-page-link";
@@ -230,7 +230,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // The server gives one reviewer's papers in the order they voted on them, and a search's in the order they best match: no other order is offered then, and the menu says which it is.
   const fixedOrder = searched ? ("bySearch" as const) : who ? (voted === "none" || voted === "failed" ? ("byPlace" as const) : ("byVote" as const)) : null;
   const matching = { jobId: id, ...(filter !== "all" ? { result: filter } : {}), ...narrowed, ...(others.length ? { also: others } : {}), ...(searched ? { text: searched } : {}) };
-  const listed = useCursorPageAt("page", api.screening.paperViews.list, inWorkspace(workspaceId, { ...matching, ...(sort !== "added" ? { sort } : {}) }), PAGE, { scroll: false });
+  // Another tab or filter is another list; words looked for, another order or another page are the same list, whose rows stay up, dimmed.
+  const { text: _typed, ...narrowing } = matching as typeof matching & { text?: string };
+  const listed = useCursorPageAt("page", api.screening.paperViews.list, inWorkspace(workspaceId, { ...matching, ...(sort !== "added" ? { sort } : {}) }), PAGE, { scroll: false, list: JSON.stringify(narrowing) });
   const shown = listed.items;
   // How many papers stand each way is kept for the whole screening. Narrowed to a source, a check, a reason or a reviewer, the server counts them (convex/screening/paperViews.ts `counts`). Words looked for, the papers two reviewers share and the conflicts one person settled are found a page at a time, and their tabs carry no number.
   const anyNarrow = from !== "all" || Boolean(who) || Boolean(reason) || added !== "all" || Boolean(searched);
@@ -241,11 +243,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const total = countOf(filter);
   // Another list asked for (another tab or filter), not another page, search or order of the same: its rows show as skeletons under the table's head until they come, and a tab the counts say is empty says so at once. Never the last list's rows under the new tab.
   // A search typed or another order keeps the rows up, dimmed, as Screen's search does: only another tab or filter is another list.
-  const { text: _typed, ...narrowing } = matching as typeof matching & { text?: string };
-  const asked = JSON.stringify(narrowing);
-  const [arrivedList, setArrivedList] = useState(asked);
-  if (!listed.isLoading && !listed.isStale && arrivedList !== asked) setArrivedList(asked);
-  const otherList = arrivedList !== asked;
+  const otherList = listed.isOther;
   // Empty by the counts, from the first read too.
   const emptyNow = (otherList || listed.isLoading) && total === 0;
   const rowsPending = otherList && !emptyNow;
@@ -663,7 +661,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
           {/* While the page is read it keeps the height of the rows it will hold, as many as the filter counts up to a page; what is left over slides. */}
           <AutoHeight>
-          <Wide fits={fits} style={{ minHeight: listed.isLoading ? (Math.min(total ?? PAGE, PAGE) + 2) * ROW : listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
+          <Wide fits={fits} style={{ minHeight: listed.isLoading ? (Math.min(total ?? PAGE, PAGE) + 2) * ROW : listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && STALE_ROWS)}>
             {listed.isLoading && !emptyNow ? (
               <>
                 {/* The table's two head rows, then as many rows as the page will hold. */}

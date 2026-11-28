@@ -11,7 +11,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
+import { ListRowsSkeleton, ListSearch, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
@@ -397,7 +397,7 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
   return (
     <div className="space-y-2">
       {rows.isLoading ? <ListRowsSkeleton rows={first} height={FILE_ROW} icon={false} label={t("pdf.loading")} className="*:px-0" /> : (
-      <ul aria-label={t("pdf.list")} className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: first * FILE_ROW }}>
+      <ul aria-label={t("pdf.list")} className={cn("divide-y divide-border-subtle", rows.isStale && STALE_ROWS)} style={{ minHeight: first * FILE_ROW }}>
         {rows.items.map((row) => {
           const stands = row.state === "read" ? (row.known ? "known" : "file") : row.state;
           return (
@@ -652,7 +652,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       {/* The list holds a page's height while it fills or pages, the rows still to come drawn in their place, and a change to its height slides. */}
       <AutoHeight>
       {/* Rows of the list before (another library, folder or search) stay dimmed and out of reach until the new ones come: none can be added under the wrong library. */}
-      <div inert={listed.isStale || resolving} className={cn("divide-y divide-border-subtle transition-opacity", (listed.isStale || resolving) && "opacity-60")}>
+      <div inert={listed.isStale || resolving} className={cn("divide-y divide-border-subtle", (listed.isStale || resolving) && STALE_ROWS)}>
         {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. A name being looked for is looked for in the whole library. */}
         {words || gone || resolving ? null : here ? (
           <OfferRow offer={{ name: here.name, detail: "", total: here.papers }} icon={Folder} trail={trailOf(path.slice(0, -1))} added={added(here)} onAdd={() => add(here)} {...counted(here)} />

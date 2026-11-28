@@ -156,7 +156,7 @@ function Screen({ open }: { open: Open }) {
   const counted = screening.reviewers.find((one) => one.id === open.me)?.tally;
   // The queue as the server holds it, a page at a time: found by a paper's title or authors, Done by your vote, and To do in the order asked for.
   // It is read as it stands, so a paper you have dealt with leaves it and the ones after it move up. The open one is the exception: it keeps its place, with your vote on it, until you move on.
-  const listed = useCursorPageAt("page", api.screening.paperViews.queue, inWorkspace(workspaceId, { jobId: id, queue, ...(queue === "todo" ? { order } : {}), ...(queue === "done" && voted !== "any" ? { voted } : {}), ...(searched ? { text: searched } : {}) }), QUEUE_PAGE, { scroll: false });
+  const listed = useCursorPageAt("page", api.screening.paperViews.queue, inWorkspace(workspaceId, { jobId: id, queue, ...(queue === "todo" ? { order } : {}), ...(queue === "done" && voted !== "any" ? { voted } : {}), ...(searched ? { text: searched } : {}) }), QUEUE_PAGE, { scroll: false, list: `${id}:${queue}` });
   const holding = `${id}:${queue}:${order}:${searched.toLowerCase()}:${voted}`;
   // With no paper named in the address, the page's first is the open one, and stays it while the queue changes under the person: someone else settling a conflict never swaps the paper being read, or written about, for the next one.
   const [led, setLed] = useState<{ of: string; id: string } | null>(null);
@@ -326,13 +326,11 @@ function Screen({ open }: { open: Open }) {
   const finished = Boolean(screening.finishedAt);
   // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
   // Any change to the list asked for counts (another queue, order, vote picked in Done, or search): the paper of the list before is never voted on while the new one is read.
-  const [arrivedList, setArrivedList] = useState(holding);
-  if (arrived && arrivedList !== holding) setArrivedList(holding);
   // A page turned and not read yet counts too.
-  const switching = (arrivedList !== holding || listed.isStale) && !picked;
+  const switching = (listed.isStale || listed.isOther) && !picked;
   // Another queue picked: until its papers arrive its rows and paper show as skeletons in their places, never the last queue's papers under the new tab.
   // By the list alone, a paper named in the address or not: Back to a queue with its paper named, or a link to a paper in another queue, shows that queue's rows as skeletons too, never the last queue's under its tab. The named paper is read by itself, so it shows.
-  const otherQueue = arrivedList !== holding && arrivedList.split(":")[1] !== queue;
+  const otherQueue = listed.isOther;
   // Where the open paper stands in its queue. Another queue opens at its first paper, which its count already places.
   const shownAt = otherQueue && !picked ? 1 : listed.offset + at + 1;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.

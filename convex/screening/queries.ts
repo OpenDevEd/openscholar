@@ -427,7 +427,6 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
     }),
   };
 }
-export type ScreeningResultRow = Awaited<ReturnType<typeof readScreeningResultsPage>>["page"][number];
 
 /** One page of the results of a job the person may read; an empty page for anyone else. */
 export const listScreeningResultsAction = defineUserQuery({

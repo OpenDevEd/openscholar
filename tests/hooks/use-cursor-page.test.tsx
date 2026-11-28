@@ -84,6 +84,36 @@ describe("useCursorPage", () => {
     expect(readAs({ cursor: null, numItems: 1 })).toBe(true);
   });
 
+  it("says another list's rows are up from the moment another list is asked for, even before any rows arrived", () => {
+    server.pages.delete("|null");
+    server.pages.delete("x|null");
+    const { result, rerender } = renderHook(({ search, list }) => useCursorPage(query, { search }, 2, { list }), { initialProps: { search: undefined as string | undefined, list: "all" } });
+    expect(result.current).toMatchObject({ isLoading: true, isOther: false });
+    // Another tab asked for while the first is still read: whatever is open belongs to the tab before.
+    rerender({ search: "x", list: "mine" });
+    expect(result.current).toMatchObject({ isLoading: true, isOther: true });
+    server.pages.set("x|null", page(["x"], "", true));
+    rerender({ search: "x", list: "mine" });
+    expect(result.current).toMatchObject({ items: ["x"], isOther: false });
+  });
+
+  it("keeps the rows of the same list up, dimmed, for another search, and says they aren't another list's", () => {
+    server.pages.delete("x|null");
+    const { result, rerender } = renderHook(({ search }) => useCursorPage(query, { search }, 2, { list: "all" }), { initialProps: { search: undefined as string | undefined } });
+    rerender({ search: "x" });
+    expect(result.current).toMatchObject({ items: ["a", "b"], isStale: true, isOther: false });
+  });
+
+  it("lets go of its rows when it isn't read, so a list asked for after it is another's until it is read", () => {
+    const { result, rerender } = renderHook(({ skip, list }) => useCursorPage(query, skip ? "skip" : {}, 2, { list }), { initialProps: { skip: false, list: "all" } });
+    expect(result.current).toMatchObject({ items: ["a", "b"], isOther: false });
+    rerender({ skip: true, list: "you" });
+    expect(result.current).toMatchObject({ items: [], isOther: false });
+    server.pages.delete("|null");
+    rerender({ skip: false, list: "all" });
+    expect(result.current).toMatchObject({ items: [], isLoading: true, isOther: true });
+  });
+
   it("steps back from a page its rows were all deleted from", () => {
     const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
     act(() => result.current.next());
