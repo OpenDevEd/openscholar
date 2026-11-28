@@ -8863,7 +8863,6 @@
         "title": "المراجعون",
         "everyoneDone": "ينتهي الجميع في نحو {weeks, plural, =0 {{days, plural, =1 {يوم واحد} zero {# يوم} one {يوم واحد} two {يومين} few {# أيام} many {# يومًا} other {# يوم}}} zero {# أسبوع} one {أسبوع واحد} two {أسبوعين} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}، بهذه الوتيرة",
         "move": "نقل الأوراق",
-        "agreement": "الاتفاق",
         "helpTitle": "كيف تُوزَّع الأوراق",
         "eachOf": "{each, plural, zero {يصوّت # من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}} one {يصوّت واحد من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}} two {يصوّت اثنان من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}} few {يصوّت # من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}} many {يصوّت # من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}} other {يصوّت # من أصل {people, plural, zero {# شخص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}}}} على كل ورقة",
         "everyPerson": "يصوّت كل شخص على كل ورقة",

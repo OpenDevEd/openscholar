@@ -11,7 +11,7 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { advisory, cellOf, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
+import { cellOf, decidingVotes, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
@@ -100,8 +100,6 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   const order = new Map(reviewers.map((one, at) => [one._id, at]));
   const progress = await progressOf(ctx, job._id);
   const counts = { ...NO_RESULTS, ...progress.counts };
-  const reasons = { ...progress.reasons };
-  const included: Record<string, number> = { ...progress.included };
   const perReviewer = new Map<Id<"screeningReviewers">, Counts>();
   const countsOf = (id: Id<"screeningReviewers">) => perReviewer.get(id) ?? perReviewer.set(id, { ...NO_COUNTS, ...progress.reviewers?.[id] }).get(id)!;
   const pairs = new Map<string, { a: Id<"screeningReviewers">; b: Id<"screeningReviewers">; cells: number[] }>();
@@ -111,7 +109,6 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     held.cells[cell]! += sign;
   };
   const moved = { saved: 0, removed: 0 };
-  let withdrawn = 0;
   // Rows this pass made or took away, by reviewer: what it adds to their count of papers.
   const dealt = new Map<Id<"screeningReviewers">, number>();
   let freed = 0;
@@ -142,7 +139,6 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const now = plan.result;
     // The papers an extraction takes from it are its included ones: only a paper entering or leaving them is a change an extraction under way has to hear of (../paperSets/held.ts).
     if ((now === "include") !== (was === "include")) moves++;
-    if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;
     // A reading under way finishes and is paid for: its place goes once the reading has come back.
     const leaving = plan.gone.map(rowOf).filter((vote) => vote.workId === undefined);
@@ -202,8 +198,6 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     // The papers the screening included that a reviewer voted to exclude: counted for each of them as the paper's result and their vote stand.
     if (was === "include") for (const one of before) if (one.decision === "exclude") countsOf(one.id).missed = Math.max(0, (countsOf(one.id).missed ?? 0) - 1);
     if (now === "include" && !paper.withdrawn) for (const one of after) if (one.decision === "exclude") countsOf(one.id).missed = (countsOf(one.id).missed ?? 0) + 1;
-    if (paper.sourceId && was === "include") included[paper.sourceId] = Math.max(0, (included[paper.sourceId] ?? 1) - 1);
-    if (paper.sourceId && now === "include" && !paper.withdrawn) included[paper.sourceId] = (included[paper.sourceId] ?? 0) + 1;
 
     const cast = ballots();
     // How many of its models would include it goes on the places its people have yet to vote from, for the order that puts those papers first.
@@ -211,11 +205,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     for (const vote of votes) if (vote.status === "waiting" && byId.get(vote.reviewerId)?.kind === "person" && (vote.lean ?? 0) !== lean) await ctx.db.patch("screeningVotes", vote._id, { lean });
     const given = cast.flatMap((one) => (one.status === "cast" && one.decision ? [one.decision] : []));
     const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
-    // The reason comes from the votes that decide the paper: where the models' votes are advice, or "first vote decides" gives a person's vote the say, the people's.
-    const voters = job.rule && advisory(job.rule) && cast.some((one) => one.kind === "person" && one.status === "cast") ? cast.filter((one) => one.kind === "person") : cast;
-    // Under "first vote decides", the one vote that settled it gives the reason too, whatever later votes say.
-    const first = job.rule?.settle === "one" ? voters.filter((one) => one.status === "cast" && one.decision).reduce<(typeof voters)[number] | undefined>((earliest, one) => (!earliest || (one.at ?? 0) < (earliest.at ?? 0) ? one : earliest), undefined) : undefined;
-    const deciding = first ? [first] : voters;
+    // The reason comes from the votes that decide the paper, as the rule reads them: under "first vote decides", the one vote that settled it, whatever later votes say.
+    const deciding = job.rule ? decidingVotes(job.rule.settle, cast, job.rule.models).votes : cast;
     // An exclusion cast with no reason counts as no reason given, among the others and when it settles a conflict: it never takes another vote's reason.
     // A result held through a change of settings keeps the reason it was excluded for: the votes that decide it under the new rule didn't decide it.
     const reason = now === "exclude" ? (paper.resolved?.decision === "exclude" ? (paper.resolved.reason ?? NO_REASON) : held && (carried ?? was) === "exclude" && paper.reason ? paper.reason : (reasonOf(deciding.map((one) => (one.status === "cast" && one.decision === "exclude" && !one.reason ? { ...one, reason: NO_REASON } : one))) ?? NO_REASON)) : undefined;
@@ -223,8 +214,6 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if (now === "conflict" && was !== "conflict") conflicts = true;
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);
     if (now !== "waiting") counts[now]++;
-    if (was === "exclude") reasons[paper.reason ?? NO_REASON] = (reasons[paper.reason ?? NO_REASON] ?? 1) - 1;
-    if (reason) reasons[reason] = (reasons[reason] ?? 0) + 1;
     const patch = paper.withdrawn ? { result: undefined, outcome: undefined, qualified: undefined, reason: undefined, split: undefined, settledAt: undefined, reopen: undefined, out: true as const } : { result: now, outcome: OUTCOME[now], qualified: now === "include", reason, score: points, stars, split, reopen: undefined, out: undefined, ...(paper.kept && carried === undefined ? { kept: undefined } : {}), ...(isFinal(now) && (now !== was || paper.reopen !== undefined) ? { settledAt: Date.now() } : {}), ...(isFinal(now) ? {} : { settledAt: undefined }) };
     await ctx.db.patch("screeningResults", paper._id, patch);
     if (paper.withdrawn) continue;
@@ -246,11 +235,11 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   await ctx.db.patch("screeningJobProgress", progress._id, {
     counts,
     qualified: counts.include,
-    reasons: Object.fromEntries(Object.entries(reasons).filter(([, n]) => n > 0)),
-    included: Object.fromEntries(Object.entries(included).filter(([, n]) => n > 0)),
+    // Excluded papers by reason and included ones by source are counted with the papers (./facets.ts): the copies once kept here go.
+    reasons: undefined,
+    included: undefined,
     ...(perReviewer.size ? { reviewers: { ...progress.reviewers, ...Object.fromEntries(perReviewer) } } : {}),
     ...(freed && progress.running ? { running: Math.max(0, progress.running - freed) } : {}),
-    ...(withdrawn ? { withdrawn: Math.max(0, (progress.withdrawn ?? 0) + withdrawn) } : {}),
     ...withMoved(progress, moved),
     ...(moves ? { exportRevision: (progress.exportRevision ?? 0) + 1 } : {}),
   });

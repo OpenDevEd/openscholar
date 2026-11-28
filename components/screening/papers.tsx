@@ -40,15 +40,15 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
+import { listDraws, useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
+import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, type Screening, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteForm, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -244,8 +244,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // Another list asked for (another tab or filter), not another page, search or order of the same: its rows show as skeletons under the table's head until they come, and a tab the counts say is empty says so at once. Never the last list's rows under the new tab.
   // A search typed or another order keeps the rows up, dimmed, as Screen's search does: only another tab or filter is another list.
   const otherList = listed.isOther;
-  // Empty by the counts, from the first read too.
-  const emptyNow = (otherList || listed.isLoading) && total === 0;
+  // Empty by the counts, from the first read too, and skeleton rows as many as the counts say: as every list decides it (lib/hooks/use-cursor-page.ts `listDraws`).
+  const drawn = listDraws(listed, total, PAGE);
+  const emptyNow = drawn.draw === "empty";
+  const skeletonRows = drawn.draw === "skeleton" ? drawn.rows : Math.min(total ?? PAGE, PAGE);
   const rowsPending = otherList && !emptyNow;
   // A count the server is still reading holds a digit's room, so the tabs don't widen when it arrives. Where none will come the tab has no number.
   const pending = countable && !under ? <span aria-hidden className="invisible tabular-nums">0</span> : undefined;
@@ -516,7 +518,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: words.decision(decision), icon: <Icon />, tone, ...(tally?.kept ? { shut: words.t("hiddenWhileToDo") } : { count: countVoted(decision) }) }; }),
             { value: "none" as Voted, label: words.t("noVote.yet"), icon: <Hourglass />, count: countVoted("none"), group: t("filter.noVote") },
             ...(countVoted("failed") ? [{ value: "failed" as Voted, label: words.t("noVote.failed"), icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: t("filter.noVote") }] : []),
-            ...(settles(who) ? [{ value: "settled" as Voted, label: t("filter.settled"), icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: t("filter.decisions") }] : []),
+            // Papers settled by hand, where the rule can leave a paper split: under "first vote decides" the votes settle every paper, and the list would be of none.
+            ...(settles(who) && splitsIn(screening, open.counts.conflict, open.invited) ? [{ value: "settled" as Voted, label: t("filter.settled"), icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: t("filter.decisions") }] : []),
           ]}
         />
       ) : null}
@@ -666,12 +669,12 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               <>
                 {/* The table's two head rows, then as many rows as the page will hold. */}
                 <div aria-hidden style={{ height: 2 * ROW }} className="border-b border-border-subtle @max-2xl/papers:hidden" />
-                <ListRowsSkeleton rows={Math.min(total ?? PAGE, PAGE)} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2" />
+                <ListRowsSkeleton rows={skeletonRows} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2" />
               </>
             ) : (shown.length || rowsPending) && !emptyNow ? (
               <>
                 {/* As wide as the column and no wider: the frame around it scrolls sideways for the table, and would let a long title stretch the list. */}
-                {rowsPending ? <ListRowsSkeleton rows={Math.min(total ?? PAGE, PAGE)} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2 @2xl/papers:hidden" /> : (
+                {rowsPending ? <ListRowsSkeleton rows={skeletonRows} height={ROW} icon={false} label={t("table.loading")} className="w-[100cqw] px-2 @2xl/papers:hidden" /> : (
                 <ul className="w-[100cqw] divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
                     const isOpen = paper?.id === one.id;
@@ -967,13 +970,14 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   // What whoever settled it wrote down, beside the votes they settled: the reason a settled paper has.
   const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(state.note)}</span></TooltipHint> : null;
   if (!visible) return settledNote;
-  if (state.result === "conflict" || state.resolvedBy) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
+  // A paper excluded by hand gives the reason it was excluded for, as one its votes excluded does: the settler's.
+  if (state.result === "conflict" || (state.resolvedBy && !(state.result === "exclude" && reasonKey))) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     // Another reason is what its voter wrote: it stands beside the reason, as a settled paper's note does.
-    const written = reasonKey === OTHER_REASON ? cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note : undefined;
+    const written = reasonKey === OTHER_REASON ? (state.resolvedBy ? state.note : cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note) : undefined;
     if (written) return <span className="flex min-w-0 items-center gap-2"><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
@@ -987,7 +991,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     );
   }
   // An included paper carries the stars its answers earn, as it is saved with them.
-  const score = state.result === "include" && paper.points !== undefined ? { points: paper.points, stars: paper.stars ?? 0, of: pointsMax(open.screening) } : null;
+  const score = scoreShown(open.screening, paper, state.result);
   return score ? <span className="inline-flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground"><Stars count={score.stars} />{t("pointsOf", { points: score.points, max: score.of })}</span> : null;
 }
 
@@ -1006,14 +1010,7 @@ function ReasonPicker({ criteria, many = false, extra, note: given, onNote, onPi
   const setNote = onNote ?? setOwn;
   if (writing) {
     return (
-      <form data-reason-note className="space-y-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(false); } }} onSubmit={(event) => { event.preventDefault(); if (note.trim()) onPick(OTHER_REASON, note.trim()); }}>
-        {/* Escape anywhere in the note's form goes back to the reasons, as its Back button shows, and never closes what it sits in. */}
-        <ReasonNoteField value={note} onChange={setNote} className="bg-card" />
-        <div className="grid grid-cols-2 gap-2">
-          <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setWriting(false)}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
-          <Button type="submit" variant="destructive" className="h-9 rounded-xl" disabled={!note.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
-        </div>
-      </form>
+      <ReasonNoteForm value={note} onChange={setNote} onBack={() => setWriting(false)} onExclude={(text) => onPick(OTHER_REASON, text)} className="h-9" fieldClassName="bg-card" />
     );
   }
   return (
@@ -1070,7 +1067,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
   const added = paper.batch !== undefined ? narrow({ added: paper.batch }) : null;
   const from = source ? narrow({ source: source.id }) : null;
   const failed = cast.filter((one) => one.failed);
-  const score = state.result === "include" && paper.points !== undefined ? { points: paper.points, stars: paper.stars ?? 0, of: pointsMax(screening) } : null;
+  const score = scoreShown(screening, paper, state.result);
   // The reviewers the paper still waits for: who an override settles it without.
   const awaited = awaitedOn(screening, paper);
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
@@ -1254,4 +1251,10 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
       )}
     </div>
   );
+}
+
+/** The stars an included paper earns, as it is saved with them, and its points out of the most it could have: none where no answer is worth a point, as with no criteria. */
+function scoreShown(screening: Screening, paper: Pick<Paper, "points" | "stars">, result: Result) {
+  const of = pointsMax(screening);
+  return result === "include" && paper.points !== undefined && of > 0 ? { points: paper.points, stars: paper.stars ?? 0, of } : null;
 }

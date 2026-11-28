@@ -8,6 +8,7 @@ import { hidesVotes, modelsAdvise } from "@/lib/screening/rules";
 import { effortOf } from "@/components/settings/model-map";
 import type { EFFORTS } from "@/lib/ai/core/call-options";
 import { api } from "@/convex/_generated/api";
+import { csvCell } from "@/lib/export";
 import type { Id } from "@/convex/_generated/dataModel";
 import { sentencesOf } from "@/lib/screening/passages";
 import { createFormatter, createTranslator } from "next-intl";
@@ -44,7 +45,6 @@ import {
   settledOf,
   slug,
   taken,
-  votingReviewers,
   type Paper,
   type Pending,
   type Result,
@@ -76,6 +76,13 @@ const kindOf = (reviewer: { kind: "person" | "model" }) => (reviewer.kind === "m
 /** The records that are read as their own PDF, having no abstract. */
 const filedOf = (sources: Screening["sources"]) => sources.reduce((sum, source) => sum + (source.read?.filed ?? 0), 0);
 /** Its excluded papers by the reason, the most common first. */
+/** A source's set as a file gives it: an upload's, a list's or a drop's handle opens nothing outside the app, so it is left out. */
+/** Everyone the whole record lists as a reviewer: all who were on the screening, taken off or not; someone invited who never joined is counted apart. */
+export const recordReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((reviewer) => !reviewer.email);
+const withoutFiles = (set: NonNullable<Screening["sources"][number]["set"]>) => {
+  const { file: _file, batch: _batch, ...rest } = set as typeof set & { file?: unknown; batch?: unknown };
+  return rest;
+};
 const excludedBy = (figures: Figures | undefined) => Object.entries(figures?.reasons ?? {}).sort((a, b) => b[1] - a[1]);
 
 /**
@@ -87,12 +94,8 @@ const excludedBy = (figures: Figures | undefined) => Object.entries(figures?.rea
 export const fileName = ({ screening, counts, me }: Pick<Taken, "screening" | "counts" | "me">, what: string, ending: string, at: number) =>
   `${slug(screening.name)}-${what}${!(counts.conflict + counts.waiting) ? "" : screening.finishedAt ? "-with-open-papers" : "-unfinished"}-${iso(at).slice(0, 10)}-${iso(at).slice(11, 16).replace(":", "")}utc${screening.rule.blind === "after" && !screening.finishedAt ? `-${slug(nameOn(screening, me))}` : ""}.${ending}`;
 
-/**
- * A file of rows, as a spreadsheet opens it: every cell quoted, a quote in a cell doubled. A text that begins the way
- * a formula does (=, +, -, @) takes an apostrophe in front, so a spreadsheet keeps a title or a note as text and
- * never runs it. A number stays a number.
- */
-const toCsv = (lines: unknown[][]) => lines.map((line) => line.map((cell) => `"${(typeof cell === "string" && /^[=+\-@\t\r]/.test(cell) ? `'${cell}` : String(cell ?? "")).replace(/"/g, '""')}"`).join(",")).join("\n");
+/** A file of rows, as a spreadsheet opens it: each cell as the app writes every CSV cell (lib/export.ts `csvCell`). */
+const toCsv = (lines: unknown[][]) => lines.map((line) => line.map(csvCell).join(",")).join("\n");
 
 /** Papers one read of a file's rows takes. */
 const EXPORT_PAGE = 100;
@@ -305,16 +308,15 @@ export function flowOf(out: Taken): FlowRow[] {
   const { screening, counts, figures } = out;
   const [kept, open] = [totalIn(out), openIn(out)];
   // What the sources held and the screening never took: the duplicates merged, papers with no abstract, and what couldn't be read or found.
-  const { left, bare, merged } = removedOf(screening.sources);
-  const found = kept + merged;
+  const { left, bare, merged, found, removed } = removedOf(screening.sources, kept);
   const looks = figures?.checks ?? { later: 0, listed: 0, found: 0, added: 0 };
   // The records with no abstract that came with their own PDF are read as that: the stage then says how many were read each way.
   const filed = filedOf(screening.sources);
   const on = filed ? "" : " on title and abstract";
   return [
     {
-      main: { title: "Records identified", n: found + left, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(looks.added && looks.lastAt ? [{ label: looks.later === 1 ? `Of these, by the later search on ${fullDay(looks.lastAt)}` : `Of these, by ${looks.later} later searches, the last on ${fullDay(looks.lastAt)}`, n: looks.added }] : [])] },
-      side: [{ title: "Records removed before screening", n: found - kept + left, lines: [{ label: REMOVED_LABEL.merged, n: merged }, ...(bare ? [{ label: REMOVED_LABEL.bare, n: bare }] : []), ...(left - bare ? [{ label: REMOVED_LABEL.unread, n: left - bare }] : [])] }],
+      main: { title: "Records identified", n: found, lines: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) + leftOf(source) })), ...(looks.added && looks.lastAt ? [{ label: looks.later === 1 ? `Of these, by the later search on ${fullDay(looks.lastAt)}` : `Of these, by ${looks.later} later searches, the last on ${fullDay(looks.lastAt)}`, n: looks.added }] : [])] },
+      side: [{ title: "Records removed before screening", n: removed, lines: [{ label: REMOVED_LABEL.merged, n: merged }, ...(bare ? [{ label: REMOVED_LABEL.bare, n: bare }] : []), ...(left - bare ? [{ label: REMOVED_LABEL.unread, n: left - bare }] : [])] }],
     },
     {
       main: { title: open ? `Records in screening${on}` : `Records screened${on}`, n: kept, ...(filed ? { lines: [{ label: "On title and abstract", n: kept - filed }, { label: "On the full text, having no abstract", n: filed }] } : {}) },
@@ -381,12 +383,11 @@ const advisedIn = (screening: Screening, pending: Pending[] = []) =>
 export function methodsOf(out: Taken) {
   const { screening, counts, figures } = out;
   const [kept, open] = [totalIn(out), openIn(out)];
-  const { left, bare, merged } = removedOf(screening.sources);
+  const { left, bare, merged, found } = removedOf(screening.sources, kept);
   // Sources that failed before they gave any record: what they hold isn't among the records counted. One that failed a later check has its records counted, and the sentence on later searches says that search was incomplete.
   const unreadNow = screening.sources.filter((source) => source.read?.state === "failed" && taken(source) + leftOf(source) === 0);
   // Sources that gave some records and then failed: what they gave is counted, the rest isn't.
   const partlyRead = screening.sources.filter((source) => source.read?.state === "failed" && taken(source) + leftOf(source) > 0);
-  const found = kept + merged;
   const looks = figures?.checks ?? { later: 0, listed: 0, found: 0, added: 0 };
   // The people per record the rule asks for, counting invitations still waiting, as every page counts them.
   const { people, each, invited } = readersOf(screening, out.invited ?? []);
@@ -461,7 +462,7 @@ export function methodsOf(out: Taken) {
   });
   return [
     !open ? "" : running ? `Screening was still in progress when this was written, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.` : `The screening was marked finished with ${plural(open, "record", "records")} still open, with ${num(kept - open)} of ${num(kept)} records settled${stillOpen}.`,
-    `Records from ${plural(screening.sources.length, "source", "sources")} (${screening.sources.map((source) => source.name).join("; ")}; n = ${num(found + left)}) were brought into Openscholar.${unreadNow.length ? ` ${listed(unreadNow.map((source) => source.name))} could not be read when last tried, so ${unreadNow.length === 1 ? "its records are" : "their records are"} not among those counted here.` : ""}${partlyRead.length ? ` ${listed(partlyRead.map((source) => source.name))} could not be read in full when last tried; the records ${partlyRead.length === 1 ? "it gave" : "they gave"} before that are counted, and the rest ${partlyRead.length === 1 ? "is" : "are"} not.` : ""}${bare ? ` ${plural(bare, "record", "records")} with no abstract and no PDF ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${found === kept ? "No duplicates were found, and" : `After ${plural(found - kept, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : kept === 1 ? "was screened" : "were screened"}.`,
+    `Records from ${plural(screening.sources.length, "source", "sources")} (${screening.sources.map((source) => source.name).join("; ")}; n = ${num(found)}) were brought into Openscholar.${unreadNow.length ? ` ${listed(unreadNow.map((source) => source.name))} could not be read when last tried, so ${unreadNow.length === 1 ? "its records are" : "their records are"} not among those counted here.` : ""}${partlyRead.length ? ` ${listed(partlyRead.map((source) => source.name))} could not be read in full when last tried; the records ${partlyRead.length === 1 ? "it gave" : "they gave"} before that are counted, and the rest ${partlyRead.length === 1 ? "is" : "are"} not.` : ""}${bare ? ` ${plural(bare, "record", "records")} with no abstract and no PDF ${bare === 1 ? "was" : "were"} left out.` : ""}${left - bare ? ` ${plural(left - bare, "more", "more")} could not be read or found.` : ""} ${!merged ? "No duplicates were found, and" : `After ${plural(merged, "duplicate was", "duplicates were")} merged,`} ${num(kept)} ${open ? "went into screening" : kept === 1 ? "was screened" : "were screened"}.`,
     looks.later && looks.lastAt ? `${[0, screening.sources.length].includes(growing(screening).length) ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${looks.later === 1 ? "once" : `${looks.later} times`} after screening began, most recently on ${fullDay(looks.lastAt)}; ${looks.added ? `${looks.added} of the records identified came from ${looks.later === 1 ? "that search" : "those searches"}` : "no further records were found"}.${looks.unread ? ` ${looks.unread === looks.later ? (looks.later === 1 ? "That search" : "Each of those searches") : `${looks.unread} of those searches`} could not read every source, so ${looks.unread === 1 ? "it is" : "they are"} incomplete.` : ""}${screening.living && running ? ` A further search is scheduled ${EVERY_LABEL[screening.living.every].toLowerCase()}.` : ""}` : "",
     // Said of the records, not of work done: true before the first vote and after the last.
     `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}${((musts) => (musts && models.length ? `, ${musts === screening.criteria.length ? (musts === 1 ? "a must-have" : "all must-haves") : `${musts} of them must-haves`}; an AI model ${running ? "votes" : "voted"} to include a record only where it ${running ? "finds" : "found"} ${musts === 1 ? "that criterion" : "them all"} met` : ""))(screening.criteria.filter((c) => c.must).length)}` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract but a PDF ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text instead.` : ""}`,
@@ -530,9 +531,10 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     retired_criteria: screening.retired.map((criterion) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must })),
     // Someone invited who hasn't joined is waited for as a reviewer: counted, since papers can wait for them.
     invited_not_joined: readersOf(screening, out.invited ?? []).invited,
-    reviewers: votingReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: reviewer.model.effort ?? effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null })),
+    // Everyone who was on it, those taken off included: one whose votes were made to stop counting says so, and their votes are not among `votes`.
+    reviewers: recordReviewers(screening).map((reviewer) => ({ id: reviewer.id, name: reviewer.name, kind: kindOf(reviewer), ...(reviewer.model ? { model: reviewer.model.id, effort: reviewer.model.effort ?? effortOf(reviewer.model) } : {}), added_at: since(reviewer.addedAt), taken_off_at: reviewer.left ? iso(reviewer.left) : null, ...(reviewer.discarded ? { votes_stopped_counting: true } : {}) })),
     // Each source with the records it held and the screening didn't take, by name and with why, and the records it merged, each with the paper that stands for it (in `papers`, under the source that brought it first).
-    sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, set: source.set ?? null, filters: source.filters ?? [], records_taken: source.scope === "range" ? { first: source.range[0], last: source.range[1] } : "all", last_checked_at: source.read?.checkedAt ? iso(source.read.checkedAt) : null, last_read_failed: source.read?.state === "failed" ? (source.read.failure ?? true) : null, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
+    sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, set: source.set ? withoutFiles(source.set) : null, filters: source.filters ?? [], records_taken: source.scope === "range" ? { first: source.range[0], last: source.range[1] } : "all", last_checked_at: source.read?.checkedAt ? iso(source.read.checkedAt) : null, last_read_failed: source.read?.state === "failed" ? (source.read.failure ?? true) : null, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
     papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null, settled_at: papers[i]!.settledAt ? iso(papers[i]!.settledAt!) : null })),
     // What its rule and criteria were from each moment on, the first first: a paper's result is read against the version in force at its settled_at. Changes made before these were kept are not in it.
     history: versions.map((one) => ({

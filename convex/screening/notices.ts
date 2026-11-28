@@ -13,7 +13,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, nameOf, newFor, waitsOn } from "./dealing";
+import { laterChecks, nameOf, NEW_COUNTED, newFor, waitsOn } from "./dealing";
 import { screeningPath } from "../../lib/screening/links";
 
 export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"), v.literal("joined"));
@@ -22,7 +22,6 @@ export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"
 export const noticeOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) => ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).unique();
 
 /** New papers counted for one person's email: past it the email says so many. */
-const NEW_COUNTED = 500;
 
 /** How long after a conflict arises its email goes, so a burst of them is one email, and how long before the next. */
 const CONFLICTS_AFTER_MS = 10 * 60_000;
@@ -65,14 +64,13 @@ export const context = internalQuery({
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
     // A member opens it in its workspace, and a guest in their own: membership was read just above.
     const member = Boolean(organization) && inside;
-    const progress = await progressRow(ctx, jobId);
     const reviewer = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first();
     const on = reviewer && reviewer.left === undefined ? reviewer : null;
     // New papers: the ones its last check gave this person, which still wait for their vote. A reminder: everything that waits for them.
     const brought = about === "papers" ? (await laterChecks(ctx, jobId)).find((check) => check.added > 0) : undefined;
     // What waits for them is counted as every page counts it (./dealing.ts `waitsOn`).
-    const waits = await waitsOn(ctx, job, userId, on, progress);
-    const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0) : waits.forYou;
+    const waits = await waitsOn(ctx, job, userId, on);
+    const count = about === "conflicts" ? waits.conflicts : about === "papers" ? (on && brought ? await newFor(ctx, on._id, brought) : 0) : waits.forYou;
     // Someone put on a screening is told so whether or not a paper waits for them yet.
     // On a finished one, only someone who votes once it is reopened: a guest given it to vote on, never one made a viewer since.
     if (!count && !(about === "joined" && (on || (finished && grant?.role === "editor")))) return null;

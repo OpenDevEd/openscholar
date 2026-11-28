@@ -1,6 +1,6 @@
 // A screening's rules (plans/screening-reviewers): each setting against each state of a paper's votes.
 import { describe, expect, it } from "vitest";
-import { cellOf, decide, emptyMatrix, fillPlaces, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, twinsNamed, type Ballot, type Decision } from "./rules";
+import { cellOf, decide, decidingVotes, emptyMatrix, fillPlaces, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, twinsNamed, type Ballot, type Decision } from "./rules";
 import { project } from "./project";
 
 const cast = (decision: Decision, at = 1, reason?: string): Ballot => ({ status: "cast", decision, at, ...(reason ? { reason } : {}) });
@@ -78,6 +78,14 @@ describe("the reason an excluded paper is counted under", () => {
     expect(reasonOf(ballots)).toBe("b");
     expect(reasonOf(ballots, "other")).toBe("other");
     expect(reasonOf([cast("include")])).toBeUndefined();
+  });
+
+  it("under the first vote decides, is the reason of the person's vote that settled it, not an earlier model's", () => {
+    const model: Ballot = { status: "cast", decision: "exclude", reason: "c1", at: 1, kind: "model" };
+    const person: Ballot = { status: "cast", decision: "exclude", reason: "other", at: 2, kind: "person" };
+    const deciding = decidingVotes("one", [model, person]).votes;
+    expect(deciding).toEqual([person]);
+    expect(reasonOf(deciding)).toBe("other");
   });
 });
 

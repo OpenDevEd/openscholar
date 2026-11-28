@@ -134,8 +134,10 @@ export const hold = internalMutation({
   args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()), model: v.optional(v.number()) },
   returns: v.null(),
   handler: async (ctx, { jobId, cursor, model = 0 }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
     const reviewer = (await modelReviewers(ctx, jobId))[model];
-    if (!reviewer) return null;
+    // Let go again since this sweep began (resumed, reopened): the release under way puts every reading back, and this one stops.
+    if (!job || !reviewer || modelsFree(job)) return null;
     const page = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting")).paginate({ cursor, numItems: SWEEP });
     for (const vote of page.page) if (vote.waitingWorkspace !== undefined) await ctx.db.patch("screeningVotes", vote._id, { waitingWorkspace: undefined, waitingSince: undefined });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, page.isDone ? { jobId, cursor: null, model: model + 1 } : { jobId, cursor: page.continueCursor, model });

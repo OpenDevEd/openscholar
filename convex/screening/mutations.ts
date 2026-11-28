@@ -368,6 +368,8 @@ export const cancelScreeningJobAction = defineUserMutation({
   run: async (ctx, actor, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.workspaceId !== actor.workspaceId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    // A screening with reviewers is paused or finished on its own page: this stop would leave its models reading.
+    if (job.shape === 2) throw createError("VALIDATION_ERROR", "This screening has reviewers. Pause its models or mark it finished on its page.");
     requireMakerOrAdmin(actor, job.createdBy);
 
     // Terminal states are idempotent no-ops for the page; a chat is told, so it doesn't say it stopped it.

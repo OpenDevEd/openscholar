@@ -91,18 +91,26 @@ export const givenReason = (criteria: Pick<Criterion, "key" | "must">[], answers
 export type Ballot = { status: "waiting" | "cast" | "failed" | "closed" | "discarded"; decision?: Decision; at?: number; reason?: string; answers?: Record<string, Answer>; /** Whose place it is: under "first vote decides" a person given the paper decides it, not a model. */ kind?: "person" | "model" };
 
 /** Where a paper stands on its votes, under the rule. A person who settled it outranks this, and so does a result held through a change of settings. */
-export function settle(rule: Rule["settle"], ballots: Ballot[], models: Rule["models"] = "vote"): Result {
+/**
+ * The votes a paper's result is decided on, which give its reason too: every vote counted, the people's alone where the
+ * models advise and a person has the paper. Under "first vote decides", the earliest of them: where a person is given
+ * the paper it is the first person's, since a model reads faster than anyone and its vote would settle every paper
+ * before its people got to one. A model's vote decides only a paper no person has. `whole`: whether every place has voted.
+ */
+export function decidingVotes(rule: Rule["settle"], ballots: Ballot[], models: Rule["models"] = "vote"): { votes: Array<Ballot & { decision: Decision }>; whole: boolean } {
   const held = ballots.filter((one) => one.status === "waiting" || one.status === "cast" || one.status === "closed");
-  // With the models' votes as advice, a paper a person has is settled on its people's votes alone.
   const cast = models === "advice" && held.some((one) => one.kind === "person") ? held.filter((one) => one.kind === "person") : held;
   const given = cast.filter((one): one is Ballot & { decision: Decision } => one.status === "cast" && one.decision !== undefined);
+  if (rule !== "one") return { votes: given, whole: given.length === cast.length };
+  const first = (cast.some((one) => one.kind === "person") ? given.filter((one) => one.kind === "person") : given).reduce<(Ballot & { decision: Decision }) | undefined>((earliest, vote) => (!earliest || (vote.at ?? 0) < (earliest.at ?? 0) ? vote : earliest), undefined);
+  return { votes: first ? [first] : [], whole: true };
+}
+
+export function settle(rule: Rule["settle"], ballots: Ballot[], models: Rule["models"] = "vote"): Result {
+  const { votes: given, whole } = decidingVotes(rule, ballots, models);
   if (!given.length) return "waiting";
-  // The first vote is the earliest one cast. Where a person is given the paper it is the first person's: a model reads faster than anyone, and its vote would settle every paper before its people got to one. A model's vote decides only a paper no person has.
-  if (rule === "one") {
-    const deciding = cast.some((one) => one.kind === "person") ? given.filter((one) => one.kind === "person") : given;
-    return deciding.length ? deciding.reduce((first, vote) => ((vote.at ?? 0) < (first.at ?? 0) ? vote : first)).decision : "waiting";
-  }
-  if (given.length < cast.length) return "waiting";
+  if (rule === "one") return given[0]!.decision;
+  if (!whole) return "waiting";
   const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
   const top = Math.max(...tally);
   if (rule === "all") return top === given.length ? given[0]!.decision : "conflict";

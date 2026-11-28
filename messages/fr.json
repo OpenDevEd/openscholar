@@ -8862,7 +8862,6 @@
         "title": "Évaluateurs",
         "everyoneDone": "Tout le monde aura fini dans environ {weeks, plural, =0 {{days, plural, =1 {un jour} other {# jours}}} one {# semaine} other {# semaines}}, à ce rythme",
         "move": "Déplacer des articles",
-        "agreement": "Accord",
         "helpTitle": "Comment les articles sont répartis",
         "eachOf": "{each, plural, one {# des {people, plural, other {# personnes}} vote} other {# des {people, plural, other {# personnes}} votent}} sur chaque article",
         "everyPerson": "Chaque personne vote sur chaque article",

@@ -10,9 +10,15 @@ import { openalexWorkOfRow } from "./papers/paper-ref";
 type Cell = string | number | boolean | string[];
 type Row = Record<string, Cell>;
 
-function csvValue(value: Cell) {
-  const text = Array.isArray(value) ? JSON.stringify(value) : String(value);
-  return /[",\n\r]/.test(text) || text === "" ? `"${text.replace(/"/g, '""')}"` : text;
+/**
+ * One cell of a CSV file, as a spreadsheet opens it: quoted where it must be, a quote in it doubled. A text that begins the way a
+ * formula does (=, +, -, @) takes an apostrophe in front, so a spreadsheet keeps a title or a note as text and never
+ * runs it. A number stays a number, and a list is written as JSON.
+ */
+export function csvCell(value: unknown) {
+  const text = Array.isArray(value) ? JSON.stringify(value) : String(value ?? "");
+  const safe = typeof value === "string" && /^[=+\-@\t\r]/.test(value) ? `'${text}` : text;
+  return /[",\n\r']/.test(safe) || safe === "" ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 /** A CSV as it streams: its columns, then a line for each item. */
@@ -23,7 +29,7 @@ function csvFile<Item>(columns: string[], row: (item: Item) => Row) {
     start: () => `﻿${columns.join(",")}`,
     item: (item: Item) => {
       const values = row(item);
-      return `\n${columns.map((column) => csvValue(values[column])).join(",")}`;
+      return `\n${columns.map((column) => csvCell(values[column])).join(",")}`;
     },
     end: () => "\n",
   };

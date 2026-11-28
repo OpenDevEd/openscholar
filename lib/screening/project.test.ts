@@ -40,4 +40,14 @@ describe("project", () => {
     expect(after.result).toBe("conflict");
     expect(after.made).toEqual([]);
   });
+
+  it("takes a closed place away or opens it again, never both, when a settlement is taken back under a rule that asks for fewer", () => {
+    // Settled by hand while two people each held a place, then the rule went to one a paper and the settlement was taken back.
+    const closed = (reviewer: string): Place => ({ reviewer, kind: "person", status: "closed" });
+    const team = { people: ["ann", "ben"], models: [] };
+    const after = project(paper, [closed("ann"), closed("ben")], team, { each: 1, settle: "all" }, criteria, { models: false });
+    expect(after.reopened.map((place) => place.reviewer)).toEqual(["ann"]);
+    expect(after.gone.map((place) => place.reviewer)).toEqual(["ben"]);
+    expect(after.places.map((place) => [place.reviewer, place.status])).toEqual([["ann", "waiting"]]);
+  });
 });

@@ -8862,7 +8862,6 @@
         "title": "Reviewers",
         "everyoneDone": "Everyone done in about {weeks, plural, =0 {{days, plural, =1 {a day} other {# days}}} one {# week} other {# weeks}}, at this pace",
         "move": "Move papers",
-        "agreement": "Agreement",
         "helpTitle": "How papers are shared out",
         "eachOf": "{each, plural, one {# of the {people, plural, other {# people}} votes} other {# of the {people, plural, other {# people}} vote}} on each paper",
         "everyPerson": "Every person votes on every paper",
@@ -9416,7 +9415,7 @@
       },
       "bar": {
         "notInList": "Not in this list now",
-          "atOf": "{at, number} of {count, number}",
+        "atOf": "{at, number} of {count, number}",
         "left": "{count, plural, other {# left}}",
         "underMinute": "under a minute",
         "minutes": "about {minutes, number} min",
@@ -9484,7 +9483,7 @@
       },
       "matrix": {
         "earlierWording": "Some answers here were given to an earlier wording of this criterion",
-          "nameYou": "{name}, you",
+        "nameYou": "{name}, you",
         "theirVote": "{name}'s vote",
         "on": "{name}, {criterion}",
         "differFor": "Show the answer that differs on {criterion}",
@@ -9588,8 +9587,8 @@
       },
       "zotero": {
         "gone": "This collection is no longer in Zotero",
-          "openAbove": "Open {name}",
-          "myLibrary": "My library",
+        "openAbove": "Open {name}",
+        "myLibrary": "My library",
         "loading": "Loading Zotero",
         "loadingCollections": "Loading the collections",
         "notConnected": "Zotero isn't connected",

@@ -214,7 +214,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
     if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, ...readAgain(source) });
   }
-  for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
+  for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor, source, now);
   // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
   const reads = Boolean(change.addSources?.length || change.ranges?.length);
   // Made living in the same save that adds a source, it looks in every source at once, as it said it would: the added ones are read in that same look.
@@ -230,7 +230,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
 
   const more: Line[] = [
     ...partsOf(change).map((part) => ({ code: "part", detail: part })),
-    ...(change.recheck ? [{ code: "rechecked" }] : []),
+    // Every settled paper is checked again: as many as stood settled when it was saved.
+    ...(change.recheck ? [{ code: "rechecked", count: ((counts) => (counts?.include ?? 0) + (counts?.maybe ?? 0) + (counts?.exclude ?? 0))((await progressRow(ctx, jobId))?.counts) }] : []),
     ...(await Promise.all(plan.joining.map(async ({ userId }) => { const user = await ctx.db.get("users", userId); return { code: "joinedBy", detail: nameOf(user) }; }))),
     ...plan.leaving.flatMap(({ discard }) => (discard ? [{ code: "votesDiscarded" }] : [])),
   ];

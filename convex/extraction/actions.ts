@@ -279,7 +279,8 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     // From the first paper of its range, as many as the start counted.
     const from = (selection.first ?? 1) + place.read;
     const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: from, last: Math.min((selection.first ?? 1) + selection.count - 1, from + SETUP_STEP - 1) }, place.resume, selection.revision);
-    const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
+    // A paper the screening had only as its PDF goes on as that file, which extraction reads as a paper's own PDF.
+    const papers = held.map(({ venue, file, pages: _pages, ...paper }): SetupPaper => ({ ...paper, ...(file ? { storageId: file } : {}), venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
     const read = place.read + papers.length;
     if (resume && read < selection.count) return { papers, next: { ...place, read, resume } };
     if (read !== selection.count) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");

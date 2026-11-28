@@ -48,10 +48,10 @@ describe("a screening with reviewers, read by its pages", () => {
         checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id,
         sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id,
       }));
-      await t.mutation(internal.screening.gathering.begin, { sourceId });
+      await t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
       for (let from = 0; from < size; from += 200) {
         const step = Array.from({ length: Math.min(200, size - from) }, (_, n) => paper(from + n + 1, { title: `Paper ${from + n + 1}: ${text(100, from + n)}`, abstract: text(1_400, from + n) }));
-        await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers: step, read: step.length, ended: from + 200 >= size });
+        await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: step, read: step.length, ended: from + 200 >= size });
       }
       const ids = (await papersOf(t, jobId)).map((one) => one._id as Id<"screeningResults">);
       // Ann votes on every paper, a third each way; Ben on the first half, agreeing on most, so some are in conflict.

@@ -125,8 +125,8 @@ export async function withAbstracts(papers: SearchPaper[], spend: Spend | null):
   const sameWork = (one: string, other: string) => sameTitle(one, other) || (plainTitle(one) !== "" && plainTitle(one) === plainTitle(other));
   for (let at = 0; at < bare.length; at += DOIS_A_REQUEST) {
     const ids = bare.slice(at, at + DOIS_A_REQUEST).map((paper) => paper.paper.slice("openalex:".length));
-    // A paper OpenAlex can't be asked about now is screened, or left out, as it came.
-    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,title,abstract_inverted_index" }, spend!).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); return { works: [] as Work[] }; });
+    // OpenAlex not answering is no reason to leave a paper out for having no abstract: the reading stops with why, and the source is read again once it answers.
+    const { works } = await readSearchPage<Work>({ filter: `openalex:${ids.join("|")}`, sort: BY_DOI_SORT, source: "openalex" }, { page: 1, size: DOIS_A_REQUEST, select: "id,title,abstract_inverted_index" }, spend!).catch((error) => { console.error("[screening] OpenAlex couldn't be asked for abstracts", error); throw createError("EXTERNAL_SERVICE_ERROR", "OpenAlex didn't answer while abstracts were looked up. Read this source again in a few minutes."); });
     for (const work of works) {
       const paper = work.id ? toPaper(work) : null;
       if (!paper?.abstract) continue;

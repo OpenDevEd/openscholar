@@ -149,7 +149,8 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   }
   await logChange(ctx, { userId: check.by ?? job.createdBy }, job, !check.by ? "scheduledCheck" : check.search ? "checked" : "sourcesRead", { count: check.found, more: [...(check.found - check.added - (check.left ?? 0) > 0 ? [{ code: "known", count: check.found - check.added - (check.left ?? 0) }] : []), ...(check.left ? [{ code: "leftOut", count: check.left }] : []), ...(check.unread?.length ? [{ code: "unread", count: check.unread.length }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(reopens ? [{ code: "reopened" }] : [])] });
   if (!check.added) return;
+  // Whoever asked for the check, or added the source it read, sees the papers arrive: the email is for the others.
   for (const reviewer of await reviewersOf(ctx, job._id)) {
-    if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });
+    if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined && reviewer.userId !== check.by) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });
   }
 }

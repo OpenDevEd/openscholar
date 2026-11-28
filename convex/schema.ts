@@ -1693,7 +1693,10 @@ export default defineSchema({
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
     checkedAt: v.optional(v.number()),
-  }).index("by_job", ["jobId"]),
+  })
+    .index("by_job", ["jobId"])
+    // The file an upload or a list of DOIs was read from: who else's screening reads it (./screening/screenings.ts `addSource`).
+    .index("by_file", ["set.file"]),
 
   // The few facts of a paper that a screening's lists are narrowed by, a small row beside each paper, kept in step by
   // a trigger (./screening/cards.ts): how many papers stand each way under any narrowing is counted from these.
@@ -1707,7 +1710,12 @@ export default defineSchema({
     withdrawn: v.optional(v.literal(true)),
   })
     .index("by_result", ["resultId"])
-    .index("by_job", ["jobId"]),
+    .index("by_job", ["jobId"])
+    // Papers' lists narrowed one way, in the order the papers were added, the other narrowings asked of each card in passing.
+    .index("by_job_and_result", ["jobId", "result"])
+    .index("by_job_and_source", ["jobId", "sourceId"])
+    .index("by_job_and_check", ["jobId", "checkId"])
+    .index("by_job_and_reason", ["jobId", "reason"]),
 
   // A person's Zotero libraries as last read, and each library's collections, a row each (./zotero/tree.ts): the
   // form that starts a screening pages through them and finds one by name here. `under`: what a collection holds
@@ -1766,7 +1774,8 @@ export default defineSchema({
     workId: v.optional(v.string()),
   })
     .index("by_batch_and_at", ["batch", "at"])
-    .index("by_workId", ["workId"]),
+    .index("by_workId", ["workId"])
+    .index("by_file", ["file"]),
 
   // A record a source held that the screening already had: the record, and the paper it was merged into.
   screeningMerged: defineTable({

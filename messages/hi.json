@@ -8862,7 +8862,6 @@
         "title": "समीक्षक",
         "everyoneDone": "इसी गति से सभी लगभग {weeks, plural, =0 {{days, plural, =1 {एक दिन} other {# दिन}}} one {# सप्ताह} other {# सप्ताह}} में पूरा कर लेंगे",
         "move": "लेख सौंपें",
-        "agreement": "सहमति",
         "helpTitle": "लेख कैसे बाँटे जाते हैं",
         "eachOf": "{each, plural, one {{people, plural, other {# लोगों}} में से # हर लेख पर वोट देता है} other {{people, plural, other {# लोगों}} में से # हर लेख पर वोट देते हैं}}",
         "everyPerson": "हर व्यक्ति हर लेख पर वोट देता है",

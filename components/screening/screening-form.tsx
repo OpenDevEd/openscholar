@@ -145,7 +145,8 @@ const SOURCES_SETTLE_MS = 1_200;
  */
 const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.deep ? (source.read?.state === "done" ? source.read.taken + source.read.duplicates + source.read.left : null) : baseTotal(source));
 /** The papers a source's open row shows a sample of: what it brought, or, while it is still read, what its range promises. */
-const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : taken(source));
+/** The papers a source gives, as its card counts them: what its range promises while it is read, and once read, what it gave after duplicates were merged. */
+const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : keptOf(source));
 /** Whether a list of sources, as sent to the server, begins with another, the same sources in the same order. */
 const startsWith = (list: string, first: string) => {
   const [all, some] = [JSON.parse(list) as unknown[], JSON.parse(first) as unknown[]];
@@ -217,6 +218,18 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     ...(leaving.length ? { remove: leaving.map((one) => ({ reviewerId: one.row!, ...(draft.reviewers.find((now) => now.id === one.id)?.discarded && !one.discarded ? { discard: true } : {}) })) } : {}),
     ...(recheck ? { recheck: true } : {}),
   };
+}
+
+/**
+ * The part of a change the preview counts anything for: a new name, question or star scale counts nothing, and of the
+ * criteria only which there are and which are must-haves do. Typing in a field then never asks the server to count the
+ * screening again.
+ */
+function movingOf(saved: Screening, change: ReturnType<typeof changeOf>) {
+  const { name: _name, question: _question, stars: _stars, criteria, ...rest } = change;
+  // A criterion added in this edit has no key yet: it is told by its place, so typing its words counts nothing again.
+  const musts = (criteria: Array<{ key?: string; must?: boolean }>) => criteria.map(({ key, must }, at) => [key ?? `new:${at}`, Boolean(must)]);
+  return { ...rest, ...(criteria && JSON.stringify(musts(criteria)) !== JSON.stringify(musts(saved.criteria)) ? { criteria: musts(criteria) } : {}) };
 }
 
 /** The Discard question, open in the address (./address.ts). */
@@ -549,14 +562,16 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What a save would do to a running screening, counted by the server for the change as it stands: the lines and the moves both read it.
   const change = saved && draft ? changeOf(say, saved, draft, recheck) : null;
   const changing = change && Object.keys(change).length > 0 ? JSON.stringify(change) : null;
-  const counted = useSWR(saved && changing && workspaceId ? ["screening-preview", saved.id, changing] : null, () => previewChange({ jobId: saved!.id, change: change! }), { revalidateOnFocus: false });
+  const moving = saved && change ? movingOf(saved, change) : null;
+  const toCount = moving && Object.keys(moving).length > 0 ? JSON.stringify(moving) : null;
+  const counted = useSWR(saved && toCount && workspaceId ? ["screening-preview", saved.id, toCount] : null, () => previewChange({ jobId: saved!.id, change: change! }), { revalidateOnFocus: false });
   // Until the server has counted the change as it now stands, nothing it would do is known: no figure from an earlier change stands in.
-  const known = !changing || counted.data !== undefined;
+  const known = !toCount || counted.data !== undefined;
   // A count that failed is said, with a way to ask again: a save waits for it, since nothing it would do is known.
-  const countFailed = Boolean(changing) && Boolean(counted.error) && counted.data === undefined;
-  const preview: Preview = (changing ? counted.data : undefined) ?? NO_PREVIEW;
+  const countFailed = Boolean(toCount) && Boolean(counted.error) && counted.data === undefined;
+  const preview: Preview = (toCount ? counted.data : undefined) ?? NO_PREVIEW;
   // While the server counts a change, what it would do isn't known: the save waits for it.
-  const counting = Boolean(changing) && (counted.isLoading || counted.isValidating) && !counted.error;
+  const counting = Boolean(toCount) && (counted.isLoading || counted.isValidating) && !counted.error;
 
   // A new form waits for whoever makes it, and a screening that is gone, or not shared with the person, is said by the frame its settings open in.
   if (!draft || !origin || (id && !saved)) return id ? null : <ListLoading label={t("loading")} />;
@@ -1273,7 +1288,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                     {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}
                                     {link && promised(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
-                                        <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{busy ? t("where.see", { where: link.where }) : t("where.seeAll", { where: link.where, count: words.num(taken(source)) })}<ExternalLink aria-hidden className="size-3" /></a>
+                                        <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{busy ? t("where.see", { where: link.where }) : t("where.seeAll", { where: link.where, count: words.num(promised(source)) })}<ExternalLink aria-hidden className="size-3" /></a>
                                       </p>
                                     ) : null}
                                     {/* A range of a Zotero source is counted in the order its papers were added there, which holds from one read to the next. */}

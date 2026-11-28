@@ -8862,7 +8862,6 @@
         "title": "审核人",
         "everyoneDone": "按目前的速度，大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成",
         "move": "转移论文",
-        "agreement": "一致性",
         "helpTitle": "论文如何分配",
         "eachOf": "{each, plural, other {{people, plural, other {# 人}}中有 # 人}}对每篇论文投票",
         "everyPerson": "每个人对每篇论文投票",

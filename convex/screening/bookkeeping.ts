@@ -367,19 +367,29 @@ export const bookkeep = internalMutation({
     const freedVotes = new Map<Id<"workspaces">, number>();
     for (const [jobId, jobResults] of byJob) {
       const workspaceId = (await ctx.db.get("screeningJobs", jobId))?.workspaceId;
-      try {
-        const done: { papers?: number; votes?: number } = await ctx.runMutation(internal.screening.bookkeeping.bookkeepJob, { jobId, results: jobResults.map((result) => result._id) });
+      const keep = async (batch: Doc<"screeningResults">[]) => {
+        const done: { papers?: number; votes?: number } = await ctx.runMutation(internal.screening.bookkeeping.bookkeepJob, { jobId, results: batch.map((result) => result._id) });
         if (workspaceId && done.papers !== undefined) freed.set(workspaceId, (freed.get(workspaceId) ?? 0) + done.papers);
         if (workspaceId && done.votes !== undefined) freedVotes.set(workspaceId, (freedVotes.get(workspaceId) ?? 0) + done.votes);
-      } catch (error) {
-        // Every screening of the deployment waits behind this queue: one whose papers can't be bookkept must not hold the
-        // others up. Its papers leave the queue as they stood, to be tried again when one of them next changes, and what
-        // went wrong is logged with the screening it happened in.
-        console.error("[screening] A screening's papers couldn't be bookkept", { jobId, papers: jobResults.length, error: String(error instanceof Error ? (error.stack ?? error.message) : error).slice(0, 1500) });
-        for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
-        // The readings that came back on them held slots of the workspace, which its other screenings wait for: those are given back whatever is wrong with this one.
-        const released: number = await ctx.runMutation(internal.screening.bookkeeping.releaseSlots, { jobId, results: jobResults.map((result) => result._id) }).catch(() => 0);
-        if (workspaceId && released) freedVotes.set(workspaceId, (freedVotes.get(workspaceId) ?? 0) + released);
+      };
+      try {
+        await keep(jobResults);
+      } catch {
+        // One paper that can't be bookkept rolls back its whole batch: each is tried alone, so only that one is held back.
+        for (const result of jobResults) {
+          try {
+            await keep([result]);
+          } catch (error) {
+            // Every screening of the deployment waits behind this queue: a paper that can't be bookkept must not hold the
+            // others up. It leaves the queue as it stood, to be tried again when it next changes, and what went wrong is
+            // logged with the screening it happened in.
+            console.error("[screening] A screening's paper couldn't be bookkept", { jobId, paper: result._id, error: String(error instanceof Error ? (error.stack ?? error.message) : error).slice(0, 1500) });
+            await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
+            // The readings that came back on it held slots of the workspace, which its other screenings wait for: those are given back whatever is wrong with it.
+            const released: number = await ctx.runMutation(internal.screening.bookkeeping.releaseSlots, { jobId, results: [result._id] }).catch(() => 0);
+            if (workspaceId && released) freedVotes.set(workspaceId, (freedVotes.get(workspaceId) ?? 0) + released);
+          }
+        }
       }
     }
     for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);

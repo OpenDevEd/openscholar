@@ -46,7 +46,8 @@ describe("a paper settled on its votes", () => {
     await expect(made.as.ben!.mutation(api.screening.voting.resolve, { workspaceId: made.workspaceId, jobId, paperId: second, decision: "include" })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
     const criterion = (await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.criteria![0]!.key;
     await made.as.ann!.mutation(api.screening.voting.resolve, { workspaceId: made.workspaceId, jobId, paperId: second, decision: "exclude", reason: criterion });
-    await settleAll(made.t);
+    // The reasons are counted a moment after the papers: once that has run.
+    await runAll(made.t, vi.runAllTimers);
     const settled = await standingOf(made.t, jobId);
     expect(settled.papers[1]).toMatchObject({ result: "exclude", reason: criterion });
     expect(settled.counts).toEqual({ include: 1, maybe: 0, exclude: 1, conflict: 0 });
@@ -107,7 +108,7 @@ describe("a paper settled on its votes", () => {
     const made = await team(["ann"]);
     const { jobId, papers } = await started(made, ["ann"], 1, { rule: { each: 1, settle: "one", blind: "after" } });
     await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId: papers[0]!._id, decision: "exclude" });
-    await settleAll(made.t);
+    await runAll(made.t, vi.runAllTimers);
     const settled = await standingOf(made.t, jobId);
     expect(settled.papers[0]).toMatchObject({ result: "exclude", reason: "unstated" });
     expect(settled.reasons).toEqual({ unstated: 1 });
@@ -544,5 +545,28 @@ describe("a search through a reviewer's queue", () => {
     expect(new Set(found)).toEqual(new Set(papers.slice(215).map((one) => one._id)));
     expect(firstShownAfter).toBeGreaterThan(0);
     expect(firstShownAfter).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("a vote asked for again", () => {
+  it("stays asked for while answers join it, and is answered by a new vote", async () => {
+    // Ben hasn't voted, so the paper is still open when the criterion changes.
+    const made = await team(["ann", "ben"]);
+    const { jobId, papers } = await started(made, ["ann", "ben"], 1, { rule: { each: 2, settle: "all", blind: "after" } });
+    const paperId = papers[0]!._id;
+    await voter(made, jobId)("ann", paperId, "include");
+    await runAll(made.t, vi.runAllTimers);
+    // A criterion made a must-have asks for her vote again.
+    const criteria = (await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.criteria!.map(({ key, text, short, terms, points }) => ({ key, text, short, terms, points, must: true }));
+    await made.as.ann!.mutation(api.screening.settings.save, { workspaceId: made.workspaceId, jobId, change: { criteria } });
+    await runAll(made.t, vi.runAllTimers);
+    const ann = await made.t.run(async (ctx) => (await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.userId === made.ids.ann)!._id);
+    const flagged = () => made.t.run(async (ctx) => (await ctx.db.query("screeningVotes").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).collect()).find((one) => one.reviewerId === ann)!.flagged);
+    expect(await flagged()).toBe(true);
+    const key = criteria[0]!.key;
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answers: { [key]: "yes" }, answersOnly: true });
+    expect(await flagged()).toBe(true);
+    await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId: made.workspaceId, jobId, paperId, decision: "include", answers: { [key]: "yes" } });
+    expect(await flagged()).toBeFalsy();
   });
 });

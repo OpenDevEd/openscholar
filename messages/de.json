@@ -8863,7 +8863,6 @@
         "title": "Reviewer",
         "everyoneDone": "Alle fertig in etwa {weeks, plural, =0 {{days, plural, =1 {einem Tag} other {# Tagen}}} one {# Woche} other {# Wochen}}, bei diesem Tempo",
         "move": "Artikel verschieben",
-        "agreement": "Übereinstimmung",
         "helpTitle": "Wie Artikel verteilt werden",
         "eachOf": "{each, plural, one {# der {people, plural, other {# Personen}} stimmt} other {# der {people, plural, other {# Personen}} stimmen}} über jeden Artikel ab",
         "everyPerson": "Jede Person stimmt über jeden Artikel ab",

@@ -8862,7 +8862,6 @@
         "title": "Ababuyekezi",
         "everyoneDone": "Bonke bazoqeda cishe {weeks, plural, =0 {{days, plural, =1 {ngosuku olulodwa} other {ezinsukwini ezingu-#}}} one {evikini elilodwa} other {emavikini angu-#}}, ngalesi sivinini",
         "move": "Hambisa amaphepha",
-        "agreement": "Ukuvumelana",
         "helpTitle": "Indlela amaphepha ahlukaniswa ngayo",
         "eachOf": "{each, plural, one {# {people, plural, other {kubantu abangu-#}} uvota} other {# {people, plural, other {kubantu abangu-#}} bavota}} ephepheni ngalinye",
         "everyPerson": "Wonke umuntu uvota kuwo wonke amaphepha",

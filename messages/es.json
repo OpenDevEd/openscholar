@@ -8863,7 +8863,6 @@
         "title": "Revisores",
         "everyoneDone": "Todos terminan en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}, a este ritmo",
         "move": "Mover artículos",
-        "agreement": "Acuerdo",
         "helpTitle": "Cómo se reparten los artículos",
         "eachOf": "{each, plural, one {# de las {people, plural, one {# persona} other {# personas}} vota} other {# de las {people, plural, one {# persona} other {# personas}} votan}} cada artículo",
         "everyPerson": "Cada persona vota todos los artículos",

@@ -8862,7 +8862,6 @@
         "title": "レビュアー",
         "everyoneDone": "このペースなら全員が約 {weeks, plural, =0 {{days, plural, other {# 日}}} other {# 週間}}で終わります",
         "move": "論文を移す",
-        "agreement": "一致度",
         "helpTitle": "論文の割り当て方",
         "eachOf": "各論文に{each, plural, other {{people, plural, other {# 人}}中 # 人}}が投票します",
         "everyPerson": "全員がすべての論文に投票します",

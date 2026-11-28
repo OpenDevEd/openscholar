@@ -37,7 +37,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
+import { skeletonRows, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
 import { decide, givenReason, leansOpen, NO_REASON, NOTE_LENGTH, OTHER_REASON } from "@/lib/screening/rules";
@@ -49,9 +49,9 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { blindOf, invitedSaid, reasonCriteria, termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, splitsIn, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Settled, type Vote, shortName, othersRead } from "./data";
 import { Discussion, DiscussionShut, type DiscussionDraft } from "./discussion";
 import { askedHref, papersHref, screenHref, settingsHref } from "./links";
-import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, NoPdfVote, votedReasonGroup, ReasonNoteForm, VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays, SEARCH_PILL } from "./pieces";
 import { useInHand, useKept } from "./drafts";
-import type { Ballot, Open } from "./store";
+import type { Ballot, Moved, Open } from "./store";
 import { useWorkspace } from "./workspace";
 import { useRtl, useWords } from "./words";
 
@@ -127,11 +127,11 @@ const PLACE = {
 
 /** Screen as a page of the open screening. */
 export function ScreenPage() {
-  const { open } = useWorkspace();
-  return <Screen open={open} />;
+  const { open, cast, moved } = useWorkspace();
+  return <Screen open={open} castByMe={cast} moved={moved} />;
 }
 
-function Screen({ open }: { open: Open }) {
+function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes, theirs made here counted before the server's count does. */ castByMe: number; moved: (kind: Moved, by: 1 | -1) => void }) {
   const backwards = useRtl();
   const { screening } = open;
   const t = useTranslations("screening.screen");
@@ -293,13 +293,12 @@ function Screen({ open }: { open: Open }) {
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number; pending?: Promise<unknown> }>>([]);
-  // The server's counts move a moment after a vote. Until they do, the votes and settlings made here since are taken off them, so To do and the bar never read one behind the paper that has moved on.
+  // The frame's counts take in the votes made here before the server's do (./store.tsx `useUnheardMoves`): To do, Done, the bar and the tabs above read one number.
+  const { toDo, conflicts } = open;
+  // The votes and settlings made here since the counts last moved: a queue they emptied is said empty from them.
   const [base, setBase] = useState({ toDo: open.toDo, conflicts: open.conflicts, at: 0 });
   if (base.toDo !== open.toDo || base.conflicts !== open.conflicts) setBase({ toDo: open.toDo, conflicts: open.conflicts, at: history.length });
   const since = history.slice(base.at);
-  // A first vote on a paper takes it off To do; settling a paper that was in conflict takes it off Conflicts. Changing a vote or a settled result moves neither.
-  const toDo = Math.max(0, open.toDo - since.filter((one) => !one.resolved && one.queue === "todo" && one.before === null).length);
-  const conflicts = Math.max(0, open.conflicts - since.filter((one) => one.resolved && one.paper.result === "conflict").length);
   const last = history.findLast((one) => one.queue === queue) ?? null;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // The criterion being looked at on the open paper: the words marked for it stand out in the abstract, and Y, N and U answer it. It belongs to its paper, so another paper starts with none.
@@ -365,8 +364,12 @@ function Screen({ open }: { open: Open }) {
     // Undo puts back only what you did: a settlement someone else made is theirs, and saving it again would put it in your name (the drawer's `mayUndo` is the same rule).
     const cast = { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, settledBefore: resolving && settled.resolvedBy ? settled : null, mayUndo: !resolving || !settled.resolvedBy || settled.resolvedBy === open.me, queue, at: Date.now() };
     setHistory((all) => [...all, cast]);
+    // A first vote on a paper takes it off To do and adds one to Done; settling a paper in conflict takes it off Conflicts. Changing a vote or a settled result moves neither.
+    const moves = movesOf(cast);
+    for (const [kind, by] of moves) moved(kind, by);
     // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
     const refused = (error: unknown) => {
+      for (const [kind, by] of moves) moved(kind, by === 1 ? -1 : 1);
       setHistory((all) => all.filter((one) => one !== cast));
       openIt(paper, { inPlace: true });
       failed(error);
@@ -429,7 +432,7 @@ function Screen({ open }: { open: Open }) {
       const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
       const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
       // Saved, the answers are the vote's own: in hand they would stand over a change made since on another page. Any given while it saved stay.
-      const saving = open.vote(paper.id, ballot).then((at) => {
+      const saving = open.vote(paper.id, ballot, { answersOnly: true }).then((at) => {
         if (at !== null && cast) cast.saved = at;
         setAnswers(({ [paper.id]: was, ...rest }) => (was === given || was === undefined ? rest : { ...rest, [paper.id]: was }));
       }, failed);
@@ -460,6 +463,7 @@ function Screen({ open }: { open: Open }) {
     // Undo pressed again at once waits for this one, so it names the moment this one stamps.
     if (earlier) earlier.pending = Promise.all([earlier.pending, undoing]);
     openIt(last.paper);
+    for (const [kind, by] of movesOf(last)) moved(kind, by === 1 ? -1 : 1);
     setHistory((all) => all.filter((one) => one !== last));
   };
 
@@ -597,7 +601,7 @@ function Screen({ open }: { open: Open }) {
       options={queues.map((which) => ({
         id: which,
         label: t(`queue.${which}`),
-        detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? (counted?.cast ?? 0) : conflicts} more={which === "again" && open.flaggedMore} tone={QUEUE_TONE[which]} />,
+        detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? castByMe : conflicts} more={which === "again" && open.flaggedMore} tone={QUEUE_TONE[which]} />,
       }))}
     />
   );
@@ -632,7 +636,7 @@ function Screen({ open }: { open: Open }) {
     );
   };
   // How many the queue holds, where it is counted: Done by your votes (all of them, or the decision it is narrowed to), the others by what is left. A search isn't counted, and its pager says only the page.
-  const queueTotal = searched || (queue === "again" && open.flaggedMore) ? undefined : queue === "done" ? (voted === "any" ? (counted?.cast ?? 0) : (counted?.[voted] ?? 0)) : left;
+  const queueTotal = searched || (queue === "again" && open.flaggedMore) ? undefined : queue === "done" ? (voted === "any" ? castByMe : (counted?.[voted] ?? 0)) : left;
   const pager = (className: string) => (listed.hasPages ? <PageStepper className={className} {...(queueTotal !== undefined ? { pageCount: Math.max(1, Math.ceil(queueTotal / QUEUE_PAGE)) } : {})} page={listed.page} canPrevious={listed.canPrevious} canNext={listed.canNext} onPrevious={() => turn(listed.previous)} onNext={() => turn(listed.next)} /> : null);
   const findField = (className: string) => (
     <ListSearch box={className} value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className={SEARCH_PILL} />
@@ -651,7 +655,7 @@ function Screen({ open }: { open: Open }) {
           onChange={(next) => namedThen(() => void setPlace({ voted: next, paper: null }))}
           className={className}
           choices={[
-            { value: "any" as typeof voted, label: t("filter.any"), icon: <ListChecks />, count: counted?.cast ?? 0 },
+            { value: "any" as typeof voted, label: t("filter.any"), icon: <ListChecks />, count: castByMe },
             ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as typeof voted, label: words.decision(decision), icon: <Icon />, tone, count: counted?.[decision] ?? 0 }; }),
           ]}
         />
@@ -693,7 +697,7 @@ function Screen({ open }: { open: Open }) {
         <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:block min-[87.5rem]:overflow-hidden", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
           <div className="w-[19rem] min-[110rem]:w-[22rem]">
             <div className="p-3"><SkeletonBar className="h-8 w-full rounded-full" /></div>
-            <ListRowsSkeleton rows={Math.max(1, Math.min(queueTotal ?? QUEUE_PAGE, QUEUE_PAGE))} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
+            <ListRowsSkeleton rows={skeletonRows(queueTotal, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
           </div>
         </div>
         <PaperSkeleton className="lg:col-start-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
@@ -872,7 +876,7 @@ function Screen({ open }: { open: Open }) {
               {queueFilters(QUEUE_FILTER)}
             </div>
             <ScrollArea key={holding} shades className="flex min-h-0 flex-1 border-t border-border-subtle">
-              {otherQueue ? <ListRowsSkeleton rows={Math.min(queueTotal || QUEUE_PAGE, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} /> : (
+              {otherQueue ? <ListRowsSkeleton rows={skeletonRows(queueTotal, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} /> : (
                 <ul className="divide-y divide-border-subtle">
                   {items.map((one) => row(one, openIt))}
                 </ul>
@@ -1076,7 +1080,7 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" && kept && !otherQueue ? t("bar.notInList") : queue === "done" || !decideLook || floor ? ((!otherQueue && at < 0) || (queueTotal !== undefined && shownAt > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(shownAt) : t("bar.atOf", { at: shownAt, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" && kept && !otherQueue ? (mine ? null : t("bar.notInList")) : queue === "done" || !decideLook || floor ? ((!otherQueue && at < 0) || (queueTotal !== undefined && shownAt > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(shownAt) : t("bar.atOf", { at: shownAt, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious || Boolean(back)} canNext={at < items.length - 1 || listed.canNext} />
@@ -1139,14 +1143,7 @@ function Screen({ open }: { open: Open }) {
               {!decideLook ? (
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{gone ? t("shut.left") : finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
-                <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
-                  {/* Escape anywhere in the form goes back, as the Back button does, and Enter excludes, as the button beside it shows. */}
-                  <ReasonNoteField value={notes[noteKey(paper.id)] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: text }))} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[noteKey(paper.id)]?.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
-                  </div>
-                </form>
+                <ReasonNoteForm value={notes[noteKey(paper.id)] ?? ""} onChange={(text) => setNotes((all) => ({ ...all, [noteKey(paper.id)]: text }))} onBack={() => setWriting(null)} onExclude={() => decideOn("exclude", OTHER_REASON)} className="h-10" />
               ) : (
                 <>
                   {/* With every paper in the queue voted on, the line above the buttons says so: the buttons stay, to change a vote. */}
@@ -1516,4 +1513,10 @@ function PaperSkeleton({ label, className }: { label?: string; className?: strin
       </div>
     </div>
   );
+}
+
+/** The counts a vote or a settlement made on Screen moves, before the server's say so: a first vote on a paper in To do takes it off and adds one to Done, and settling a paper in conflict takes it off Conflicts. */
+function movesOf(made: { resolved: boolean; queue: string; before: unknown; paper: { result: string } }): Array<[Moved, 1 | -1]> {
+  if (made.resolved) return made.paper.result === "conflict" ? [["conflicts", -1]] : [];
+  return made.queue === "todo" && made.before === null ? [["toDo", -1], ["cast", 1]] : [];
 }
