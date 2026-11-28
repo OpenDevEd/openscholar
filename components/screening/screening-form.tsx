@@ -878,6 +878,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
+      // The save is checked before anything goes out: an invitation, a guest's place or a community's collection is never given for a save that is then refused.
+      if (workspaceId) await convex.query(api.screening.settings.checkChange, { workspaceId, jobId: saved.id as Id<"screeningJobs">, change });
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
       const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));

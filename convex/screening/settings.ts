@@ -12,7 +12,7 @@ import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { screeningDestination } from "../library/collections";
-import { workspaceAction, workspaceMutation } from "../lib/userActions";
+import { workspaceAction, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
@@ -157,10 +157,14 @@ export const saveSent = internalMutation({
   handler: (ctx, { userId, workspaceId, jobId, change, libraryDestination }) => apply(ctx, { userId, workspaceId }, jobId, change, libraryDestination),
 });
 
-async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces">; author?: "user" | "assistant" }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator>): Promise<null> {
+/**
+ * Everything a save checks before it changes anything, read only: the form asks it first (`check`), so nothing it sends
+ * or gives (an invitation, a guest's place, a community's collection) goes out for a save that would then be refused.
+ * `libraryDestination` "unasked": the community's collection isn't checked or made yet.
+ */
+async function validate(ctx: QueryCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator> | "unasked") {
   const job = await requireMember(ctx, actor, jobId);
   const plan = await planned(ctx, job, change);
-  const now = Date.now();
   const name = change.name?.trim();
   if (change.name !== undefined && (!name || name.length > SCREENING_TEXT.name)) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
   if ((change.question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
@@ -171,11 +175,27 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   const writer = { userId: actor.userId, workspaceId: job.workspaceId };
   const later = change.saveTo?.kind === "new" ? change.saveTo.name.trim() : undefined;
   // A community's collection is checked, or made, before the save (`saveToCommunity`).
-  if (toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
+  if (libraryDestination !== "unasked" && toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
   const prune = change.prune ?? job.prune === true;
   // Checked against the sources as the save leaves them: those it takes out don't count, and those it adds do.
   const canTake = (set: (typeof sources)[number]["set"]) => prunable(set.kind === "upload" || set.kind === "pdf" || set.kind === "dois" ? undefined : set);
   if (prune && !sources.some((source) => source.removedAt === undefined && !change.removeSources?.includes(source._id) && canTake(source.set)) && !(change.addSources ?? []).some((source) => canTake(source.set as (typeof sources)[number]["set"]))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+  return { job, plan, name, sources, writer, later };
+}
+
+/** Whether a save would be taken as it is, without making it: refused with the save's own reason where it wouldn't. */
+export const checkChange = workspaceQuery({
+  args: { jobId: v.id("screeningJobs"), change: changeValidator },
+  returns: v.null(),
+  handler: async (ctx, actor, { jobId, change }) => {
+    await validate(ctx, actor, jobId, change, "unasked");
+    return null;
+  },
+});
+
+async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces">; author?: "user" | "assistant" }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator>): Promise<null> {
+  const { job, plan, name, sources, writer, later } = await validate(ctx, actor, jobId, change, libraryDestination);
+  const now = Date.now();
 
   // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
   await ctx.db.patch("screeningJobs", jobId, {
