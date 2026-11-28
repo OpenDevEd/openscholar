@@ -1587,7 +1587,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             {reviewer.model ? (
                               <>
                                 {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{pieces("modelsSay.paused.row")}</StateChip> : null}
-                                <Chip icon={Coins}>{perPaper({ words, t: list }, reviewer.model)}</Chip>
+                                <Chip icon={Coins}>{perPaper({ words, t: list }, reviewer.model, reviewer.tally)}</Chip>
                                 {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
                                 {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText} className={SENTENCE_CHIP}>{t("reviewers.pdfsMissed", { why: pdfsMissed(reviewer.model, pdfs).why === "text" ? "text" : "long", count: pdfsMissed(reviewer.model, pdfs).papers })}</StateChip> : null}
                                 {due(reviewer) ? (

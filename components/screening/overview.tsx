@@ -923,7 +923,7 @@ function Facts({ open }: { open: Open }) {
         className="flex flex-col"
         title={t("credits.title")}
         help={
-          <Help title={t("credits.helpTitle")} facts={models.length ? models.map((model) => <HelpFact key={model.id} icon={Coins}>{t("credits.modelCost", { name: model.name, cost: perPaper({ words, t: tl }, model.model!) })}</HelpFact>) : <HelpFact>{t("credits.peopleOnly")}</HelpFact>}>
+          <Help title={t("credits.helpTitle")} facts={models.length ? models.map((model) => <HelpFact key={model.id} icon={Coins}>{t("credits.modelCost", { name: model.name, cost: perPaper({ words, t: tl }, model.model!, model.tally) })}</HelpFact>) : <HelpFact>{t("credits.peopleOnly")}</HelpFact>}>
             <p>{t("credits.free")}</p>
           </Help>
         }

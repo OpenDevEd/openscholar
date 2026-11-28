@@ -13,12 +13,12 @@ import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { readsPdfs } from "@/lib/assistant/files";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCredits, type Pdfs } from "@/lib/pricing/estimate";
-import { modelsProgress, twinsNamed, type Answer } from "@/lib/screening/rules";
+import { gotThrough, modelsProgress, twinsNamed, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useTranslations } from "next-intl";
 import { showStyledToast } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Tally, type Workspace } from "./data";
 import { useWords, type Words } from "./words";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
@@ -83,7 +83,11 @@ export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
 /** What a model charges to read one paper, as every page says it. */
-export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => t("perPaper", { credits: words.creditsOf(paperCredits(model)) });
+/** What a model costs a paper: what it has spent a paper where it has read some, which is what it is charged, else what one paper is reckoned to cost. */
+export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">, tally?: Pick<Tally, "spent" | "cast" | "failed">) => {
+  const read = tally ? gotThrough(tally) : 0;
+  return t("perPaper", { credits: words.creditsOf(read && tally!.spent ? tally!.spent / read : paperCredits(model)) });
+};
 
 /**
  * What a screening's models are doing, worked out on the server in one place, so the list's row, the frame's notice,

@@ -518,7 +518,7 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
         <Coins className={icon} />
         <span className="flex items-center gap-1 font-medium">
           {pieces("modelsSay.credits.says")}
-          <Help title={pieces("modelsSay.credits.says")} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{t("banner.modelPrice", { name: model.name, price: perPaper({ words, t: list }, model.model!) })}</HelpFact>)}>
+          <Help title={pieces("modelsSay.credits.says")} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{t("banner.modelPrice", { name: model.name, price: perPaper({ words, t: list }, model.model!, model.tally) })}</HelpFact>)}>
             {t("banner.creditsHelp", { you: String(open.canChange), workspace })}
           </Help>
         </span>
