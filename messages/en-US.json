@@ -8499,6 +8499,7 @@
         "peopleOnly": "{handed, select, true {People only, nothing more to pay} other {People only, no credits}}",
         "addCredits": "Add credits",
         "start": "Start screening",
+        "toFix": "{count, plural, one {# thing to fix before {saving, select, true {saving} other {starting}}} other {# things to fix before {saving, select, true {saving} other {starting}}}}",
         "moved": "{count, plural, one {# paper changes result} other {# papers change result}}",
         "review": "Review",
         "discard": "Discard",

@@ -8499,6 +8499,7 @@
         "peopleOnly": "{handed, select, true {केवल लोग, आगे कोई भुगतान नहीं} other {केवल लोग, कोई क्रेडिट नहीं}}",
         "addCredits": "क्रेडिट जोड़ें",
         "start": "स्क्रीनिंग शुरू करें",
+        "toFix": "{saving, select, true {सहेजने} other {शुरू करने}} से पहले {count, plural, one {# चीज़ ठीक करनी है} other {# चीज़ें ठीक करनी हैं}}",
         "moved": "{count, plural, one {# लेख का परिणाम बदलता है} other {# लेखों का परिणाम बदलता है}}",
         "review": "समीक्षा करें",
         "discard": "छोड़ें",

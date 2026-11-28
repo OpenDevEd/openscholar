@@ -8499,6 +8499,7 @@
         "peopleOnly": "{handed, select, true {Abantu kuphela, akukho okunye okukhokhwayo} other {Abantu kuphela, awekho amakhredithi}}",
         "addCredits": "Engeza amakhredithi",
         "start": "Qala ukuskrini",
+        "toFix": "{count, plural, one {Into # okufanele uyilungise ngaphambi {saving, select, true {kokulondoloza} other {kokuqala}}} other {Izinto ezingu-# okufanele uzilungise ngaphambi {saving, select, true {kokulondoloza} other {kokuqala}}}}",
         "moved": "{count, plural, one {# iphepha lishintsha umphumela} other {# amaphepha ashintsha umphumela}}",
         "review": "Buyekeza",
         "discard": "Lahla",

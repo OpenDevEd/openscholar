@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {Solo personas, nada más que pagar} other {Solo personas, sin créditos}}",
         "addCredits": "Añadir créditos",
         "start": "Iniciar el cribado",
+        "toFix": "{count, plural, one {# cosa que corregir antes de {saving, select, true {guardar} other {empezar}}} other {# cosas que corregir antes de {saving, select, true {guardar} other {empezar}}}}",
         "moved": "{count, plural, one {# artículo cambia de resultado} other {# artículos cambian de resultado}}",
         "review": "Revisar",
         "discard": "Descartar",

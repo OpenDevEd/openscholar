@@ -8499,6 +8499,7 @@
         "peopleOnly": "{handed, select, true {仅人员，无需再付费} other {仅人员，不消耗积分}}",
         "addCredits": "添加积分",
         "start": "开始筛选",
+        "toFix": "{saving, select, true {保存} other {开始}}前有 {count, plural, other {# 项}}需要修正",
         "moved": "{count, plural, other {# 篇论文的结果改变}}",
         "review": "查看",
         "discard": "放弃",

@@ -4,6 +4,7 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
+import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import PlainLink from "next/link";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
@@ -319,14 +320,21 @@ export function LinkChip({ href, tone = "neutral", icon, children, className, el
 }
 
 /** A titled part of a page, with an anchor other pages link to. Its "?" (a Help) holds what would otherwise be a sentence under the title. */
-export function Section({ id, title, help, aside, className, children }: { id?: string; title: ReactNode; help?: ReactNode; aside?: ReactNode; className?: string; children: ReactNode }) {
+export function Section({ id, title, help, aside, problems = [], className, children }: { id?: string; title: ReactNode; help?: ReactNode; aside?: ReactNode; /** What in it stops the form from going on, each said under its title in the danger colour, as a field says its error. */ problems?: string[]; className?: string; children: ReactNode }) {
   return (
     <section id={id} className={cn("space-y-3", BELOW_HEADER, className)}>
       <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="flex shrink-0 items-center gap-1 text-sm font-semibold">{title}{help}</h2>
+        <h2 className={cn("flex shrink-0 items-center gap-1 text-sm font-semibold", problems.length && "ink-destructive")}>{title}{help}</h2>
         {/* The aside takes the room left and no more: on a narrow screen it wraps under the title. */}
         {aside ? <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{aside}</div> : null}
       </div>
+      <AnimatePresence initial={false}>
+        {problems.map((problem) => (
+          <motion.p key={problem} role="alert" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-start gap-1.5 overflow-hidden text-sm font-medium ink-destructive">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{problem}
+          </motion.p>
+        ))}
+      </AnimatePresence>
       {children}
     </section>
   );

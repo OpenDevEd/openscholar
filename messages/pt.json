@@ -8500,6 +8500,7 @@
         "peopleOnly": "{handed, select, true {Só pessoas, nada mais a pagar} other {Só pessoas, sem créditos}}",
         "addCredits": "Adicionar créditos",
         "start": "Iniciar triagem",
+        "toFix": "{count, plural, one {# coisa a corrigir antes de {saving, select, true {guardar} other {começar}}} other {# coisas a corrigir antes de {saving, select, true {guardar} other {começar}}}}",
         "moved": "{count, plural, one {# artigo muda de resultado} other {# artigos mudam de resultado}}",
         "review": "Rever",
         "discard": "Descartar",
