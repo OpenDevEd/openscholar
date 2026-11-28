@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crossRefsOf, legacyPaperRef, openalexWorkOf, paperKey, paperPage, parsePaperKey, toPaperKey, type PaperRef } from "./paper-ref";
+import { crossRefsOf, legacyPaperRef, openalexWorkOf, paperKey, paperPage, parsePaperKey, plainTitle, toPaperKey, type PaperRef } from "./paper-ref";
 
 const refs: PaperRef[] = [
   { source: "openalex", work: "W2741809807" },
@@ -78,5 +78,15 @@ describe("where a paper opens", () => {
     expect(paperPage("library:r1:K1234567", { libraryAddress: "https://aied.example.org" })).toBe("https://aied.example.org/lib/K1234567");
     expect(paperPage("library:r1:K1234567")).toBeNull();
     expect(paperPage("W5")).toBe("https://openalex.org/W5");
+  });
+});
+
+describe("a title as two sources of one paper give it", () => {
+  it("drops case, spacing, punctuation and Latin accents, and keeps the marks that make another word in other scripts", () => {
+    expect(plainTitle("Café, School Meals!")).toBe(plainTitle("cafe school meals"));
+    expect(plainTitle("कल")).not.toBe(plainTitle("काल"));
+    expect(plainTitle("カ")).not.toBe(plainTitle("ガ"));
+    // One written as a letter and its mark, the other as the single letter, are one title.
+    expect(plainTitle("ガ")).toBe(plainTitle("ガ"));
   });
 });
