@@ -8971,7 +8971,7 @@
         "startedIt": "lo empezó {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Ahora solo puede ver {name}, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} notFound {{name} ya no está en la Evidence Community, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} other {La Evidence Community no respondió, así que algunos artículos incluidos {adding, select, true {no se añadieron a {name}} other {no se quitaron de {name}}}}}",
+        "problem": "{why, select, role {Ahora solo puede ver {name}, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} notFound {{name} ya no está en la Evidence Community, así que los artículos incluidos {adding, select, true {no se añaden a ella} other {no se quitan de ella}}} full {Tu espacio de trabajo tiene tantas colecciones como permite su plan, así que los artículos incluidos no se guardan en {name}. Elimina una colección o elige en Ajustes adónde van.} other {La Evidence Community no respondió, así que algunos artículos incluidos {adding, select, true {no se añadieron a {name}} other {no se quitaron de {name}}}}}",
         "title": "Los artículos incluidos van a",
         "helpTitle": "Adónde van los artículos incluidos",
         "savedEach": "Se guarda cada uno al incluirse",

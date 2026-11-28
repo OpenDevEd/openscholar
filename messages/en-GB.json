@@ -8970,7 +8970,7 @@
         "startedIt": "started it {ago}"
       },
       "included": {
-        "problem": "{why, select, role {You can only view {name} now, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} notFound {{name} is no longer in the community, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} other {The community didn't answer, so some included papers {adding, select, true {weren't added to {name}} other {weren't taken out of {name}}}}}",
+        "problem": "{why, select, role {You can only view {name} now, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} notFound {{name} is no longer in the community, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} full {Your workspace has as many collections as its plan allows, so included papers aren't saved to {name}. Delete a collection or choose where they go in Settings.} other {The community didn't answer, so some included papers {adding, select, true {weren't added to {name}} other {weren't taken out of {name}}}}}",
         "title": "Included papers go to",
         "helpTitle": "Where included papers go",
         "savedEach": "Saved as each is included",

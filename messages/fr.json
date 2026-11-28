@@ -8970,7 +8970,7 @@
         "startedIt": "l'a démarré {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Vous ne pouvez plus que consulter {name}, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} notFound {{name} n'est plus dans l'Evidence Community, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} other {L'Evidence Community n'a pas répondu, donc certains articles inclus {adding, select, true {n'ont pas été ajoutés à {name}} other {n'ont pas été retirés de {name}}}}}",
+        "problem": "{why, select, role {Vous ne pouvez plus que consulter {name}, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} notFound {{name} n'est plus dans l'Evidence Community, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} full {Votre espace de travail a autant de collections que son forfait le permet, donc les articles inclus ne sont pas enregistrés dans {name}. Supprimez une collection ou choisissez où ils vont dans les Paramètres.} other {L'Evidence Community n'a pas répondu, donc certains articles inclus {adding, select, true {n'ont pas été ajoutés à {name}} other {n'ont pas été retirés de {name}}}}}",
         "title": "Les articles inclus vont dans",
         "helpTitle": "Où vont les articles inclus",
         "savedEach": "Enregistrés à mesure qu'ils sont inclus",

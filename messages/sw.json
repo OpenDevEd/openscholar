@@ -8971,7 +8971,7 @@
         "startedIt": "aliuanzisha {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Sasa unaweza kutazama {name} tu, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} notFound {{name} haipo tena kwenye Evidence Community, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} other {Evidence Community haikujibu, kwa hivyo baadhi ya makala zilizojumuishwa {adding, select, true {hazikuongezwa kwenye {name}} other {hazikuondolewa kwenye {name}}}}}",
+        "problem": "{why, select, role {Sasa unaweza kutazama {name} tu, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} notFound {{name} haipo tena kwenye Evidence Community, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} full {Eneo lako la kazi lina mikusanyiko mingi kadiri mpango wake unavyoruhusu, kwa hivyo makala yaliyojumuishwa hayahifadhiwi kwenye {name}. Futa mkusanyiko au chagua yanakokwenda kwenye Mipangilio.} other {Evidence Community haikujibu, kwa hivyo baadhi ya makala zilizojumuishwa {adding, select, true {hazikuongezwa kwenye {name}} other {hazikuondolewa kwenye {name}}}}}",
         "title": "Makala zilizojumuishwa zinaenda",
         "helpTitle": "Makala zilizojumuishwa zinaenda wapi",
         "savedEach": "Inahifadhiwa kila moja inapojumuishwa",

@@ -8,7 +8,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { workspaceMutation } from "../lib/userActions";
-import { NAMED_REASONS, type Answer } from "../../lib/screening/rules";
+import { givenReason, NAMED_REASONS, NO_REASON, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, personRow, votesOf } from "./dealing";
@@ -53,9 +53,13 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const known = new Set([...(job.criteria ?? []), ...(onlyAt !== undefined ? (job.retiredCriteria ?? []) : [])].map((criterion) => criterion.key));
   // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
-  // Answers joining a vote already cast leave it the vote it was: cast when it was, which "first vote decides" reads, and asked for again if it was.
+  // Answers joining a vote already cast change only the answers: it stays the vote it was, whatever another tab saved meanwhile, cast when it was, which
+  // "first vote decides" reads, and asked for again if it was. An exclusion that rested on a criterion answered otherwise now rests on what the answers say.
   const kept = answersOnly && mine?.status === "cast" ? mine : undefined;
-  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: kept?.at ?? Date.now(), edited: kept ? Date.now() : undefined, flagged: kept?.flagged };
+  const keptReason = kept?.decision === "exclude" ? ((kept.reason && (job.criteria ?? []).some((one) => one.key === kept.reason) && given[kept.reason] !== "no") || kept.reason === NO_REASON ? (givenReason(job.criteria ?? [], given, kept.note ?? "") ?? NO_REASON) : kept.reason) : undefined;
+  const vote = kept
+    ? { status: "cast" as const, decision: kept.decision!, answers: given, reason: keptReason, note: kept.note, at: kept.at ?? Date.now(), edited: Date.now(), flagged: kept.flagged }
+    : { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: Date.now(), edited: undefined, flagged: undefined };
   if (mine) await ctx.db.patch("screeningVotes", mine._id, vote);
   else {
     // A reviewer who votes on a paper that wasn't given to them is on it from then on.

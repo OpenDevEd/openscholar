@@ -8971,7 +8971,7 @@
         "startedIt": "بدأه {ago}"
       },
       "included": {
-        "problem": "{why, select, role {يمكنك الآن عرض {name} فقط، لذا {adding, select, true {لا تُضاف الأوراق المُدرَجة إليها} other {لا تُزال الأوراق المُدرَجة منها}}} notFound {لم تعد {name} موجودة في Evidence Community، لذا {adding, select, true {لا تُضاف الأوراق المُدرَجة إليها} other {لا تُزال الأوراق المُدرَجة منها}}} other {لم تستجب Evidence Community، لذا {adding, select, true {لم تُضف بعض الأوراق المُدرَجة إلى {name}} other {لم تُزل بعض الأوراق المُدرَجة من {name}}}}}",
+        "problem": "{why, select, role {يمكنك الآن عرض {name} فقط، لذا {adding, select, true {لا تُضاف الأوراق المُدرَجة إليها} other {لا تُزال الأوراق المُدرَجة منها}}} notFound {لم تعد {name} موجودة في Evidence Community، لذا {adding, select, true {لا تُضاف الأوراق المُدرَجة إليها} other {لا تُزال الأوراق المُدرَجة منها}}} full {وصلت مساحة عملك إلى أقصى عدد من المجموعات تسمح به خطتها، لذا لا تُحفظ الأوراق المُدرَجة في {name}. احذف مجموعة أو اختر وجهتها في الإعدادات.} other {لم تستجب Evidence Community، لذا {adding, select, true {لم تُضف بعض الأوراق المُدرَجة إلى {name}} other {لم تُزل بعض الأوراق المُدرَجة من {name}}}}}",
         "title": "تذهب الأوراق المُدرَجة إلى",
         "helpTitle": "وجهة الأوراق المُدرَجة",
         "savedEach": "تُحفظ كل ورقة فور إدراجها",

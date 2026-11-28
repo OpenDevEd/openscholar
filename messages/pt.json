@@ -8971,7 +8971,7 @@
         "startedIt": "iniciou-a {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Agora só pode ver {name}, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} notFound {{name} já não está na comunidade, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} other {A comunidade não respondeu, por isso alguns artigos incluídos {adding, select, true {não foram adicionados a {name}} other {não foram retirados de {name}}}}}",
+        "problem": "{why, select, role {Agora só pode ver {name}, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} notFound {{name} já não está na comunidade, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} full {Seu espaço de trabalho tem tantas coleções quanto o plano permite, então os artigos incluídos não são salvos em {name}. Exclua uma coleção ou escolha para onde eles vão nas Configurações.} other {A comunidade não respondeu, por isso alguns artigos incluídos {adding, select, true {não foram adicionados a {name}} other {não foram retirados de {name}}}}}",
         "title": "Os artigos incluídos vão para",
         "helpTitle": "Para onde vão os artigos incluídos",
         "savedEach": "Guardado à medida que cada um é incluído",

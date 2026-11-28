@@ -180,7 +180,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars), retiredCriteria: retiredOf(job, plan.criteria) } : {}),
     rule: plan.rule,
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
-    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
+    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, libraryWriteProblem: undefined, libraryPruneProblem: undefined, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
     ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
     ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
     ...touched(now),

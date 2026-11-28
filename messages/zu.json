@@ -8970,7 +8970,7 @@
         "startedIt": "ukuqale {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Manje ungabuka kuphela i-{name}, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} notFound {I-{name} ayisekho ku-Evidence Community, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} other {I-Evidence Community ayiphendulanga, ngakho amanye amaphepha afakiwe {adding, select, true {awengezwanga ku-{name}} other {awasuswanga ku-{name}}}}}",
+        "problem": "{why, select, role {Manje ungabuka kuphela i-{name}, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} notFound {I-{name} ayisekho ku-Evidence Community, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} full {Indawo yakho yokusebenza inamaqoqo amaningi njengoba uhlelo lwayo luvumela, ngakho amaphepha afakiwe awagcinwa ku-{name}. Susa iqoqo noma ukhethe lapho eya khona kuZilungiselelo.} other {I-Evidence Community ayiphendulanga, ngakho amanye amaphepha afakiwe {adding, select, true {awengezwanga ku-{name}} other {awasuswanga ku-{name}}}}}",
         "title": "Amaphepha afakiwe aya ku-",
         "helpTitle": "Lapho amaphepha afakiwe aya khona",
         "savedEach": "Agcinwa njengoba ngalinye lifakwa",

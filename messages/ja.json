@@ -8970,7 +8970,7 @@
         "startedIt": "{ago}に開始"
       },
       "included": {
-        "problem": "{why, select, role {{name} は閲覧のみになったため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} notFound {{name} はもうコミュニティにないため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} other {コミュニティから応答がなかったため、採用した論文の一部が{adding, select, true {{name} に追加されませんでした} other {{name} から取り除かれませんでした}}}}",
+        "problem": "{why, select, role {{name} は閲覧のみになったため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} notFound {{name} はもうコミュニティにないため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} full {ワークスペースのコレクション数がプランの上限に達しているため、採用した論文は {name} に保存されません。コレクションを削除するか、設定で保存先を選んでください。} other {コミュニティから応答がなかったため、採用した論文の一部が{adding, select, true {{name} に追加されませんでした} other {{name} から取り除かれませんでした}}}}",
         "title": "採用した論文の保存先",
         "helpTitle": "採用した論文の行き先",
         "savedEach": "採用されるたびに保存",

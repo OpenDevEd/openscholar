@@ -8970,7 +8970,7 @@
         "startedIt": "{ago}开始"
       },
       "included": {
-        "problem": "{why, select, role {你现在只能查看 {name}，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} notFound {{name} 已不在文献社区中，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} other {文献社区没有响应，因此部分入选论文{adding, select, true {未添加到 {name}} other {未从 {name} 移出}}}}",
+        "problem": "{why, select, role {你现在只能查看 {name}，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} notFound {{name} 已不在文献社区中，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} full {你的工作区的合集数量已达到其方案的上限，因此纳入的论文不会保存到 {name}。请删除一个合集，或在设置中选择它们的去处。} other {文献社区没有响应，因此部分入选论文{adding, select, true {未添加到 {name}} other {未从 {name} 移出}}}}",
         "title": "入选论文保存到",
         "helpTitle": "入选论文去向",
         "savedEach": "每篇入选时即保存",

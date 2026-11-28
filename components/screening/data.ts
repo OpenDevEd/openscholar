@@ -188,7 +188,7 @@ export function removedOf(sources: Source[], kept = paperTotal(sources)) {
 export type Rule = Omit<SharedRule, "each" | "models"> & { each: `${number}` | "all"; models: NonNullable<SharedRule["models"]> };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
-export type WriteProblem = "role" | "notFound" | "unreadable";
+export type WriteProblem = "role" | "notFound" | "unreadable" | "full";
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** A community that refused or didn't answer the last write of included papers, adding them or taking them out, until one gets through. */ problem?: WriteProblem; pruneProblem?: WriteProblem; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
 
 /** Why a paper is excluded when no criterion is the reason: shown after the criteria in the list of reasons. */

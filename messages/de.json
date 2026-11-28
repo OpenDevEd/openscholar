@@ -8971,7 +8971,7 @@
         "startedIt": "hat es {ago} gestartet"
       },
       "included": {
-        "problem": "{why, select, role {Sie können {name} jetzt nur noch ansehen, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} notFound {{name} ist nicht mehr in der Evidence Community, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} other {Die Evidence Community hat nicht geantwortet, daher wurden einige eingeschlossene Artikel {adding, select, true {nicht zu {name} hinzugefügt} other {nicht aus {name} entfernt}}}}",
+        "problem": "{why, select, role {Sie können {name} jetzt nur noch ansehen, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} notFound {{name} ist nicht mehr in der Evidence Community, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} full {Ihr Arbeitsbereich hat so viele Sammlungen, wie sein Tarif erlaubt, daher werden eingeschlossene Artikel nicht in {name} gespeichert. Löschen Sie eine Sammlung oder wählen Sie in den Einstellungen, wohin sie gehen.} other {Die Evidence Community hat nicht geantwortet, daher wurden einige eingeschlossene Artikel {adding, select, true {nicht zu {name} hinzugefügt} other {nicht aus {name} entfernt}}}}",
         "title": "Ziel für eingeschlossene Artikel",
         "helpTitle": "Wohin eingeschlossene Artikel gehen",
         "savedEach": "Gespeichert, sobald jeder eingeschlossen ist",

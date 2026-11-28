@@ -8971,7 +8971,7 @@
         "startedIt": "het dit {ago} begin"
       },
       "included": {
-        "problem": "{why, select, role {Jy kan {name} nou net bekyk, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} notFound {{name} is nie meer in die Evidence Community nie, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} other {Die Evidence Community het nie geantwoord nie, so sommige ingesluite artikels {adding, select, true {is nie by {name} gevoeg nie} other {is nie uit {name} gehaal nie}}}}",
+        "problem": "{why, select, role {Jy kan {name} nou net bekyk, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} notFound {{name} is nie meer in die Evidence Community nie, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} full {Jou werkruimte het soveel versamelings as wat sy plan toelaat, so ingesluite artikels word nie in {name} gestoor nie. Skrap 'n versameling of kies in Instellings waarheen hulle gaan.} other {Die Evidence Community het nie geantwoord nie, so sommige ingesluite artikels {adding, select, true {is nie by {name} gevoeg nie} other {is nie uit {name} gehaal nie}}}}",
         "title": "Ingesluite artikels gaan na",
         "helpTitle": "Waarheen ingesluite artikels gaan",
         "savedEach": "Gestoor soos elkeen ingesluit word",

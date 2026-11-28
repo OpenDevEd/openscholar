@@ -482,7 +482,7 @@ export const getAction = defineUserQuery({
       destination: job.libraryDestination
         ? { kind: "community" as const, name: job.libraryDestination.name, libraryId: job.libraryDestination.libraryId, libraryCollection: job.libraryDestination.collection, prune: job.prune === true, ...(job.libraryWriteProblem ? { problem: job.libraryWriteProblem } : {}), ...(job.libraryPruneProblem ? { pruneProblem: job.libraryPruneProblem } : {}) }
         : job.newCollection
-          ? { kind: "new" as const, name: job.newCollection, prune: job.prune === true }
+          ? { kind: "new" as const, name: job.newCollection, prune: job.prune === true, ...(job.libraryWriteProblem === "full" ? { problem: "full" as const } : {}) }
           : collection
             ? { kind: "collection" as const, name: collection.name, collectionId: collection._id, prune: job.prune === true }
             : { kind: "none" as const, prune: job.prune === true },
