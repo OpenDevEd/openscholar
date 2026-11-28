@@ -102,15 +102,16 @@ export const begin = internalMutation({
 
 /** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. The check counts it as one of its own it couldn't read. */
 export const fail = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), run: v.optional(v.number()), reason: v.optional(v.string()) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), run: v.optional(v.number()), /** How far into the source the failed step began. */ from: v.optional(v.number()), reason: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { checkId, sourceId, pass, run, reason }) => {
-    // A reading of the source from before it was changed fails nothing: the source is being read again. Nor does a reader the check has moved past.
-    if (((await ctx.db.get("screeningSources", sourceId))?.pass ?? 0) !== pass) return null;
-    if (run !== undefined && ((await ctx.db.get("screeningChecks", checkId))?.run ?? 0) !== run) return null;
+  handler: async (ctx, { checkId, sourceId, pass, run, from, reason }) => {
+    // Only the reading going on now fails the source: never one from before it was changed (it is being read again), a reader the check has moved past, one
+    // of a check that has ended, or a second reader of a step the first has taken in since.
+    const [source, check] = await Promise.all([ctx.db.get("screeningSources", sourceId), ctx.db.get("screeningChecks", checkId)]);
+    if (!source || !check || check.state !== "running" || (source.pass ?? 0) !== pass || (source.state !== "waiting" && source.state !== "reading")) return null;
+    if ((run !== undefined && (check.run ?? 0) !== run) || (from !== undefined && source.read !== from)) return null;
     await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason?.slice(0, FAILURE_SHOWN) });
-    const check = await ctx.db.get("screeningChecks", checkId);
-    if (check && !check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
+    if (!check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
     return null;
   },
 });
@@ -146,7 +147,7 @@ export const gather = internalAction({
         }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
-        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
+        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, from: source.read, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
       }
     }
   },
