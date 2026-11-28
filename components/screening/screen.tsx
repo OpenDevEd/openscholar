@@ -327,7 +327,7 @@ function Screen({ open }: { open: Open }) {
   // While another queue picked is read, the rows and paper still up are the last queue's: they stay where they are, dimmed and out of reach, until the new queue's arrive. One the counts say is empty says so at once.
   // Any change to the list asked for counts (another queue, order, vote picked in Done, or search): the paper of the list before is never voted on while the new one is read.
   // A page turned and not read yet counts too.
-  const switching = listed.isStale && !picked;
+  const switching = (listed.isStale || listed.isOther) && !picked;
   // Another queue picked: until its papers arrive its rows and paper show as skeletons in their places, never the last queue's papers under the new tab.
   // By the list alone, a paper named in the address or not: Back to a queue with its paper named, or a link to a paper in another queue, shows that queue's rows as skeletons too, never the last queue's under its tab. The named paper is read by itself, so it shows.
   const otherQueue = listed.isOther;

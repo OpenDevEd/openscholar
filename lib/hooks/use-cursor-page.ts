@@ -225,6 +225,11 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   // A list not read (`"skip"`) lets go of the rows it showed: asked for again, it is another list's rows until it is read.
   if (args === "skip" && shown !== undefined) setShown(undefined);
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
+  // The list whose rows are up, or were last: another list asked for before the first rows arrive, or after a list
+  // not read (which counts as shown), is another's until its own rows come.
+  const [seen, setSeen] = useState(list);
+  const showing = args === "skip" ? list : (visible?.list ?? seen);
+  if (showing !== seen) setSeen(showing);
   const page = visible?.number ?? want + 1;
   // The same array until the page shown changes, so what's derived from it isn't rebuilt each render.
   const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
@@ -234,8 +239,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     isLoading: visible === undefined || (page === 1 && peek !== undefined && ended === undefined && after === undefined && foundBefore === undefined),
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */
     isStale: visible !== undefined && visible !== data,
-    /** What's shown is of another `list` than the one asked for, still waiting for it: its rows aren't this list's. */
-    isOther: visible !== undefined && visible.list !== list,
+    /** What's up, or was last, is of another `list` than the one asked for, still waiting for it: its rows aren't this list's. */
+    isOther: showing !== list,
     /** The number of the page shown, from 1; it moves when the page it steps to arrives. */
     page,
     /** How many rows the pages before the one shown held; short pages make it less than (page - 1) × size. */
