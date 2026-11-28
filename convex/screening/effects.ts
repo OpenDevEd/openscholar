@@ -251,7 +251,8 @@ export const preview = workspaceAction({
       }));
     await Promise.all([
       // Settled papers are read too where a source is taken out: theirs leave their people's counts.
-      ...(["waiting", "conflict", ...(change.recheck || base.discards || change.removeSources?.length ? SETTLED : [])] as const).map((result) => through(result, change.recheck === true, (read) => add(counted, loads, read))),
+      // A change that moves no paper and takes none out (sources added, a range, the words of a criterion) is counted with no read of the papers.
+      ...(base.decides || change.recheck || base.discards || change.removeSources?.length ? (["waiting", "conflict", ...(change.recheck || base.discards || change.removeSources?.length ? SETTLED : [])] as const) : []).map((result) => through(result, change.recheck === true, (read) => add(counted, loads, read))),
       // How many settled papers the change would move if they were checked again: what it holds back, and what asking for the check lets go.
       ...(base.decides && !change.recheck ? SETTLED : []).map((result) => through(result, true, (read) => { counted.again += read.counted.moves.reduce((sum, move) => sum + move.count, 0); })),
     ]);
