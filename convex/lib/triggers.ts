@@ -19,6 +19,7 @@ import { countAnswerChange, countPaperChange as countPaperFacets } from "../extr
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
 import { keepCard } from "../screening/cards";
+import { countPaperFacets as countScreeningPaper, countVoteFacets as countScreeningVote } from "../screening/facets";
 import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, screeningFileList, screeningList, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
@@ -97,6 +98,9 @@ triggers.register("screeningJobs", followShared("screening"));
 triggers.register("screeningJobs", countList(screeningList));
 triggers.register("screeningFiles", countList(screeningFileList));
 triggers.register("screeningResults", keepCard);
+// A screening's Papers counts under one narrowing read what these keep (../screening/facets.ts).
+triggers.register("screeningResults", countScreeningPaper);
+triggers.register("screeningVotes", countScreeningVote);
 // A guest who edits a screening is one of its reviewers, and one who only looks, or has it no more, is not (../screening/reviewers.ts).
 triggers.register("itemAccess", async (ctx, change) => {
   const grant = change.newDoc ?? change.oldDoc;

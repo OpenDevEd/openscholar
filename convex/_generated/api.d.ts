@@ -367,6 +367,7 @@ import type * as migrations_recordApprovedQueries from "../migrations/recordAppr
 import type * as migrations_reportIntake from "../migrations/reportIntake.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_rotateKeptFiles from "../migrations/rotateKeptFiles.js";
+import type * as migrations_screeningFacets from "../migrations/screeningFacets.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningPeopleFirst from "../migrations/screeningPeopleFirst.js";
 import type * as migrations_screeningReviewers from "../migrations/screeningReviewers.js";
@@ -459,6 +460,7 @@ import type * as screening_doiRecords from "../screening/doiRecords.js";
 import type * as screening_drain from "../screening/drain.js";
 import type * as screening_effects from "../screening/effects.js";
 import type * as screening_estimate from "../screening/estimate.js";
+import type * as screening_facets from "../screening/facets.js";
 import type * as screening_files from "../screening/files.js";
 import type * as screening_filesMail from "../screening/filesMail.js";
 import type * as screening_gathering from "../screening/gathering.js";
@@ -924,6 +926,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/reportIntake": typeof migrations_reportIntake;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/rotateKeptFiles": typeof migrations_rotateKeptFiles;
+  "migrations/screeningFacets": typeof migrations_screeningFacets;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningPeopleFirst": typeof migrations_screeningPeopleFirst;
   "migrations/screeningReviewers": typeof migrations_screeningReviewers;
@@ -1016,6 +1019,7 @@ declare const fullApi: ApiFromModules<{
   "screening/drain": typeof screening_drain;
   "screening/effects": typeof screening_effects;
   "screening/estimate": typeof screening_estimate;
+  "screening/facets": typeof screening_facets;
   "screening/files": typeof screening_files;
   "screening/filesMail": typeof screening_filesMail;
   "screening/gathering": typeof screening_gathering;
@@ -1154,6 +1158,7 @@ export declare const components: {
   listCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"listCounts">;
   libraryFacetCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"libraryFacetCounts">;
   extractionFacetCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"extractionFacetCounts">;
+  screeningFacetCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningFacetCounts">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
   presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };

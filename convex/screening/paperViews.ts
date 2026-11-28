@@ -302,7 +302,7 @@ export const listAction = defineUserQuery({
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
     const others = (also ?? []).flatMap((id) => rowOf(id)?._id ?? []);
-    const keeps = (paper: Paper) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? NO_REASON) === reason));
+    const keeps = (paper: Pick<Paper, "withdrawn" | "result" | "sourceId" | "checkId" | "reason">) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? NO_REASON) === reason));
     // The papers every one of those reviewers voted on.
     const shared = async (paperId: Id<"screeningResults">) => !others.length || others.every((id) => castOn.get(paperId)?.has(id));
     const castOn = new Map<Id<"screeningResults">, Set<Id<"screeningReviewers">>>();
@@ -359,11 +359,12 @@ export const listAction = defineUserQuery({
         // The paper's own filters (a result, a source, a reason) are asked of each vote before the page is cut, so a page is never empty while papers that match lie further on.
       ).filterWith(async (vote) => {
         if (!(await open(vote))) return false;
-        const paper = await ctx.db.get("screeningResults", vote.resultId);
-        if (!paper || !keeps(paper)) return false;
+        // Asked of the paper's card, its few facts, not of the paper with its abstract: only the page's papers are read whole.
+        const card = await ctx.db.query("screeningCards").withIndex("by_result", (q) => q.eq("resultId", vote.resultId)).unique();
+        if (!card || !keeps(card)) return false;
         // The papers every one of the reviewers compared with them voted on too (an agreement cell's list), asked here as well.
         if (!others.length) return true;
-        const cast = new Set((await votesOf(ctx, paper._id)).filter((one) => one.status === "cast").map((one) => one.reviewerId));
+        const cast = new Set((await votesOf(ctx, vote.resultId)).filter((one) => one.status === "cast").map((one) => one.reviewerId));
         return others.every((id) => cast.has(id));
       }).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.
