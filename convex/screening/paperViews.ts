@@ -18,7 +18,7 @@ import { askedOf, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { keepsVotesNow } from "./view";
-import { tallyForReason, tallyForReasonUnder, tallyOfReviewer, tallyOfReviewerForReason, tallyOfReviewerUnder, tallyUnder, tallyUnderBoth, type Way } from "./facets";
+import { tallyForReason, tallyForReasonUnder, tallyOfReviewer, tallyOfReviewerForReason, tallyUnder, type Way } from "./facets";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;
@@ -135,7 +135,7 @@ const readCursor = (cursor: string | null): [string | null, number] => {
   }
 };
 /** Papers a page of a search reads at once to find the ones its filters keep. */
-const SEARCH_SCAN = 200;
+const SEARCH_SCAN = 100;
 
 /**
  * A page of papers found by their words, kept to what `keep` says, so a page is never cut before its filters are
@@ -181,6 +181,8 @@ export const pdf = workspaceQuery({
 
 /** Papers one count looks through: more than any plan gives one screening. Past it, no count is given. */
 const COUNTED = 8_192;
+/** A reviewer's votes one count reads whole, notes and answers with them: 1,500 of the longest fit in what one query reads. ponytail: past it a count narrowed three ways with a reviewer is not given; facets for those triples if people miss it. */
+const VOTES_COUNTED = 1_500;
 
 /**
  * How many of a screening's papers stand each way under what the Papers page is narrowed to: a source, a check, a
@@ -219,8 +221,8 @@ export const counts = workspaceQuery({
     }
     if (narrowed === 2) {
       if (row && reason) return await tallyOfReviewerForReason(ctx, row._id, ways, reason);
-      if (row) return await tallyOfReviewerUnder(ctx, row._id, ways, source ? { source } : { check: check! });
-      if (source && check) return await tallyUnderBoth(ctx, jobId, source, check);
+      if (row) return await tallyOfReviewer(ctx, row._id, ways, source ? { source } : { check: check! });
+      if (source && check) return await tallyUnder(ctx, jobId, { source, check });
       return await tallyForReasonUnder(ctx, jobId, reason!, source ? { source } : { check: check! });
     }
     // Narrowed three ways at once, the cards of the narrower way are counted one by one: a reviewer's votes, or the papers of one reason, check or source.
@@ -238,8 +240,8 @@ export const counts = workspaceQuery({
       : voted
         ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
         : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
-    ).take(COUNTED + 1);
-    if (theirs.length > COUNTED) return null;
+    ).take(VOTES_COUNTED + 1);
+    if (theirs.length > VOTES_COUNTED) return null;
     // Their votes are matched to the cards of the other narrowing, read in one range: one read a vote would pass a transaction's index ranges on a large screening.
     const cards = await cardsOf(ctx, jobId, { reason, check, source }).take(COUNTED + 1);
     if (cards.length > COUNTED) return null;

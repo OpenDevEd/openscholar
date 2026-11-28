@@ -159,8 +159,8 @@ const countEach = (ctx: QueryCtx, namespace: string, keys: Key[]) =>
   screeningCounts.countBatch(ctx, keys.map((key) => ({ namespace, bounds: { eq: key } })) as never, { stale: true });
 
 /** How many of a screening's papers stand each way under one source, or one check. */
-export async function tallyUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, under: { source: Id<"screeningSources"> } | { check: Id<"screeningChecks"> }): Promise<Tally> {
-  const counts = await countEach(ctx, "source" in under ? sourceOf(jobId, under.source) : checkOf(jobId, under.check), [...RESULTS]);
+export async function tallyUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, under: Under | { source: Id<"screeningSources">; check: Id<"screeningChecks"> }): Promise<Tally> {
+  const counts = await countEach(ctx, "source" in under && "check" in under ? sourceAndCheck(jobId, under.source, under.check) : "source" in under ? sourceOf(jobId, under.source) : checkOf(jobId, under.check), [...RESULTS]);
   return Object.fromEntries(RESULTS.map((result, at) => [result, counts[at]!])) as Tally;
 }
 
@@ -175,10 +175,10 @@ export async function tallyForReason(ctx: QueryCtx, jobId: Id<"screeningJobs">, 
   return { ...none(), exclude: (await excludedFor(ctx, jobId, [reason]))[reason] ?? 0 };
 }
 
-/** How many of the papers a reviewer stands one of `ways` on stand each way. */
-export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[]): Promise<Tally> {
+/** How many of the papers a reviewer stands one of `ways` on stand each way: all of them, or those one source or one check brought. */
+export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[], under?: Under): Promise<Tally> {
   const keys = ways.flatMap((way) => RESULTS.map((result) => `${way}|${result}`));
-  const counts = await countEach(ctx, reviewerOf(reviewerId), keys);
+  const counts = await countEach(ctx, under ? reviewerUnder(reviewerId, under) : reviewerOf(reviewerId), keys);
   const tally = none();
   keys.forEach((key, at) => (tally[key.split("|")[1] as Result] += counts[at]!));
   return tally;
@@ -188,25 +188,10 @@ export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningRe
 export const castSince = (ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, since: number) =>
   screeningCounts.count(ctx, { namespace: castOf(reviewerId), bounds: { lower: { key: since, inclusive: true } }, stale: true });
 
-/** How many of the papers a reviewer stands one of `ways` on stand each way, of those one source or one check brought. */
-export async function tallyOfReviewerUnder(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[], under: Under): Promise<Tally> {
-  const keys = ways.flatMap((way) => RESULTS.map((result) => `${way}|${result}`));
-  const counts = await countEach(ctx, reviewerUnder(reviewerId, under), keys);
-  const tally = none();
-  keys.forEach((key, at) => (tally[key.split("|")[1] as Result] += counts[at]!));
-  return tally;
-}
-
 /** How many of the papers a reviewer stands one of `ways` on are excluded for `reason`. */
 export async function tallyOfReviewerForReason(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[], reason: string): Promise<Tally> {
   const counts = await countEach(ctx, reviewerReasons(reviewerId), ways.map((way) => `${way}|${reason}`));
   return { ...none(), exclude: counts.reduce((sum, n) => sum + n, 0) };
-}
-
-/** How many of the papers one source brought in one check stand each way. */
-export async function tallyUnderBoth(ctx: QueryCtx, jobId: Id<"screeningJobs">, sourceId: Id<"screeningSources">, checkId: Id<"screeningChecks">): Promise<Tally> {
-  const counts = await countEach(ctx, sourceAndCheck(jobId, sourceId, checkId), [...RESULTS]);
-  return Object.fromEntries(RESULTS.map((result, at) => [result, counts[at]!])) as Tally;
 }
 
 /** How many of the papers one source or one check brought are excluded for `reason`. */

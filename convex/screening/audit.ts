@@ -10,7 +10,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { isFinal, NAMED_REASONS, NO_REASON, settle, type Ballot, type Result } from "../../lib/screening/rules";
-import { excludedFor, tallyOfReviewer, tallyOfReviewerUnder, tallyUnder, tallyUnderBoth, type Tally } from "./facets";
+import { excludedFor, tallyOfReviewer, tallyUnder, type Tally } from "./facets";
 
 const DECISIONS = ["include", "maybe", "exclude"] as const;
 /** Rows of one kind an audit reads: a screening's papers, votes or cards, which a screening of 5,000 papers stays well within. */
@@ -64,7 +64,7 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
   for (const paper of live) {
     const on = votes.filter((vote) => vote.resultId === paper._id);
     const result: Result = paper.result ?? "waiting";
-    const ballots: Ballot[] = on.map((vote) => ({ status: vote.status, decision: vote.decision, at: vote.at, reason: vote.reason }));
+    const ballots: Ballot[] = on.map((vote) => ({ status: vote.status, decision: vote.decision, at: vote.at, reason: vote.reason, kind: byId.get(vote.reviewerId)?.kind }));
     // A paper settled before the settings last changed keeps its result. Any other stands where its votes put it.
     const held = isFinal(result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
     const voted = paper.resolved ? paper.resolved.decision : settle(rule.settle, ballots, rule.models);
@@ -134,13 +134,13 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     const theirs = votes.filter((vote) => vote.reviewerId === reviewer._id && (vote.status === "waiting" || vote.status === "cast" || vote.status === "failed")).flatMap((vote) => { const card = cardOf.get(vote.resultId); return card && !card.withdrawn ? [card] : []; });
     for (const under of [...sourceIds.map((source) => ({ source })), ...checkIds.map((check) => ({ check }))]) {
       const read = tally(theirs.filter((card) => ("source" in under ? card.sourceId === under.source : card.checkId === under.check)).map((card) => card.result));
-      const counted = await tallyOfReviewerUnder(ctx, reviewer._id, [...ways], under);
+      const counted = await tallyOfReviewer(ctx, reviewer._id, [...ways], under);
       if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`${names.get(reviewer._id)} under ${JSON.stringify(under)}: counted ${JSON.stringify(counted)}, their papers ${JSON.stringify(read)}`);
     }
   }
   for (const sourceId of sourceIds) for (const checkId of checkIds) {
     const read = tally(liveCards.filter((card) => card.sourceId === sourceId && card.checkId === checkId).map((card) => card.result));
-    const counted = await tallyUnderBoth(ctx, jobId, sourceId, checkId);
+    const counted = await tallyUnder(ctx, jobId, { source: sourceId, check: checkId });
     if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`source ${sourceId} under check ${checkId}: counted ${JSON.stringify(counted)}, its papers ${JSON.stringify(read)}`);
   }
 

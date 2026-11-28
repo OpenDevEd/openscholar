@@ -315,8 +315,12 @@ export const reviewerCountsValidator = v.object({ cast: v.number(), include: v.n
 // ── What the pages read (./view.ts, ./paperViews.ts) ─────────────────────────────────────────────
 // Each list here is one its writes keep within a cap: a screening's reviewers and sources, and a paper's votes.
 
-/** The most reviewers a screening has, people who left it included, and the most sources it has ever had. */
-export const MAX_REVIEWERS = 200;
+/**
+ * The most reviewers a screening has, people who left it included, and the most sources it has ever had. Under
+ * "everyone votes" a paper settled adds to the agreement of every pair of its voters, one read and one write each in
+ * the step that settles it: 45 reviewers make 990 pairs, well within the 4,096 ranges a transaction reads, and a list one read returns.
+ */
+export const MAX_REVIEWERS = 45;
 export const MAX_SOURCE_ROWS = 100;
 /** The sources one check couldn't read. */
 export const unreadSourcesValidator = capped(v.optional(v.array(v.id("screeningSources"))), MAX_SOURCE_ROWS);
@@ -468,8 +472,8 @@ export const paperViewValidator = v.object({
   asked: v.optional(v.boolean()),
 });
 
-/** Pairs of reviewers whose agreement one read holds. */
-export const PAIRS_MAX = 400;
+/** Pairs of reviewers whose agreement one read holds: every pair a screening can have. */
+export const PAIRS_MAX = (MAX_REVIEWERS * (MAX_REVIEWERS - 1)) / 2;
 /** The figures a screening's overview and its files are drawn from (./view.ts `figures`). */
 export const figuresValidator = v.object({
   // Its excluded papers by the reason, and its included ones by the source that brought each.
