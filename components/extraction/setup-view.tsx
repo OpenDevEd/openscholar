@@ -146,13 +146,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
       scope={source.scope}
       onScope={(next: Scope) => (next === "all" ? setRange(source.key, 1, source.total, "all") : setRange(source.key, source.first, source.last, "range"))}
       range={[source.first, source.last]}
-      onRange={(update) => {
-        // Worked out from the range as it stands now, as the fields expect.
-        const now = workspaceId ? useExtractionStore.getState().draftJob.papers[workspaceId]?.sources.find((s) => s.key === source.key) : undefined;
-        if (!now) return;
-        const [first, last] = typeof update === "function" ? update([now.first, now.last]) : update;
-        setRange(source.key, first, last, "range");
-      }}
+      onRange={([first, last]) => setRange(source.key, first, last, "range")}
       total={source.total}
       most={source.last + room}
       label={ts("papers")}

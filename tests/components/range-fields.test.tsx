@@ -1,8 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * #688: a typed range end moves the range once it's a paper the range can end on, and snaps into
- * the range when the field is left or Enter is pressed, never on each keystroke.
+ * #688: a typed range end snaps into the range when the field is left or Enter is pressed. The range
+ * changes only then, never on each keystroke: whatever reads it (the server reading a source, a
+ * screening's preview of a change) runs once a change.
  */
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -17,13 +18,10 @@ function Range({ start, seen }: { start: [number, number]; seen: [number, number
   return (
     <RangeFields
       value={value}
-      onChange={(next) =>
-        setValue((current) => {
-          const range = typeof next === "function" ? next(current) : next;
-          seen.push(range);
-          return range;
-        })
-      }
+      onChange={(range) => {
+        seen.push(range);
+        setValue(range);
+      }}
       total={500}
       labels={LABELS}
     />
@@ -31,7 +29,7 @@ function Range({ start, seen }: { start: [number, number]; seen: [number, number
 }
 
 describe("a screening's range fields", () => {
-  it("take the number typed into To, past one under From on the way", async () => {
+  it("take the number typed into To once it is left, past one under From on the way", async () => {
     const seen: [number, number][] = [];
     render(<Range start={[100, 300]} seen={seen} />);
     const to = screen.getByRole("spinbutton", { name: "Last paper" });
@@ -40,7 +38,9 @@ describe("a screening's range fields", () => {
     await userEvent.type(to, "120");
 
     expect(to).toHaveValue(120);
-    // "1" and "12" end before From's 100, so the range waited for "120".
+    // Nothing changes while it is typed: "1" and "12" end before From's 100 and would snap.
+    expect(seen).toEqual([]);
+    await userEvent.tab();
     expect(seen).toEqual([[100, 120]]);
   });
 
@@ -58,7 +58,7 @@ describe("a screening's range fields", () => {
     expect(from).toHaveValue(50);
   });
 
-  it("keep a From snapped as the slider is pressed, moving To from there", async () => {
+  it("keep a From snapped as the slider is pressed, moving To from there once it is let go of", async () => {
     const seen: [number, number][] = [];
     const { container } = render(<Range start={[1, 50]} seen={seen} />);
     const from = screen.getByRole("spinbutton", { name: "First paper" });
@@ -68,9 +68,11 @@ describe("a screening's range fields", () => {
     // Pressing the track at paper 90 takes focus from From, which snaps to 50, and moves To in the same moment.
     const slider = container.querySelector<HTMLElement>("[data-slot=slider]")!;
     slider.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 499, height: 20, right: 499, bottom: 20, toJSON() {} });
-    // jsdom has no pointer capture, which the slider takes on a press.
-    Object.assign(slider, { setPointerCapture() {}, hasPointerCapture: () => false, releasePointerCapture() {} });
+    // jsdom has no pointer capture, which the slider takes on a press and ends the slide by on release.
+    Object.assign(slider, { setPointerCapture() {}, hasPointerCapture: () => true, releasePointerCapture() {} });
     fireEvent.pointerDown(slider, { clientX: 89, clientY: 5, pointerId: 1, button: 0 });
+    // Only From's snap so far: the slider's move is the range once it is let go of.
+    expect(seen).toEqual([[50, 50]]);
     fireEvent.pointerUp(slider, { clientX: 89, clientY: 5, pointerId: 1, button: 0 });
 
     expect(seen.at(-1)).toEqual([50, 90]);

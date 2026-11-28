@@ -4,7 +4,7 @@
 // papers or a screening. Screening picks one; extraction takes several. Picked, a row opens to how
 // many of its papers to read.
 
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Check, type AppIcon } from "@/components/icons";
@@ -96,7 +96,7 @@ export function PaperScope({ search, page = search, scope, onScope, range, onRan
   scope: Scope;
   onScope: (scope: Scope) => void;
   range: [number, number];
-  onRange: Dispatch<SetStateAction<[number, number]>>;
+  onRange: (range: [number, number]) => void;
   total: number;
   /** How far the range may reach, where the plan has room for fewer than `total`. */
   most?: number;
@@ -126,14 +126,14 @@ export function PaperScope({ search, page = search, scope, onScope, range, onRan
 
 /**
  * Papers `value[0]` to `value[1]` of a source's `total`: a slider for the rough pick and typeable
- * ends for an exact one, since over thousands of papers a drag can't land on one. A typed end
- * moves the range once it's a paper the range can end on, and snaps into it when the field is left.
- * Each change is worked out from the range as it stands, so a slider move just after a field
- * snaps starts from the snap.
+ * ends for an exact one, since over thousands of papers a drag can't land on one. The range changes
+ * once a change is let go of, when the slider is released or a field is left: whatever reads the
+ * range (a count, a preview, the server reading the source) then runs once a change, never once a
+ * step of a drag or a key typed.
  */
 export function RangeFields({ value, onChange, total, most = total, held, labels }: {
   value: [number, number];
-  onChange: Dispatch<SetStateAction<[number, number]>>;
+  onChange: (range: [number, number]) => void;
   total: number;
   /** How far the range may reach, where the plan has room for fewer than `total`. */
   most?: number;
@@ -142,15 +142,19 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
   labels: { slider: string; from: string; to: string; of: string; first: string; last: string };
 }) {
   const top = Math.max(1, Math.min(total, most));
-  const [first, last] = value;
+  // The end the slider is dragging and the paper it is at: shown, and not yet the range. It is kept as a move of
+  // that end, not as a range, so a field that snapped in the same moment the slider was pressed is kept.
+  const [dragged, setDragged] = useState<{ end: 0 | 1; n: number } | null>(null);
   // The end being typed, as typed, so a half-typed number isn't rewritten under the cursor.
   const [typing, setTyping] = useState<{ end: 0 | 1; text: string } | null>(null);
-  /** Moves one end to `n`, kept between the papers the range as it stands lets that end reach. */
-  const move = (end: 0 | 1, n: number) =>
-    onChange((current) => {
-      const [a, b] = [Math.min(current[0], top), Math.min(current[1], top)];
-      return end === 0 ? [Math.min(b, held?.range[0] ?? b, Math.max(1, n)), b] : [a, Math.min(top, Math.max(a, held?.range[1] ?? a, n))];
-    });
+  /** `range` with one end moved to `n`, kept between the papers the other end and the papers held let that end reach. */
+  const moved = ([a, b]: [number, number], end: 0 | 1, n: number): [number, number] => {
+    [a, b] = [Math.min(a, top), Math.min(b, top)];
+    return end === 0 ? [Math.min(b, held?.range[0] ?? b, Math.max(1, n)), b] : [a, Math.min(top, Math.max(a, held?.range[1] ?? a, n))];
+  };
+  const [first, last] = dragged ? moved(value, dragged.end, dragged.n) : value;
+  /** The end the slider moved: the one whose paper differs from what it was drawn with. */
+  const endOf = (next: number[]): 0 | 1 => (next[0] !== first ? 0 : 1);
   const field = (end: 0 | 1, label: string) => {
     const [low, high] = end === 0 ? [1, Math.min(last, held?.range[0] ?? last)] : [Math.max(first, held?.range[1] ?? first), top];
     return (
@@ -158,16 +162,15 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
         type="number"
         min={low}
         max={high}
-        value={typing?.end === end ? typing.text : value[end]}
-        onChange={(e) => {
-          setTyping({ end, text: e.target.value });
-          const n = Number(e.target.value);
-          if (e.target.value && Number.isInteger(n) && n >= low && n <= high) move(end, n);
-        }}
+        value={typing?.end === end ? typing.text : [first, last][end]}
+        onChange={(e) => setTyping({ end, text: e.target.value })}
         onFocus={(e) => e.target.select()}
         onBlur={() => {
-          if (typing?.end === end) move(end, Math.round(Number(typing.text)) || 0);
           setTyping(null);
+          if (typing?.end !== end) return;
+          // What was typed snaps into what that end can reach: an emptied field to the nearest it can.
+          const range = moved(value, end, Math.round(Number(typing.text)) || 0);
+          if (range[0] !== value[0] || range[1] !== value[1]) onChange(range);
         }}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
         aria-label={label}
@@ -177,7 +180,21 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
   };
   return (
     <div className="space-y-3">
-      <Slider min={1} max={top} step={1} value={[first, last]} onValueChange={(v) => (v[0] !== first ? move(0, v[0]!) : move(1, v[1]!))} aria-label={labels.slider} />
+      <Slider
+        min={1}
+        max={top}
+        step={1}
+        value={[first, last]}
+        onValueChange={(next) => setDragged({ end: endOf(next), n: next[endOf(next)]! })}
+        // Released, or moved by a key. A key press commits in the same moment it moves, before the drag is drawn: its end is told from what it moved.
+        onValueCommit={(next) => {
+          const { end, n } = dragged ?? { end: endOf(next), n: next[endOf(next)]! };
+          setDragged(null);
+          const range = moved(value, end, n);
+          if (range[0] !== value[0] || range[1] !== value[1]) onChange(range);
+        }}
+        aria-label={labels.slider}
+      />
       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         {labels.from}
         {field(0, labels.first)}
