@@ -1127,7 +1127,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
           <ShutNote by="reviewer">{paper.withdrawn ? screen("shut.left") : screen("shut.finished", { canChange: String(open.canChange) })}</ShutNote>
         ) : (
           <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
-            <h3 className="text-sm font-medium">{mine ? t("panel.changeVote") : state.resolvedBy === open.me ? screen("votes.settledBy", { you: "true", name: "" }) : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
+            <h3 className="text-sm font-medium">{/* What the buttons under it cast is the person's vote, never the settling: one they settled themselves says so at the foot, with its note and Reopen. */}{mine ? t("panel.changeVote") : state.final ? t("panel.settledWithoutYou") : t("panel.waitingForYou")}</h3>
             {buttons("vote")}
             {/* Changing a vote can be let go, as the override can: the vote stands as it was. */}
             {/* Or taken back, and the paper waits for the person's vote again: what a selection's Undo does, for as long as the screening runs. */}
