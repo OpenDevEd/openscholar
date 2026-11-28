@@ -83,17 +83,19 @@ export function YourSubmissions({ search, heading, submissions }: { search: stri
         {read.isLoading ? (
           <ListLoading label={t("tabSubmissions")} />
         ) : read.items.length ? (
-          // A full page's height while there are pages, so a short last page keeps the pager where it was.
-          <ul
-            key={`${show}:${search}:${read.page}`}
-            className={cn("fade-enter divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle", read.isStale && STALE_ROWS)}
-            inert={read.isStale || undefined}
-            style={read.hasPages ? { minHeight: `calc(${PER_PAGE * ROW_REM}rem + ${PER_PAGE + 1}px)` } : undefined}
-          >
-            {read.items.map((submission) => (
-              <SubmissionRow key={submission.submissionId} submission={submission} date={format.dateTime(submission.sentAt, { day: "numeric", month: "short" })} />
-            ))}
-          </ul>
+          // A full page's height while there are pages, so a short last page keeps the pager where it was. Each list enters
+          // on a wrapper of its own: the list dims while the next is read, and one element never animates and transitions at once.
+          <div key={`${show}:${search}:${read.page}`} className="fade-enter">
+            <ul
+              className={cn("divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle", read.isStale && STALE_ROWS)}
+              inert={read.isStale || undefined}
+              style={read.hasPages ? { minHeight: `calc(${PER_PAGE * ROW_REM}rem + ${PER_PAGE + 1}px)` } : undefined}
+            >
+              {read.items.map((submission) => (
+                <SubmissionRow key={submission.submissionId} submission={submission} date={format.dateTime(submission.sentAt, { day: "numeric", month: "short" })} />
+              ))}
+            </ul>
+          </div>
         ) : (
           <ListEmpty icon={SearchX} description={search || show !== "all" ? undefined : t("noneYetHint")}>
             {search || show !== "all" ? t("noMatches") : t("noneYet")}
