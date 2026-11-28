@@ -136,7 +136,7 @@ const criterionOf = (screening: Screening) => (criterion: Criterion) => {
   return { ...(criterion.key.startsWith("new:") ? {} : { key: criterion.key }), text: criterion.text, short: criterion.short, must: criterion.must, ...(criterion.note?.trim() ? { note: criterion.note.trim() } : {}), terms: criterion.terms, points: { yes, no, unclear } };
 };
 const ruleOf = (screening: Screening, members: Reviewer[]) => ({ each: eachOf(screening.rule), settle: screening.rule.settle, blind: screening.rule.blind, models: screening.rule.models, ...(members.some((one) => one.id === screening.rule.resolver) ? { resolver: screening.rule.resolver as Id<"users"> } : {}) });
-/** How long the form waits after the last change to a new screening's sources before the server reads them: a range being dragged, or a second source on its way, is one read and not several. */
+/** How long the form waits after the last change to a new screening's sources before the server reads them: a second source added on the heels of the first is one read and not two. A range changes only once it is let go of (./source-row.tsx `RangeFields`). */
 const SOURCES_SETTLE_MS = 1_200;
 /**
  * The papers a source holds, for the row that takes them all. A Zotero collection added with everything under it
@@ -593,11 +593,17 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What a wider range of a source promises is found as much as it is to screen: counted in both, so what was merged is never under what it was.
   const found = foundTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
   // What its sources hold, and what a wider range of one of them promises on top: nobody knows how many of those are new until the source is read again.
-  const papers = paperTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
+  const promises = paperTotal(sources) + (saved ? widenedBy(saved, draft) : 0);
+  // The most papers its plan gives one screening (null for no limit). Reading stops once the screening holds that many, whatever its sources hold, so nothing is refused for promising more: it holds that many at most (convex/screening/gathering.ts `fill`).
+  const most = setup?.limits.papers ?? null;
+  const papers = most !== null && promises > most ? most : promises;
   const pdfs = pdfsOf(sources);
-  // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to".
-  const promisedNew = saved ? promisedBy(saved, draft) : 0;
-  const upTo = Boolean(promisedNew);
+  // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to". So does one that promises more than the plan's limit.
+  // They bring no more than the room the plan has left: reading stops there, so the papers past it are never read nor priced.
+  const promisedAll = saved ? promisedBy(saved, draft) : 0;
+  const room = most === null ? undefined : Math.max(0, most - (promises - promisedAll));
+  const promisedNew = Math.min(promisedAll, room ?? Infinity);
+  const upTo = Boolean(promisedNew) || papers < promises;
   // Some of those can come as their PDF, which costs by the page: the figures count each as a paper with an abstract, and the cost says what they leave out.
   const pdfsUnpriced = Boolean(saved && pdfsPromised(saved, draft));
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
@@ -637,7 +643,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!));
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
   const heldNow = open?.modelsNow ?? null;
-  const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
+  const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(room === undefined ? {} : { room }), ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
   const moves = saved && changing && known ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
   // A model excludes only for a must-have it finds unmet: with none it would include every paper.
@@ -661,8 +667,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const unasked = draft.criteria.some((criterion) => !criterion.text.trim()) ? { id: "emptyCriterion", text: t("block.emptyCriterion"), section: "criteria" as const, focus: "#criteria textarea[aria-invalid=true]" } : null;
   // What it has to be able to pay for now: all its reading to start, and for a running screening only what the save itself has the models read. What is left to read is paid for as it is read, and stops where the credits do.
   const owed = saved ? reread : cost;
-  // What its plan lets one screening hold: papers, and models reading them.
-  const overPapers = setup?.limits.papers !== undefined && setup.limits.papers !== null && papers > setup.limits.papers ? setup.limits.papers : null;
+  // What its plan lets one screening have read: so many models. Papers past its limit are never read (`papers`).
   const overModels = setup && models.length > setup.limits.models ? setup.limits.models : null;
   // Papers that are only a PDF none of its reviewers can read: they would wait for a vote nobody casts.
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
@@ -672,7 +677,6 @@ export function ScreeningForm({ id }: { id?: string }) {
     ...(saved && !draft.name.trim() ? [{ id: "needsName", text: t("block.needsName"), focus: "#screening-name" }] : []),
     ...(unasked ? [unasked] : []),
     ...(needsCriteria ? [{ id: "needsMust", text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: draft.criteria.length ? "#criteria [role=radiogroup] button" : "#new-criterion" }] : []),
-    ...(overPapers !== null ? [{ id: "overPapers", text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" as const }] : []),
     ...(overModels !== null ? [{ id: "overModels", text: t("block.overModels", { count: overModels }), section: "reviewers" as const }] : []),
     ...(orphaned ? [{ id: "orphaned", text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers" as const, focus: "#add-person" }] : []),
     // Credits short is said where the models are and where the cost is: either one fixes it.
@@ -1075,7 +1079,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reading ? <Chip><Spinner className="size-3" />{t("papers.stillReading")}</Chip> : null}
                 <Chip>{t.rich("papers.found", { soFar, n: () => <AnimatedNumber value={found + leftTotal(sources)} /> })}</Chip>
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
-                {found - papers > 0 ? <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip> : null}
+                {found - promises > 0 ? <Chip>{t.rich("papers.merged", { count: found - promises, n: () => <AnimatedNumber value={found - promises} /> })}</Chip> : null}
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved && papers ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
@@ -1125,13 +1129,15 @@ export function ScreeningForm({ id }: { id?: string }) {
                           const range: [number, number] = was.scope === "range" ? was.range : [1, Math.max(1, baseTotal(was))];
                           return { range, note: t("papers.rangeHeld", { first: words.num(range[0]), last: words.num(range[1]) }) };
                         };
+                        // A source that alone promises more papers than the plan gives one screening is read only until the screening holds that many: its line says so.
+                        const capped = { capped: String(most !== null && baseTaken(source) > most), most: most ?? 0 };
                         // The part of it that is read, which is also where that is changed: offered while it is being read too.
                         const range = baseTotal(source) > 1 ? (
                                         <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source) }) : keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source), ...capped }) : keptOf(source) === baseTotal(source) && capped.capped === "false" ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}
                                           <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
                                         </button>
-                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source) })}</span>;
+                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) && capped.capped === "false" ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             {/* What arrives once it is read (a line of counts under the bar on a phone, a chip) slides the row open rather than pushing the rows under it. */}
@@ -1256,14 +1262,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       scope={source.scope}
                                       onScope={(scope) => patchSource(source.id, { scope: scope === "all" ? "all" : "range" })}
                                       range={source.range}
-                                      onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
+                                      onRange={(range) => patchSource(source.id, { range })}
                                       total={baseTotal(source)}
                                       held={heldRange(source)}
                                       label={t("papers.of", { name: source.name })}
                                       summary={<p className="text-xs text-muted-foreground">{heldBy(source) === null ? t("papers.everyDeep") : t("papers.everyOne", { count: heldBy(source)! })}</p>}
                                     />
                                     {/* While it is read, the titles hold the room its range promises: nothing arrives under the row once it is open. */}
-                                    {SAMPLED.has(source.kind) && source.set && promised(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={promised(source)} /> : null}
+                                    {SAMPLED.has(source.kind) && source.set && promised(source) ? <SampleTitles set={source.set} sourceId={id ? rowOf(source)?.sourceId : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={most === null ? promised(source) : Math.min(most, promised(source))} /> : null}
                                     {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}
                                     {link && promised(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
@@ -2011,15 +2017,13 @@ const SAMPLE = 3;
 function SampleTitles({ set, sourceId, first, taken }: { set: NonNullable<Source["set"]>; /** The source's row, once the screening reads it. */ sourceId?: Id<"screeningSources">; first: number; taken: number }) {
   const t = useTranslations("screening.form");
   const read = useWorkspaceAction(api.screening.sampling.sample);
-  // A range dragged by its slider is read once it rests.
-  const at = useDebouncedValue(first, 400);
   const lines = Math.min(SAMPLE, taken);
-  const titles = useSWR(["screening-sample", JSON.stringify(set), at], () => read({ set: set as never, first: at, ...(sourceId ? { sourceId } : {}) }), { revalidateOnFocus: false, keepPreviousData: true });
+  const titles = useSWR(["screening-sample", JSON.stringify(set), first], () => read({ set: set as never, first, ...(sourceId ? { sourceId } : {}) }), { revalidateOnFocus: false, keepPreviousData: true });
   // A source that can't be read at this place shows none, and takes no room for them.
   if (titles.data && !titles.data.length) return null;
   if (titles.error) return null;
   return (
-    <ul aria-label={t("papers.firstPapers")} className={cn("space-y-1 border-t border-border-subtle pt-3 transition-opacity duration-300", (!titles.data || at !== first) && "opacity-50")} style={{ minHeight: `calc(${lines + (taken > lines ? 1 : 0)} * 1.25rem + 0.5rem)` }}>
+    <ul aria-label={t("papers.firstPapers")} className={cn("space-y-1 border-t border-border-subtle pt-3 transition-opacity duration-300", (!titles.data || titles.isValidating) && "opacity-50")} style={{ minHeight: `calc(${lines + (taken > lines ? 1 : 0)} * 1.25rem + 0.5rem)` }}>
       {(titles.data ?? []).slice(0, lines).map((paper, i) => (
         <li key={i} className="flex min-w-0 animate-in fade-in text-xs duration-300">
           <span className="truncate text-muted-foreground">{paper.year ? t("papers.titleYear", { title: paper.title, year: String(paper.year) }) : paper.title}</span>
