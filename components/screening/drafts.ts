@@ -10,14 +10,11 @@ import type { Answer } from "@/lib/screening/rules";
 import type { Reviewer, Screening } from "./data";
 import type { DiscussionDraft } from "./discussion";
 
-/** What is written on a paper and not sent yet, by paper: answers before the vote, a note, a message to the others. Kept here, not in the page, so going to another tab of the screening and back loses none of it. */
+/** What is written on a paper and not sent yet, by paper: answers before the vote, a note (a settling's under `settle:` and the paper), a message to the others. Kept here, not in the page, so going to another tab of the screening and back loses none of it, and Screen and the Papers drawer show the same. */
 type InHand = {
   answers: Record<string, Record<string, Answer>>;
   notes: Record<string, string>;
   talks: Record<string, DiscussionDraft>;
-  /** The Papers drawer's notes, on a vote and on a settled result. */
-  paperNotes: Record<string, Partial<Record<"vote" | "result", string>>>;
-  paperTalks: Record<string, DiscussionDraft>;
 };
 
 type Kept = {
@@ -55,7 +52,7 @@ export const useKept = create<Store>()(
       folded: false,
       guides: [],
       paced: {},
-      inHand: { answers: {}, notes: {}, talks: {}, paperNotes: {}, paperTalks: {} },
+      inHand: { answers: {}, notes: {}, talks: {} },
       draft: (key, change) =>
         set((state) => {
           const next = change(state.drafts[key]);

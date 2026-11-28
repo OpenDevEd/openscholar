@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} de {of, plural, one {# fuente comprobada} other {# fuentes comprobadas}}",
-        "arrived": "{count, plural, one {Llegó <link># artículo nuevo</link>} other {Llegaron <link># artículos nuevos</link>}} {ago}",
-        "screenNew": "Cribe primero sus {count, plural, one {# artículo nuevo} other {# artículos nuevos}}",
         "arrivedForYou": "{count, plural, one {Llegó # artículo nuevo para usted {ago}} other {Llegaron # artículos nuevos para usted {ago}}}",
         "nothing": "La última comprobación no encontró artículos nuevos",
         "counting": "<done></done> de {of, number}",

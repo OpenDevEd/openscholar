@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} von {of, plural, one {# Quelle} other {# Quellen}} abgefragt",
-        "arrived": "<link>{count, plural, one {# neuer Artikel} other {# neue Artikel}}</link> {count, plural, one {kam} other {kamen}} {ago} an",
-        "screenNew": "Prüfen Sie zuerst {count, plural, one {Ihren # neuen Artikel} other {Ihre # neuen Artikel}}",
         "arrivedForYou": "{count, plural, one {# neuer Artikel für Sie kam {ago} an} other {# neue Artikel für Sie kamen {ago} an}}",
         "nothing": "Die letzte Abfrage hat keine neuen Artikel gefunden",
         "counting": "<done></done> von {of, number}",

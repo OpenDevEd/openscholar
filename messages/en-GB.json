@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
-        "arrived": "<link>{count, plural, one {# new paper} other {# new papers}}</link> came in {ago}",
-        "screenNew": "Screen your {count, plural, one {# new paper} other {# new papers}} first",
         "arrivedForYou": "{count, plural, one {# new paper for you came in {ago}} other {# new papers for you came in {ago}}}",
         "nothing": "The last check found no new papers",
         "counting": "<done></done> of {of, number}",

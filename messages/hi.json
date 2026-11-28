@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{of, plural, one {# स्रोत} other {# स्रोतों}} में से {done, number} देखे गए",
-        "arrived": "{ago} <link>{count, plural, one {# नया लेख आया} other {# नए लेख आए}}</link>",
-        "screenNew": "पहले अपने {count, plural, one {# नए लेख} other {# नए लेख}} स्क्रीन करें",
         "arrivedForYou": "{count, plural, one {{ago} आपके लिए # नया लेख आया} other {{ago} आपके लिए # नए लेख आए}}",
         "nothing": "पिछली जाँच में कोई नया लेख नहीं मिला",
         "counting": "{of, number} में से <done></done>",

@@ -15,7 +15,11 @@ export const send = internalAction({
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const notice = await ctx.runQuery(internal.screening.notices.context, args);
-    if (!notice) return null;
+    // Conflicts settled before their email went: none went, so the day it holds the next one back is let go.
+    if (!notice) {
+      if (args.about === "conflicts") await ctx.runMutation(internal.screening.notices.conflictsUnsent, { jobId: args.jobId, userId: args.userId });
+      return null;
+    }
     try {
       await sendInvitationEmail(requireInvitationMail(), { senderName: "Openscholar", to: notice.email, ...screeningNoticeMessage({ origin: requireAppUrl(), path: notice.path, name: notice.name, about: args.about, count: notice.count, ...(notice.more ? { more: true } : {}), ...(notice.finished ? { finished: true } : {}), ...(notice.living ? { living: true } : {}), ...(notice.by ? { by: notice.by } : {}) }) });
     } catch (error) {

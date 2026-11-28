@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{done, number} sur {of, plural, one {# source vérifiée} other {# sources vérifiées}}",
-        "arrived": "<link>{count, plural, one {# nouvel article} other {# nouveaux articles}}</link> {count, plural, one {arrivé} other {arrivés}} {ago}",
-        "screenNew": "Criblez d'abord {count, plural, one {votre nouvel article} other {vos # nouveaux articles}}",
         "arrivedForYou": "{count, plural, one {# nouvel article pour vous arrivé {ago}} other {# nouveaux articles pour vous arrivés {ago}}}",
         "nothing": "La dernière vérification n'a trouvé aucun nouvel article",
         "counting": "<done></done> sur {of, number}",

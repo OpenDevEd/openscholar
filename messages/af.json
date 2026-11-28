@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} van {of, plural, one {# bron} other {# bronne}} gekontroleer",
-        "arrived": "<link>{count, plural, one {# nuwe artikel} other {# nuwe artikels}}</link> het {ago} ingekom",
-        "screenNew": "Sif eers jou {count, plural, one {# nuwe artikel} other {# nuwe artikels}}",
         "arrivedForYou": "{count, plural, one {# nuwe artikel vir jou het {ago} ingekom} other {# nuwe artikels vir jou het {ago} ingekom}}",
         "nothing": "Die laaste kontrole het geen nuwe artikels gevind nie",
         "counting": "<done></done> van {of, number}",

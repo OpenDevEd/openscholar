@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "已检查 {done, number} / {of, plural, other {# 个来源}}",
-        "arrived": "{ago}加入了 <link>{count, plural, other {# 篇新论文}}</link>",
-        "screenNew": "先筛选你的 {count, plural, other {# 篇新论文}}",
         "arrivedForYou": "{count, plural, other {{ago}加入了 # 篇分给你的新论文}}",
         "nothing": "上次检查没有发现新论文",
         "counting": "<done></done> / {of, number}",

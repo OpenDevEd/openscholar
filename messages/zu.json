@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{done, number} kwa-{of, plural, one {# umthombo} other {# imithombo}} ihloliwe",
-        "arrived": "<link>{count, plural, one {# iphepha elisha} other {# amaphepha amasha}}</link> kufike {ago}",
-        "screenNew": "Skrina {count, plural, one {iphepha lakho elisha elingu-#} other {amaphepha akho amasha angu-#}} kuqala",
         "arrivedForYou": "{count, plural, one {Iphepha lakho elisha elingu-# lifike {ago}} other {Amaphepha akho amasha angu-# afike {ago}}}",
         "nothing": "Ukuhlola kokugcina akutholanga maphepha amasha",
         "counting": "<done></done> kwa-{of, number}",

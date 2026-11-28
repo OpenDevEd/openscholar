@@ -201,10 +201,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages on a line of their own, the same on every page, and the rule on the line under them. On a phone, Screen keeps the room for the paper and leaves the rule to its "?".
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      {/* What is passing ends the rule's line on every tab, in a place of its own that is there whether or not anything passes: its coming and going never moves the tabs, nor wraps the rule's chips onto another line. On a phone, where the tabs' line scrolls and the rule's line is short of room, it ends the tabs' line. */}
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow><span className="contents sm:hidden">{passing}</span></div>
+      {/* What is passing ends the rule's line on every tab, in a place of its own that is there whether or not anything passes: its coming and going never moves the tabs, nor wraps the rule's chips onto another line. Where the strip is narrower than that place and the rule's chips beside it (a phone, a tablet, a small laptop), it ends the tabs' line instead. */}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow><span className="contents @[72rem]/strip:hidden">{passing}</span></div>
       {/* The rule's line is on every tab, Settings too, so going from one to another moves nothing under it. */}
-      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{passing ? <span className="ms-auto flex w-64 shrink-0 justify-end max-sm:hidden">{passing}</span> : null}</div>
+      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{passing ? <span className="ms-auto hidden w-64 shrink-0 justify-end @[72rem]/strip:flex">{passing}</span> : null}</div>
     </>
   );
 
@@ -267,8 +267,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const total = open.total;
   const workspace = screening.workspace;
   // On Screen a row that came and went would move the paper being read.
-  const banner = bannerKind(open, view === "screen");
-  const now = passingKind(open, view === "screen");
+  const banner = bannerKind(open);
+  const now = passingKind(open);
   // It opens its place in the tabs' row by its width, and closes it as it goes.
   const passing = <AnimatePresence initial={false}>{now ? <Opening across key="now"><Passing kind={now} open={open} workspace={workspace.name} /></Opening> : null}</AnimatePresence>;
   // The people on it: its workspace's people who review it, and whoever it is shared with from outside, to vote or to look. Its models are not people, and are counted with the reviewers on the Overview.
@@ -453,15 +453,14 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
  * came in. Each has the row under the tabs, with what to do about it. Who the person is to it is a chip beside its
  * title, not one of these.
  */
-type BannerKind = "credits" | "finished" | "paused" | "arrived";
+type BannerKind = "credits" | "finished" | "paused";
 /** Which one thing the row under the tabs says. `quiet`, on Screen, leaves out the papers that came in: a row arriving there would move the paper being read. */
-function bannerKind(open: Open, quiet: boolean): BannerKind | null {
+function bannerKind(open: Open): BannerKind | null {
   // What the models are doing is the one answer the list's row and the Overview read too.
   const { screening, modelsNow } = open;
   if (modelsNow === "credits") return "credits";
   if (screening.finishedAt) return "finished";
   if (modelsNow === "paused") return "paused";
-  if (!quiet && open.latest?.mine) return "arrived";
   return null;
 }
 /**
@@ -469,11 +468,11 @@ function bannerKind(open: Open, quiet: boolean): BannerKind | null {
  * at the end of the tabs' row, which takes no row of its own, so nothing under the tabs moves when it comes or goes.
  */
 type PassingKind = "gathering" | "checking" | "waiting" | "reading" | "nothing" | "arrived";
-function passingKind(open: Open, quiet: boolean): PassingKind | null {
+function passingKind(open: Open): PassingKind | null {
   const { modelsNow } = open;
   if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
-  // On Screen, where the row for it would move the paper being read, the papers that came in for the person are said here: a queue that grew says why.
-  if (quiet && !open.screening.finishedAt && open.latest?.mine) return "arrived";
+  // The papers that came in for the person are said here on every tab, a chip in the strip: as a row on some tabs and a chip on Screen, going from one to the other moved everything under the strip.
+  if (!open.screening.finishedAt && open.latest?.mine) return "arrived";
   // A check that found nothing says so, where nothing else has to be said.
   if (open.lastCheck?.added === 0 && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
   return null;
@@ -493,7 +492,7 @@ function useRedrawAt(at: number | null) {
 }
 
 /** Each kind of notice in the colour of what it is about: what waits for you is primary, a stop is warning, the rest are facts. */
-const BANNER_TONE: Record<BannerKind, Tone> = { credits: "warning", finished: "neutral", paused: "warning", arrived: "primary" };
+const BANNER_TONE: Record<BannerKind, Tone> = { credits: "warning", finished: "neutral", paused: "warning" };
 
 function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKind | null; open: Open; workspace: string; onReopen: () => void; onResume: () => void }) {
   const { screening, reading, total } = open;
@@ -511,15 +510,6 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
   const modelLink = (model: Reviewer) => <NextLink key={model.id} href={reviewerHref(id, model) ?? papersHref(id, { reviewer: model.id })} className={INLINE_LINK}>{model.name}</NextLink>;
   // Their names as a list, each a link.
   const models = (list: Reviewer[]) => format.list(list.map(modelLink), { type: "conjunction" });
-  if (kind === "arrived" && open.latest) {
-    return (
-      <div className={row}>
-        <RefreshCw className={icon} />
-        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
-        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />{t("banner.screenNew", { count: open.latest.mine })}</NextLink></Button>
-      </div>
-    );
-  }
   if (kind === "credits") {
     return (
       <div className={row}>
@@ -612,6 +602,6 @@ function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; wor
   }
   // On a narrow strip the passing news keeps its sign and figure, and the tabs their room: a check that found nothing goes, and new papers say how many.
   if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap @max-[48rem]/strip:hidden">{t("banner.nothing")}</Chip>;
-  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), null, <StateChip tone="primary" icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></StateChip>);
+  if (kind === "arrived" && open.latest) return worded(t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) }), null, <LinkChip href={screenHref(open.screening.id, { order: "fresh" })} tone="primary" icon={RefreshCw} aria-label={t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })} className="shrink-0 whitespace-nowrap">{/* It opens them first in To do, as the row it replaces did. */}<span className={says}>{t("banner.arrivedForYou", { count: open.latest.mine, ago: words.ago(open.latest.at) })}</span><span aria-hidden className="tabular-nums @min-[48rem]/strip:hidden">{open.latest.mine}</span></LinkChip>);
   return null;
 }

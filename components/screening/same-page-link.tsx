@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { WorkspaceLink } from "@/components/workspaces/link";
+import WorkspaceLink from "@/components/workspace-link";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 
 /**
@@ -10,7 +10,7 @@ import { useWorkspaceHref } from "@/lib/workspaces/href";
  * address on the client, so there is nothing to wait on the server for, and nothing on the page is drawn anew. A link to
  * another page, a section of one, a new tab or another site opens as any link does.
  */
-export function SamePageLink({ onClick, ...link }: ComponentProps<typeof WorkspaceLink>) {
+export function SamePageLink({ onClick, ...link }: Omit<ComponentProps<typeof WorkspaceLink>, "href"> & { href: string }) {
   const to = useWorkspaceHref()(link.href);
   return (
     <WorkspaceLink

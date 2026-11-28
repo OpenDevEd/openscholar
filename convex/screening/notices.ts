@@ -9,7 +9,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { internalQuery } from "../lib/functions";
+import { internalMutation, internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
@@ -36,6 +36,17 @@ export async function conflictsWait(ctx: MutationCtx, jobId: Id<"screeningJobs">
   else await ctx.db.insert("screeningNotices", { jobId, userId, off: false, conflictsAt: Date.now() });
   await ctx.scheduler.runAfter(CONFLICTS_AFTER_MS, internal.screening.noticeMail.send, { jobId, userId, about: "conflicts" });
 }
+
+/** A conflicts email that found nothing to send went unsent: the next conflict is told at once, not a day later. */
+export const conflictsUnsent = internalMutation({
+  args: { jobId: v.id("screeningJobs"), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { jobId, userId }) => {
+    const row = await noticeOf(ctx, jobId, userId);
+    if (row?.conflictsAt !== undefined) await ctx.db.patch("screeningNotices", row._id, { conflictsAt: undefined });
+    return null;
+  },
+});
 
 /** What one email says, read when it is sent: null where the person turned the screening's emails off, has it no more, or nothing waits for them. */
 export const context = internalQuery({

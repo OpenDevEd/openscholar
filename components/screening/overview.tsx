@@ -680,7 +680,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               {done && papersAt ? <DropdownMenuItem asChild><NextLink href={papersAt}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem> : null}
               {unread && !screening.finishedAt ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
-              {reviewer.kind === "person" && !mine && left && !screening.finishedAt && !reviewer.quiet ? (
+              {/* Offered only where it would be sent: not to someone who turned the emails off, nor again within a day of the last (convex/screening/reviewers.ts `remind`). */}{reviewer.kind === "person" && !mine && left && !screening.finishedAt && !reviewer.quiet && !(reviewer.reminded && Date.now() - reviewer.reminded < DAY) ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
               ) : null}
               {onMove ? <DropdownMenuItem onSelect={onMove}><Move />{t("row.moveAway")}</DropdownMenuItem> : null}

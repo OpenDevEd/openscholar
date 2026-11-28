@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
 import { ListEmpty, ListRowsSkeleton, ListSearch } from "@/components/evidence-libraries/list-controls";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { SamePageLink as NextLink } from "./same-page-link";
 import { createSerializer, parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -48,7 +48,7 @@ import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { blindOf, type Blind, invitedSaid, reasonCriteria, inOrder, growing, bylineOf, awaitedOn, splitsIn, readersOf, modelsOf, type Criterion, resolves, DECISIONS, RESULTS, castOf, keptOf, personIn, pointsMax, questionOf, sentencesOf, settledOf, taken, voteOn, votingReviewers, type Decision, type Paper, type Reviewer, type Result, shortName, othersRead } from "./data";
 import { papersHref, screenHref } from "./links";
-import { PdfRoom, Sentence, HeldChip, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
+import { PdfRoom, Sentence, HeldChip, votedReasonGroup, ReasonNoteField, VoteFacts, Byline, Faces, votesBy, AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, votesShutOf, votesTitle, HiddenChip, blindSays, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon, SEARCH_PILL } from "./pieces";
 import { Evidence, Matrix, Said } from "./screen";
 import type { Open } from "./store";
 import { useTranslations } from "next-intl";
@@ -149,8 +149,16 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const backwards = useRtl();
   const { screening } = open;
   // What is written in the drawer is kept for each paper, as Screen keeps it: stepping to the next paper and back finds it where it was, and a save refused after stepping on puts the note back on its own paper.
-  const [notes, setNotes] = useInHand("paperNotes");
-  const [talks, setTalks] = useInHand("paperTalks");
+  // The same notes and messages in hand as Screen's (./drafts.ts): one written there is here, and the other way round. A vote's note is under the paper, a settling's under `settle:` and the paper.
+  const [notes, setNotes] = useInHand("notes");
+  const [talks, setTalks] = useInHand("talks");
+  const notesOf = (id: string): PaperNotes => ({ ...(notes[id] !== undefined ? { vote: notes[id] } : {}), ...(notes[`settle:${id}`] !== undefined ? { result: notes[`settle:${id}`] } : {}) });
+  const setNotesOf = (id: string, update: (now: PaperNotes) => PaperNotes) =>
+    setNotes((all) => {
+      const next = update({ ...(all[id] !== undefined ? { vote: all[id] } : {}), ...(all[`settle:${id}`] !== undefined ? { result: all[`settle:${id}`] } : {}) });
+      const { [id]: _vote, [`settle:${id}`]: _result, ...rest } = all;
+      return { ...rest, ...(next.vote !== undefined ? { [id]: next.vote } : {}), ...(next.result !== undefined ? { [`settle:${id}`]: next.result } : {}) };
+    });
   const id = screening.id;
   const workspaceId = usePageWorkspace();
   const t = useTranslations("screening.papers");
@@ -231,12 +239,15 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const tabCounts = anyNarrow ? (countable ? (under ?? undefined) : undefined) : open.counts;
   const countOf = (result: Result | "all") => (!tabCounts ? undefined : result === "all" ? (anyNarrow ? RESULTS.reduce((sum, one) => sum + tabCounts[one], 0) : open.total) : tabCounts[result]);
   const total = countOf(filter);
-  // Another list asked for (another tab, filter, search or order), not another page of the same: its rows show as skeletons under the table's head until they come, and a tab the counts say is empty says so at once. Never the last list's rows under the new tab.
-  const asked = JSON.stringify([matching, sort]);
+  // Another list asked for (another tab or filter), not another page, search or order of the same: its rows show as skeletons under the table's head until they come, and a tab the counts say is empty says so at once. Never the last list's rows under the new tab.
+  // A search typed or another order keeps the rows up, dimmed, as Screen's search does: only another tab or filter is another list.
+  const { text: _typed, ...narrowing } = matching as typeof matching & { text?: string };
+  const asked = JSON.stringify(narrowing);
   const [arrivedList, setArrivedList] = useState(asked);
   if (!listed.isLoading && !listed.isStale && arrivedList !== asked) setArrivedList(asked);
   const otherList = arrivedList !== asked;
-  const emptyNow = otherList && total === 0;
+  // Empty by the counts, from the first read too.
+  const emptyNow = (otherList || listed.isLoading) && total === 0;
   const rowsPending = otherList && !emptyNow;
   // A count the server is still reading holds a digit's room, so the tabs don't widen when it arrives. Where none will come the tab has no number.
   const pending = countable && !under ? <span aria-hidden className="invisible tabular-nums">0</span> : undefined;
@@ -653,7 +664,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           {/* While the page is read it keeps the height of the rows it will hold, as many as the filter counts up to a page; what is left over slides. */}
           <AutoHeight>
           <Wide fits={fits} style={{ minHeight: listed.isLoading ? (Math.min(total ?? PAGE, PAGE) + 2) * ROW : listed.hasPages ? (PAGE + 2) * ROW : undefined }} className={cn("transition-opacity", listed.isStale && "pointer-events-none opacity-60")}>
-            {listed.isLoading ? (
+            {listed.isLoading && !emptyNow ? (
               <>
                 {/* The table's two head rows, then as many rows as the page will hold. */}
                 <div aria-hidden style={{ height: 2 * ROW }} className="border-b border-border-subtle @max-2xl/papers:hidden" />
@@ -836,7 +847,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                 action={anyFilter ? (
                   <div className="flex flex-wrap justify-center gap-2">
                     {/* Where more of the list is still to read, nothing found yet is said as such, with the way on, as Screen says it. */}
-                    {listed.canNext ? <Button variant="outline" size="sm" onClick={() => listed.next()}>{screenWords("queue.readFurther")}</Button> : null}
+                    {listed.canNext && !otherList ? <Button variant="outline" size="sm" onClick={() => listed.next()}>{screenWords("queue.readFurther")}</Button> : null}
                     <Button variant="outline" size="sm" onClick={clearFilters}>{t("chip.clearFilters")}</Button>
                   </div>
                 ) : (
@@ -850,12 +861,13 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   </>
                 )}
               >
-                {anyFilter ? (listed.canNext ? screenWords("queue.noMatchYet") : t("table.noMatch")) : words.empty(filter, Boolean(screening.finishedAt))}
+                {anyFilter ? (listed.canNext && !otherList ? screenWords("queue.noMatchYet") : t("table.noMatch")) : words.empty(filter, Boolean(screening.finishedAt))}
               </ListEmpty>
             )}
           </Wide>
           </AutoHeight>
-          {listed.hasPages ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("table.pageItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total, ...(total === undefined ? {} : { pageCount: Math.ceil(total / PAGE) }) }} /> : null}
+          {/* The last list's pages are none of the new one's: the pager waits for it. */}
+          {listed.hasPages && !otherList ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={listed.page} itemLabel={t("table.pageItems")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: () => { listed.previous(); top.current?.scrollIntoView({ block: "start" }); }, onNext: () => { listed.next(); top.current?.scrollIntoView({ block: "start" }); }, offset: listed.offset, shown: shown.length, total, ...(total === undefined ? {} : { pageCount: Math.ceil(total / PAGE) }) }} /> : null}
         </div>
 
       </div>
@@ -868,7 +880,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           <SheetDescription className="sr-only">{t("panel.says")}</SheetDescription>
           {/* Each paper has its own scroll, so the next one starts at its title and not where the last was left. */}
           {/* The paper before stays while the one asked for is read, dimmed and out of reach: a vote can only go to the paper the address names. */}
-          {paper ? <ScrollArea key={paper.id} shades inert={stale} className={cn("min-h-0 flex-1 transition-opacity", stale && "opacity-55")}><PaperPanel paper={paper} open={open} notes={notes[paper.id] ?? {}} setNotes={(update) => setNotes((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? {}) }))} talk={talks[paper.id]} onTalk={(update) => setTalks((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? { text: "", asking: null }) }))} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
+          {paper ? <ScrollArea key={paper.id} shades inert={stale} className={cn("min-h-0 flex-1 transition-opacity", stale && "opacity-55")}><PaperPanel paper={paper} open={open} notes={notesOf(paper.id)} setNotes={(update) => setNotesOf(paper.id, update)} talk={talks[paper.id]} onTalk={(update) => setTalks((all) => ({ ...all, [paper.id]: update(all[paper.id] ?? { text: "", asking: null }) }))} onClose={close} place={{ at: at >= 0 ? listed.offset + at : -1, of: total }} onStep={(by) => void step(by)} canStep={canStep} /></ScrollArea> : null}
         </SheetContent>
       </Sheet>
     </div>
@@ -985,7 +997,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
 const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
 /** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
-function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
+function ReasonPicker({ criteria, many = false, extra, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; extra?: ComponentProps<typeof ReasonRows>["extra"]; /** The reason is for several papers picked together. */ many?: boolean; /** The note the step before already holds. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
   const t = useTranslations("screening.papers");
   const screen = useTranslations("screening.screen");
   const words = useWords();
@@ -1009,7 +1021,7 @@ function ReasonPicker({ criteria, many = false, note: given, onNote, onPick, onB
   return (
     // Escape goes back from the reasons, as from the note's form, and never closes what they sit in: the drawer lets a key from inside `data-reason-note` through, and the first reason, which has the focus, passes it up here.
     <div data-reason-note={onBack ? "" : undefined} className="space-y-2" onKeyDown={onBack ? (event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onBack(); } } : undefined}>
-      <ReasonRows criteria={criteria} many={many} onPick={(reason) => (reason === OTHER_REASON && !note.trim() ? setWriting(true) : onPick(reason, note.trim() || undefined))} />
+      <ReasonRows criteria={criteria} many={many} extra={extra} onPick={(reason) => (reason === OTHER_REASON && !note.trim() ? setWriting(true) : onPick(reason, note.trim() || undefined))} />
       {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>{t("back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button> : null}
     </div>
   );
@@ -1037,6 +1049,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
   // Each starts as what is saved, your vote's note or the result's, until it is written in (`notes`, which Papers keeps for each paper): a vote changed here keeps its note, as on Screen.
   // A vote just sent shows as cast until the server's answer comes, so the drawer never shows the vote before it.
   const [sent, setSent] = useState<{ paper: string; decision: Decision; reason?: string } | null>(null);
+  const [answersInHand, setAnswersInHand] = useInHand("answers");
   const setNote = (kind: "vote" | "result", text: string) => setNotes((all) => ({ ...all, [kind]: text }));
   const state = settledOf(paper);
   const visible = paper.sees;
@@ -1079,7 +1092,9 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
     const stampedAt = (at: number | null) => { if (at !== null) stamped = at; done(); };
     if (kind === "vote") setSent({ paper: paper.id, decision, reason });
     // Undo waits for this save's answer, so it always names the moment it took back.
-    const saving = kind === "vote" ? open.vote(paper.id, { decision, answers: { ...mine?.answers }, reason, note: said }).then(stampedAt, failed) : open.resolve(paper.id, decision, said, reason).then(stampedAt, failed);
+    // Answers given on Screen and not sent yet go with the vote, and are the vote's own once it is saved.
+    const given = answersInHand[paper.id];
+    const saving = kind === "vote" ? open.vote(paper.id, { decision, answers: { ...mine?.answers, ...given }, reason, note: said }).then((at) => { setAnswersInHand(({ [paper.id]: was, ...rest }) => (was === given || was === undefined ? rest : { ...rest, [paper.id]: was })); return stampedAt(at); }, failed) : open.resolve(paper.id, decision, said, reason).then(stampedAt, failed);
     const undo = () => saving.then(() => {
       if (stamped === undefined) return;
       return (kind === "vote" ? open.vote(paper.id, saved ? { decision: saved.decision, answers: saved.answers, ...(saved.reason ? { reason: saved.reason } : {}), ...(saved.note ? { note: saved.note } : {}) } : null, { onlyAt: stamped }) : open.resolve(paper.id, state.resolvedBy ? (state.final ?? null) : null, state.note, state.reason, stamped)).catch((error) => notSaved(t, error));
@@ -1098,7 +1113,7 @@ function PaperPanel({ paper, open, notes, setNotes, talk, onTalk, onClose, onSte
   };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
-      <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={noteOf(kind)} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
+      <div ref={intoView}><ReasonPicker criteria={screening.criteria} extra={kind === "result" ? votedReasonGroup(screen("settle.votedReasons"), screening.criteria, castOf(screening, paper)) : undefined} note={noteOf(kind)} onNote={(text) => setNote(kind, text)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
     ) : (
       <div className="space-y-2">
         {/* The note wraps and grows to a few lines, as on Screen: a long one stays in view as it is written. */}

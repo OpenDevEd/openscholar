@@ -8582,8 +8582,6 @@
       },
       "banner": {
         "checked": "{done, number} kati ya {of, plural, one {chanzo #} other {vyanzo #}} vimekaguliwa",
-        "arrived": "<link>{count, plural, one {Makala # mpya} other {Makala # mpya}}</link> zimefika {ago}",
-        "screenNew": "Chuja kwanza {count, plural, one {makala yako # mpya} other {makala zako # mpya}}",
         "arrivedForYou": "{count, plural, one {Makala # mpya kwa ajili yako imefika {ago}} other {Makala # mpya kwa ajili yako zimefika {ago}}}",
         "nothing": "Ukaguzi wa mwisho haukupata makala mpya",
         "counting": "<done></done> kati ya {of, number}",

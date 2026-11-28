@@ -8581,8 +8581,6 @@
       },
       "banner": {
         "checked": "{of, plural, other {取得元 # 件}}中 {done, number} 件を確認済み",
-        "arrived": "{ago}に<link>{count, plural, other {新しい論文 # 件}}</link>が届きました",
-        "screenNew": "まず{count, plural, other {新しい論文 # 件}}をスクリーニングしてください",
         "arrivedForYou": "{count, plural, other {{ago}に、あなたに割り当てられた新しい論文 # 件が届きました}}",
         "nothing": "前回の確認では新しい論文はありませんでした",
         "counting": "{of, number} 件中 <done></done> 件",
