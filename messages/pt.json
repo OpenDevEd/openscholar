@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# artigo é só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa} other {# artigos são só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa}}} other {{count, plural, one {# artigo é só um PDF, que este modelo não consegue ler. Adicione uma pessoa} other {# artigos são só um PDF, que este modelo não consegue ler. Adicione uma pessoa}}}}",
         "creditsShort": "{credits, plural, one {Falta # crédito} other {Faltam # créditos}}",
         "reading": "A ler os artigos",
+        "needsName": "Dê um nome à triagem",
         "addReviewer": "Adicione um revisor para iniciar"
       },
       "unread": "{count, plural, one {# não pôde ser lido} other {# não puderam ser lidos}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Abrir",
       "partsNav": "Ir para uma parte do formulário",
       "neededToStart": "Necessário para iniciar",
+      "neededToSave": "Necessário para guardar",
       "elsewhere": "{named, select, true {A sua triagem por terminar {name} está guardada em {workspace}, onde foi iniciada.} other {A sua triagem por terminar está guardada em {workspace}, onde foi iniciada.}}",
       "goOnThere": "Continuar lá",
       "name": {

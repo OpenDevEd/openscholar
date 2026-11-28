@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# Artikel ist nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das diese Modelle nicht lesen können. Fügen Sie eine Person hinzu}}} other {{count, plural, one {# Artikel ist nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu} other {# Artikel sind nur ein PDF, das dieses Modell nicht lesen kann. Fügen Sie eine Person hinzu}}}}",
         "creditsShort": "{credits, plural, one {# Credit zu wenig} other {# Credits zu wenig}}",
         "reading": "Die Artikel werden gelesen",
+        "needsName": "Geben Sie dem Screening einen Namen",
         "addReviewer": "Fügen Sie einen Reviewer hinzu, um zu starten"
       },
       "unread": "{count, plural, other {# nicht lesbar}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Öffnen",
       "partsNav": "Zu einem Teil des Formulars",
       "neededToStart": "Zum Starten nötig",
+      "neededToSave": "Zum Speichern nötig",
       "elsewhere": "{named, select, true {Ihr unvollendetes Screening {name} liegt in {workspace}, wo es begonnen wurde.} other {Ihr unvollendetes Screening liegt in {workspace}, wo es begonnen wurde.}}",
       "goOnThere": "Dort weitermachen",
       "name": {

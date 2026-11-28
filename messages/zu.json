@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# iphepha liyi-PDF kuphela, la mamodeli angakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, la mamodeli angakwazi ukuwafunda. Engeza umuntu}}} other {{count, plural, one {# iphepha liyi-PDF kuphela, le modeli engakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, le modeli engakwazi ukuwafunda. Engeza umuntu}}}}",
         "creditsShort": "{credits, plural, one {Kusilele # ikhredithi} other {Kusilele # amakhredithi}}",
         "reading": "Kufundwa amaphepha",
+        "needsName": "Nikeza ukuskrina igama",
         "addReviewer": "Engeza umbuyekezi ukuze uqale"
       },
       "unread": "{count, plural, other {# awakwazanga ukufundwa}}",
@@ -8237,6 +8238,7 @@
       "openIt": "Kuvule",
       "partsNav": "Yiya engxenyeni yefomu",
       "neededToStart": "Kuyadingeka ukuze uqale",
+      "neededToSave": "Kuyadingeka ukuze ulondoloze",
       "elsewhere": "{named, select, true {Ukuskrini kwakho okungaqediwe {name} kugcinwe ku-{workspace}, lapho kwaqalwa khona.} other {Ukuskrini kwakho okungaqediwe kugcinwe ku-{workspace}, lapho kwaqalwa khona.}}",
       "goOnThere": "Qhubeka lapho",
       "name": {

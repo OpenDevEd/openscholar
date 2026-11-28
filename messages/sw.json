@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {Makala # ni PDF tu, ambayo modeli hizi haziwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hizi haziwezi kusoma. Ongeza mtu}}} other {{count, plural, one {Makala # ni PDF tu, ambayo modeli hii haiwezi kusoma. Ongeza mtu} other {Makala # ni PDF tu, ambazo modeli hii haiwezi kusoma. Ongeza mtu}}}}",
         "creditsShort": "{credits, plural, one {Imepungua krediti #} other {Zimepungua krediti #}}",
         "reading": "Inasoma makala",
+        "needsName": "Upe uchujaji jina",
         "addReviewer": "Ongeza mkaguzi ili uanze"
       },
       "unread": "{count, plural, other {# hazikuweza kusomwa}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Ifungue",
       "partsNav": "Nenda kwenye sehemu ya fomu",
       "neededToStart": "Kinahitajika ili kuanza",
+      "neededToSave": "Inahitajika kuhifadhi",
       "elsewhere": "{named, select, true {Uchujaji wako ambao haujakamilika {name} umehifadhiwa kwenye {workspace}, ulipoanzishwa.} other {Uchujaji wako ambao haujakamilika umehifadhiwa kwenye {workspace}, ulipoanzishwa.}}",
       "goOnThere": "Endelea huko",
       "name": {

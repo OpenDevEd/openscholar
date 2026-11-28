@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# article n'est qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne}}} other {{count, plural, one {# article n'est qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne}}}}",
         "creditsShort": "{credits, plural, one {Il manque # crédit} other {Il manque # crédits}}",
         "reading": "Lecture des articles",
+        "needsName": "Donnez un nom au criblage",
         "addReviewer": "Ajoutez un évaluateur pour démarrer"
       },
       "unread": "{count, plural, one {# illisible} other {# illisibles}}",
@@ -8237,6 +8238,7 @@
       "openIt": "L'ouvrir",
       "partsNav": "Aller à une partie du formulaire",
       "neededToStart": "Nécessaire pour démarrer",
+      "neededToSave": "Nécessaire pour enregistrer",
       "elsewhere": "{named, select, true {Votre criblage inachevé {name} est conservé dans {workspace}, où il a été commencé.} other {Votre criblage inachevé est conservé dans {workspace}, où il a été commencé.}}",
       "goOnThere": "Continuer là-bas",
       "name": {

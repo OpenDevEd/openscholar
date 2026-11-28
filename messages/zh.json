@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
         "creditsShort": "{credits, plural, other {还差 # 积分}}",
         "reading": "正在读取论文",
+        "needsName": "为筛选命名",
         "addReviewer": "添加审核人后开始"
       },
       "unread": "{count, plural, other {# 篇无法读取}}",
@@ -8237,6 +8238,7 @@
       "openIt": "打开",
       "partsNav": "前往表单的某一部分",
       "neededToStart": "开始前需要",
+      "neededToSave": "保存时必需",
       "elsewhere": "{named, select, true {你未完成的筛选 {name} 保存在开始它的 {workspace} 中。} other {你未完成的筛选保存在开始它的 {workspace} 中。}}",
       "goOnThere": "在那里继续",
       "name": {

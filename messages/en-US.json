@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# paper is only a PDF, which these models can't read. Add a person} other {# papers are only a PDF, which these models can't read. Add a person}}} other {{count, plural, one {# paper is only a PDF, which this model can't read. Add a person} other {# papers are only a PDF, which this model can't read. Add a person}}}}",
         "creditsShort": "{credits, plural, one {# credit short} other {# credits short}}",
         "reading": "Reading the papers",
+        "needsName": "Give the screening a name",
         "addReviewer": "Add a reviewer to start"
       },
       "unread": "{count, plural, other {# couldn't be read}}",
@@ -8237,6 +8238,7 @@
       "openIt": "Open it",
       "partsNav": "Go to a part of the form",
       "neededToStart": "Needed to start",
+      "neededToSave": "Needed to save",
       "elsewhere": "{named, select, true {Your unfinished screening {name} is kept in {workspace}, where it was begun.} other {Your unfinished screening is kept in {workspace}, where it was begun.}}",
       "goOnThere": "Continue there",
       "name": {

@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# artikel is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by}}} other {{count, plural, one {# artikel is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by}}}}",
         "creditsShort": "{credits, plural, one {# krediet kort} other {# krediete kort}}",
         "reading": "Lees die artikels",
+        "needsName": "Gee die siftering ’n naam",
         "addReviewer": "Voeg ’n beoordelaar by om te begin"
       },
       "unread": "{count, plural, other {# kon nie gelees word nie}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Maak dit oop",
       "partsNav": "Gaan na ’n deel van die vorm",
       "neededToStart": "Nodig om te begin",
+      "neededToSave": "Nodig om te stoor",
       "elsewhere": "{named, select, true {Jou onvoltooide siftering {name} word in {workspace} gehou, waar dit begin is.} other {Jou onvoltooide siftering word in {workspace} gehou, waar dit begin is.}}",
       "goOnThere": "Gaan daar voort",
       "name": {

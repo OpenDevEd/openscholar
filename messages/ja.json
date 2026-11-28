@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, other {論文 # 件は PDF しかなく、これらのモデルでは読めません。人を追加してください}}} other {{count, plural, other {論文 # 件は PDF しかなく、このモデルでは読めません。人を追加してください}}}}",
         "creditsShort": "{credits, plural, other {# クレジット不足}}",
         "reading": "論文を読み取り中",
+        "needsName": "スクリーニングに名前を付けてください",
         "addReviewer": "開始するにはレビュアーを追加してください"
       },
       "unread": "{count, plural, other {# 件を読み取れませんでした}}",
@@ -8237,6 +8238,7 @@
       "openIt": "開く",
       "partsNav": "フォームの各部へ移動",
       "neededToStart": "開始に必要",
+      "neededToSave": "保存に必要",
       "elsewhere": "{named, select, true {作成途中のスクリーニング {name} は、作成を始めた {workspace} に保存されています。} other {作成途中のスクリーニングは、作成を始めた {workspace} に保存されています。}}",
       "goOnThere": "そちらで続ける",
       "name": {
