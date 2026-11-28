@@ -9,7 +9,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
 import { project } from "../../lib/screening/project";
-import { SOMEONE, advisory, gotThrough, seesVotes, theirsOf } from "../../lib/screening/rules";
+import { SOMEONE, advisory, gotThrough, nextResolver, seesVotes, theirsOf } from "../../lib/screening/rules";
+import { actorIn } from "../workspaces/actor";
 import { readsPdfs } from "../../lib/assistant/files";
 import { readsPdfOf } from "../../lib/pricing/estimate";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
@@ -42,6 +43,25 @@ export const invitedTo = async (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJ
 export async function invitationsTo(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) {
   const now = Date.now();
   return (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", jobId).eq("state", "pending")).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && one.expiresAt > now);
+}
+
+/**
+ * Who settles a screening's conflicts once the person who did can't: one of the people reviewing it (its maker first,
+ * lib/screening/rules.ts `nextResolver`), else its maker while they are still in its workspace, else someone who is.
+ * Nobody is handed conflicts on a screening they can't open.
+ */
+export async function settlerFor(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, people: Id<"users">[], leaving?: Id<"users">) {
+  if (people.length) return nextResolver(job.createdBy, people);
+  const maker = job.createdBy === leaving ? null : await ctx.db.get("users", job.createdBy);
+  if (maker?.state === "active" && (await actorIn(ctx, maker, job.workspaceId))) return maker._id;
+  const workspace = await ctx.db.get("workspaces", job.workspaceId);
+  if (workspace?.kind === "organization") {
+    for (const membership of await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_REVIEWERS)) {
+      const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+      if (person?.state === "active" && person._id !== leaving) return person._id;
+    }
+  }
+  return job.createdBy;
 }
 
 /** Someone whose account is gone still has a name where their votes are. */

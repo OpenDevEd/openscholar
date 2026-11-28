@@ -105,8 +105,10 @@ type Counts = NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screenin
  * the person has yet to vote on. A finished screening keeps nothing: no vote can be cast in it any more. One
  * function, for every figure a page or a file shows of the others.
  */
-export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined, reviewers: Iterable<Doc<"screeningReviewers">>, /** People invited who haven't answered: they count among its readers, as do people taken off whose votes stay, as its pages count them (components/screening/data.ts `hidingReaders`). */ invited: number) =>
-  job.rule !== undefined && hidesVotes(job.rule, readersFor(job.rule.each, [...reviewers].filter((one) => dealable(one) || (one.kind === "person" && one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0)).length + invited)) && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined, reviewers: Iterable<Doc<"screeningReviewers">>, /** People invited who haven't answered: they count among its readers, as do people taken off whose votes stay, as its pages count them (components/screening/data.ts `hidingReaders`). */ invited: number) => {
+  const all = [...reviewers];
+  return job.rule !== undefined && hidesVotes(job.rule, readersFor(job.rule.each, all.filter((one) => dealable(one) || (one.kind === "person" && one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0)).length + invited), all.filter((one) => one.kind === "model" && (readingModel(one) || (one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0))).length) && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+};
 
 /** A reviewer's row as the pages read it, with their counts. `kept`: how they voted is kept from whoever looks (`keepsVotes`). */
 async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: Counts | undefined, members: Map<Id<"users">, boolean>, kept = false): Promise<ReviewerView> {
@@ -480,7 +482,7 @@ export const getAction = defineUserQuery({
       ...(flagged > FLAGGED_COUNTED ? { flaggedMore: true as const } : {}),
       guests: await countOf(ctx, itemGuestsOf(jobId)),
       // The invitations still waiting, which papers wait for as for anyone: a guest is told how many, and never whose address.
-      invited: (await invitationsTo(ctx, jobId)).map((one) => (member ? { email: one.email, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) } : {})),
+      invited: (await invitationsTo(ctx, jobId)).map((one) => (member ? { email: one.email, expiresAt: one.expiresAt, ...(one.delivery === "failed" ? { undelivered: true as const } : {}) } : {})),
       ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
       ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !paper.withdrawn && !isFinal(paper.result)).length, mine: theirs } } : {}),
     };

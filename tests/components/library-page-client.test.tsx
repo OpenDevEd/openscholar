@@ -478,7 +478,8 @@ describe("LibraryPageClient", () => {
   it("reads one page of the view through browseLibrary, not the search", () => {
     render(<LibraryPageClient />);
 
-    expect(readsOf(api.library.queries.browseLibrary).at(-1)).toEqual(
+    // The page's own read: after a full page the list also reads one row past it.
+    expect(readsOf(api.library.queries.browseLibrary).findLast((args) => (args.paginationOpts as { numItems?: number }).numItems === 20)).toEqual(
       expect.objectContaining({ sortBy: "savedAt", sortOrder: "desc", paginationOpts: expect.objectContaining({ cursor: null, numItems: 20 }) }),
     );
     expect(readsOf(api.library.queries.searchLibrary)).toEqual([]);
@@ -490,7 +491,7 @@ describe("LibraryPageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
-    expect(readsOf(api.library.queries.browseLibrary).at(-1)?.paginationOpts).toEqual(expect.objectContaining({ cursor: "20" }));
+    expect(readsOf(api.library.queries.browseLibrary).findLast((args) => (args.paginationOpts as { numItems?: number }).numItems === 20)?.paginationOpts).toEqual(expect.objectContaining({ cursor: "20" }));
     expect(screen.getByText("Showing 21-40 of 42 papers")).toBeInTheDocument();
     expect(screen.getByText("Paper 21")).toBeInTheDocument();
   });

@@ -266,8 +266,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                       <li key={paper.id}>
                         <NextLink href={papersHref(id, { paper: paper.id })} className="flex items-center gap-3 px-4 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium">{paper.title}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{bylineOf(paper)}</span>
+                            <span dir="auto" className="block truncate text-sm font-medium">{paper.title}</span>
+                            <span dir="auto" className="block truncate text-xs text-muted-foreground">{bylineOf(paper)}</span>
                           </span>
                           <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                         </NextLink>
@@ -301,7 +301,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                       )) : null}
                       {sample.map((row) => (
                         <tr key={`${row.paper.id}:${row.reviewer.id}`}>
-                          <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
+                          <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} dir="auto" className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
                           <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
                           <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{words.decision(row.vote.decision)}</span></td>
                           <td className="px-3 text-xs text-muted-foreground">

@@ -369,7 +369,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       help={
         <Help title={t("reviewers.helpTitle")} facts={<>{each ? <HelpFact>{each < people ? t("reviewers.eachOf", { each, people }) : t("reviewers.everyPerson")}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>{t("reviewers.modelsRead")}</HelpFact> : null}</>}>
           <p>{t("reviewers.sharing", { share: String(each < people), models: String(modelsOf(screening).length > 0) })}</p>
-          <p>{t("reviewers.pace")}</p>
+          {/* Said only where a row shows when its person gets through. */}
+          {takers.some((row) => row.perDay > 0) ? <p>{t("reviewers.pace")}</p> : null}
         </Help>
       }
       aside={
@@ -592,7 +593,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.creditsOf(open.spent(reviewer)) })}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.invitedSays({ failed: Boolean(open.invited.find((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase())?.undelivered), role: "editor" }, Boolean(open.screening.finishedAt)) : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? ((invitation) => words.invitedSays({ failed: Boolean(invitation?.undelivered), role: "editor", expiresAt: invitation?.expiresAt }, Boolean(open.screening.finishedAt)))(open.invited.find((one) => one.email?.toLowerCase() === reviewer.email!.toLowerCase())) : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
           )}
         </div>
       </div>

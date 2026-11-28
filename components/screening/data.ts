@@ -246,6 +246,8 @@ export const invitedSaid = (words: { t: (key: "invitedWaiting", values: { count:
 };
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
+/** The models whose votes stand: on it, or taken off with votes kept. A vote of theirs can be kept from a person as any other. */
+export const modelsVoting = (screening: Pick<Screening, "reviewers">) => votingReviewers(screening).filter((one) => one.kind === "model").length;
 /** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */
 export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && gotThrough(one.tally) > 0));
 /** The most points a paper can earn under the screening's scoring. */
@@ -337,7 +339,7 @@ export type Blind = "none" | "all" | "people" | "done";
  * other vote is hidden. "done" once it is finished, and every vote that was hidden shows.
  */
 export const blindOf = (screening: Pick<Screening, "reviewers" | "rule" | "finishedAt">, pending: Pending[] = []): Blind =>
-  !hidesVotes(screening.rule, hidingReaders(screening, pending)) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
+  !hidesVotes(screening.rule, hidingReaders(screening, pending), modelsVoting(screening)) ? "none" : screening.finishedAt ? "done" : advisory(screening.rule) && modelsOf(screening).length ? "people" : "all";
 /**
  * Whether this screening's papers can be in conflict, and so need someone to settle them: more than one vote settles a
  * paper (lib/screening/rules.ts `canConflict`), or one already is, from an earlier rule or from a reviewer taken off with
@@ -428,6 +430,3 @@ export function collectionName(screening: Pick<Screening, "destination" | "name"
   // A collection there already is, in the workspace or in a community, has the name it has there.
   return to.name || null;
 }
-
-/** Whether the page reads right to left: the arrow keys then go the way its mirrored chevrons point. */
-export const rtl = () => typeof document !== "undefined" && document.documentElement.dir === "rtl";

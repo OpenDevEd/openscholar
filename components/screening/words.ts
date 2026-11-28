@@ -6,7 +6,8 @@
 // `useWords()`. A function that is not a component is handed them as `Words`.
 
 import { useSyncExternalStore } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { NAMED_REASONS, NO_REASON, OTHER_REASONS, SOMEONE, type Decision, type Result } from "@/lib/screening/rules";
 import { criterionLabel, isNamed, nameOn as nameOnScreening } from "./data";
 
@@ -32,6 +33,9 @@ const readMinute = (reader: () => void) => {
     if (!minute.readers.size) { clearInterval(minute.timer); minute.timer = undefined; }
   };
 };
+
+/** Whether the reader's language reads right to left: the arrow keys then go the way the mirrored chevrons point, and the keys shown say so. */
+export const useRtl = () => isRightToLeft(useLocale());
 
 /** The shared words of the reader's own language. */
 export function useWords() {
@@ -66,6 +70,12 @@ export function wordsOf({ t, format, effort = (level) => level, clock }: Said) {
   const nameOn = (screening: Peopled, id: string) => nameOnScreening(screening, id, t("someone"));
   /** The name someone is called by in a line of text or a narrow column. */
   const firstName = (name: string) => name.split(" ")[0]!;
+
+  const invitationTrouble = (invitation: { failed: boolean; expiresAt?: number }) => {
+    const now = clock ?? Date.now();
+    if (invitation.failed) return t("person.notSent");
+    return invitation.expiresAt !== undefined && invitation.expiresAt - now < 2 * DAY ? t("person.invitationEnds", { when: format.relativeTime(invitation.expiresAt, now) }) : null;
+  };
 
   return {
     /** The shared messages themselves, for a word that needs no working out: `words.t("settle.label.all")`. */
@@ -137,12 +147,10 @@ export function wordsOf({ t, format, effort = (level) => level, clock }: Said) {
     /** What stands where no paper has a result: on a Papers tab and in the Export dialog. "Yet" only while the screening is running. */
     empty: (result: Result | "all", finished: boolean) => (result === "all" || result === "conflict" || result === "waiting" ? t(`empty.${result}`) : t(`empty.${result}`, { finished: String(finished) })),
     /** Where an invitation to vote or to look stands, wherever the screening lists it: one that couldn't be sent says so, and one about to end says when. */
-    invitedSays: (invitation: { failed: boolean; role: "editor" | "viewer"; expiresAt?: number }, finished: boolean) => {
-      const now = clock ?? Date.now();
-      if (invitation.failed) return t("person.notSent");
-      if (invitation.expiresAt !== undefined && invitation.expiresAt - now < 2 * DAY) return t("person.invitationEnds", { when: format.relativeTime(invitation.expiresAt, now) });
-      return t(invitation.role === "viewer" ? "person.invitedToLook" : finished ? "person.invitedFinished" : "person.invited");
-    },
+    invitedSays: (invitation: { failed: boolean; role: "editor" | "viewer"; expiresAt?: number }, finished: boolean) =>
+      invitationTrouble(invitation) ?? t(invitation.role === "viewer" ? "person.invitedToLook" : finished ? "person.invitedFinished" : "person.invited"),
+    /** What is wrong with an invitation, where anything is: it couldn't be sent, or it ends within two days. Every list of invitations says it the same way. */
+    invitationTrouble,
     /** A date as a page shows it: how long ago for the last week, the day before that. */
     ago: (at: number, now = clock ?? Date.now()) => {
       const minutes = Math.max(0, Math.round((now - at) / 60_000));

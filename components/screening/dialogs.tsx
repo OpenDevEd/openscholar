@@ -264,7 +264,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   // A member typed by address is offered as the member, never invited: an invitation to them can't be sent.
                   has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email) || (members?.page ?? []).some((person) => person.email?.toLowerCase() === email),
                   // The plan's guest places are for people from outside: an organization's own members can still be added as reviewers once they are full.
-                  ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.full", { own: "false", workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.full", { own: String(workspace.kind !== "organization"), workspace: workspace.name, count: limit }) }) : {}),
+                  ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.fullHere", { own: "false", workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.fullHere", { own: String(workspace.kind !== "organization"), workspace: workspace.name, count: limit }) }) : {}),
                 }
               : undefined
           }

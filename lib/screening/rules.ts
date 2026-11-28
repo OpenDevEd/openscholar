@@ -165,11 +165,12 @@ export const showsEarly = (rule: Pick<Rule, "settle" | "models">, kind: "person"
 export const leansOpen = (rule: Pick<Rule, "settle" | "models" | "blind">) => rule.blind === "always" || advisory(rule);
 /**
  * Whether a running screening hides anyone's vote from a reviewer until they vote: votes are hidden until then, and
- * another person can be on the same paper. Where one person reads each paper and the models only advise, nothing is
- * left to hide. `each`: how many people read each paper (`readersFor`). Every page, file and figure that says votes
- * are hidden, or keeps something because they are, asks this.
+ * another person can be on the same paper. Where one person reads each paper and no model votes beside them (none on
+ * it, or the models only advise), nothing is left to hide. `each`: how many people read each paper (`readersFor`);
+ * `models`: how many models are on it. Every page, file and figure that says votes are hidden, or keeps something
+ * because they are, asks this.
  */
-export const hidesVotes = (rule: Pick<Rule, "settle" | "models" | "blind">, each: number) => rule.blind === "after" && !(advisory(rule) && each <= 1);
+export const hidesVotes = (rule: Pick<Rule, "settle" | "models" | "blind">, each: number, models: number) => rule.blind === "after" && !(each <= 1 && (models === 0 || advisory(rule)));
 /** Whether a paper can be in conflict: only where more than one vote settles it. One person, or one person with the models as advice, or "first vote decides", never splits, and nobody need settle anything. */
 export const canConflict = (rule: Pick<Rule, "settle" | "models">, people: number, models: number) => rule.settle !== "one" && (modelsAdvise(rule, people, models) ? 0 : models) + people > 1;
 

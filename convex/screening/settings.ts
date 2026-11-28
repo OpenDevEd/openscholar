@@ -14,11 +14,11 @@ import { internalMutation } from "../lib/functions";
 import { newCollection } from "../library/collections";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
-import { nextResolver, type Criterion } from "../../lib/screening/rules";
+import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
 import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
-import { keepVersion, keeperOf, readAgain, dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { keepVersion, keeperOf, readAgain, dealable, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./gathering";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -77,9 +77,9 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   // Each person who joins, with how many people there were before them: what their even share is counted from.
   const joining = [...new Set(change.addPeople ?? [])].filter((userId) => !people.some((one) => one.userId === userId)).map((userId, at) => ({ userId, before: people.length + at }));
   const rule = { ...job.rule!, ...(change.rule ? { ...ruleFrom(change.rule), ...(change.rule.resolver ? { resolver: change.rule.resolver } : {}) } : {}) };
-  // Conflicts always have someone to settle them: when that person is taken off, they go on by the one rule (`nextResolver`).
+  // Conflicts always have someone to settle them: when that person is taken off, they go on by the one rule (./dealing.ts `settlerFor`).
   const resolverLeft = leaving.some(({ reviewer }) => reviewer.kind === "person" && reviewer.userId === rule.resolver) && !change.rule?.resolver;
-  const settles = resolverLeft ? nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) : rule.resolver;
+  const settles = resolverLeft ? await settlerFor(ctx, job, people.flatMap((one) => one.userId ?? []), rule.resolver) : rule.resolver;
   const was = new Map(before.map((criterion) => [criterion.key, criterion]));
   const keys = new Set(criteria.map((criterion) => criterion.key));
   // Whether the change can move a paper the screening already has: who is on it, its rule, or what of its criteria decides. Papers a source adds move none of them.
@@ -185,9 +185,9 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
-  // Someone who no longer settles its conflicts and doesn't review it can't answer the questions put to them as its settler: those close.
+  // Someone who no longer settles its conflicts and doesn't review it can't answer the questions put to them as its settler: those go on to whoever settles now.
   const was = job.rule?.resolver;
-  if (was && was !== saved.rule?.resolver && !plan.reviewers.some((one) => one.userId === was && one.left === undefined)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId: was });
+  if (was && was !== saved.rule?.resolver && !plan.reviewers.some((one) => one.userId === was && one.left === undefined)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId: was, ...(saved.rule?.resolver ? { to: saved.rule.resolver } : {}) });
   // A change to its rule or its criteria is a version of them from now on, which the whole record lists.
   if (JSON.stringify(job.rule) !== JSON.stringify(saved.rule) || JSON.stringify(job.criteria ?? []) !== JSON.stringify(saved.criteria ?? [])) await keepVersion(ctx, saved, actor.userId);
 

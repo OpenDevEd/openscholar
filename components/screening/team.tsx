@@ -75,7 +75,7 @@ export function AddPerson({ exclude, screening, freeing = 0, onPick, children }:
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild onPointerEnter={() => setNear(true)} onFocus={() => setNear(true)}>{children ?? <Button variant="outline" size="sm"><UserPlus />{t("addPerson")}</Button>}</PopoverTrigger>
-      <PopoverContent align="start" aria-label={t("addPerson")} className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
+      <PopoverContent align="start" aria-label={t("addPerson")} className={`w-[max(20rem,var(--radix-popover-trigger-width))] p-0 ${AVATARS_FADE_IN}`}>
         <p className="px-3 pt-3 text-sm font-semibold">{t("addPerson")}</p>
         {/* The server finds the people: the list isn't narrowed again here. */}
         <Command shouldFilter={false}>

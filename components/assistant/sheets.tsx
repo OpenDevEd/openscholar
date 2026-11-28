@@ -4,6 +4,7 @@
 // slides in from the right, and the one underneath steps back, shifts left so its
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
+import { useWords } from "@/components/screening/words";
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -373,6 +374,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
   const ts = useTranslations("workspaces.share");
   const format = useFormatter();
   const now = useNow();
+  const words = useWords();
   const toast = useAppToast();
   const item = { kind: "chat" as const, id: threadId };
   // The chat's owner shares it. The role came with the chat, so the sheet has its final layout from its first frame.
@@ -449,7 +451,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
             avatar: <EmailAvatar />,
             name: invitation.email,
             // Sent a week before it expires, by the server's clock: never later than now by this one's.
-            detail: invitation.delivery === "failed" ? ts("notSent") : ts("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
+            detail: words.invitationTrouble({ failed: invitation.delivery === "failed", expiresAt: invitation.expiresAt }) ?? ts("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
             role: invitation.role === "editor" ? ("write" as const) : ("read" as const),
             ...managing({ email: invitation.email }),
           })),

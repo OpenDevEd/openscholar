@@ -26,6 +26,8 @@ vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () 
 
 const query = { name: "collections:list" } as unknown as FunctionReference<"query", "public", Args, Page>;
 const page = (items: string[], continueCursor: string, isDone = false): Page => ({ page: items, isDone, continueCursor });
+// Whether the hook read a page like this one: after a full page it also reads one row past it, so the last read isn't always the page's.
+const readAs = (options: Partial<Args["paginationOpts"]>) => server.reads.some((one) => Object.entries(options).every(([key, value]) => one.paginationOpts[key as keyof Args["paginationOpts"]] === value));
 
 beforeEach(() => {
   server.reads = [];
@@ -79,7 +81,7 @@ describe("useCursorPage", () => {
     server.pages.set("|null", page(["a"], "c0"));
     rerender({ size: 1 });
     expect(result.current).toMatchObject({ items: ["a"], page: 1, canPrevious: false, offset: 0 });
-    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, numItems: 1 });
+    expect(readAs({ cursor: null, numItems: 1 })).toBe(true);
   });
 
   it("steps back from a page its rows were all deleted from", () => {
@@ -90,13 +92,11 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
   });
 
-  it("stops offering next on a full last page once the page after it came back empty", () => {
-    // The list ends exactly on a full page, which the server can't tell until it reads past it.
+  it("offers no next on a full last page, from the row past it it reads first", () => {
+    // The list ends exactly on a full page, which the server can't tell until it reads past it: one row past it says.
     server.pages.set("|c1", page(["c", "d"], "c2"));
     server.pages.set("|c2", page([], "", true));
     const { result } = renderHook(() => useCursorPage(query, {}, 2));
-    act(() => result.current.next());
-    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: true });
     act(() => result.current.next());
     expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: false, canPrevious: true });
     act(() => result.current.previous());
@@ -128,7 +128,7 @@ describe("useCursorPage", () => {
     server.pages.set("|null|1", page(["a", "b"], "c1"));
     rerender();
     expect(result.current.items).toEqual(["a", "b"]);
-    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, id: 1 });
+    expect(readAs({ cursor: null, id: 1 })).toBe(true);
   });
 
   it("reads a page again from its start when rows added inside it grow it past its size", () => {
@@ -136,7 +136,7 @@ describe("useCursorPage", () => {
     server.pages.set("|null|0", page(["a", "a2", "b"], "c1"));
     const { result } = renderHook(() => useCursorPage(query, {}, 2));
     expect(result.current.items).toEqual(["a", "b"]);
-    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, id: 1 });
+    expect(readAs({ cursor: null, id: 1 })).toBe(true);
   });
 
   it("reads on from a short page that isn't the end, asking only for the rows it lacks", () => {
@@ -154,9 +154,12 @@ describe("useCursorPage", () => {
   it("hands useQueries the same request while nothing changes, though `api.*` gives a new reference each read", () => {
     // useQueries subscribes again for every new request object, which re-renders without end.
     const { rerender } = renderHook(() => useCursorPage({ name: "collections:list" } as unknown as typeof query, {}, 2));
+    // The first full page adds the read of one row past it, once; from then nothing changes.
+    rerender();
+    const settled = new Set(server.requests).size;
     rerender();
     rerender();
-    expect(new Set(server.requests).size).toBe(1);
+    expect(new Set(server.requests).size).toBe(settled);
   });
 
   it("reads a filled page again when rows added to an earlier read push it past its size", () => {

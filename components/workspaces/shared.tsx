@@ -4,6 +4,8 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { EffectList } from "@/components/screening/effects";
+import { useOpenInAddress } from "@/components/screening/address";
 import { useClerk } from "@clerk/nextjs";
 import { ConfirmChange } from "@/components/screening/team";
 import { useWords } from "@/components/screening/words";
@@ -205,14 +207,18 @@ export function GuestChips({ from, role, person = false, votes = false }: { from
 function Row({ item }: { item: SharedItem }) {
   const t = useTranslations("workspaces.shared");
   const words = useWords();
+  const frame = useTranslations("screening.frame");
   const leave = useWorkspaceMutation(api.sharing.guests.leave);
-  // Leaving can't be undone from here: it asks first, as the screening's own menu does.
-  const [asking, setAsking] = useState(false);
+  // Leaving can't be undone from here: it asks first, as the screening's own menu does, and the question is a step Back closes.
+  const [leaving, setLeaving] = useOpenInAddress("leave", null);
+  const asking = leaving === item.id;
+  const setAsking = (open: boolean) => setLeaving(open ? item.id : null);
   const kind = SHARED_KINDS[item.kind];
   return (
     <Entry viewMode="list-detail">
-      <ConfirmChange open={asking} variant="destructive" title={t("leaveTitle", { name: item.name })} confirm={t("leave")} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed")))); }}>
-        <p className="text-sm text-muted-foreground">{t("leaveSays", { kind: item.kind })}</p>
+      {/* A screening's says what its own menu's Leave says: the votes stay and the papers waiting go to others. */}
+      <ConfirmChange open={asking} title={item.kind === "screening" ? frame("leave.title") : t("leaveTitle", { name: item.name })} confirm={t("leave")} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed")))); }}>
+        <EffectList lines={item.kind === "screening" ? [...(item.role === "editor" ? [t("leaveVotes")] : []), frame("leave.fromList")] : [t("leaveSays")]} />
       </ConfirmChange>
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
@@ -291,7 +297,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
     void respond({ invitationId: invitationId as Id<"itemInvitations">, accept: false }).then(
       () => {
         toast(t("declined", { name: "name" in invitation ? invitation.name : "" }));
-        router.push("/shared");
+        router.replace("/shared");
       },
       (error) => {
         setOpening(false);
@@ -359,8 +365,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
   );
 }
 
-/** The invitations waiting for the person, of every kind and sent to any address of theirs: one read, shared by every list that shows them and by the rail. Undefined until read. */
-/** The invitations waiting for the person; none for someone signed out, so a page open signed out never waits for them. */
+/** The invitations waiting for the person, of every kind and sent to any address of theirs: one read, shared by every list that shows them and by the rail. Undefined until read, and none for someone signed out, so a page open signed out never waits for them. */
 export function useWaitingInvitations(initial?: WaitingInvitation[]) {
   const read = useProtectedQuery(api.sharing.invitations.waiting, inWorkspace(useWorkspace(), {}));
   return read.isAnonymous ? [] : (read.data?.page ?? initial);
