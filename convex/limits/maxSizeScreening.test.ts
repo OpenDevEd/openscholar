@@ -36,7 +36,8 @@ describe("a screening with reviewers at the largest sizes the product allows", {
     // Ten people, each on every paper: its sources are read by the screening's own reading, a step at a time, and every paper dealt as it arrives.
     ({ jobId } = await started(made, PEOPLE, 0, { rule: { each: "all", settle: "all", blind: "after" } }));
     await runAll(made.t, tick);
-  }, 900_000);
+    // Fifty thousand places, each counted three ways (../screening/facets.ts): convex-test keeps the counts slower than a backend does.
+  }, 3_600_000);
   afterAll(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
