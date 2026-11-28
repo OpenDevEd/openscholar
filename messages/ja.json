@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, other {論文 # 件は PDF しかなく、これらのモデルでは読めません。人を追加してください}}} other {{count, plural, other {論文 # 件は PDF しかなく、このモデルでは読めません。人を追加してください}}}}",
         "creditsShort": "{credits, plural, other {# クレジット不足}}",
         "reading": "論文を読み取り中",
+        "needsName": "スクリーニングに名前を付けてください",
         "addReviewer": "開始するにはレビュアーを追加してください"
       },
       "unread": "{count, plural, other {# 件を読み取れませんでした}}",
@@ -8237,6 +8238,7 @@
       "openIt": "開く",
       "partsNav": "フォームの各部へ移動",
       "neededToStart": "開始に必要",
+      "neededToSave": "保存に必要",
       "elsewhere": "{named, select, true {作成途中のスクリーニング {name} は、作成を始めた {workspace} に保存されています。} other {作成途中のスクリーニングは、作成を始めた {workspace} に保存されています。}}",
       "goOnThere": "そちらで続ける",
       "name": {
@@ -8422,6 +8424,7 @@
         "modelsUnderOne": "人に割り当てられた論文では参考のみ",
         "addPerson": "選ぶには人を追加してください",
         "settledWhen": "論文の結果が確定する条件",
+        "oneVoteNow": "今は各論文に1票なので、その票で決まります",
         "settlingTitle": "論文の結果の確定",
         "oneVote": "論文を割り当てられたレビュアーはそれぞれ 1 票を持ちます。",
         "ruleMeans": "<b>{label}。</b>{means}",
@@ -8765,6 +8768,7 @@
       "allSettled": "{finish, select, true {すべての論文の結果が確定しました。完了にできます} other {すべての論文の結果が確定しました}}",
       "none": "{show, select, you {対応が必要なものはありません。} finished {完了したスクリーニングはありません。} open {進行中のスクリーニングはありません。} other {スクリーニングはありません。}}",
       "noneElse": "このワークスペースで対応が必要なものはありません。",
+      "needsYouHere": "このワークスペースで対応が必要",
       "noneCalled": "{show, select, you {「{name}」という名前で対応が必要なものはありません。} finished {「{name}」という名前の完了したスクリーニングはありません。} open {「{name}」という名前の進行中のスクリーニングはありません。} other {「{name}」という名前のスクリーニングはありません。}}",
       "showEvery": "すべてのスクリーニングを表示",
       "pagerItems": "件",
@@ -8945,7 +8949,10 @@
         "mean": "ペアごとの Cohen's kappa の平均",
         "across": "0 は偶然と変わらず、1 は完全な一致です。レビュアーの{pairs, plural, other {# 組}}について、{range, select, true {各 {min, number}〜{max, number} 件の論文} other {{min, plural, other {各 # 件の論文}}}}。{left, plural, =0 {} other {残りの # 組はどの論文にも同じ投票をしたため、kappa を算出できません。}}",
         "splitMost": "意見が分かれた順にすべての論文",
-        "noneYet": "まだありません",
+        "sameCount": "{papers, plural, other {# 件}}中 {same, number} 件で同じ投票",
+        "thin": "{count, plural, other {# 組}}は共通の論文が {least, number} 件未満で、まだ比較できません",
+        "allPairs": "{count, number} 組すべてを表示",
+        "fewerPairs": "少なく表示",
         "cell": "{a} と {b}、kappa {kappa}、{papers, plural, other {論文 # 件}}中 {share, number, percent} で同じ投票"
       },
       "kappa": {

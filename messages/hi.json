@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# लेख केवल PDF है, जिसे ये मॉडल नहीं पढ़ सकते। एक व्यक्ति जोड़ें} other {# लेख केवल PDF हैं, जिन्हें ये मॉडल नहीं पढ़ सकते। एक व्यक्ति जोड़ें}}} other {{count, plural, one {# लेख केवल PDF है, जिसे यह मॉडल नहीं पढ़ सकता। एक व्यक्ति जोड़ें} other {# लेख केवल PDF हैं, जिन्हें यह मॉडल नहीं पढ़ सकता। एक व्यक्ति जोड़ें}}}}",
         "creditsShort": "{credits, plural, one {# क्रेडिट कम} other {# क्रेडिट कम}}",
         "reading": "लेख पढ़े जा रहे हैं",
+        "needsName": "स्क्रीनिंग को एक नाम दें",
         "addReviewer": "शुरू करने के लिए समीक्षक जोड़ें"
       },
       "unread": "{count, plural, other {# पढ़े नहीं जा सके}}",
@@ -8237,6 +8238,7 @@
       "openIt": "इसे खोलें",
       "partsNav": "फ़ॉर्म के किसी हिस्से पर जाएँ",
       "neededToStart": "शुरू करने के लिए ज़रूरी",
+      "neededToSave": "सहेजने के लिए ज़रूरी",
       "elsewhere": "{named, select, true {आपकी अधूरी स्क्रीनिंग {name} {workspace} में रखी है, जहाँ इसे शुरू किया गया था।} other {आपकी अधूरी स्क्रीनिंग {workspace} में रखी है, जहाँ इसे शुरू किया गया था।}}",
       "goOnThere": "वहाँ जारी रखें",
       "name": {
@@ -8422,6 +8424,7 @@
         "modelsUnderOne": "व्यक्ति को दिए गए लेखों पर सलाह",
         "addPerson": "चुनने के लिए व्यक्ति जोड़ें",
         "settledWhen": "लेख तब तय होता है जब",
+        "oneVoteNow": "अभी हर लेख पर एक ही वोट है, इसलिए वही वोट उसे तय करता है",
         "settlingTitle": "लेख तय करना",
         "oneVote": "जिस समीक्षक को लेख मिलता है उसका एक वोट होता है।",
         "ruleMeans": "<b>{label}।</b> {means}",
@@ -8765,6 +8768,7 @@
       "allSettled": "{finish, select, true {हर लेख तय है, समाप्त करने के लिए तैयार} other {हर लेख तय है}}",
       "none": "{show, select, you {आपकी ज़रूरत किसी में नहीं।} finished {कोई पूरी हुई स्क्रीनिंग नहीं।} open {कोई चल रही स्क्रीनिंग नहीं।} other {कोई स्क्रीनिंग नहीं।}}",
       "noneElse": "इस वर्कस्पेस में कुछ भी आपकी प्रतीक्षा नहीं कर रहा।",
+      "needsYouHere": "इस वर्कस्पेस में आपकी ज़रूरत",
       "noneCalled": "{show, select, you {{name} नाम की किसी चीज़ में आपकी ज़रूरत नहीं।} finished {{name} नाम की कोई पूरी हुई स्क्रीनिंग नहीं।} open {{name} नाम की कोई चल रही स्क्रीनिंग नहीं।} other {{name} नाम की कोई स्क्रीनिंग नहीं।}}",
       "showEvery": "हर स्क्रीनिंग दिखाएँ",
       "pagerItems": "स्क्रीनिंग",
@@ -8945,7 +8949,10 @@
         "mean": "जोड़ीवार Cohen's kappa का औसत",
         "across": "0 का मतलब संयोग से बेहतर नहीं, 1 का मतलब पूरी सहमति। समीक्षकों के {pairs, plural, one {# जोड़े} other {# जोड़ों}} में, {range, select, true {हर एक में {min, number} से {max, number} लेख} other {{min, plural, one {हर एक में # लेख} other {हर एक में # लेख}}}}।{left, plural, =0 {} one { बाकी एक जोड़े ने हर लेख पर एक ही तरह वोट दिया, ऐसे में kappa नहीं निकाला जा सकता।} other { बाकी # जोड़ों ने हर लेख पर एक ही तरह वोट दिया, ऐसे में kappa नहीं निकाला जा सकता।}}",
         "splitMost": "सभी लेख, सबसे ज़्यादा बँटे हुए पहले",
-        "noneYet": "अभी कोई नहीं",
+        "sameCount": "{papers, plural, one {# लेख} other {# लेखों}} में से {same, number} पर एक जैसा वोट",
+        "thin": "{count, plural, one {# जोड़ी के} other {# जोड़ियों के}} {least, number} से कम साझा लेख हैं, अभी तुलना के लिए बहुत कम",
+        "allPairs": "सभी {count, number} जोड़ियाँ दिखाएँ",
+        "fewerPairs": "कम दिखाएँ",
         "cell": "{a} और {b}, kappa {kappa}, {papers, plural, one {# लेख} other {# लेखों}} में से {share, number, percent} पर एक जैसा वोट"
       },
       "kappa": {

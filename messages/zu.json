@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# iphepha liyi-PDF kuphela, la mamodeli angakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, la mamodeli angakwazi ukuwafunda. Engeza umuntu}}} other {{count, plural, one {# iphepha liyi-PDF kuphela, le modeli engakwazi ukuyifunda. Engeza umuntu} other {# amaphepha ayi-PDF kuphela, le modeli engakwazi ukuwafunda. Engeza umuntu}}}}",
         "creditsShort": "{credits, plural, one {Kusilele # ikhredithi} other {Kusilele # amakhredithi}}",
         "reading": "Kufundwa amaphepha",
+        "needsName": "Nikeza ukuskrina igama",
         "addReviewer": "Engeza umbuyekezi ukuze uqale"
       },
       "unread": "{count, plural, other {# awakwazanga ukufundwa}}",
@@ -8237,6 +8238,7 @@
       "openIt": "Kuvule",
       "partsNav": "Yiya engxenyeni yefomu",
       "neededToStart": "Kuyadingeka ukuze uqale",
+      "neededToSave": "Kuyadingeka ukuze ulondoloze",
       "elsewhere": "{named, select, true {Ukuskrini kwakho okungaqediwe {name} kugcinwe ku-{workspace}, lapho kwaqalwa khona.} other {Ukuskrini kwakho okungaqediwe kugcinwe ku-{workspace}, lapho kwaqalwa khona.}}",
       "goOnThere": "Qhubeka lapho",
       "name": {
@@ -8422,6 +8424,7 @@
         "modelsUnderOne": "Iseluleko emaphepheni anomuntu",
         "addPerson": "Engeza umuntu ukuze ukhethe",
         "settledWhen": "Iphepha lixazululwa uma",
+        "oneVoteNow": "Okwamanje ivoti elilodwa ephepheni ngalinye, ngakho ngalinye linqunywa yileyo voti",
         "settlingTitle": "Ukuxazulula iphepha",
         "oneVote": "Wonke umbuyekezi onikwe iphepha unevoti elilodwa.",
         "ruleMeans": "<b>{label}.</b> {means}",
@@ -8765,6 +8768,7 @@
       "allSettled": "{finish, select, true {Onke amaphepha axazululiwe, sekulungele ukuqedwa} other {Onke amaphepha axazululiwe}}",
       "none": "{show, select, you {Akukho okudinga wena.} finished {Azikho izinkuskrini eziqediwe.} open {Azikho izinkuskrini eziqhubekayo.} other {Azikho izinkuskrini.}}",
       "noneElse": "Akukho lutho kule ndawo yokusebenzela oludinga wena.",
+      "needsYouHere": "Kudinga wena kule ndawo yokusebenzela",
       "noneCalled": "{show, select, you {Akukho okubizwa ngokuthi {name} okudinga wena.} finished {Azikho izinkuskrini eziqediwe ezibizwa ngokuthi {name}.} open {Azikho izinkuskrini eziqhubekayo ezibizwa ngokuthi {name}.} other {Azikho izinkuskrini ezibizwa ngokuthi {name}.}}",
       "showEvery": "Bonisa zonke izinkuskrini",
       "pagerItems": "izinkuskrini",
@@ -8945,7 +8949,10 @@
         "mean": "Isilinganiso se-Cohen's kappa samapheya",
         "across": "U-0 akangcono kunethuba, u-1 ukuvumelana okuphelele. Kuwo wonke {pairs, plural, one {# ipheya} other {# amapheya}} wababuyekezi, {range, select, true {amaphepha angu-{min, number} kuya ku-{max, number} ngalinye} other {{min, plural, one {# iphepha ngalinye} other {# amaphepha ngalinye}}}}.{left, plural, =0 {} one { Elinye ipheya livote ngendlela efanayo kuwo wonke amaphepha, ngakho i-kappa ayikwazi ukubalwa.} other { Amanye amapheya angu-# avote ngendlela efanayo kuwo wonke amaphepha, ngakho i-kappa ayikwazi ukubalwa.}}",
         "splitMost": "Wonke amaphepha, abangavumelani kakhulu kuqala",
-        "noneYet": "Akukabikho okwamanje",
+        "sameCount": "Ivoti efanayo ku-{same, number} kwangu-{papers, plural, one {# iphepha} other {# amaphepha}}",
+        "thin": "{count, plural, one {Umbhangqwana ongu-# unamaphepha} other {Imibhangqwana engu-# inamaphepha}} angaphansi kuka-{least, number} ahlanganyelwe, mancane kakhulu ukuqhathanisa",
+        "allPairs": "Bonisa yonke imibhangqwana engu-{count, number}",
+        "fewerPairs": "Bonisa okumbalwa",
         "cell": "{a} no-{b}, kappa {kappa}, ivoti elifanayo ku-{share, number, percent} kwa-{papers, plural, one {# iphepha} other {# amaphepha}}"
       },
       "kappa": {

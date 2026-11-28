@@ -119,6 +119,8 @@ export function ScreeningsIndex() {
   const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length + (invitations ?? []).filter((row) => row.kind === "screening").length + (elsewhere?.length ?? 0), open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
   // The first-use block is for someone with no screening of their own: an invitation waiting doesn't make them a user of the list.
   const invitedCount = (invitations ?? []).filter((row) => row.kind === "screening").length;
+  // Something needs the person outside this workspace's list too: what needs them in it says where, beside the tab's count of all of it.
+  const neededElsewhere = Boolean(elsewhere?.length || invitedCount);
   const empty = counts !== undefined && counts.all === 0 && counts.you - invitedCount - (elsewhere?.length ?? 0) === 0;
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((one) => one.group)).size > 1;
@@ -240,7 +242,7 @@ export function ScreeningsIndex() {
                     const settled = total - stands.conflict - stands.waiting;
                     const resolver = row.resolver.id === me ? words.t("youInline") : words.firstName(row.resolver.name);
                     return (
-                      <Group key={id} label={(grouped || show === "you") && (i === 0 || rows[i - 1]!.group !== group) ? t(`show.${SHOWS[group]!}`) : null} note={group === 0 ? t("needsYouNote") : undefined} count={group === 0 ? needs.length : undefined}>
+                      <Group key={id} label={(grouped || show === "you") && (i === 0 || rows[i - 1]!.group !== group) ? (group === 0 && neededElsewhere ? t("needsYouHere") : t(`show.${SHOWS[group]!}`)) : null} note={group === 0 ? t("needsYouNote") : undefined} count={group === 0 ? needs.length : undefined}>
                         {/* Whatever in the row is pressed opens the screening: it opens under this name while the rest of it is read. */}
                         <li onClickCapture={() => listedNames.set(id, row.name)} className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
                           {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}

@@ -102,6 +102,12 @@ const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `s
 /** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
 const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, ...(offer.untitled ? { untitled: true } : {}), detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
 /** A criterion made from a question as it was written. */
+/** A source whose papers it can take out of where they came from: a collection, or a reader's collection in a community, as the server's `prunable` says (convex/screening/validators.ts). */
+const prunes = (source: Source) => {
+  if (source.kind === "collection") return true;
+  const from = source.set?.kind === "evidenceLibrary" ? (source.set.source as object | undefined) : undefined;
+  return Boolean(from && "readerCollection" in from && !("search" in from));
+};
 const criterionFrom = (question: string, more: { short?: string; terms?: string[] } = {}): Criterion => ({ key: `new:${hash(question)}`, text: question, short: more.short ?? shortOf(question), must: true, terms: more.terms ?? [], addedAt: Date.now() });
 
 type Pager = { page: number; canPrevious: boolean; canNext: boolean; hasPages: boolean; previous: () => void; next: () => void; offset: number; items: unknown[]; isStale: boolean };
@@ -168,7 +174,8 @@ function setupOf(say: Say, draft: Screening) {
     people: members.map((one) => one.id as Id<"users">),
     models: modelsOf(draft).map(modelOf),
     saveTo: saveToOf(say, draft),
-    ...(draft.destination.prune ? { prune: true } : {}),
+    // Only while a collection is one of its sources: the switch goes with it, and so does what it set.
+    ...(draft.destination.prune && draft.sources.some(prunes) ? { prune: true } : {}),
     ...(draft.living ? { living: draft.living.every } : {}),
   };
 }
@@ -191,7 +198,7 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     // A guest already reviewing it may settle its conflicts too (the server checks they are on it): only someone invited and not joined yet can't.
     ...(differs("rule") ? { rule: ruleOf(draft, activeReviewers(draft).filter((one) => one.kind === "person" && !one.email)) } : {}),
     ...(differs("living") ? { living: draft.living?.every ?? null } : {}),
-    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune } : {}),
+    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune && draft.sources.some(prunes) } : {}),
     ...(draft.sources.some((source) => !saved.sources.some((one) => one.id === source.id)) ? { addSources: draft.sources.filter((source) => !saved.sources.some((one) => one.id === source.id)).map(sourceOf) } : {}),
     ...(saved.sources.some((source) => !draft.sources.some((one) => one.id === source.id)) ? { removeSources: saved.sources.filter((source) => !draft.sources.some((one) => one.id === source.id)).map((source) => source.id as Id<"screeningSources">) } : {}),
     ...(ranged.length ? { ranges: ranged.map((source) => ({ sourceId: source.id as Id<"screeningSources">, ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) })) } : {}),
@@ -643,8 +650,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
   const lacking: Block[] = [
+    // A new screening without a name takes its first source's; a saved one keeps the one it has, and an empty one is refused.
+    ...(saved && !draft.name.trim() ? [{ text: t("block.needsName"), focus: "#screening-name" }] : []),
     ...(unasked ? [unasked] : []),
-    ...(needsCriteria ? [{ text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: "#new-criterion" }] : []),
+    ...(needsCriteria ? [{ text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: draft.criteria.length ? "#criteria [role=radiogroup] button" : "#new-criterion" }] : []),
     ...(overPapers !== null ? [{ text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" as const }] : []),
     ...(overModels !== null ? [{ text: t("block.overModels", { count: overModels }), section: "reviewers" as const }] : []),
     ...(orphaned ? [{ text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers" as const, focus: "#add-person" }] : []),
@@ -664,11 +673,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The PDFs it was handed, each read once as it was added, which the workspace paid for then.
   const handedPdfs = fresh ? sources.reduce((sum, source) => sum + (source.set?.kind === "pdf" ? baseTotal(source) : 0), 0) : 0;
   // Why it can't start yet. It may start with no papers, and wait for them. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
-  const problems: Block[] = [
-    ...(reading ? [{ text: t("block.reading"), section: "papers" as const, focus: "#add-papers [role=tab][data-state=active]", wait: true as const }] : []),
+  // What stops Start: the same as Save, and a new screening needs a reviewer and its papers read too.
+  const problems: Block[] = fresh ? [
     ...(!activeReviewers(draft).length ? [{ text: t("block.addReviewer"), section: "reviewers" as const, focus: "#add-person" }] : []),
     ...lacking,
-  ];
+    ...(reading ? [{ text: t("block.reading"), section: "papers" as const, wait: true as const }] : []),
+  ] : lacking;
+  // Things to fix, not to wait for: papers still arriving are a wait, said as one.
+  const fixes = problems.filter((one) => !one.wait);
   // Each part says what in it stops the start, once Start has been pressed. Short of credits is said from the first: it is the one thing a field can't show.
   // Start or Save pressed while something stops it: every part says what, and the first is brought into view with the cursor on what fixes it.
   const showProblems = (first: Block) => {
@@ -678,7 +690,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     // The window's scroll is the outside system. It moves once the messages have grown in (Section's 0.2s): a part growing during a smooth scroll stops it.
     window.setTimeout(() => target?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 220);
   };
-  const problemsIn = (section: NonNullable<Block["section"]>) => problems.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => one.text);
+  const problemsIn = (section: NonNullable<Block["section"]>) => fixes.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => one.text);
 
   // A source is what the server reads it from (`set`), under the name its list gave it. What it holds is what the list counted; what it leaves out and what another source already has are known once it is read.
   const addSource = (offer: Offer) =>
@@ -1001,7 +1013,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <div className="flex flex-wrap items-center gap-1.5">
           {summary.map((line) => (
             <JumpLink key={line.id} to={line.id} className="flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-              {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className={cn("size-3.5 shrink-0", tried ? "ink-destructive" : "ink-warning")} /> : null}
+              {line.problem ? <TriangleAlert aria-label={saved ? t("neededToSave") : t("neededToStart")} className={cn("size-3.5 shrink-0", tried ? "ink-destructive" : "ink-warning")} /> : null}
               {line.label}
             </JumpLink>
           ))}
@@ -1019,14 +1031,14 @@ export function ScreeningForm({ id }: { id?: string }) {
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">{t("name.label")}{changed("name")}</label>
-              <Textarea id="screening-name" rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
+              <Textarea id="screening-name" aria-invalid={tried && Boolean(saved) && !draft.name.trim()} rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="flex h-5 items-center gap-1">
                 <label htmlFor="research-question" className="text-xs font-medium text-muted-foreground">{t.rich("name.question", { optional: (chunks) => <span className="font-normal">{chunks}</span> })}</label>
                 <Help title={t("name.questionTitle")} facts={<HelpFact>{t("name.optional")}</HelpFact>}>{t("name.questionHelp")}</Help>
               </span>
-              <Textarea id="research-question" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
+              <Textarea id="research-question" maxLength={2000} rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
             </div>
           </section>
 
@@ -1446,7 +1458,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 return (
               <form className="px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); if (refused) return; addCriterion(text); setText(""); }}>
                 <div className="flex items-start gap-2">
-                <Textarea id="new-criterion" aria-invalid={tried && needsCriteria} rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
+                <Textarea id="new-criterion" aria-invalid={tried && needsCriteria && !draft.criteria.length} rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim() || refused}><Plus />{t("criteria.add")}</Button>
                 </div>
                 {full ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.full", { count: MAX_QUESTIONS })}</p> : repeated && text.trim() ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.repeated")}</p> : null}
@@ -1498,7 +1510,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="reviewers"
             title={t("part.reviewers")}
-            problems={[...problemsIn("reviewers"), ...(tried ? problemsIn("cost") : [])]}
+            problems={problemsIn("reviewers")}
             help={<><Help title={t("part.reviewers")} facts={<><HelpFact>{t("reviewers.factPeople")}</HelpFact><HelpFact icon={Coins}>{t("reviewers.factModels")}</HelpFact></>}>{t("reviewers.help")}</Help>{changed("reviewers")}</>}
             aside={<Chip>{words.listed(whoCounts) || t("summary.nobody")}</Chip>}
           >
@@ -1541,7 +1553,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             ) : null}
                             {votes && saved ? <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id })}>{words.count("votes", votes)}</LinkChip> : null}
                             {/* An invitation that couldn't be sent is sent again here, as from People. */}
-                            {invitation && undelivered && reviewer.email ? <Button variant="outline" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={() => void share.invite(reviewer.email!).then(() => toast(tShare("sentAgain", { email: reviewer.email! })), (error) => showStyledToast("error", getErrorMessage(error, t("toast.failed"))))}><Repeat className="size-3.5" />{tShare("sendAgain")}</Button> : null}
+                            {invitation && reviewer.email && words.invitationTrouble({ failed: undelivered, expiresAt }) ? <Button variant="outline" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={() => void share.invite(reviewer.email!).then(() => toast(tShare("sentAgain", { email: reviewer.email! })), (error) => showStyledToast("error", getErrorMessage(error, t("toast.failed"))))}><Repeat className="size-3.5" />{tShare("sendAgain")}</Button> : null}
                           </>
                         )
                       }
@@ -1586,7 +1598,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                   })()
                 ) : <span className="text-sm text-muted-foreground">{t("decided.addPerson")}</span>}
               </RuleRow>
-              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, pending), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>}>
+              <RuleRow name={t("decided.settledWhen")} help={<Help title={t("decided.settlingTitle")}><p>{t("decided.oneVote")}</p>{(["all", "most", "one"] as const).map((rule) => <p key={rule}>{t.rich("decided.ruleMeans", { label: words.t(`settle.label.${rule}`), means: settleMeans(words, { reviewers: draft.reviewers, rule: { ...draft.rule, settle: rule } }, pending), b: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}</p>)}</Help>} {...(draft.rule.settle !== "one" && !conflicts ? { detail: t("decided.oneVoteNow") } : {})}>
+                {/* With one vote on each paper there is nothing to agree on yet: the row says so beside the choice, which counts once more votes come to each paper. */}
                 <Segmented wraps label={t("decided.settledWhen")} value={draft.rule.settle} onChange={(next) => { if (next === "one" && draft.rule.settle !== "one") setEachBefore(draft.rule.each); set({ rule: { ...draft.rule, settle: next, ...(next === "one" ? { each: "1" as const } : draft.rule.settle === "one" && eachBefore ? { each: eachBefore } : {}) } }); }} options={(["all", "most", "one"] as const).map((id) => ({ id, label: words.t(`settle.label.${id}`) }))} />
               </RuleRow>
               <RuleRow name={t("decided.modelVotes")} help={<Help title={t("decided.modelVotes")}><p>{t("decided.modelVotesVote")}</p><p>{t("decided.modelVotesAdvice")}</p><p>{t("decided.modelVotesNever")}</p></Help>}>
@@ -1691,8 +1704,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <AutoHeight>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
-                      {dirty && countFailed ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{effectsSay.t("countAgain")}</Button> : null}
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : holdUp ? holdUp.text : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
+                      {dirty && countFailed && !holdUp ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{effectsSay.t("countAgain")}</Button> : null}
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
@@ -1729,7 +1742,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             <nav aria-label={t("changes.partsNav")} className={cn(LIST, "bg-card")}>
               {summary.map((line) => (
                 <JumpLink key={line.id} to={line.id} className="flex items-center gap-3 px-3.5 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
-                  {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className={cn("mt-0.5 size-4 shrink-0 self-start", tried ? "ink-destructive" : "ink-warning")} /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
+                  {line.problem ? <TriangleAlert aria-label={saved ? t("neededToSave") : t("neededToStart")} className={cn("mt-0.5 size-4 shrink-0 self-start", tried ? "ink-destructive" : "ink-warning")} /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">{line.label}</span>
                     <span className="block text-sm font-medium [overflow-wrap:anywhere]">{line.value}</span>
@@ -1773,12 +1786,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reread ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><RotateCcw aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.creditsOf(reread) })}</span></p> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.creditsOf(cost) }) : t("cost.nothing")}</span></div>
                 <div role="img" aria-label={cost > wallet ? t("cost.overWallet", { credits: words.creditsOf(cost - wallet) }) : t("cost.walletShare", { share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}>
-                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
+                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? (fresh ? "bg-destructive" : "bg-warning") : "bg-primary"} />
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? t("cost.shareOf", { under: "true", share: format.number(0.01, { style: "percent" }) }) : t("cost.shareOf", { under: "false", share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}</span> : null}
                   <WorkspaceTag size="sm" workspace={saved ? lookOf(saved.workspace) : (here ?? { kind: "personal", name: workspace.name })}>{t("cost.inWorkspace", { credits: words.credits(wallet), workspace: workspace.name, own: String((saved ? saved.workspace.kind : here?.kind) === "personal" && (!saved || Boolean(open?.canChange))) })}</WorkspaceTag>
-                  {cost > wallet ? <LinkChip id="add-credits" href="/settings/billing" tone="destructive" icon={Coins}>{t("bar.addCredits")}</LinkChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
+                  {/* Red where it stops the start; a running screening's models read until the credits run out, and only a warning says so. */}
+                  {cost > wallet ? <LinkChip id="add-credits" href="/settings/billing" tone={fresh ? "destructive" : "warning"} icon={Coins}>{t("bar.addCredits")}</LinkChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
                   {spentSoFar ? <Chip>{t("cost.spent", { credits: words.credits(spentSoFar) })}</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
@@ -1805,10 +1819,11 @@ export function ScreeningForm({ id }: { id?: string }) {
               <span className="text-sm">{models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.creditsOf(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-              {tried && problems.length ? <Blocker block={{ ...problems[0]!, text: t("bar.toFix", { count: problems.length, saving: "false" }) }} /> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
-              {owed > wallet ? <Button asChild variant="outline"><NextLink href="/settings/billing"><Coins />{t("bar.addCredits")}</NextLink></Button> : null}
+              {tried && fixes.length ? <Blocker block={{ ...fixes[0]!, text: t("bar.toFix", { count: fixes.length, saving: "false" }) }} /> : tried && problems.length ? <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Spinner className="size-3.5" />{problems[0]!.text}</span> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
+              {/* The cost panel offers credits from the first: the bar does once Start has been pressed. */}
+              {tried && owed > wallet ? <Button asChild variant="outline"><NextLink href="/settings/billing"><Coins />{t("bar.addCredits")}</NextLink></Button> : null}
               {/* Start is never greyed out: pressed while something stops it, it shows each thing at its place and goes to the first. */}
-              <Button disabled={busy} onClick={() => (problems.length ? showProblems(problems[0]!) : void start())}><ListChecks />{t("bar.start")}</Button>
+              <Button disabled={busy} onClick={() => (problems.length ? showProblems(fixes[0] ?? problems[0]!) : void start())}><ListChecks />{t("bar.start")}</Button>
             </div>
           </div>
         </ActionBar>
@@ -1825,7 +1840,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             {tried && holdUp ? <Blocker block={{ ...holdUp, text: t("bar.toFix", { count: lacking.length, saving: "true" }) }} /> : null}
             <div className="ms-auto flex items-center gap-2">
               <Button variant="ghost" onClick={() => { setDiscarding(edits); setAsksDiscard("edits"); }}>{t("bar.discard")}</Button>
-              <Button disabled={counting || countFailed} onClick={() => (holdUp ? showProblems(holdUp) : void save())}><Check />{t("bar.save")}</Button>
+              {/* What stops the save is said whatever the count is doing: the server refuses to count a change it would refuse to save. */}
+              <Button disabled={!holdUp && (counting || countFailed)} onClick={() => (holdUp ? showProblems(holdUp) : void save())}><Check />{t("bar.save")}</Button>
             </div>
           </div>
         </ActionBar>

@@ -121,6 +121,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     packed: undefined as number | undefined,
     // Where a full page that may be the list's last stops: one row past it is read, so next is offered only where there is one.
     peek: undefined as string | undefined,
+    // What the last read past a full page found, kept while a moved one is read again: next neither blinks on nor holds the page.
+    found: undefined as boolean | undefined,
   });
   const [state, setState] = useState(() => fresh(named ?? 0, NO_STARTS, NO_STARTS));
   // A list that keeps its page to itself keeps it here, for as long as it is the same list.
@@ -130,7 +132,7 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   const moved = state.key !== key || state.placed !== placed;
   const current = moved ? from(state.key === key ? state.known.slice(0, placed) : NO_STARTS, state.key === key ? state.known : NO_STARTS) : state;
   if (moved) setState(current);
-  const { starts, reads, id, known, want, peek } = current;
+  const { starts, reads, id, known, want, peek, found: foundBefore } = current;
   const ended = current.end?.page === starts.length ? current.end.cursor : undefined;
 
   const run = args !== "skip" && (open || canRunProtectedQueries);
@@ -211,7 +213,9 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   // Past the page the list ended on there is more once the read after it finds a row, or stops short of the end.
   const after = results.after;
   const found = after !== undefined && !(after instanceof Error) && (after.page.length > 0 || !after.isDone);
-  const more = ended === undefined ? peek === undefined || after === undefined || after instanceof Error || found : found;
+  // One change of state a render: not while the page itself moves on or its look moves.
+  if (ended === undefined && peek !== undefined && peekAt === peek && !emptied && !passing && after !== undefined && !(after instanceof Error) && found !== foundBefore) setState({ ...current, found });
+  const more = ended === undefined ? peek === undefined || after instanceof Error || (after === undefined ? (foundBefore ?? true) : found) : found;
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
   const page = visible?.number ?? want + 1;
@@ -219,8 +223,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
   return {
     items,
-    /** Nothing has loaded yet, or a first full page still waits to know whether a page comes after it: the pager comes with the rows, never after them. */
-    isLoading: visible === undefined || (page === 1 && peek !== undefined && ended === undefined && after === undefined),
+    /** Nothing has loaded yet, or a first full page still waits, the first time only, to know whether a page comes after it: the pager comes with the rows, never after them. */
+    isLoading: visible === undefined || (page === 1 && peek !== undefined && ended === undefined && after === undefined && foundBefore === undefined),
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */
     isStale: visible !== undefined && visible !== data,
     /** The number of the page shown, from 1; it moves when the page it steps to arrives. */

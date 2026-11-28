@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# article n'est qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ces modèles ne savent pas lire. Ajoutez une personne}}} other {{count, plural, one {# article n'est qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne} other {# articles ne sont qu'un PDF, que ce modèle ne sait pas lire. Ajoutez une personne}}}}",
         "creditsShort": "{credits, plural, one {Il manque # crédit} other {Il manque # crédits}}",
         "reading": "Lecture des articles",
+        "needsName": "Donnez un nom au criblage",
         "addReviewer": "Ajoutez un évaluateur pour démarrer"
       },
       "unread": "{count, plural, one {# illisible} other {# illisibles}}",
@@ -8237,6 +8238,7 @@
       "openIt": "L'ouvrir",
       "partsNav": "Aller à une partie du formulaire",
       "neededToStart": "Nécessaire pour démarrer",
+      "neededToSave": "Nécessaire pour enregistrer",
       "elsewhere": "{named, select, true {Votre criblage inachevé {name} est conservé dans {workspace}, où il a été commencé.} other {Votre criblage inachevé est conservé dans {workspace}, où il a été commencé.}}",
       "goOnThere": "Continuer là-bas",
       "name": {
@@ -8422,6 +8424,7 @@
         "modelsUnderOne": "Avis sur les articles confiés à une personne",
         "addPerson": "Ajoutez une personne pour choisir",
         "settledWhen": "Un article est tranché quand",
+        "oneVoteNow": "Pour l’instant un vote par article, qui le tranche donc",
         "settlingTitle": "Trancher un article",
         "oneVote": "Chaque évaluateur qui reçoit un article a une voix.",
         "ruleMeans": "<b>{label}.</b> {means}",
@@ -8765,6 +8768,7 @@
       "allSettled": "{finish, select, true {Tous les articles sont tranchés, prêt à terminer} other {Tous les articles sont tranchés}}",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
       "noneElse": "Rien dans cet espace de travail n’attend après vous.",
+      "needsYouHere": "Vous attend dans cet espace de travail",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
       "pagerItems": "criblages",
@@ -8945,7 +8949,10 @@
         "mean": "Kappa de Cohen moyen par paire",
         "across": "0 ne fait pas mieux que le hasard, 1 est un accord complet. Sur {pairs, plural, one {# paire} other {# paires}} d'évaluateurs, {range, select, true {de {min, number} à {max, number} articles chacune} other {{min, plural, one {# article chacune} other {# articles chacune}}}}.{left, plural, =0 {} one { L'autre paire a voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.} other { Les # autres paires ont voté de la même façon sur chaque article, et le kappa ne peut alors pas être calculé.}}",
         "splitMost": "Tous les articles, les plus partagés d'abord",
-        "noneYet": "Aucun pour l'instant",
+        "sameCount": "Même vote sur {same, number} de {papers, plural, one {# article} other {# articles}}",
+        "thin": "{count, plural, one {# paire a} other {# paires ont}} moins de {least, number} articles en commun, trop peu pour comparer",
+        "allPairs": "Afficher les {count, number} paires",
+        "fewerPairs": "Afficher moins",
         "cell": "{a} et {b}, kappa {kappa}, même vote sur {share, number, percent} de {papers, plural, one {# article} other {# articles}}"
       },
       "kappa": {

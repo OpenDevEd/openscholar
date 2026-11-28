@@ -8175,6 +8175,7 @@
         "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
         "creditsShort": "{credits, plural, other {还差 # 积分}}",
         "reading": "正在读取论文",
+        "needsName": "为筛选命名",
         "addReviewer": "添加审核人后开始"
       },
       "unread": "{count, plural, other {# 篇无法读取}}",
@@ -8237,6 +8238,7 @@
       "openIt": "打开",
       "partsNav": "前往表单的某一部分",
       "neededToStart": "开始前需要",
+      "neededToSave": "保存时必需",
       "elsewhere": "{named, select, true {你未完成的筛选 {name} 保存在开始它的 {workspace} 中。} other {你未完成的筛选保存在开始它的 {workspace} 中。}}",
       "goOnThere": "在那里继续",
       "name": {
@@ -8422,6 +8424,7 @@
         "modelsUnderOne": "对分配给人员的论文仅作参考",
         "addPerson": "添加人员后可选择",
         "settledWhen": "论文定案的条件",
+        "oneVoteNow": "目前每篇论文只有一票，因此由这一票决定",
         "settlingTitle": "论文定案",
         "oneVote": "分配到论文的每位审核人各有一票。",
         "ruleMeans": "<b>{label}。</b>{means}",
@@ -8765,6 +8768,7 @@
       "allSettled": "{finish, select, true {所有论文均已定案，可以完成} other {所有论文均已定案}}",
       "none": "{show, select, you {没有需要你处理的。} finished {没有已完成的筛选。} open {没有进行中的筛选。} other {没有筛选。}}",
       "noneElse": "此工作区中没有需要你处理的内容。",
+      "needsYouHere": "此工作区中需要你处理",
       "noneCalled": "{show, select, you {没有名为 {name} 且需要你处理的筛选。} finished {没有名为 {name} 的已完成筛选。} open {没有名为 {name} 的进行中筛选。} other {没有名为 {name} 的筛选。}}",
       "showEvery": "显示所有筛选",
       "pagerItems": "个筛选",
@@ -8945,7 +8949,10 @@
         "mean": "两两 Cohen's kappa 的平均值",
         "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}。{left, plural, =0 {} other {其余 # 对在每篇论文上都投了同样的票，这种情况下无法计算 kappa。}}",
         "splitMost": "全部论文，分歧最大的在前",
-        "noneYet": "暂无",
+        "sameCount": "{papers, plural, other {# 篇论文}}中有 {same, number} 篇投票相同",
+        "thin": "{count, plural, other {# 对}}共同论文少于 {least, number} 篇，暂时太少无法比较",
+        "allPairs": "显示全部 {count, number} 对",
+        "fewerPairs": "显示较少",
         "cell": "{a} 与 {b}，kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
       },
       "kappa": {

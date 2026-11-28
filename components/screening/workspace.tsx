@@ -202,8 +202,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages on a line of their own, the same on every page, and the rule on the line under them. On a phone, Screen keeps the room for the paper and leaves the rule to its "?".
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{passing}</div>
-      {view === "settings" ? null : <div className={cn("flex items-center px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div></div>}
+      {/* What is passing ends the rule's line, so the tabs keep their widths as it comes and goes. Where there is no rule line (Settings, Screen on a phone) it ends the tabs' line. */}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" ? passing : view === "screen" ? <span className="contents sm:hidden">{passing}</span> : null}</div>
+      {view === "settings" ? null : <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div><span className="ms-auto flex shrink-0 empty:hidden">{passing}</span></div>}
     </>
   );
 

@@ -90,7 +90,7 @@ const COLUMNS = "lg:max-[87.5rem]:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[
  * Under 1400px the paper's column can be narrower than the bar's parts: the tabs take what room there is between their own width and 18rem, and what still does not fit goes to a second line.
  */
 const QUEUE_BAR = "border-b border-border-subtle p-3 lg:max-[87.5rem]:flex-wrap lg:max-[87.5rem]:px-8";
-const QUEUE_TABS = "lg:max-w-[18rem] lg:min-w-max lg:flex-1 min-[87.5rem]:w-[17.5rem] min-[87.5rem]:max-w-none min-[87.5rem]:flex-none 2xl:w-[20.5rem]";
+const QUEUE_TABS = "lg:max-w-[18rem] lg:min-w-max lg:flex-1 min-[87.5rem]:w-[17.5rem] min-[87.5rem]:max-w-none min-[87.5rem]:flex-none min-[110rem]:w-[20.5rem]";
 /** The bar under them: under 1400px, where you are and the vote. */
 const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
 /** A filter over the queue's list: a pill as wide as the queue's column. */
@@ -398,7 +398,8 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) {
       const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved);
       // An exclusion that rested on this criterion failing rests on what the answers say now: another failed must-have, the note, or no reason.
-      const rested = mine.decision === "exclude" && mine.reason === criterion && given[criterion] !== "no";
+      // And one that had no reason takes the must-have its answers now fail, as an exclusion cast with them would.
+      const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
       const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
       const saving = open.vote(paper.id, ballot).then((at) => { if (at !== null && cast) cast.saved = at; }, failed);
       if (cast) cast.pending = Promise.all([cast.pending, saving]);
@@ -419,12 +420,14 @@ function Screen({ open }: { open: Open }) {
     // What it puts back is stamped anew: the step before it on the same paper names that moment, so a second Undo still works.
     const earlier = history.findLast((one) => one !== last && one.paper.id === last.paper.id && one.resolved === last.resolved);
     const restamp = (at: number | null) => { if (at !== null && earlier) earlier.saved = at; };
-    void (last.pending ?? Promise.resolve()).then(() => {
+    const undoing = (last.pending ?? Promise.resolve()).then(() => {
       // A save the server refused was never made: there is nothing to take back.
       if (last.saved === undefined) return;
-      if (last.resolved) open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
-      else open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then(restamp, failed);
+      if (last.resolved) return open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
+      return open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then(restamp, failed);
     });
+    // Undo pressed again at once waits for this one, so it names the moment this one stamps.
+    if (earlier) earlier.pending = Promise.all([earlier.pending, undoing]);
     openIt(last.paper);
     setHistory((all) => all.filter((one) => one !== last));
   };
@@ -646,7 +649,7 @@ function Screen({ open }: { open: Open }) {
       <div role="status" aria-label={t("queue.loading")} className={cn("grid grid-cols-1 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, folded ? FOLDED : WIDE)}>
         {open.isReviewer ? <div className={cn("lg:col-start-1 lg:row-start-1 min-[87.5rem]:col-end-3", QUEUE_BAR)}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
         <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:block min-[87.5rem]:overflow-hidden", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
-          <div className="w-[19rem] 2xl:w-[22rem]">
+          <div className="w-[19rem] min-[110rem]:w-[22rem]">
             <div className="p-3"><SkeletonBar className="h-8 w-full rounded-full" /></div>
             <ListRowsSkeleton rows={Math.min(left || QUEUE_PAGE, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} className="border-t border-border-subtle" />
           </div>
@@ -806,7 +809,7 @@ function Screen({ open }: { open: Open }) {
         {/* The queue's pane, from 1400px: its search and filters at its top, the list under them, which scrolls, and the list's pages at its foot where it has more than one. */}
         {/* Folded away, its column closes to nothing and it leaves the page and the keyboard's path once it has closed. What it holds keeps its width while the column slides. */}
         <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:flex min-[87.5rem]:min-h-0 min-[87.5rem]:flex-col min-[87.5rem]:overflow-hidden min-[87.5rem]:transition-[visibility] min-[87.5rem]:duration-300", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
-          <div className="flex min-h-0 w-[19rem] flex-1 flex-col 2xl:w-[22rem]">
+          <div className="flex min-h-0 w-[19rem] flex-1 flex-col min-[110rem]:w-[22rem]">
             <div className="space-y-2 p-3">
               {findField("")}
               {queueFilters(QUEUE_FILTER)}
@@ -1066,7 +1069,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* The vote */}
-            <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
+            <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 min-[110rem]:max-w-none">
               {!mayDecide ? (
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{gone ? t("shut.left") : finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (

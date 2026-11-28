@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# artigo é só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa} other {# artigos são só um PDF, que estes modelos não conseguem ler. Adicione uma pessoa}}} other {{count, plural, one {# artigo é só um PDF, que este modelo não consegue ler. Adicione uma pessoa} other {# artigos são só um PDF, que este modelo não consegue ler. Adicione uma pessoa}}}}",
         "creditsShort": "{credits, plural, one {Falta # crédito} other {Faltam # créditos}}",
         "reading": "A ler os artigos",
+        "needsName": "Dê um nome à triagem",
         "addReviewer": "Adicione um revisor para iniciar"
       },
       "unread": "{count, plural, one {# não pôde ser lido} other {# não puderam ser lidos}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Abrir",
       "partsNav": "Ir para uma parte do formulário",
       "neededToStart": "Necessário para iniciar",
+      "neededToSave": "Necessário para guardar",
       "elsewhere": "{named, select, true {A sua triagem por terminar {name} está guardada em {workspace}, onde foi iniciada.} other {A sua triagem por terminar está guardada em {workspace}, onde foi iniciada.}}",
       "goOnThere": "Continuar lá",
       "name": {
@@ -8423,6 +8425,7 @@
         "modelsUnderOne": "Conselho nos artigos que uma pessoa tem",
         "addPerson": "Adicione uma pessoa para escolher",
         "settledWhen": "Um artigo fica decidido quando",
+        "oneVoteNow": "Por agora um voto em cada artigo, por isso cada um se decide com esse voto",
         "settlingTitle": "Decidir um artigo",
         "oneVote": "Cada revisor a quem é atribuído um artigo tem um voto.",
         "ruleMeans": "<b>{label}.</b> {means}",
@@ -8766,6 +8769,7 @@
       "allSettled": "{finish, select, true {Todos os artigos estão decididos, pronto a terminar} other {Todos os artigos estão decididos}}",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
       "noneElse": "Nada neste espaço de trabalho precisa de você.",
+      "needsYouHere": "Precisa de você neste espaço de trabalho",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
       "pagerItems": "triagens",
@@ -8946,7 +8950,10 @@
         "mean": "Kappa de Cohen médio entre pares",
         "across": "0 não é melhor do que o acaso, 1 é concordância total. Em {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {{min, number} a {max, number} artigos cada} other {{min, plural, one {# artigo cada} other {# artigos cada}}}}.{left, plural, =0 {} one { O outro par votou da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.} other { Os outros # pares votaram da mesma forma em todos os artigos, e nesse caso não é possível calcular o kappa.}}",
         "splitMost": "Todos os artigos, os mais divididos primeiro",
-        "noneYet": "Ainda nenhum",
+        "sameCount": "Mesmo voto em {same, number} de {papers, plural, one {# artigo} other {# artigos}}",
+        "thin": "{count, plural, one {# par tem} other {# pares têm}} menos de {least, number} artigos em comum, poucos para comparar ainda",
+        "allPairs": "Mostrar os {count, number} pares",
+        "fewerPairs": "Mostrar menos",
         "cell": "{a} e {b}, kappa {kappa}, mesmo voto em {share, number, percent} de {papers, plural, one {# artigo} other {# artigos}}"
       },
       "kappa": {

@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# artikel is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie modelle nie kan lees nie. Voeg ’n persoon by}}} other {{count, plural, one {# artikel is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by} other {# artikels is net ’n PDF, wat hierdie model nie kan lees nie. Voeg ’n persoon by}}}}",
         "creditsShort": "{credits, plural, one {# krediet kort} other {# krediete kort}}",
         "reading": "Lees die artikels",
+        "needsName": "Gee die siftering ’n naam",
         "addReviewer": "Voeg ’n beoordelaar by om te begin"
       },
       "unread": "{count, plural, other {# kon nie gelees word nie}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Maak dit oop",
       "partsNav": "Gaan na ’n deel van die vorm",
       "neededToStart": "Nodig om te begin",
+      "neededToSave": "Nodig om te stoor",
       "elsewhere": "{named, select, true {Jou onvoltooide siftering {name} word in {workspace} gehou, waar dit begin is.} other {Jou onvoltooide siftering word in {workspace} gehou, waar dit begin is.}}",
       "goOnThere": "Gaan daar voort",
       "name": {
@@ -8423,6 +8425,7 @@
         "modelsUnderOne": "Advies op artikels wat ’n persoon het",
         "addPerson": "Voeg ’n persoon by om te kies",
         "settledWhen": "’n Artikel is beslis wanneer",
+        "oneVoteNow": "Vir nou een stem op elke artikel, so elkeen word op daardie stem besleg",
         "settlingTitle": "Hoe ’n artikel beslis word",
         "oneVote": "Elke beoordelaar wat ’n artikel kry, het een stem.",
         "ruleMeans": "<b>{label}.</b> {means}",
@@ -8766,6 +8769,7 @@
       "allSettled": "{finish, select, true {Elke artikel is beslis, gereed om af te sluit} other {Elke artikel is beslis}}",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
       "noneElse": "Niks in hierdie werkruimte het jou nodig nie.",
+      "needsYouHere": "Het jou nodig in hierdie werkruimte",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
       "pagerItems": "sifterings",
@@ -8946,7 +8950,10 @@
         "mean": "Gemiddelde paarsgewyse Cohen se kappa",
         "across": "0 is nie beter as toeval nie, 1 is volle ooreenstemming. Oor {pairs, plural, one {# paar} other {# pare}} beoordelaars, {range, select, true {{min, number} tot {max, number} artikels elk} other {{min, plural, one {# artikel elk} other {# artikels elk}}}}.{left, plural, =0 {} one { Die ander paar het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.} other { Die ander # pare het op elke artikel dieselfde gestem, en dan kan kappa nie bereken word nie.}}",
         "splitMost": "Elke artikel, die mees verdeelde eerste",
-        "noneYet": "Nog geen",
+        "sameCount": "Dieselfde stem op {same, number} van {papers, plural, one {# artikel} other {# artikels}}",
+        "thin": "{count, plural, one {# paar het} other {# pare het}} minder as {least, number} artikels in gemeen, te min om nou te vergelyk",
+        "allPairs": "Wys al {count, number} pare",
+        "fewerPairs": "Wys minder",
         "cell": "{a} en {b}, kappa {kappa}, dieselfde stem op {share, number, percent} van {papers, plural, one {# artikel} other {# artikels}}"
       },
       "kappa": {

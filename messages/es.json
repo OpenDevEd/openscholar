@@ -8176,6 +8176,7 @@
         "orphaned": "{many, select, true {{count, plural, one {# artículo es solo un PDF, que estos modelos no pueden leer. Añada una persona} other {# artículos son solo un PDF, que estos modelos no pueden leer. Añada una persona}}} other {{count, plural, one {# artículo es solo un PDF, que este modelo no puede leer. Añada una persona} other {# artículos son solo un PDF, que este modelo no puede leer. Añada una persona}}}}",
         "creditsShort": "{credits, plural, one {Falta # crédito} other {Faltan # créditos}}",
         "reading": "Leyendo los artículos",
+        "needsName": "Ponle un nombre al cribado",
         "addReviewer": "Añada un revisor para empezar"
       },
       "unread": "{count, plural, one {# no se pudo leer} other {# no se pudieron leer}}",
@@ -8238,6 +8239,7 @@
       "openIt": "Abrirlo",
       "partsNav": "Ir a una parte del formulario",
       "neededToStart": "Necesario para empezar",
+      "neededToSave": "Necesario para guardar",
       "elsewhere": "{named, select, true {Su cribado sin terminar {name} se guarda en {workspace}, donde se empezó.} other {Su cribado sin terminar se guarda en {workspace}, donde se empezó.}}",
       "goOnThere": "Continuar allí",
       "name": {
@@ -8423,6 +8425,7 @@
         "modelsUnderOne": "Consejo en los artículos que tiene una persona",
         "addPerson": "Añada una persona para elegir",
         "settledWhen": "Un artículo queda resuelto cuando",
+        "oneVoteNow": "Por ahora un voto en cada artículo, así que cada uno se decide con ese voto",
         "settlingTitle": "Resolver un artículo",
         "oneVote": "Cada revisor asignado a un artículo tiene un voto.",
         "ruleMeans": "<b>{label}.</b> {means}",
@@ -8766,6 +8769,7 @@
       "allSettled": "{finish, select, true {Todos los artículos están resueltos, listo para terminar} other {Todos los artículos están resueltos}}",
       "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
       "noneElse": "Nada en este espacio de trabajo te necesita.",
+      "needsYouHere": "Te necesita en este espacio de trabajo",
       "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
       "showEvery": "Mostrar todos los cribados",
       "pagerItems": "cribados",
@@ -8946,7 +8950,10 @@
         "mean": "Kappa de Cohen media por pares",
         "across": "0 no es mejor que el azar, 1 es acuerdo total. Entre {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {de {min, number} a {max, number} artículos cada uno} other {{min, plural, one {# artículo cada uno} other {# artículos cada uno}}}}.{left, plural, =0 {} one { El otro par votó lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.} other { Los otros # pares votaron lo mismo en todos los artículos, y en ese caso kappa no se puede calcular.}}",
         "splitMost": "Todos los artículos, los más divididos primero",
-        "noneYet": "Ninguno todavía",
+        "sameCount": "Mismo voto en {same, number} de {papers, plural, one {# artículo} other {# artículos}}",
+        "thin": "{count, plural, one {# par tiene} other {# pares tienen}} menos de {least, number} artículos en común, muy pocos para comparar aún",
+        "allPairs": "Mostrar los {count, number} pares",
+        "fewerPairs": "Mostrar menos",
         "cell": "{a} y {b}, kappa {kappa}, mismo voto en el {share, number, percent} de {papers, plural, one {# artículo} other {# artículos}}"
       },
       "kappa": {

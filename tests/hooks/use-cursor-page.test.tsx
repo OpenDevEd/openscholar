@@ -103,6 +103,15 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
   });
 
+  it("keeps a full first page shown while the row past it is read again after the page moved", () => {
+    // A vote takes a paper out of a queue: the page reads on and stops elsewhere, and the look past it starts again.
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    expect(result.current).toMatchObject({ items: ["a", "b"], isLoading: false, canNext: true });
+    server.pages.set("|null", page(["b", "c"], "c9"));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["b", "c"], isLoading: false, canNext: true });
+  });
+
   it("offers next again on the last page once a row is added after it", () => {
     server.pages.set("|c1", page(["c", "d"], "c2"));
     server.pages.set("|c2", page([], "", true));

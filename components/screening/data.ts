@@ -247,7 +247,7 @@ export const invitedSaid = (words: { t: (key: "invitedWaiting", values: { count:
 /** One reviewer's vote on a paper, where the person looking may see it. */
 export const voteOn = (paper: Pick<Paper, "cast">, reviewer: string) => paper.cast.find((place) => place.reviewer === reviewer)?.vote;
 /** The models whose votes stand: on it, or taken off with votes kept. A vote of theirs can be kept from a person as any other. */
-export const modelsVoting = (screening: Pick<Screening, "reviewers">) => votingReviewers(screening).filter((one) => one.kind === "model").length;
+export const modelsVoting = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => one.kind === "model" && (!one.left || (!one.discarded && (one.tally?.cast ?? 0) > 0))).length;
 /** Its reviewers, and whoever was taken off with places that still stand: a result can rest on one of their votes, and a model's failed readings stay on its papers and in the files. */
 export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && gotThrough(one.tally) > 0));
 /** The most points a paper can earn under the screening's scoring. */
