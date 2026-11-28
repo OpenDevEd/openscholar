@@ -769,7 +769,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   <TableBody className="border-t border-border-subtle">
                     {rowsPending ? Array.from({ length: Math.min(total ?? PAGE, PAGE) }, (_, at) => (
                       <TableRow key={`pending:${at}`} aria-hidden style={{ height: ROW }}>
-                        <TableCell colSpan={99} className="px-4"><SkeletonBar className={cn("h-3", at % 3 === 0 ? "w-3/5" : at % 3 === 1 ? "w-2/5" : "w-1/2")} /></TableCell>
+                        {/* Over exactly the table's columns (the box, the paper, the votes or answers, the reason and the result), so the head keeps its widths while the rows come. */}
+                        <TableCell colSpan={4 + (columns === "criteria" ? criteria.length : reviewers.length)} className="px-4 sm:ps-6"><SkeletonBar className={cn("h-3", at % 3 === 0 ? "w-3/5" : at % 3 === 1 ? "w-2/5" : "w-1/2")} /></TableCell>
                       </TableRow>
                     )) : shown.map((one) => {
                       const cast = castOf(screening, one);
