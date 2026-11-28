@@ -28,8 +28,11 @@ export const screeningCounts = new DirectAggregate<{ Namespace: string; Key: Key
 const RESULTS = ["include", "maybe", "exclude", "conflict", "waiting"] as const;
 type Result = (typeof RESULTS)[number];
 export type Tally = Record<Result, number>;
-/** How a reviewer stands on a paper: the way they voted, or that they haven't (`waiting`), or that a model couldn't (`failed`). */
-export type Way = "include" | "maybe" | "exclude" | "waiting" | "failed";
+/**
+ * How a reviewer stands on a paper: the way they voted, or that they haven't (`waiting`), or that a model couldn't
+ * (`failed`). A model's vote is cast before the bookkeeping works out its decision: until then it is `cast`.
+ */
+export type Way = "include" | "maybe" | "exclude" | "cast" | "waiting" | "failed";
 
 const sourceOf = (jobId: Id<"screeningJobs">, sourceId: Id<"screeningSources">) => `${jobId}:source:${sourceId}`;
 const checkOf = (jobId: Id<"screeningJobs">, checkId: Id<"screeningChecks">) => `${jobId}:check:${checkId}`;
@@ -67,7 +70,7 @@ type Vote = Pick<Doc<"screeningVotes">, "_id" | "reviewerId" | "status" | "decis
 /** A vote's entries: how its reviewer stands on its paper with where the paper stands, and, cast, when it was. */
 export function voteEntries(vote: Vote | null, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null): Entry[] {
   if (!vote) return [];
-  const way = vote.status === "cast" ? vote.decision : vote.status;
+  const way = vote.status === "cast" ? (vote.decision ?? "cast") : vote.status;
   return [
     ...(way && counted(paper) ? [{ namespace: reviewerOf(vote.reviewerId), key: `${way}|${resultOf(paper)}`, id: vote._id }] : []),
     ...(vote.status === "cast" && vote.at !== undefined ? [{ namespace: castOf(vote.reviewerId), key: vote.at, id: vote._id }] : []),
@@ -118,6 +121,17 @@ export async function countVoteFacets(ctx: QueueingCtx, change: Change<DataModel
 
 /** Counts every entry of a row that may predate the counts: what the backfill does. */
 export const countEntries = (ctx: QueueingCtx, entries: Entry[]) => move(ctx, [], entries);
+
+/**
+ * Takes out what a vote no longer waiting may still be counted as waiting under, and counts it as it stands. A model's
+ * reading that came back through the pool before its completion ran with the triggers (../lib/functions.ts
+ * `withAppWrites`) left its vote counted as waiting.
+ */
+export async function recountVote(ctx: QueueingCtx, vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null) {
+  if (vote.status === "waiting") return;
+  await queueCounts(ctx, screeningCounts, RESULTS.map((result) => ({ type: "deleteIfExists" as const, namespace: reviewerOf(vote.reviewerId), key: `waiting|${result}`, id: vote._id })));
+  await countEntries(ctx, voteEntries(vote, paper));
+}
 
 const none = (): Tally => ({ include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 });
 /** One count for each key, in order. A moment behind the writes. */

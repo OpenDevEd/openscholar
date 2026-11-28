@@ -1,4 +1,4 @@
-import { internalMutation } from "../lib/functions";
+import { internalMutation, withAppWrites } from "../lib/functions";
 import { identityOf } from "../lib/paperRef";
 import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
 import { internal } from "../_generated/api";
@@ -490,7 +490,8 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     resultId: v.optional(v.id("screeningResults")),
     jobId: v.optional(v.id("screeningJobs")),
   }),
-  handler: async (ctx, { workId, result }) => {
+  // Its writes go through the app's triggers, as a mutation built by the app's builders would (../lib/functions.ts).
+  handler: (raw, { workId, result }) => withAppWrites(raw, async (ctx) => {
     const screeningResult = await ctx.db
       .query("screeningResults")
       .withIndex("by_workId", (q) => q.eq("workId", workId))
@@ -579,5 +580,5 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       });
     }
     await bookkeepLater(ctx);
-  },
+  }),
 });
