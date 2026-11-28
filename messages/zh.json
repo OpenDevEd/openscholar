@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {目前尚需支付，最多} other {尚需支付，最多}}} other {{soFar, select, true {目前合计，最多} other {合计，最多}}}}",
         "resumed": "恢复后尚需支付",
         "still": "尚需支付",
+        "total": "总计",
         "nothing": "无",
         "overWallet": "比工作区现有积分多 {credits, plural, other {# 积分}}",
         "walletShare": "占工作区积分的 {share}",

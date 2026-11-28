@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Reste à payer jusqu'ici, au plus} other {Reste à payer, au plus}}} other {{soFar, select, true {Total jusqu'ici, au plus} other {Total, au plus}}}}",
         "resumed": "Reste à payer à la reprise",
         "still": "Reste à payer",
+        "total": "Total",
         "nothing": "Rien",
         "overWallet": "{credits, plural, one {# crédit} other {# crédits}} de plus que n'en a l'espace de travail",
         "walletShare": "{share} des crédits de l'espace de travail",

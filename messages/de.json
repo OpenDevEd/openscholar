@@ -8491,6 +8491,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Bisher noch zu zahlen, höchstens} other {Noch zu zahlen, höchstens}}} other {{soFar, select, true {Bisher insgesamt, höchstens} other {Insgesamt, höchstens}}}}",
         "resumed": "Nach dem Fortsetzen noch zu zahlen",
         "still": "Noch zu zahlen",
+        "total": "Gesamt",
         "nothing": "Nichts",
         "overWallet": "{credits, plural, one {# Credit} other {# Credits}} mehr, als der Arbeitsbereich hat",
         "walletShare": "{share} der Credits des Arbeitsbereichs",

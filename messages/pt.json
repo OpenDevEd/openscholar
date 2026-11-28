@@ -8491,6 +8491,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Ainda a pagar até agora, no máximo} other {Ainda a pagar, no máximo}}} other {{soFar, select, true {Total até agora, no máximo} other {Total, no máximo}}}}",
         "resumed": "Ainda a pagar ao retomar",
         "still": "Ainda a pagar",
+        "total": "Total",
         "nothing": "Nada",
         "overWallet": "Mais {credits, plural, one {# crédito} other {# créditos}} do que o espaço de trabalho tem",
         "walletShare": "{share} dos créditos do espaço de trabalho",

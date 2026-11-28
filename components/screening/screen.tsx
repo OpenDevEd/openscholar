@@ -447,7 +447,13 @@ function Screen({ open }: { open: Open }) {
   const onKey = useEffectEvent(
     (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      // Cmd or Ctrl with Z takes the last vote back, as Z does: the undo everyone reaches for first. Any other key with a modifier is the browser's.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z" && !switching) {
+        event.preventDefault();
+        return void undo();
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.
       if (switching) return;
       const key = event.key.toLowerCase();

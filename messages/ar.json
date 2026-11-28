@@ -8491,6 +8491,7 @@
         "atMost": "{still, select, true {{soFar, select, true {المتبقي للدفع حتى الآن، كحد أقصى} other {المتبقي للدفع، كحد أقصى}}} other {{soFar, select, true {الإجمالي حتى الآن، كحد أقصى} other {الإجمالي، كحد أقصى}}}}",
         "resumed": "المتبقي للدفع بعد الاستئناف",
         "still": "المتبقي للدفع",
+        "total": "المجموع",
         "nothing": "لا شيء",
         "overWallet": "{credits, plural, zero {# رصيد} one {رصيد واحد} two {رصيدان} few {# أرصدة} many {# رصيدًا} other {# رصيد}} أكثر مما لدى مساحة العمل",
         "walletShare": "{share} من أرصدة مساحة العمل",

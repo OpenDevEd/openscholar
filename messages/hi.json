@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {अब तक बाकी भुगतान, अधिकतम} other {बाकी भुगतान, अधिकतम}}} other {{soFar, select, true {अब तक कुल, अधिकतम} other {कुल, अधिकतम}}}}",
         "resumed": "फिर शुरू होने पर बाकी भुगतान",
         "still": "बाकी भुगतान",
+        "total": "कुल",
         "nothing": "कुछ नहीं",
         "overWallet": "वर्कस्पेस में जितने हैं उससे {credits, plural, one {# क्रेडिट} other {# क्रेडिट}} ज़्यादा",
         "walletShare": "वर्कस्पेस के क्रेडिट का {share}",

@@ -143,7 +143,7 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
                         {asked ? <span className="min-w-0 truncate text-muted-foreground">{t("discussion.asked", { who: asked })}</span> : null}
                         <span className="ms-auto shrink-0 text-muted-foreground">{ago(line.at)}</span>
                       </p>
-                      <p className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>
+                      <p dir="auto" className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>
                     </div>
                   </div>
                 </motion.li>

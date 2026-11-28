@@ -8491,6 +8491,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Nog te betaal tot dusver, hoogstens} other {Nog te betaal, hoogstens}}} other {{soFar, select, true {Totaal tot dusver, hoogstens} other {Totaal, hoogstens}}}}",
         "resumed": "Nog te betaal sodra hervat",
         "still": "Nog te betaal",
+        "total": "Totaal",
         "nothing": "Niks",
         "overWallet": "{credits, plural, one {# krediet} other {# krediete}} meer as wat die werkruimte het",
         "walletShare": "{share} van die werkruimte se krediete",

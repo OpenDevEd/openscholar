@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Still to pay so far, at most} other {Still to pay, at most}}} other {{soFar, select, true {Total so far, at most} other {Total, at most}}}}",
         "resumed": "Still to pay once resumed",
         "still": "Still to pay",
+        "total": "Total",
         "nothing": "Nothing",
         "overWallet": "{credits, plural, one {# credit} other {# credits}} more than the workspace has",
         "walletShare": "{share} of the workspace's credits",

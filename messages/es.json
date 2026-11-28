@@ -8491,6 +8491,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Pendiente hasta ahora, como máximo} other {Pendiente, como máximo}}} other {{soFar, select, true {Total hasta ahora, como máximo} other {Total, como máximo}}}}",
         "resumed": "Pendiente al reanudar",
         "still": "Pendiente de pago",
+        "total": "Total",
         "nothing": "Nada",
         "overWallet": "{credits, plural, one {# crédito} other {# créditos}} más de los que tiene el espacio de trabajo",
         "walletShare": "{share} de los créditos del espacio de trabajo",

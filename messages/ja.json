@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {現時点での残りの支払い、最大} other {残りの支払い、最大}}} other {{soFar, select, true {現時点での合計、最大} other {合計、最大}}}}",
         "resumed": "再開後の残りの支払い",
         "still": "残りの支払い",
+        "total": "合計",
         "nothing": "なし",
         "overWallet": "ワークスペースの残高より {credits, plural, other {# クレジット}}多い",
         "walletShare": "ワークスペースのクレジットの {share}",

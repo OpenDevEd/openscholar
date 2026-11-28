@@ -8490,6 +8490,7 @@
         "atMost": "{still, select, true {{soFar, select, true {Okusazokhokhwa kuze kube manje, okuningi kakhulu} other {Okusazokhokhwa, okuningi kakhulu}}} other {{soFar, select, true {Isamba kuze kube manje, okuningi kakhulu} other {Isamba, okuningi kakhulu}}}}",
         "resumed": "Okusazokhokhwa uma sekuqhubekile",
         "still": "Okusazokhokhwa",
+        "total": "Isamba",
         "nothing": "Lutho",
         "overWallet": "{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngaphezu kwalokho isikhala sokusebenzela esinakho",
         "walletShare": "{share} samakhredithi esikhala sokusebenzela",
