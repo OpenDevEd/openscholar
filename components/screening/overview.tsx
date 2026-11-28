@@ -423,14 +423,14 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
                 <span role="cell">{t("reviewers.invited")} <span className="font-normal tabular-nums text-muted-foreground">{open.invited.length}</span></span>
               </div>
-              {open.invited.flatMap((one) => (one.email ? [{ email: one.email }] : [])).map((one) => (
+              {open.invited.flatMap((one) => (one.email ? [{ ...one, email: one.email }] : [])).map((one) => (
                 <div key={one.email} role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   {/* The address and what waiting means stack under each other on a phone, so the address keeps the row's width. */}
                   <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">
                     <ReviewerMark reviewer={{ kind: "person", name: one.email, email: one.email }} className="size-8" />
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{one.email}</span>
-                      <span className="text-xs text-muted-foreground sm:shrink-0 sm:text-end">{words.t(screening.finishedAt ? "person.invitedFinished" : "person.invited")}</span>
+                      <span className="text-xs text-muted-foreground sm:shrink-0 sm:text-end">{words.invitedSays({ failed: Boolean(one.undelivered), role: "editor", expiresAt: one.expiresAt }, Boolean(screening.finishedAt))}</span>
                     </span>
                   </span>
                 </div>

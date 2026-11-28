@@ -398,7 +398,8 @@ function Screen({ open }: { open: Open }) {
     if (mine && !resolving) {
       const cast = history.findLast((one) => one.paper.id === paper.id && !one.resolved);
       // An exclusion that rested on this criterion failing rests on what the answers say now: another failed must-have, the note, or no reason.
-      const rested = mine.decision === "exclude" && mine.reason === criterion && given[criterion] !== "no";
+      // And one that had no reason takes the must-have its answers now fail, as an exclusion cast with them would.
+      const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
       const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
       const saving = open.vote(paper.id, ballot).then((at) => { if (at !== null && cast) cast.saved = at; }, failed);
       if (cast) cast.pending = Promise.all([cast.pending, saving]);

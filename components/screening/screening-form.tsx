@@ -168,7 +168,8 @@ function setupOf(say: Say, draft: Screening) {
     people: members.map((one) => one.id as Id<"users">),
     models: modelsOf(draft).map(modelOf),
     saveTo: saveToOf(say, draft),
-    ...(draft.destination.prune ? { prune: true } : {}),
+    // Only while a collection is one of its sources: the switch goes with it, and so does what it set.
+    ...(draft.destination.prune && draft.sources.some((source) => source.kind === "collection") ? { prune: true } : {}),
     ...(draft.living ? { living: draft.living.every } : {}),
   };
 }
@@ -191,7 +192,7 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     // A guest already reviewing it may settle its conflicts too (the server checks they are on it): only someone invited and not joined yet can't.
     ...(differs("rule") ? { rule: ruleOf(draft, activeReviewers(draft).filter((one) => one.kind === "person" && !one.email)) } : {}),
     ...(differs("living") ? { living: draft.living?.every ?? null } : {}),
-    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune } : {}),
+    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune && draft.sources.some((source) => source.kind === "collection") } : {}),
     ...(draft.sources.some((source) => !saved.sources.some((one) => one.id === source.id)) ? { addSources: draft.sources.filter((source) => !saved.sources.some((one) => one.id === source.id)).map(sourceOf) } : {}),
     ...(saved.sources.some((source) => !draft.sources.some((one) => one.id === source.id)) ? { removeSources: saved.sources.filter((source) => !draft.sources.some((one) => one.id === source.id)).map((source) => source.id as Id<"screeningSources">) } : {}),
     ...(ranged.length ? { ranges: ranged.map((source) => ({ sourceId: source.id as Id<"screeningSources">, ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) })) } : {}),
@@ -1546,7 +1547,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             ) : null}
                             {votes && saved ? <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id })}>{words.count("votes", votes)}</LinkChip> : null}
                             {/* An invitation that couldn't be sent is sent again here, as from People. */}
-                            {invitation && undelivered && reviewer.email ? <Button variant="outline" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={() => void share.invite(reviewer.email!).then(() => toast(tShare("sentAgain", { email: reviewer.email! })), (error) => showStyledToast("error", getErrorMessage(error, t("toast.failed"))))}><Repeat className="size-3.5" />{tShare("sendAgain")}</Button> : null}
+                            {invitation && reviewer.email && words.invitationTrouble({ failed: undelivered, expiresAt }) ? <Button variant="outline" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={() => void share.invite(reviewer.email!).then(() => toast(tShare("sentAgain", { email: reviewer.email! })), (error) => showStyledToast("error", getErrorMessage(error, t("toast.failed"))))}><Repeat className="size-3.5" />{tShare("sendAgain")}</Button> : null}
                           </>
                         )
                       }
@@ -1779,12 +1780,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reread ? <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><RotateCcw aria-hidden className="mt-0.5 size-3.5 shrink-0" /><span className="min-w-0 flex-1">{added ? t("cost.answering", { count: draft.criteria.filter((criterion) => !saved?.criteria.some((one) => one.key === criterion.key)).length }) : t("cost.rereading")}</span><span className="shrink-0 tabular-nums">{t("cost.credits", { credits: words.creditsOf(reread) })}</span></p> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? t("cost.atMost", { still: String(Boolean(handedPdfs && lookCredits)), soFar }) : paused ? t("cost.resumed") : t("cost.still")}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? t("cost.credits", { credits: words.creditsOf(cost) }) : t("cost.nothing")}</span></div>
                 <div role="img" aria-label={cost > wallet ? t("cost.overWallet", { credits: words.creditsOf(cost - wallet) }) : t("cost.walletShare", { share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}>
-                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
+                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? (fresh ? "bg-destructive" : "bg-warning") : "bg-primary"} />
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? t("cost.shareOf", { under: "true", share: format.number(0.01, { style: "percent" }) }) : t("cost.shareOf", { under: "false", share: format.number(Math.round((cost / Math.max(wallet, 1)) * 100) / 100, { style: "percent" }) })}</span> : null}
                   <WorkspaceTag size="sm" workspace={saved ? lookOf(saved.workspace) : (here ?? { kind: "personal", name: workspace.name })}>{t("cost.inWorkspace", { credits: words.credits(wallet), workspace: workspace.name, own: String((saved ? saved.workspace.kind : here?.kind) === "personal" && (!saved || Boolean(open?.canChange))) })}</WorkspaceTag>
-                  {cost > wallet ? <LinkChip id="add-credits" href="/settings/billing" tone="destructive" icon={Coins}>{t("bar.addCredits")}</LinkChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
+                  {/* Red where it stops the start; a running screening's models read until the credits run out, and only a warning says so. */}
+                  {cost > wallet ? <LinkChip id="add-credits" href="/settings/billing" tone={fresh ? "destructive" : "warning"} icon={Coins}>{t("bar.addCredits")}</LinkChip> : cost ? <Chip>{t("cost.leftAfter", { credits: words.credits(wallet - cost) })}</Chip> : null}
                   {spentSoFar ? <Chip>{t("cost.spent", { credits: words.credits(spentSoFar) })}</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (

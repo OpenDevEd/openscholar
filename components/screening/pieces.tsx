@@ -329,8 +329,9 @@ export function Section({ id, title, help, aside, problems = [], className, chil
         {aside ? <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{aside}</div> : null}
       </div>
       <AnimatePresence initial={false}>
-        {problems.map((problem) => (
-          <motion.p key={problem} role="alert" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-start gap-1.5 overflow-hidden text-sm font-medium ink-destructive">
+        {/* Keyed by place, not by words: a figure in one that changes, such as the credits short, changes the line in place. */}
+        {problems.map((problem, at) => (
+          <motion.p key={at} role="alert" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-start gap-1.5 overflow-hidden text-sm font-medium ink-destructive">
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{problem}
           </motion.p>
         ))}

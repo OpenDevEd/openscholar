@@ -217,7 +217,7 @@ function Row({ item }: { item: SharedItem }) {
   return (
     <Entry viewMode="list-detail">
       {/* A screening's says what its own menu's Leave says: the votes stay and the papers waiting go to others. */}
-      <ConfirmChange open={asking} title={item.kind === "screening" ? frame("leave.title") : t("leaveTitle", { name: item.name })} confirm={t("leave")} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed")))); }}>
+      <ConfirmChange open={asking} title={t("leaveTitle", { name: item.name })} confirm={t("leave")} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void leave({ id: item.id }).catch((error) => showStyledToast("error", getErrorMessage(error, t("leaveFailed")))); }}>
         <EffectList lines={item.kind === "screening" ? [...(item.role === "editor" ? [t("leaveVotes")] : []), frame("leave.fromList")] : [t("leaveSays")]} />
       </ConfirmChange>
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
