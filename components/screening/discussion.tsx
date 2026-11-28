@@ -82,10 +82,11 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
   // Who can be asked: the people still on the screening who vote on this paper or have written about it here, and the person who settles its conflicts. Someone taken off keeps their vote and their words here and can't be asked about them.
   const on = new Set(activeReviewers(screening).filter((one) => one.kind === "person").map((one) => one.id));
   // Someone whose own vote on it still waits can't read its discussion while votes stay hidden: they are asked once they can read the question.
-  // As the server reads it (convex/screening/dealing.ts `seesPaper`): where the models only advise, the one person on a paper reads it before voting.
+  // As the server reads it (convex/screening/dealing.ts `seesPaper`): the one person on a paper reads it before voting where its models only advise or it has none.
   const yetToRead = !seesVotes(screening.rule.blind, paper.result, "waiting", Boolean(screening.finishedAt));
   const kindOf = (id: string) => screening.reviewers.find((one) => one.id === id)?.kind;
-  const alone = (id: string) => advisory(screening.rule) && !paper.cast.some((one) => one.reviewer !== id && kindOf(one.reviewer) === "person");
+  const others = (id: string, kind: "person" | "model") => paper.cast.some((one) => one.reviewer !== id && kindOf(one.reviewer) === kind);
+  const alone = (id: string) => !others(id, "person") && (advisory(screening.rule) || !others(id, "model"));
   const waitsToRead = (id: string) => yetToRead && !alone(id) && paper.cast.some((one) => one.reviewer === id && !one.vote && !one.hidden && !one.failed);
   // A paper that left with its source asks nothing of anyone (convex/screening/dealing.ts `askedOf`): its discussion is for everyone.
   const people = paper.withdrawn ? [] : [...new Set([...paper.cast.map((one) => one.reviewer), ...said.map((line) => line.by.id)].filter((id) => on.has(id)).concat(screening.rule.resolver))].filter((id) => id !== me && !waitsToRead(id)).flatMap((id) => personIn(screening, id) ?? []);
@@ -142,7 +143,7 @@ export function Discussion({ open, paper, draft: given, onDraft }: { open: Open;
                         {asked ? <span className="min-w-0 truncate text-muted-foreground">{t("discussion.asked", { who: asked })}</span> : null}
                         <span className="ms-auto shrink-0 text-muted-foreground">{ago(line.at)}</span>
                       </p>
-                      <p className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>
+                      <p dir="auto" className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>
                     </div>
                   </div>
                 </motion.li>

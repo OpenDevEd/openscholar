@@ -1,7 +1,7 @@
 // A screening's sources are read before it starts (plans/screening-reviewers), so the form that starts it says what they hold, and starting it deals what was read.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { give, paper, runAll, standingOf, started, team, type Team } from "./reviewers.test-support";
+import { give, paper, papersOf, runAll, standingOf, started, team, type Team } from "./reviewers.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -73,5 +73,27 @@ describe("a screening read before it starts", () => {
     expect(fresh.jobId).not.toBe(stale.jobId);
     await runAll(made.t, vi.runAllTimers);
     expect((await jobsOf(made)).some((job) => job._id === stale.jobId)).toBe(false);
+  });
+});
+
+describe("a screening finished while its sources are read", () => {
+  it("stops reading them, so no paper joins it finished, and reads on from where they stopped once reopened", async () => {
+    const made = await team(["ann", "ben"]);
+    const { workspaceId } = made;
+    const { jobId } = await started(made, ["ann", "ben"], 0);
+    await made.as.ann!.mutation(api.screening.screenings.finish, { workspaceId, jobId });
+    const checks = () => made.t.run((ctx) => ctx.db.query("screeningChecks").collect());
+    expect(await checks()).toMatchObject([{ state: "done" }]);
+    expect((await jobsOf(made))[0]!.reading).toBeUndefined();
+
+    // What its reading would have brought is turned away.
+    await give(made.t, jobId, 0, [paper(1), paper(2)]);
+    expect(await papersOf(made.t, jobId)).toEqual([]);
+
+    // Reopened, its source is read again and its papers arrive.
+    await made.as.ann!.mutation(api.screening.screenings.reopen, { workspaceId, jobId });
+    expect((await checks()).map((check) => check.state)).toContain("running");
+    await give(made.t, jobId, 0, [paper(1), paper(2)]);
+    expect(await papersOf(made.t, jobId)).toHaveLength(2);
   });
 });

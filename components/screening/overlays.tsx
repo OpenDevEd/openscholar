@@ -55,6 +55,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
   const member = open.canChange;
   const live = !screening.finishedAt;
   const t = useTranslations("screening.frame");
+  const overview = useTranslations("screening.overview");
   // Only whoever started it, or an admin of its workspace, deletes it: the others aren't offered what they can't do.
   const mayDelete = useCurrentWorkspace()?.role === "admin" || screening.createdBy === open.me;
   return (
@@ -72,7 +73,7 @@ export function ScreeningMenuItems({ open, show, bar = false }: { open: Open; sh
       <DropdownMenuSeparator className={bar ? "xl:hidden" : undefined} />
       {member ? (live ? <DropdownMenuItem onSelect={() => show("finish")}><CircleCheck />{t("markFinished")}</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.reopen()}><RotateCcw />{t("reopen")}</DropdownMenuItem>) : null}
       {member && live && modelsOf(screening).length ? (screening.paused ? <DropdownMenuItem onSelect={() => void open.resume()}><Play />{t("resumeModels")}</DropdownMenuItem> : <DropdownMenuItem onSelect={() => void open.pause()}><CirclePause />{t("menu.pauseModels")}</DropdownMenuItem>) : null}
-      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking || open.gathering)} onSelect={() => void open.check()}><RefreshCw />{t(screening.finishedAt ? "checkReopens" : "checkNew")}</DropdownMenuItem> : null}
+      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking || open.gathering)} onSelect={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{/* Waiting, it says why under its name, as Check now does on the Overview. */}<span className="flex flex-col">{t(screening.finishedAt ? "checkReopens" : "checkNew")}{screening.checking || open.gathering ? <span className="text-xs text-muted-foreground">{overview("credits.arriving")}</span> : null}</span></DropdownMenuItem> : null}
       <DropdownMenuItem asChild><NextLink href={newHref({ from: id })}><Copy />{t("menu.duplicate")}</NextLink></DropdownMenuItem>
       {member ? <DropdownMenuItem onSelect={() => show("move")}><Move />{t("menu.move")}</DropdownMenuItem> : null}
       {/* In the widest windows the bar over a screening has this as a button. */}
@@ -232,6 +233,7 @@ export function useScreeningOverlays(state: Open | null, { onDeleted }: { onDele
             ...({ all: [t("finish.votesShow")], people: [t("finish.peopleVotesShow")], none: [], done: [] } as const)[blindOf(screening, state.invited)],
             ...(state.reading.length ? [t("finish.modelsStop")] : []),
             ...(screening.living ? [t("finish.checksStop")] : []),
+            ...(screening.checking || state.gathering ? [t("finish.arrivingStops")] : []),
             t("finish.movesToFinished"),
           ]}
         />

@@ -17,7 +17,9 @@ import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
 import { countDealt, invitedTo, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
 import { conflictsWait } from "./notices";
-import type { Infer } from "convex/values";
+import { v, type Infer } from "convex/values";
+import { internal } from "../_generated/api";
+import { internalMutation } from "../lib/functions";
 import type { reviewerCountsValidator } from "./validators";
 
 type Paper = Doc<"screeningResults">;
@@ -27,6 +29,42 @@ type Counts = Infer<typeof reviewerCountsValidator>;
 type Counted = NonNullable<Vote["counted"]>;
 
 const ACTIVE_EVERY_MS = 60_000;
+/** The sources one paper is looked up in when it leaves them: more than a paper is ever met in. */
+const MERGED_SOURCES = 50;
+/** Excluded papers taken out of their collections in one step, once a screening is set to do so. */
+const PRUNE_STEP = 50;
+
+/**
+ * What a paper's sources read, for the collections it leaves, each with the record it holds there: the one it was read
+ * from, by the paper's own record, and any it was met in again and merged from, by the record that source holds.
+ */
+async function setsOf(ctx: MutationCtx, paper: Doc<"screeningResults">) {
+  const met = await ctx.db.query("screeningMerged").withIndex("by_into_and_source", (q) => q.eq("into", paper._id)).take(MERGED_SOURCES);
+  const held = [...(paper.sourceId ? [{ sourceId: paper.sourceId, paperKey: paper.paperKey }] : []), ...met.flatMap((one) => (one.paperKey ? [{ sourceId: one.sourceId, paperKey: one.paperKey }] : []))];
+  const unique = [...new Map(held.map((one) => [`${one.sourceId}|${one.paperKey}`, one])).values()];
+  const sources = await Promise.all(unique.map((one) => ctx.db.get("screeningSources", one.sourceId)));
+  return sources.flatMap((source, at) => (source && source.removedAt === undefined && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois" ? [{ set: source.set, paperKey: unique[at]!.paperKey }] : []));
+}
+
+/** A screening just set to take its excluded papers out of their collections does so for the papers it excluded before, a page at a time. */
+export const pruneExcluded = internalMutation({
+  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, cursor }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job?.prune) return null;
+    const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "exclude")).paginate({ cursor, numItems: PRUNE_STEP });
+    const moved = { saved: 0, removed: 0 };
+    for (const paper of page.page) {
+      if (paper.withdrawn || paper.pruned) continue;
+      moved.removed += (await shelve(ctx, job, paper, { becameIncluded: false, left: true }, await setsOf(ctx, paper))).removed;
+    }
+    const progress = moved.removed ? await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique() : null;
+    if (progress) await ctx.db.patch("screeningJobProgress", progress._id, withMoved(progress, moved));
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settling.pruneExcluded, { jobId, cursor: page.continueCursor });
+    return null;
+  },
+});
 const NO_COUNTS: Counts = { cast: 0, include: 0, maybe: 0, exclude: 0, failed: 0, closed: 0, spent: 0 };
 export const NO_RESULTS = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
 /**
@@ -192,15 +230,14 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if (paper.withdrawn) continue;
     // Included papers go where the screening sends them, and one that ends excluded leaves the collection it came from, where that was asked.
     if ((now === "include") !== (was === "include") || (now === "exclude") !== (was === "exclude")) {
-      const source = paper.sourceId ? await ctx.db.get("screeningSources", paper.sourceId) : null;
-      const set = source && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois" ? source.set : undefined;
+      const sets = await setsOf(ctx, paper);
       // The collection its included papers go to is made with the first of them.
       if (now === "include" && job.newCollection && !job.targetCollectionId) {
         const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection);
         await ctx.db.patch("screeningJobs", job._id, { targetCollectionId, newCollection: undefined });
         job = { ...job, targetCollectionId, newCollection: undefined };
       }
-      const to = await shelve(ctx, job, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, set);
+      const to = await shelve(ctx, job, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
       moved.saved += to.saved;
       moved.removed += to.removed;
     }

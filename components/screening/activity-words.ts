@@ -39,10 +39,12 @@ export function changeSays(say: EffectsSay, row: Logged): { what: string; effect
     case "papersMoved": { const to = line(row, "to")?.detail; const taker = { known: String(to !== undefined), to: to ?? "", count }; return { what: t("activity.papersMoved", { ...taker, from: detail }), effect: t("activity.papersMovedVotes", taker) }; }
     case "asked": return { what: t("activity.asked", { name: detail, paper: words.quoted(line(row, "paper")?.detail ?? t("activity.aPaper")) }) };
     case "checked":
-    case "scheduledCheck": {
+    case "scheduledCheck":
+    case "sourcesRead": {
       const added = line(row, "joined")?.count ?? 0;
       const found = { count, added, allNew: String(added === count) };
-      return { what: count ? (row.code === "checked" ? t("activity.checkedFound", found) : t("activity.scheduledFound", found)) : row.code === "checked" ? t("activity.checkedNone") : t("activity.scheduledNone"), effect: effects({ known: (one) => t("activity.known", { count: one.count ?? 0 }), leftOut: (one) => t("activity.leftOut", { count: one.count ?? 0 }), unread: (one) => t("activity.unread", { count: one.count ?? 0 }), joined: (one) => t("activity.joined", { count: one.count ?? 0 }), reopened: () => t("activity.reopenedByCheck") }) };
+      const kind = row.code === "checked" ? "checked" : row.code === "sourcesRead" ? "sourcesRead" : "scheduled";
+      return { what: count ? t(`activity.${kind}Found`, found) : t(`activity.${kind}None`), effect: effects({ known: (one) => t("activity.known", { count: one.count ?? 0 }), leftOut: (one) => t("activity.leftOut", { count: one.count ?? 0 }), unread: (one) => t("activity.unread", { count: one.count ?? 0 }), joined: (one) => t("activity.joined", { count: one.count ?? 0 }), reopened: () => t("activity.reopenedByCheck") }) };
     }
     case "settings": {
       const parts = (row.more ?? []).flatMap((one) => (one.code === "part" && one.detail && isSetting(one.detail) ? [t(`activity.setting.${SETTING[one.detail]}`)] : []));
@@ -71,7 +73,8 @@ export function changeOpens(id: string, row: Logged, canChange: boolean): string
   switch (row.code) {
     case "started": return line(row, "sources")?.count ? papersHref(id) : undefined;
     case "checked":
-    case "scheduledCheck": { const check = line(row, "check")?.detail; return check && line(row, "joined") ? papersHref(id, { added: check }) : undefined; }
+    case "scheduledCheck":
+    case "sourcesRead": { const check = line(row, "check")?.detail; return check && line(row, "joined") ? papersHref(id, { added: check }) : undefined; }
     case "reviewerAdded":
     case "reviewerJoined":
     case "reviewerRemoved":

@@ -70,9 +70,8 @@ export { SOMEONE };
 export const nameOf = (user: Doc<"users"> | null | undefined) => (user ? personName(user) || user.email : SOMEONE);
 export const modelName = (model: Pick<Doc<"models">, "name"> | null | undefined) => (model ? stripProviderPrefix(model.name) : "A model");
 
-/** The papers a screening has: every one it took, less those of the sources taken out. While a look in its sources runs, the ones that have arrived so far. */
-export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progress: Pick<Doc<"screeningJobProgress">, "withdrawn"> | null, check?: Pick<Doc<"screeningChecks">, "from" | "added"> | null) =>
-  Math.max(0, (check ? check.from + check.added : job.totalPapers) - (progress?.withdrawn ?? 0));
+/** The papers a screening has: every one it took, less those of the sources taken out. A look under way counts its papers in as they arrive (./gathering.ts `fill`). */
+export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progress: Pick<Doc<"screeningJobProgress">, "withdrawn"> | null) => Math.max(0, job.totalPapers - (progress?.withdrawn ?? 0));
 
 /** The papers that still wait for a reviewer: the ones they were given, less the ones they voted on, a model couldn't read, and the ones settled without them. */
 export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, theirsOf({ dealt: reviewer.dealt, closed: tally?.closed }) - gotThrough(tally));
@@ -243,12 +242,14 @@ const MERGED_COUNTED = 300;
 
 /**
  * Whether the person looking sees how a paper's other reviewers voted, and so what was written about it: once the
- * screening allows (lib/screening/rules.ts `seesVotes`), or where the models only advise and no other person is on the
- * paper, since then there is nothing to keep. One test for the paper's views, its discussion and what is written to it.
+ * screening allows (lib/screening/rules.ts `seesVotes`), or where no other person is on the paper and its models only
+ * advise or it has none, since then there is nothing to keep. One test for the paper's views, its discussion and what is written to it.
  */
 export function seesPaper(job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, result: Doc<"screeningResults">["result"], votes: Array<Pick<Doc<"screeningVotes">, "reviewerId" | "status">>, kindOf: (id: Id<"screeningReviewers">) => "person" | "model" | undefined, me: Id<"screeningReviewers"> | undefined) {
   const mine = me ? votes.find((vote) => vote.reviewerId === me) : undefined;
-  const alone = advisory(job.rule!) && !votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== me && kindOf(vote.reviewerId) === "person");
+  // As the rule says what it hides (lib/screening/rules.ts `hidesVotes`): with no other person on the paper, nothing is kept where its models only advise or it has none.
+  const others = (kind: "person" | "model") => votes.some((vote) => vote.status !== "discarded" && vote.reviewerId !== me && kindOf(vote.reviewerId) === kind);
+  const alone = !others("person") && (advisory(job.rule!) || !others("model"));
   return alone || seesVotes(job.rule!.blind, result ?? "waiting", mine?.status === "waiting" ? "waiting" : undefined, job.finishedAt !== undefined);
 }
 

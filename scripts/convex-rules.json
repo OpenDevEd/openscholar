@@ -111,6 +111,7 @@
       "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced",
       "ASKED_STEP": "open questions put to one person on one screening, read a hundred at a time and up to five hundred, for the 50 on papers still in it that its list's row and its frame count",
       "GUESTS_PAGE_MAX": "one page of an item's guests or waiting invitations, and the invitations to one item under one address, which an item's guest cap keeps within it",
+      "MERGED_SOURCES": "the records merged into one paper, read for the sources it was met in when it leaves their collections; a paper is met in a few sources at most, and a screening reads up to its sources cap",
       "MERGED_LOOKED": "one source's records merged into one paper, looked through for its current one when a source is taken out; a file lists a paper a few times at most",
       "MINE_MAX": "the screenings one person reviews or is given, newest first, looked through for the ones that wait for them; the workspace's own list pages through every one",
       "CHECKS_LOOKED": "a screening's latest checks of its sources, looked through for the last one that brought papers; its checks are listed a page at a time",

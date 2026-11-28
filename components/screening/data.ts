@@ -252,6 +252,9 @@ export const modelsVoting = (screening: Pick<Screening, "reviewers">) => screeni
 export const votingReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((one) => !one.left || (!one.discarded && gotThrough(one.tally) > 0));
 /** The most points a paper can earn under the screening's scoring. */
 export const pointsMax = (screening: Pick<Screening, "criteria" | "scoring">) => scoreOf(screening.criteria.map(({ key }) => { const [yes, no, unclear] = screening.scoring.points[key] ?? [1, 0, 0]; return { key, points: { yes, no, unclear } }; }), [], []).of;
+/** The fewest papers two reviewers vote on in common for their agreement to be stated anywhere: the Overview's figures and the Methods paragraph alike. */
+export const MIN_SHARED = 3;
+
 /** How far two reviewers agree, from the server's count of their votes on the papers both voted on, or nothing where they share none. */
 export const pairOf = (figures: { pairs: Array<{ a: string; b: string; matrix: number[] }> } | undefined, a: string, b: string) => {
   const held = figures?.pairs.find((pair) => (pair.a === a && pair.b === b) || (pair.a === b && pair.b === a));

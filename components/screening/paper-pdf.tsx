@@ -30,7 +30,7 @@ const PDF_OPTIONS = pdfAssets(pdfjs.version);
 const GAP = 8;
 const escaped = (text: string) => text.replace(/[&<>]/g, (sign) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[sign]!);
 
-export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: Id<"screeningJobs">; paper: Pick<Paper, "id" | "title" | "pdf">; /** The words the criteria mark, which stand out on the pages as they do in an abstract. */ terms: string[]; /** Its first page only, until asked for the rest: where the vote comes after the paper, as in the Papers drawer. */ firstPage?: boolean }) {
+export default function PaperPdf({ id, paper, terms, firstPage = false, onMarked }: { id: Id<"screeningJobs">; paper: Pick<Paper, "id" | "title" | "pdf">; /** The words the criteria mark, which stand out on the pages as they do in an abstract. */ terms: string[]; /** Its first page only, until asked for the rest: where the vote comes after the paper, as in the Papers drawer. */ firstPage?: boolean; /** Told once a page shows a marked word, so what the marks are is said only where there is one. */ onMarked?: () => void }) {
   const t = useTranslations("screening.list");
   const url = useProtectedQuery(api.screening.paperViews.pdf, inWorkspace(usePageWorkspace(), { jobId: id, paperId: paper.id })).data;
   const column = useRef<HTMLDivElement>(null);
@@ -49,7 +49,12 @@ export default function PaperPdf({ id, paper, terms, firstPage = false }: { id: 
   const [whole, setWhole] = useState<string | null>(null);
   const pages = firstPage && whole !== paper.id ? 1 : all;
   const pattern = termsPattern(terms);
-  const mark = pattern ? ({ str }: { str: string }) => str.split(pattern).map((part, i) => (i % 2 ? `<mark class="rounded-sm bg-primary/25 text-transparent">${escaped(part)}</mark>` : escaped(part))).join("") : undefined;
+  const mark = pattern ? ({ str }: { str: string }) => {
+    const parts = str.split(pattern);
+    // The text layer is drawn outside React's render: the page holding the PDF hears of it after.
+    if (parts.length > 1 && onMarked) queueMicrotask(onMarked);
+    return parts.map((part, i) => (i % 2 ? `<mark class="rounded-sm bg-primary/25 text-transparent">${escaped(part)}</mark>` : escaped(part))).join("");
+  } : undefined;
 
   return (
     <div data-pdf className="space-y-3">

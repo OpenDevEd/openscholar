@@ -197,6 +197,8 @@ function Screen({ open }: { open: Open }) {
   const items = kept ? insertAt(listed.items, stood?.id === paper.id ? Math.min(stood.at, listed.items.length) : 0, paper) : listed.items;
   const at = paper ? items.findIndex((one) => one.id === paper.id) : -1;
   const sentences = useMemo(() => sentencesOf(paper?.abstract ?? ""), [paper?.abstract]);
+  // The PDF whose pages have shown a marked word: only then does the line under it say what the marks are.
+  const [markedPdf, setMarkedPdf] = useState<string | null>(null);
   // Why a paper is excluded: on a phone a sheet over the page, a step in the history as the queue's sheet is, so Back closes it and stays on the paper (./address.ts). A menu beside the button on a wider screen is a choice in progress, not a step.
   const [reasonMenu, setReasonMenu] = useState<string | null>(null);
   const [reasonSheet, setReasonSheet] = useOpenInAddress("why", WHY_OPEN);
@@ -445,7 +447,13 @@ function Screen({ open }: { open: Open }) {
   const onKey = useEffectEvent(
     (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      if (target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu], [role=listbox]")) return;
+      // Cmd or Ctrl with Z takes the last vote back, as Z does: the undo everyone reaches for first. Any other key with a modifier is the browser's.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z" && !switching) {
+        event.preventDefault();
+        return void undo();
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.
       if (switching) return;
       const key = event.key.toLowerCase();
@@ -894,14 +902,14 @@ function Screen({ open }: { open: Open }) {
                       </div>
                       <div className="space-y-3">
                         {/* A paper with no abstract is read as the PDF it is. */}
-                        {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1} shape={paper.pdf.shape}><PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /></PdfRoom> : (
+                        {paper.pdf ? <PdfRoom pages={paper.pdf.pages ?? 1} shape={paper.pdf.shape}><PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} onMarked={() => setMarkedPdf(paper.id)} /></PdfRoom> : (
                         <p dir="auto" className="text-[0.95rem] leading-7">
                           {sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} lit={current?.terms ?? []} />)}
                         </p>
                         )}
                         {/* What the marked words are, under the text they are in: they were taken for evidence someone had picked. */}
-                        {/* Only where a word is marked in this paper's text: a PDF marks its own, and so says it. */}
-                        {(() => { const pattern = termsPattern(criteria.flatMap((c) => c.terms)); return Boolean(pattern) && (Boolean(paper.pdf) || sentences.some((sentence) => new RegExp(pattern!.source, pattern!.flags.replace("g", "")).test(sentence))); })() ? <p className="text-xs text-muted-foreground">{t.rich("paper.marked", { mark: (chunk) => <mark className="rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</p> : null}
+                        {/* Only where a word is marked in this paper's text. A PDF says so once one of its pages shows a mark: the line under it slides open then. */}
+                        <AutoHeight className="-mt-3">{(() => { const pattern = termsPattern(criteria.flatMap((c) => c.terms)); return Boolean(pattern) && (paper.pdf ? markedPdf === paper.id : sentences.some((sentence) => new RegExp(pattern!.source, pattern!.flags.replace("g", "")).test(sentence))); })() ? <p className="pt-3 text-xs text-muted-foreground">{t.rich("paper.marked", { mark: (chunk) => <mark className="rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</p> : null}</AutoHeight>
                       </div>
                     </motion.article>
 
@@ -1059,7 +1067,7 @@ function Screen({ open }: { open: Open }) {
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
               ) : null}
-              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label={t("bar.nowInConflicts")} className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">{t("bar.nowInConflicts")}</span></LinkChip> : null}
+              {madeConflict && last ? <TooltipHint label={t("bar.nowInConflicts")}><LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label={t("bar.nowInConflicts")} className="min-[87.5rem]:hidden">{/* On a phone, and in the bar's narrow first column from a laptop's width, the row has no room for the words: the sign alone keeps the bar its height, so the vote never moves under the pointer or the thumb. */}<span className="max-sm:hidden lg:hidden">{t("bar.nowInConflicts")}</span></LinkChip></TooltipHint> : null}
               {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
                 {/* Under a laptop's width the criteria sit below the paper, a long scroll away on a phone: the way to them is beside the votes. */}

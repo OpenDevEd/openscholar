@@ -59,6 +59,16 @@ export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; hre
   chat: { icon: MessageSquare, tint: "#a78bfa", href: (id) => `/?chat=${id}`, open: openChat, roles: ["viewer", "editor"] },
 };
 
+/**
+ * Opens what an invitation was to, once taken up: a chat in the assistant's panel over the page, anything else as a
+ * page of its own. From the invitation's own page, which is left either way, a chat's address is opened under it too.
+ */
+function openShared(item: { kind: keyof typeof SHARED_KINDS; id: string }, push: (href: string) => void, { leave = false } = {}) {
+  const { open, href } = SHARED_KINDS[item.kind];
+  open?.(item.id);
+  if (leave || !open) push(href(item.id));
+}
+
 type Sort = "recent" | "name";
 type Counts = FunctionReturnType<typeof api.sharing.shared.counts>;
 
@@ -282,9 +292,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
     // One taken up already opens as it is; accepting one says what it was to.
     void (invitation.state === "accepted" ? Promise.resolve({ kind: invitation.kind, id: invitation.id }) : respond({ invitationId: invitationId as Id<"itemInvitations">, accept: true })).then(
       (item) => {
-        if (!item) return;
-        SHARED_KINDS[item.kind].open?.(item.id);
-        router.push(SHARED_KINDS[item.kind].href(item.id));
+        if (item) openShared(item, router.push, { leave: true });
       },
       (error) => {
         setOpening(false);
@@ -395,10 +403,7 @@ export function WaitingInvitations({ rows, kind, text = "" }: { rows: WaitingInv
       (item) => {
         setAnswering(null);
         if (!accept || !item) return void toast(t("declined", { name: row.name }));
-        // A chat opens in the assistant's panel over the page; anything else is a page of its own.
-        const opens = SHARED_KINDS[item.kind].open;
-        if (opens) opens(item.id);
-        else router.push(SHARED_KINDS[item.kind].href(item.id));
+        openShared(item, router.push);
       },
       (error) => {
         setAnswering(null);

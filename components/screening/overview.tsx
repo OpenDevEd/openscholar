@@ -34,7 +34,7 @@ import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/
 import type { Id } from "@/convex/_generated/dataModel";
 import { EXTRACT_HREF, pickForExtraction } from "./extract";
 import { cn } from "@/lib/utils";
-import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result } from "./data";
+import { reasonCriteria, DAY, MIN_SHARED, pairOf, inOrder, leftOf, removedOf, readersOf, splitsIn, firstName, DECISIONS, RESULTS, activeReviewers, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, type Result } from "./data";
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { papersHref, reviewerHref, screenHref, settingsHref } from "./links";
@@ -353,7 +353,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   const givers = open.canChange && !screening.finishedAt && each < people ? takers.filter((row) => row.left > 0) : [];
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
   const [a, b] = reviewers;
-  const pair = reviewers.length === 2 ? pairOf(figures, b!.id, a!.id) : null;
+  // Only on as many papers in common as a pair needs to be listed with three or more (`MIN_SHARED`): a figure on one or two papers means nothing.
+  const pair = ((two) => (two && two.papers >= MIN_SHARED ? two : null))(reviewers.length === 2 ? pairOf(figures, b!.id, a!.id) : null);
 
   // A column the table can be ordered by: highest first, and a second press puts the table back as it was.
   const sortable = (id: "voted" | "agrees", label: string) => (
@@ -653,7 +654,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       })}
       {/* The share goes to the comparison it is drawn from, pair by pair: the rest of the row opens the reviewer's votes. */}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known && peopleOn - (reviewer.kind === "person" ? 1 : 0) >= 1 ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : <NextLink href={agreesHref} className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</NextLink>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known && peopleOn - (reviewer.kind === "person" ? 1 : 0) >= 1 ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : reviewer.kind === "person" && screening.rule.each === "1" ? t("row.aloneOnPapers") : t("row.nothingYet")}</span> : <NextLink href={agreesHref} className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</NextLink>}</p>
         {/* How many pairs of votes the share rests on, a model's as a person's: a share of two votes reads as one. */}
         {agrees !== null && reviewer.kind === "model" && included ? <p className="text-xs tabular-nums text-muted-foreground">{t("row.ofPairs", { count: compared })}</p> : null}
         {reviewer.kind === "model" && included ? (
@@ -679,7 +680,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               {done && papersAt ? <DropdownMenuItem asChild><NextLink href={papersAt}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem> : null}
               {unread && !screening.finishedAt ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
-              {reviewer.kind === "person" && !mine && left ? (
+              {reviewer.kind === "person" && !mine && left && !screening.finishedAt ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
               ) : null}
               {onMove ? <DropdownMenuItem onSelect={onMove}><Move />{t("row.moveAway")}</DropdownMenuItem> : null}
@@ -746,8 +747,7 @@ function KappaHelp() {
   );
 }
 
-/** The fewest papers two reviewers vote on in common for their agreement to be listed, and how many pairs the list shows before "Show all". */
-const MIN_SHARED = 3;
+/** How many pairs the list shows before "Show all". */
 const PAIRS_SHOWN = 6;
 
 /** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
@@ -758,8 +758,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const words = useWords();
   const format = useFormatter();
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  // The pairs that can share a paper: under one person on each paper, two people never do, and nothing is said of them, unless they voted on the same papers under an earlier rule.
-  const apart = (a: Reviewer, b: Reviewer, pair: ReturnType<typeof pairOf>) => screening.rule.each === "1" && a.kind === "person" && b.kind === "person" && !pair;
+  // The pairs that can share a paper: where each paper goes to fewer people than there are, two people may never share one (under one on each they never do), and nothing is said of them, unless they voted on the same papers under an earlier rule. Until the figures arrive only the rule says so, so the section stands as it will.
+  const { people: readers, each } = readersOf(screening, open.invited);
+  const apart = (a: Reviewer, b: Reviewer, pair: ReturnType<typeof pairOf>) => a.kind === "person" && b.kind === "person" && !pair && (screening.rule.each === "1" || (figures !== undefined && each < readers.length));
   const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return apart(a, b, pair) ? [] : [{ a, b, pair }]; }));
   // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
@@ -1017,7 +1018,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                   <div className="flex items-start gap-3 px-4 py-3">
                     {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t("checks.checkedBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at)}</span></p>
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? t(check.search ? "checks.checkedBy" : "checks.readBy", { you: String(who.id === open.me), name: who.name }) : t("checks.scheduled")}</span><span className="text-xs text-muted-foreground">{words.ago(check.at)}</span></p>
                       {check.state === "failed" ? (
                         <StateChip tone="destructive">{t("checks.failed")}</StateChip>
                       ) : check.found ? (

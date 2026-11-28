@@ -23,6 +23,7 @@ import { isFinal, readersFor } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
+import { noticeOf } from "./notices";
 import { countDealt, dealable, keepVersion, settlerFor, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, readsOf, reviewersOf, teamFor, votesOf } from "./dealing";
 import { modelFor, modelInput, modelsLimit, NEEDS_CRITERIA } from "./screenings";
 import { startWaitingVotes } from "./slots";
@@ -455,6 +456,9 @@ export const remind = workspaceMutation({
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (reviewer?.jobId !== jobId || !dealable(reviewer)) throw createError("NOT_FOUND", "They aren't on this screening.");
     if (reviewer.reminded && Date.now() - reviewer.reminded < 86_400_000) throw createError("CONFLICT", "They were reminded less than a day ago.");
+    // A reminder that would never be sent isn't said to be: a finished screening sends none, and nor does one whose emails they turned off.
+    if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to remind them.");
+    if ((await noticeOf(ctx, jobId, reviewer.userId!))?.off) throw createError("CONFLICT", "They turned off emails from this screening.");
     await ctx.db.patch("screeningReviewers", reviewerId, { reminded: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId, userId: reviewer.userId!, about: "reminder", by: actor.userId });
     await logChange(ctx, actor, job, "reminded", { detail: await calledOf(ctx, reviewer) });

@@ -185,7 +185,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   // One model put on it at two efforts is two reviewers: each then says its effort, so a filter, a row or a vote names the one it means.
   const reviewers = twinsNamed(viewed, (model) => model.modelId);
   const settled = { ...NO_RESULTS, ...progress?.counts };
-  const total = papersOf(job, progress, check);
+  const total = papersOf(job, progress);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
   const canResolve = job.rule?.resolver === actor.userId;
   const { state, ahead } = await modelsNow(ctx, job, reviewers, progress, check, check !== null && check._id === first?._id);
@@ -370,6 +370,8 @@ export const tally = workspaceQuery({
 });
 
 const checkValidator = v.object({
+  /** It looked in every source for what they gained: a check by hand or on its schedule. Otherwise it read only sources added or changed. */
+  search: v.optional(v.boolean()),
   id: v.id("screeningChecks"),
   at: v.number(),
   by: v.optional(personValidator),
@@ -634,7 +636,7 @@ export const checksAction = defineUserQuery({
       for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
       return counts;
     };
-    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: isFirst(check), found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(check.unread?.length ? { unread: check.unread } : {}), ...(counts ? { counts } : {}), ...(isFirst(check) || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.search ? { search: true } : {}), ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: isFirst(check), found: check.found, added: check.added, ...(check.left ? { left: check.left } : {}), ...(check.unread?.length ? { unread: check.unread } : {}), ...(counts ? { counts } : {}), ...(isFirst(check) || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
   },
 });
 export const checks = userQuery(checksAction);

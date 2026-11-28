@@ -187,6 +187,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
+  // Set to take excluded papers out of their collections: the ones it already excluded leave them too, as the save said they would.
+  if (saved.prune && !job.prune) await ctx.scheduler.runAfter(0, internal.screening.settling.pruneExcluded, { jobId, cursor: null });
   // Someone who no longer settles its conflicts and doesn't review it can't answer the questions put to them as its settler: those go on to whoever settles now.
   const was = job.rule?.resolver;
   if (was && was !== saved.rule?.resolver && !plan.reviewers.some((one) => one.userId === was && one.left === undefined)) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId: was, ...(saved.rule?.resolver ? { to: saved.rule.resolver } : {}) });
@@ -216,8 +218,9 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
   // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
   const reads = Boolean(change.addSources?.length || change.ranges?.length);
-  if (change.living && !job.living && !reads) await check(ctx, saved, actor.userId);
-  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId);
+  // Made living in the same save that adds a source, it looks in every source at once, as it said it would: the added ones are read in that same look.
+  const checks = change.living && !job.living ? await check(ctx, saved, actor.userId) : false;
+  if (!checks && reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId);
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
   if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {
