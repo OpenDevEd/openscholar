@@ -757,11 +757,13 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const words = useWords();
   const format = useFormatter();
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
+  // The pairs that can share a paper: under one person on each paper, two people never do, and nothing is said of them.
+  const apart = (a: Reviewer, b: Reviewer) => screening.rule.each === "1" && a.kind === "person" && b.kind === "person";
+  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).flatMap((b) => (apart(a, b) ? [] : [{ a, b, pair: pairOf(figures, a.id, b.id) }])));
   // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const allPairs = every === "all";
-  if (reviewers.length < 3) return null;
+  if (reviewers.length < 3 || !pairs.length) return null;
   // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
   const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
   // The figure over them is of the same pairs: one too thin to list counts in no figure either.
@@ -986,7 +988,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         </Help>
       }
       aside={open.canChange && !screening.finishedAt ? (() => { // While papers arrive it waits, and says why where it is pointed at. A finished screening offers its check once, in the bar over the page.
-        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
+        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">

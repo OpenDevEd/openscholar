@@ -9007,7 +9007,6 @@
         "skips": "{count, plural, one {Salta # fonte que nunca muda} other {Salta # fontes que nunca mudam}}",
         "means": "Uma verificação volta a ler cada fonte e adiciona os artigos que esta triagem ainda não tem. Ficheiros carregados e DOI colados nunca mudam, por isso as verificações saltam-nos.",
         "checkNow": "Verificar agora",
-        "checkReopens": "Verificar e reabrir se chegarem artigos novos",
         "every": "{every, select, day {Verifica todos os dias} week {Verifica todas as semanas} other {Verifica todos os meses}}",
         "onlyWhenAsked": "Só verifica quando pedido",
         "schedule": "Verificar com uma frequência definida",

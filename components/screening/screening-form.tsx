@@ -642,7 +642,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Beside a part's title while it holds an edit that isn't saved.
   const changed = (...sections: EffectSection[]) => (edits.some((edit) => sections.includes(edit.section)) ? <StateChip tone="warning" icon={PenLine} className="ms-1.5 h-5 px-1.5">{t("changed")}</StateChip> : null);
   // A criterion whose question was deleted asks nothing, and leaves its short name no words to fall back to.
-  const unasked = draft.criteria.some((criterion) => !criterion.text.trim()) ? { text: t("block.emptyCriterion"), section: "criteria" as const, focus: "#criteria textarea[aria-invalid=true]" } : null;
+  const unasked = draft.criteria.some((criterion) => !criterion.text.trim()) ? { id: "emptyCriterion", text: t("block.emptyCriterion"), section: "criteria" as const, focus: "#criteria textarea[aria-invalid=true]" } : null;
   // What it has to be able to pay for now: all its reading to start, and for a running screening only what the save itself has the models read. What is left to read is paid for as it is read, and stops where the credits do.
   const owed = saved ? reread : cost;
   // What its plan lets one screening hold: papers, and models reading them.
@@ -653,14 +653,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
   const lacking: Block[] = [
     // A new screening without a name takes its first source's; a saved one keeps the one it has, and an empty one is refused.
-    ...(saved && !draft.name.trim() ? [{ text: t("block.needsName"), focus: "#screening-name" }] : []),
+    ...(saved && !draft.name.trim() ? [{ id: "needsName", text: t("block.needsName"), focus: "#screening-name" }] : []),
     ...(unasked ? [unasked] : []),
-    ...(needsCriteria ? [{ text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: draft.criteria.length ? "#criteria [role=radiogroup] button" : "#new-criterion" }] : []),
-    ...(overPapers !== null ? [{ text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" as const }] : []),
-    ...(overModels !== null ? [{ text: t("block.overModels", { count: overModels }), section: "reviewers" as const }] : []),
-    ...(orphaned ? [{ text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers" as const, focus: "#add-person" }] : []),
+    ...(needsCriteria ? [{ id: "needsMust", text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: draft.criteria.length ? "#criteria [role=radiogroup] button" : "#new-criterion" }] : []),
+    ...(overPapers !== null ? [{ id: "overPapers", text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" as const }] : []),
+    ...(overModels !== null ? [{ id: "overModels", text: t("block.overModels", { count: overModels }), section: "reviewers" as const }] : []),
+    ...(orphaned ? [{ id: "orphaned", text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers" as const, focus: "#add-person" }] : []),
     // Credits short is said where the models are and where the cost is: either one fixes it.
-    ...(owed > wallet && fresh ? [{ text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }), section: "cost" as const, focus: "#add-credits" }] : []),
+    ...(owed > wallet && fresh ? [{ id: "creditsShort", text: t("block.creditsShort", { credits: words.creditsOf(owed - wallet) }), section: "cost" as const, focus: "#add-credits" }] : []),
   ];
   const holdUp = saved ? (lacking[0] ?? null) : null;
   // How many votes each reviewer has cast: what a row's chips open.
@@ -677,9 +677,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Why it can't start yet. It may start with no papers, and wait for them. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
   // What stops Start: the same as Save, and a new screening needs a reviewer and its papers read too.
   const problems: Block[] = fresh ? [
-    ...(!activeReviewers(draft).length ? [{ text: t("block.addReviewer"), section: "reviewers" as const, focus: "#add-person" }] : []),
+    ...(!activeReviewers(draft).length ? [{ id: "addReviewer", text: t("block.addReviewer"), section: "reviewers" as const, focus: "#add-person" }] : []),
     ...lacking,
-    ...(reading ? [{ text: t("block.reading"), section: "papers" as const, wait: true as const }] : []),
+    ...(reading ? [{ id: "reading", text: t("block.reading"), section: "papers" as const, wait: true as const }] : []),
   ] : lacking;
   // Things to fix, not to wait for: papers still arriving are a wait, said as one.
   const fixes = problems.filter((one) => !one.wait);
@@ -692,7 +692,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     // The window's scroll is the outside system. It moves once the messages have grown in (Section's 0.2s): a part growing during a smooth scroll stops it.
     window.setTimeout(() => target?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 220);
   };
-  const problemsIn = (section: NonNullable<Block["section"]>) => fixes.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => one.text);
+  const problemsIn = (section: NonNullable<Block["section"]>) => fixes.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => ({ id: one.id ?? one.text, text: one.text }));
 
   // A source is what the server reads it from (`set`), under the name its list gave it. What it holds is what the list counted; what it leaves out and what another source already has are known once it is read.
   const addSource = (offer: Offer) =>
@@ -1033,7 +1033,9 @@ export function ScreeningForm({ id }: { id?: string }) {
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">{t("name.label")}{changed("name")}</label>
-              <Textarea id="screening-name" aria-invalid={tried && Boolean(saved) && !draft.name.trim()} rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
+              <Textarea id="screening-name" aria-invalid={tried && Boolean(saved) && !draft.name.trim()} aria-describedby={tried && saved && !draft.name.trim() ? "screening-name-problem" : undefined} rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
+              {/* A saved screening keeps a name: said at the field once Save is pressed without one. */}
+              {tried && saved && !draft.name.trim() ? <p id="screening-name-problem" role="alert" className="flex items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{t("block.needsName")}</p> : null}
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="flex h-5 items-center gap-1">
@@ -1876,7 +1878,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   );
 }
 
-type Block = { text: string; section?: "papers" | "reviewers" | "criteria" | "cost"; focus?: string; /** Nothing to fix, only to wait for: the papers still arriving. */ wait?: true };
+type Block = { /** Which problem it is, whatever its words say now: a figure in them can change. */ id?: string; text: string; section?: "papers" | "reviewers" | "criteria" | "cost"; focus?: string; /** Nothing to fix, only to wait for: the papers still arriving. */ wait?: true };
 /** How many things stop the form, once Start or Save was pressed: it opens the first and puts the cursor on the control that fixes it. */
 function Blocker({ block }: { block: Block }) {
   const says = <><TriangleAlert aria-hidden className="size-4 shrink-0" />{block.text}</>;

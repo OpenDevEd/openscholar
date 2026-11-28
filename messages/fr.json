@@ -9006,7 +9006,6 @@
         "skips": "{count, plural, one {Ignore # source qui ne change jamais} other {Ignore # sources qui ne changent jamais}}",
         "means": "Une vérification relit chaque source et ajoute les articles que ce criblage n'a pas encore. Les fichiers importés et les DOI collés ne changent jamais, les vérifications les ignorent donc.",
         "checkNow": "Vérifier maintenant",
-        "checkReopens": "Vérifier et rouvrir si de nouveaux articles arrivent",
         "every": "{every, select, day {Vérifie chaque jour} week {Vérifie chaque semaine} other {Vérifie chaque mois}}",
         "onlyWhenAsked": "Vérifie seulement à la demande",
         "schedule": "Vérifier selon un calendrier",

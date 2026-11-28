@@ -170,7 +170,9 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // A community's collection is checked, or made, before the save (`saveToCommunity`).
   if (toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
   const prune = change.prune ?? job.prune === true;
-  if (prune && !sources.some((source) => source.removedAt === undefined && prunable(source.set.kind === "upload" || source.set.kind === "pdf" || source.set.kind === "dois" ? undefined : source.set))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+  // Checked against the sources as the save leaves them: those it takes out don't count, and those it adds do.
+  const canTake = (set: (typeof sources)[number]["set"]) => prunable(set.kind === "upload" || set.kind === "pdf" || set.kind === "dois" ? undefined : set);
+  if (prune && !sources.some((source) => source.removedAt === undefined && !change.removeSources?.includes(source._id) && canTake(source.set)) && !(change.addSources ?? []).some((source) => canTake(source.set as (typeof sources)[number]["set"]))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
 
   // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
   await ctx.db.patch("screeningJobs", jobId, {

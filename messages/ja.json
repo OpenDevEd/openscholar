@@ -9006,7 +9006,6 @@
         "skips": "{count, plural, other {変わらない取得元 # 件は対象外}}",
         "means": "確認では、各取得元をもう一度読み、このスクリーニングにまだない論文を追加します。アップロードしたファイルや貼り付けた DOI は変わらないため、確認の対象外です。",
         "checkNow": "今すぐ確認",
-        "checkReopens": "確認し、新しい論文があれば再開",
         "every": "{every, select, day {毎日確認} week {毎週確認} other {毎月確認}}",
         "onlyWhenAsked": "依頼したときだけ確認",
         "schedule": "定期的に確認",

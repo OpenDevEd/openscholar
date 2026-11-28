@@ -291,9 +291,9 @@ describe("what a change takes out", () => {
     const { workspaceId } = made;
     const { jobId } = await started(made, ["ann"], 2);
     await run(made.t);
-    // A source added in Settings, and a check asked for while that look reads: one look, after the papers there are.
+    // A source added in Settings, and a check asked for while that look reads: the check is refused, as the papers are still arriving, and the one look places them after the papers there are.
     await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { addSources: [{ set: { kind: "saved" }, name: "Saved papers" }] } });
-    await made.as.ann!.mutation(api.screening.living.checkNow, { workspaceId, jobId });
+    await expect(made.as.ann!.mutation(api.screening.living.checkNow, { workspaceId, jobId })).rejects.toThrow(/still arriving/);
     await give(made.t, jobId, 1, [paper(7), paper(8), paper(9)]);
     await run(made.t);
     const { job, places, running } = await made.t.run(async (ctx) => ({

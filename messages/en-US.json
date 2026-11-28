@@ -9006,7 +9006,6 @@
         "skips": "{count, plural, one {Skips # source that never changes} other {Skips # sources that never change}}",
         "means": "A check reads each source again and adds the papers this screening doesn't have yet. Uploaded files and pasted DOIs never change, so checks skip them.",
         "checkNow": "Check now",
-        "checkReopens": "Check, and reopen if new papers come",
         "every": "{every, select, day {Checks every day} week {Checks every week} other {Checks every month}}",
         "onlyWhenAsked": "Checks only when asked",
         "schedule": "Check on a schedule",

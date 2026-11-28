@@ -388,7 +388,7 @@ export const fill = internalMutation({
     };
     for (const one of leftOut ?? []) await leave(one.name, one.why, one.key);
     // Where its papers go: after every paper the screening has, whichever look placed them, so two looks never share a place.
-    const start = Math.max(job.totalPapers, check.from + check.added);
+    const start = Math.max(job.totalPapers, check.from + check.added, await nextPlace(ctx, job._id));
     for (const sent of papers) {
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
       const title = paper.title.trim();
@@ -483,7 +483,7 @@ export const end = internalMutation({
     // The sources it couldn't read were counted on it as each failed (`fail`), so nothing reads it as a check that found nothing new.
     await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
     if (!job) return null;
-    await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: Math.max(job.totalPapers, check.from + check.added), ...touched() });
+    await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: Math.max(job.totalPapers, await nextPlace(ctx, job._id)), ...touched() });
     await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
     await checked(ctx, job, check);
     return null;
@@ -504,13 +504,19 @@ export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id
   await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId: check._id, restarts: 0 });
 }
 
+/** The place after the last paper a screening has, whichever look placed it: where the next paper goes, and how many it has had. */
+export const nextPlace = async (ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">) =>
+  ((await ctx.db.query("screeningResults").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).order("desc").first())?.place ?? -1) + 1;
+
 /** Starts a look in a screening's sources: every source that isn't taken out is read again from where it stands. */
 export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users"> | undefined, search = false) {
   // One look at a time: a look under way reads what was added too. A new one starts after every paper the screening has, read now rather than from what the caller held.
   const running = await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first();
   if (running) return running._id;
-  const from = (await ctx.db.get("screeningJobs", job._id))?.totalPapers ?? job.totalPapers;
+  const from = Math.max((await ctx.db.get("screeningJobs", job._id))?.totalPapers ?? job.totalPapers, await nextPlace(ctx, job._id));
   const checkId = await ctx.db.insert("screeningChecks", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), ...(search ? { search } : {}), state: "running", from, found: 0, added: 0, beat: Date.now() });
+  // Papers are arriving while it reads, whichever look it is: a check asked for meanwhile joins it.
+  await ctx.db.patch("screeningJobs", job._id, { reading: true });
   await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });
   await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId, restarts: 0 });
   return checkId;

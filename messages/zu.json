@@ -9006,7 +9006,6 @@
         "skips": "{count, plural, one {Yeqa # umthombo ongashintshi neze} other {Yeqa # imithombo engashintshi neze}}",
         "means": "Ukuhlola kufunda futhi umthombo ngamunye bese kwengeza amaphepha lokhu kuskrini okungakabi nawo. Amafayela alayishiwe nama-DOI anamathiselwe akushintshi neze, ngakho ukuhlola kuyakweqa.",
         "checkNow": "Hlola manje",
-        "checkReopens": "Hlola, bese uyavula futhi uma kufika amaphepha amasha",
         "every": "{every, select, day {Kuhlolwa nsuku zonke} week {Kuhlolwa masonto onke} other {Kuhlolwa njalo ngenyanga}}",
         "onlyWhenAsked": "Kuhlolwa kuphela uma kucelwa",
         "schedule": "Hlola ngesheduli",
