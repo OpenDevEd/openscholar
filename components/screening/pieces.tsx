@@ -880,7 +880,7 @@ export function VoteFacts({ vote, failed = false, kept = false, settled = false,
 /** The reason a vote or a result excludes a paper, as a chip: the criterion it fails by its short name, with the whole question for whoever asks. The same chip wherever a reason shows. */
 export function ReasonChip({ reason, criteria, className }: { reason: string; /** The criteria a reason can name, the ones taken off with them (./data.ts `reasonCriteria`). */ criteria: RetiredCriterion[]; className?: string }) {
   const words = useWords();
-  return <QuestionName question={questionOf(reason, criteria, "label")} label={words.failed(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
+  return <QuestionName question={questionOf(reason, criteria, "label")} label={words.failed(reason, criteria)} className={cn("inline-flex min-w-0 max-w-full", className)}><Chip className="min-w-0 max-w-full shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
 /** To the paper before and the one after, with their keys: the same pair in Screen's bar and at the head of the Papers drawer. */

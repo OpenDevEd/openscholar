@@ -4,7 +4,7 @@
 // same rows, and what is hidden from someone on a page is hidden from them in every file.
 
 import type { ConvexReactClient } from "convex/react";
-import { hidesVotes, modelsAdvise } from "@/lib/screening/rules";
+import { hidesVotes, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
 import { effortOf } from "@/components/settings/model-map";
 import type { EFFORTS } from "@/lib/ai/core/call-options";
 import { api } from "@/convex/_generated/api";
@@ -79,6 +79,9 @@ const filedOf = (sources: Screening["sources"]) => sources.reduce((sum, source) 
 /** A source's set as a file gives it: an upload's, a list's or a drop's handle opens nothing outside the app, so it is left out. */
 /** Everyone the whole record lists as a reviewer: all who were on the screening, taken off or not; someone invited who never joined is counted apart. */
 export const recordReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((reviewer) => !reviewer.email);
+/** Who sees a vote before casting their own, as the record says it of the rule now and of each version before. */
+const HIDDEN_SEEN = "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished";
+const ADVICE_SEEN = "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote";
 const withoutFiles = (set: NonNullable<Screening["sources"][number]["set"]>) => {
   const { file: _file, batch: _batch, ...rest } = set as typeof set & { file?: unknown; batch?: unknown };
   return rest;
@@ -176,7 +179,8 @@ export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper
       source: screening.sources.find((source) => source.id === paper.source)?.name ?? "",
       added: paper.addedAt === undefined ? "At the start" : iso(paper.addedAt),
       result: RESULT_LABEL[settled.result],
-      excluded_for: settled.result === "exclude" && paper.reason ? failedLabel(paper.reason, reasonCriteria(screening)) : "",
+      // Another reason carries what was written for it: the settler's words, else the voter's.
+      excluded_for: settled.result === "exclude" && paper.reason ? [failedLabel(paper.reason, reasonCriteria(screening)), ...(paper.reason === OTHER_REASON ? [settled.resolvedBy ? settled.note : paper.cast.find((one) => one.vote?.reason === OTHER_REASON && one.vote?.note)?.vote?.note].filter(Boolean).map((text) => `"${text}"`) : [])].join(", ") : "",
       settled_by: settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "",
       settled_note: settled.note ?? "",
       votes_include: how("include"),
@@ -505,7 +509,7 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const hidden = { votes: rows.filter((row) => row.kept).length, papers: new Set(rows.flatMap((row) => (row.kept ? [row.paper.id] : []))).size };
   // A rule and a criterion, said one way wherever the file says them: as they stand now, and in each version of the history.
   // A version of the history is said from its own rule alone: who reviewed then isn't kept, and today's reviewers say nothing of it.
-  const ruleOut = (rule: Rule, now = true) => ({ people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: now && !modelsOf(screening).length ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !now ? "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" : !hidesVotes(rule, hidingReaders(screening, out.invited), modelsVoting(screening)) ? (modelsVoting(screening) ? "At any time, since one person reads each paper and the AI models' votes are advice" : "At any time, since one person reads each paper") : advisedIn(screening, out.invited) ? "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote" : "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" });
+  const ruleOut = (rule: Rule, now = true) => ({ people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: now && !modelsOf(screening).length ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !now ? (modelsOf(screening).length && (rule.settle === "one" || rule.models === "advice") ? ADVICE_SEEN : HIDDEN_SEEN) : !hidesVotes(rule, hidingReaders(screening, out.invited), modelsVoting(screening)) ? (modelsVoting(screening) ? "At any time, since one person reads each paper and the AI models' votes are advice" : "At any time, since one person reads each paper") : advisedIn(screening, out.invited) ? ADVICE_SEEN : HIDDEN_SEEN });
   const criterionOut = (criterion: Omit<Criterion, "addedAt">, [yes, no, unclear]: readonly number[]) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear } });
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));

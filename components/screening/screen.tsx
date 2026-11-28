@@ -489,6 +489,13 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
         return void undo();
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // While "another reason" is being written, a key is a letter of it, wherever the focus is: never a vote or a step. Escape still goes back.
+      if (writing) {
+        if (event.key === "Escape") { event.preventDefault(); setWriting(null); }
+        // Typed before the field took the focus: the field takes it, and the letter goes in.
+        else document.querySelector<HTMLTextAreaElement>("[data-reason-note] textarea")?.focus();
+        return;
+      }
       // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.
       if (switching) return;
       const key = event.key.toLowerCase();
@@ -502,6 +509,7 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
         bring(numbered);
       } else if ((key === "y" || key === "n" || key === "u") && toAnswer) {
         answerIt(toAnswer.key, key === "y" ? "yes" : key === "n" ? "no" : "unclear", true);
+        if (paper) keyed.current = { paper: paper.id, key: toAnswer.key };
         // On to the next one still unanswered, so a paper's criteria are a run of keys. With a criterion picked, the next one is picked in its place. With none picked, none is: the keys then answer the first criterion still unanswered.
         const next = criteria.slice(criteria.indexOf(toAnswer) + 1).find((criterion) => given[criterion.key] === undefined);
         if (current) setLit(next && paper ? { paper: paper.id, key: next.key } : null);
@@ -534,8 +542,9 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
 
   const given: Record<string, Answer> = paper && !resolving ? { ...mine?.answers, ...answers[paper.id] } : {};
   const current = paper && lit?.paper === paper.id ? criteria.find((criterion) => criterion.key === lit.key) : undefined;
-  // The criterion Y, N and U answer: the one being looked at, or the first still unanswered.
-  const toAnswer = answerLook ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined)) : undefined;
+  // The criterion Y, N and U answer: the one being looked at, or the first still unanswered, or, all of them answered, the one a key answered last, so a key can still change it.
+  const keyed = useRef<{ paper: string; key: string } | null>(null);
+  const toAnswer = answerLook ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined) ?? (keyed.current?.paper === paper?.id ? criteria.find((criterion) => criterion.key === keyed.current?.key) : undefined)) : undefined;
   /** Looks at a criterion, or away from it when it is the one being looked at. The words marked for it open under the question and stand out in the abstract. The paper is never scrolled: whoever is reading the votes further down keeps their place. */
   const light = (criterion: Criterion) => {
     if (!paper) return;
