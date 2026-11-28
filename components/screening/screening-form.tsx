@@ -643,8 +643,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const orphaned = unreadPdfs({ reviewers: draft.reviewers, sources });
   // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
   const lacking: Block[] = [
+    // A new screening without a name takes its first source's; a saved one keeps the one it has, and an empty one is refused.
+    ...(saved && !draft.name.trim() ? [{ text: t("block.needsName"), focus: "#screening-name" }] : []),
     ...(unasked ? [unasked] : []),
-    ...(needsCriteria ? [{ text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: "#new-criterion" }] : []),
+    ...(needsCriteria ? [{ text: draft.criteria.length ? t("block.needsMust", { many: String(models.length > 1) }) : t("block.needsCriterion", { many: String(models.length > 1) }), section: "criteria" as const, focus: draft.criteria.length ? "#criteria [role=radiogroup] button" : "#new-criterion" }] : []),
     ...(overPapers !== null ? [{ text: t("block.overPapers", { count: overPapers, workspace: workspace.name, personal: String((saved?.workspace.kind ?? here?.kind) !== "organization") }), section: "papers" as const }] : []),
     ...(overModels !== null ? [{ text: t("block.overModels", { count: overModels }), section: "reviewers" as const }] : []),
     ...(orphaned ? [{ text: t("block.orphaned", { many: String(models.length > 1), count: orphaned }), section: "reviewers" as const, focus: "#add-person" }] : []),
@@ -664,11 +666,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The PDFs it was handed, each read once as it was added, which the workspace paid for then.
   const handedPdfs = fresh ? sources.reduce((sum, source) => sum + (source.set?.kind === "pdf" ? baseTotal(source) : 0), 0) : 0;
   // Why it can't start yet. It may start with no papers, and wait for them. While a source is still being read nobody knows how many papers it starts with, or what its models will cost: it starts once they are all read.
-  const problems: Block[] = [
-    ...(reading ? [{ text: t("block.reading"), section: "papers" as const, focus: "#add-papers [role=tab][data-state=active]", wait: true as const }] : []),
+  // What stops Start: the same as Save, and a new screening needs a reviewer and its papers read too.
+  const problems: Block[] = fresh ? [
     ...(!activeReviewers(draft).length ? [{ text: t("block.addReviewer"), section: "reviewers" as const, focus: "#add-person" }] : []),
     ...lacking,
-  ];
+    ...(reading ? [{ text: t("block.reading"), section: "papers" as const, wait: true as const }] : []),
+  ] : lacking;
+  // Things to fix, not to wait for: papers still arriving are a wait, said as one.
+  const fixes = problems.filter((one) => !one.wait);
   // Each part says what in it stops the start, once Start has been pressed. Short of credits is said from the first: it is the one thing a field can't show.
   // Start or Save pressed while something stops it: every part says what, and the first is brought into view with the cursor on what fixes it.
   const showProblems = (first: Block) => {
@@ -678,7 +683,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     // The window's scroll is the outside system. It moves once the messages have grown in (Section's 0.2s): a part growing during a smooth scroll stops it.
     window.setTimeout(() => target?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 220);
   };
-  const problemsIn = (section: NonNullable<Block["section"]>) => problems.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => one.text);
+  const problemsIn = (section: NonNullable<Block["section"]>) => fixes.filter((one) => one.section === section && (tried || one.section === "cost")).map((one) => one.text);
 
   // A source is what the server reads it from (`set`), under the name its list gave it. What it holds is what the list counted; what it leaves out and what another source already has are known once it is read.
   const addSource = (offer: Offer) =>
@@ -1001,7 +1006,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         <div className="flex flex-wrap items-center gap-1.5">
           {summary.map((line) => (
             <JumpLink key={line.id} to={line.id} className="flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-              {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className={cn("size-3.5 shrink-0", tried ? "ink-destructive" : "ink-warning")} /> : null}
+              {line.problem ? <TriangleAlert aria-label={saved ? t("neededToSave") : t("neededToStart")} className={cn("size-3.5 shrink-0", tried ? "ink-destructive" : "ink-warning")} /> : null}
               {line.label}
             </JumpLink>
           ))}
@@ -1019,14 +1024,14 @@ export function ScreeningForm({ id }: { id?: string }) {
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="screening-name" className="flex h-5 items-center text-xs font-medium text-muted-foreground">{t("name.label")}{changed("name")}</label>
-              <Textarea id="screening-name" rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
+              <Textarea id="screening-name" aria-invalid={tried && Boolean(saved) && !draft.name.trim()} rows={1} value={draft.name} onKeyDown={oneLine} onChange={(event) => set({ name: unbroken(event.target.value) })} placeholder={draft.sources[0]?.name ?? t("name.placeholder")} maxLength={200} className="min-h-10 resize-none py-2 text-base font-semibold field-sizing-content placeholder:font-normal placeholder:text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="flex h-5 items-center gap-1">
                 <label htmlFor="research-question" className="text-xs font-medium text-muted-foreground">{t.rich("name.question", { optional: (chunks) => <span className="font-normal">{chunks}</span> })}</label>
                 <Help title={t("name.questionTitle")} facts={<HelpFact>{t("name.optional")}</HelpFact>}>{t("name.questionHelp")}</Help>
               </span>
-              <Textarea id="research-question" rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
+              <Textarea id="research-question" maxLength={2000} rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder={t("name.questionPlaceholder")} className="min-h-10 resize-none py-2 text-sm field-sizing-content" />
             </div>
           </section>
 
@@ -1446,7 +1451,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 return (
               <form className="px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); if (refused) return; addCriterion(text); setText(""); }}>
                 <div className="flex items-start gap-2">
-                <Textarea id="new-criterion" aria-invalid={tried && needsCriteria} rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
+                <Textarea id="new-criterion" aria-invalid={tried && needsCriteria && !draft.criteria.length} rows={1} value={text} maxLength={CRITERION_LENGTH} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} onChange={(event) => setText(unbroken(event.target.value))} placeholder={t("criteria.newPlaceholder")} aria-label={t("criteria.new")} className="min-h-9 flex-1 resize-none py-2 text-sm field-sizing-content" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim() || refused}><Plus />{t("criteria.add")}</Button>
                 </div>
                 {full ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.full", { count: MAX_QUESTIONS })}</p> : repeated && text.trim() ? <p className="mt-1.5 text-xs text-muted-foreground">{t("criteria.repeated")}</p> : null}
@@ -1498,7 +1503,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="reviewers"
             title={t("part.reviewers")}
-            problems={[...problemsIn("reviewers"), ...(tried ? problemsIn("cost") : [])]}
+            problems={problemsIn("reviewers")}
             help={<><Help title={t("part.reviewers")} facts={<><HelpFact>{t("reviewers.factPeople")}</HelpFact><HelpFact icon={Coins}>{t("reviewers.factModels")}</HelpFact></>}>{t("reviewers.help")}</Help>{changed("reviewers")}</>}
             aside={<Chip>{words.listed(whoCounts) || t("summary.nobody")}</Chip>}
           >
@@ -1730,7 +1735,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             <nav aria-label={t("changes.partsNav")} className={cn(LIST, "bg-card")}>
               {summary.map((line) => (
                 <JumpLink key={line.id} to={line.id} className="flex items-center gap-3 px-3.5 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
-                  {line.problem ? <TriangleAlert aria-label={t("neededToStart")} className={cn("mt-0.5 size-4 shrink-0 self-start", tried ? "ink-destructive" : "ink-warning")} /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
+                  {line.problem ? <TriangleAlert aria-label={saved ? t("neededToSave") : t("neededToStart")} className={cn("mt-0.5 size-4 shrink-0 self-start", tried ? "ink-destructive" : "ink-warning")} /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">{line.label}</span>
                     <span className="block text-sm font-medium [overflow-wrap:anywhere]">{line.value}</span>
@@ -1806,10 +1811,11 @@ export function ScreeningForm({ id }: { id?: string }) {
               <span className="text-sm">{models.length ? t.rich("bar.cost", { still: String(Boolean(handedPdfs && lookCredits)), soFar, credits: words.creditsOf(cost), m: (chunks) => <span className="text-muted-foreground">{chunks}</span>, b: (chunks) => <span className="font-semibold tabular-nums">{chunks}</span> }) : <span className="text-muted-foreground">{t("bar.peopleOnly", { handed: String(Boolean(handedPdfs && lookCredits)) })}</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-              {tried && problems.length ? <Blocker block={{ ...problems[0]!, text: t("bar.toFix", { count: problems.length, saving: "false" }) }} /> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
-              {owed > wallet ? <Button asChild variant="outline"><NextLink href="/settings/billing"><Coins />{t("bar.addCredits")}</NextLink></Button> : null}
+              {tried && fixes.length ? <Blocker block={{ ...fixes[0]!, text: t("bar.toFix", { count: fixes.length, saving: "false" }) }} /> : tried && problems.length ? <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Spinner className="size-3.5" />{problems[0]!.text}</span> : refused ? <p role="alert" className="flex max-w-md items-start gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{refused}</p> : null}
+              {/* The cost panel offers credits from the first: the bar does once Start has been pressed. */}
+              {tried && owed > wallet ? <Button asChild variant="outline"><NextLink href="/settings/billing"><Coins />{t("bar.addCredits")}</NextLink></Button> : null}
               {/* Start is never greyed out: pressed while something stops it, it shows each thing at its place and goes to the first. */}
-              <Button disabled={busy} onClick={() => (problems.length ? showProblems(problems[0]!) : void start())}><ListChecks />{t("bar.start")}</Button>
+              <Button disabled={busy} onClick={() => (problems.length ? showProblems(fixes[0] ?? problems[0]!) : void start())}><ListChecks />{t("bar.start")}</Button>
             </div>
           </div>
         </ActionBar>
