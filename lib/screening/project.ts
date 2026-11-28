@@ -75,14 +75,14 @@ export function project(paper: PaperState, places: Place[], team: Team, rule: Pi
     const open = persons.filter((place) => place.status === "waiting" || place.status === "closed");
     // A place whose holder has left the screening is free again.
     const kept = open.filter((place) => team.people.includes(place.reviewer));
-    reopened.push(...kept.filter((place) => place.status === "closed"));
-    // A model's place closed when a person's vote settled the paper first (below) is open again with it.
-    reopened.push(...list.filter((place) => place.kind === "model" && place.status === "closed" && team.models.includes(place.reviewer)));
     // Whoever voted counts toward the rule's number, though they have since left. The places still free are for the people who haven't.
     const cast = persons.filter((place) => place.status === "cast");
     const free = Math.max(0, Math.min(team.people.length - cast.filter((place) => team.people.includes(place.reviewer)).length, readersFor(rule.each, Infinity) - cast.length));
-    // More places than the rule asks for: the ones dealt last go.
+    // More places than the rule asks for: the ones dealt last go. Of those that stay, the closed ones open again: a place is either.
     gone.push(...open.filter((place) => !team.people.includes(place.reviewer)), ...kept.slice(free));
+    reopened.push(...kept.slice(0, free).filter((place) => place.status === "closed"));
+    // A model's place closed when a person's vote settled the paper first (below) is open again with it.
+    reopened.push(...list.filter((place) => place.kind === "model" && place.status === "closed" && team.models.includes(place.reviewer)));
     const holding = persons.filter((place) => !gone.includes(place)).map((place) => place.reviewer);
     made.push(...fillPlaces(team.people.map((id) => ({ id })), holding, paper.away, free - Math.min(kept.length, free), paper.place).map(({ id }) => ({ reviewer: id, kind: "person" as const, status: "waiting" as const })));
     if (models) made.push(...team.models.filter((id) => !list.some((place) => place.reviewer === id && place.status !== "discarded")).map((id) => ({ reviewer: id, kind: "model" as const, status: "waiting" as const })));

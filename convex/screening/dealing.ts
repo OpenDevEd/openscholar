@@ -14,6 +14,7 @@ import { actorIn } from "../workspaces/actor";
 import { readsPdfs } from "../../lib/assistant/files";
 import { readsPdfOf } from "../../lib/pricing/estimate";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
+import { tallyOfReviewer } from "./facets";
 
 type Reviewer = Doc<"screeningReviewers">;
 
@@ -86,9 +87,11 @@ export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progres
 /** The papers that still wait for a reviewer: the ones they were given, less the ones they voted on, a model couldn't read, and the ones settled without them. */
 export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, theirsOf({ dealt: reviewer.dealt, closed: tally?.closed }) - gotThrough(tally));
 
-/** How many of the papers a check brought still wait for one reviewer's vote, counted up to `most`. */
-export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "from" | "added">, most: number) {
-  return (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewerId).eq("status", "waiting").gte("place", check.from).lt("place", check.from + check.added)).take(most)).length;
+/** New papers of a check counted for one reviewer, past which a banner or an email says so many and more. */
+export const NEW_COUNTED = 500;
+/** How many of the papers a check brought still wait for one reviewer's vote, counted up to `NEW_COUNTED`. */
+export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "from" | "added">) {
+  return (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewerId).eq("status", "waiting").gte("place", check.from).lt("place", check.from + check.added)).take(NEW_COUNTED)).length;
 }
 
 /** Checks of its sources looked through for the last that brought papers. */
@@ -144,11 +147,15 @@ export async function askedOf(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJob
 /** Where a question put to someone is opened for them to answer. */
 export type AskedWhere = "conflicts" | "screen" | "done" | "papers";
 
+/** Papers in conflict counted for whoever settles them, past which the count says so many. */
+const CONFLICTS_COUNTED = 500;
+const waitingIn = (tally: Record<string, number>) => Object.values(tally).reduce((sum, n) => sum + n, 0);
+
 /**
  * What waits for one person on one screening: papers for their vote and conflicts for them to settle, none once it
  * is finished, and the papers someone asked them about. One function, for the list, the rail and every summary.
  */
-export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null, progress: Doc<"screeningJobProgress"> | null) {
+export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, userId: Id<"users">, reviewer: Doc<"screeningReviewers"> | null) {
   const open = job.finishedAt === undefined;
   const asked = await askedOf(ctx, job._id, userId);
   // Where the first question is answered: on Screen among the conflicts by whoever settles a paper in conflict, on Screen by one of its reviewers (in Done once they voted on it), and in Papers by anyone else.
@@ -156,9 +163,10 @@ export async function waitsOn(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   // A reviewer who has voted on the paper finds it in Done, never under a To do that doesn't hold it.
   const voted = first && reviewer && reviewer.left === undefined ? (await ctx.db.query("screeningVotes").withIndex("by_result_and_reviewer", (q) => q.eq("resultId", first._id).eq("reviewerId", reviewer._id)).first())?.status === "cast" : false;
   const askedWhere: AskedWhere | undefined = first ? (job.rule?.resolver === userId && first.result === "conflict" ? "conflicts" : reviewer && reviewer.left === undefined ? (voted ? "done" : "screen") : "papers") : undefined;
+  // Read from the person's own votes and the papers in conflict, never from the screening's running counts: a vote anyone else casts doesn't make every page that says what waits for the person read again.
   return {
-    forYou: open && reviewer && reviewer.left === undefined ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0,
-    conflicts: open && job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0,
+    forYou: open && reviewer && reviewer.left === undefined ? waitingIn(await tallyOfReviewer(ctx as QueryCtx, reviewer._id, ["waiting"])) : 0,
+    conflicts: open && job.rule?.resolver === userId ? (await ctx.db.query("screeningCards").withIndex("by_job_and_result", (q) => q.eq("jobId", job._id).eq("result", "conflict")).take(CONFLICTS_COUNTED)).length : 0,
     asked,
     ...(askedWhere ? { askedWhere } : {}),
   };

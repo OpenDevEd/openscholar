@@ -54,3 +54,14 @@ export const reviewerHref = (id: string, reviewer: { id: string; tally?: { cast:
 };
 /** Its settings, at one of their sections. */
 export const settingsHref = (id: string, section?: "papers" | "new-papers" | "criteria" | "reviewers" | "decided" | "goes-to") => withQuery(`${BASE}/${id}/settings`, undefined, section);
+
+/**
+ * A link to a part of a page, followed from inside something laid over the frame (Activity): the frame lands a part
+ * only as its page opens, and a page already open, under a sheet that holds the scroll while it closes, is not
+ * opening. Once the sheet has let go, the part the link named is brought into view.
+ */
+export function bringPartIntoView(href: string) {
+  const part = href.split("#")[1];
+  if (!part) return;
+  window.setTimeout(() => document.getElementById(decodeURIComponent(part))?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 350);
+}

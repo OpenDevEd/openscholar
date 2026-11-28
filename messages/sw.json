@@ -8863,7 +8863,6 @@
         "title": "Wakaguzi",
         "everyoneDone": "Wote watamaliza baada ya takriban {weeks, plural, =0 {{days, plural, =1 {siku moja} other {siku #}}} one {wiki #} other {wiki #}}, kwa kasi hii",
         "move": "Hamisha makala",
-        "agreement": "Makubaliano",
         "helpTitle": "Jinsi makala zinavyogawanywa",
         "eachOf": "{each, plural, one {# kati ya {people, plural, other {watu #}} anapigia} other {# kati ya {people, plural, other {watu #}} wanapigia}} kura kila makala",
         "everyPerson": "Kila mtu anapigia kura kila makala",

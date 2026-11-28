@@ -925,6 +925,25 @@ export function PdfRoom({ pages, shape = A4_SHAPE, children }: { pages: number; 
  * The field "Another reason" is written in, on Screen and in the Papers drawer: two lines on a phone and one up from
  * there, wrapping so a long reason stays in view. Enter excludes, as the form's button shows; Shift+Enter starts a line.
  */
+/**
+ * "Another reason" written down, in place of the reasons or the vote buttons: Enter excludes, as the button beside it
+ * shows, and Escape anywhere in it goes back, as its Back button shows, never closing what it sits in. A note with
+ * nothing in it excludes nothing. `className`: the buttons' height, the height of the buttons it stands in for.
+ */
+export function ReasonNoteForm({ value, onChange, onBack, onExclude, className, fieldClassName }: { value: string; onChange: (text: string) => void; onBack: () => void; onExclude: (note: string) => void; className?: string; fieldClassName?: string }) {
+  const t = useTranslations("screening.screen");
+  const words = useWords();
+  return (
+    <form data-reason-note className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onBack(); } }} onSubmit={(event) => { event.preventDefault(); if (value.trim()) onExclude(value.trim()); }}>
+      <ReasonNoteField value={value} onChange={onChange} className={fieldClassName} />
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" variant="outline" className={cn("rounded-xl", className)} onClick={onBack}>{t("exclude.back")}<Kbd className="pointer-coarse:hidden">Esc</Kbd></Button>
+        <Button type="submit" variant="destructive" className={cn("rounded-xl", className)} disabled={!value.trim()}><X />{words.decision("exclude")}<Kbd className="pointer-coarse:hidden border-current/30 bg-transparent text-current">↵</Kbd></Button>
+      </div>
+    </form>
+  );
+}
+
 export function ReasonNoteField({ value, onChange, className }: { value: string; onChange: (text: string) => void; className?: string }) {
   const t = useTranslations("screening.screen");
   return (

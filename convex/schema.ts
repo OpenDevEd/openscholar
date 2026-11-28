@@ -1621,6 +1621,8 @@ export default defineSchema({
     note: v.optional(v.string()),
     // When it was cast.
     at: v.optional(v.number()),
+    // When the vote was last changed, where answers joined it after it was cast: `at` stays when it was cast, which "first vote decides" reads, and an Undo names this.
+    edited: v.optional(v.number()),
     // A person's vote cast before a criterion became a must-have: it stands, and asks for a new one.
     flagged: v.optional(v.literal(true)),
     // On a place a person has yet to vote from: how many of the paper's models would include it, as a negative number, so the papers the models lean to come first in the order of an index.
@@ -1693,7 +1695,10 @@ export default defineSchema({
     capped: v.optional(v.literal(true)),
     // Where a living check goes on from: when it last looked.
     checkedAt: v.optional(v.number()),
-  }).index("by_job", ["jobId"]),
+  })
+    .index("by_job", ["jobId"])
+    // The file an upload or a list of DOIs was read from: who else's screening reads it (./screening/screenings.ts `addSource`).
+    .index("by_file", ["set.file"]),
 
   // The few facts of a paper that a screening's lists are narrowed by, a small row beside each paper, kept in step by
   // a trigger (./screening/cards.ts): how many papers stand each way under any narrowing is counted from these.
@@ -1707,7 +1712,12 @@ export default defineSchema({
     withdrawn: v.optional(v.literal(true)),
   })
     .index("by_result", ["resultId"])
-    .index("by_job", ["jobId"]),
+    .index("by_job", ["jobId"])
+    // Papers' lists narrowed one way, in the order the papers were added, the other narrowings asked of each card in passing.
+    .index("by_job_and_result", ["jobId", "result"])
+    .index("by_job_and_source", ["jobId", "sourceId"])
+    .index("by_job_and_check", ["jobId", "checkId"])
+    .index("by_job_and_reason", ["jobId", "reason"]),
 
   // A person's Zotero libraries as last read, and each library's collections, a row each (./zotero/tree.ts): the
   // form that starts a screening pages through them and finds one by name here. `under`: what a collection holds
@@ -1766,7 +1776,8 @@ export default defineSchema({
     workId: v.optional(v.string()),
   })
     .index("by_batch_and_at", ["batch", "at"])
-    .index("by_workId", ["workId"]),
+    .index("by_workId", ["workId"])
+    .index("by_file", ["file"]),
 
   // A record a source held that the screening already had: the record, and the paper it was merged into.
   screeningMerged: defineTable({
@@ -1815,6 +1826,8 @@ export default defineSchema({
     from: v.number(),
     found: v.number(),
     added: v.number(),
+    // Papers taken out with a source that it brought back: in the screening again, in the places they had.
+    restored: v.optional(v.number()),
     // Of what it found, the records left out (no abstract, nothing to read): neither added nor already in the screening.
     left: v.optional(v.number()),
     // The sources it couldn't read (each failed, with why, on its own row): a check that read none of them found nothing it can vouch for.

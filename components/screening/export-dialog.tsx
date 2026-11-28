@@ -34,7 +34,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { blindOf, reasonCriteria, RESULTS, type Result, slug, bylineOf, questionOf, inOrder, nameOn, votingReviewers } from "./data";
 import { papersHref } from "./links";
 import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./pieces";
-import { bibOf, everyPaper, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
+import { bibOf, everyPaper, papersCsv, recordOf, recordReviewers, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
 import { useFigures, type Open } from "./store";
 import { useWords } from "./words";
 
@@ -345,7 +345,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                     ["votes", everyones.votes],
                     ["withoutVote", everyones.yet + everyones.none + everyones.failed],
                     ["criteria", screening.criteria.length],
-                    ["reviewers", reviewers.length],
+                    ["reviewers", recordReviewers(screening).length],
                     ["sources", screening.sources.length],
                     ["messages", null],
                     ["changes", null],

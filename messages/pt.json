@@ -8863,7 +8863,6 @@
         "title": "Revisores",
         "everyoneDone": "Todos terminam dentro de cerca de {weeks, plural, =0 {{days, plural, =1 {um dia} other {# dias}}} one {# semana} other {# semanas}}, a este ritmo",
         "move": "Mover artigos",
-        "agreement": "Concordância",
         "helpTitle": "Como os artigos são distribuídos",
         "eachOf": "{each, plural, one {# das {people, plural, other {# pessoas}} vota} other {# das {people, plural, other {# pessoas}} votam}} em cada artigo",
         "everyPerson": "Cada pessoa vota em todos os artigos",

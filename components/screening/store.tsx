@@ -169,6 +169,36 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person"> 
   };
 }
 
+/** The counts a vote moves for the person who cast it: the papers waiting for them, the conflicts waiting, and the votes they cast. */
+export type Moved = "toDo" | "conflicts" | "cast";
+type Unheard = Record<Moved, { seen: number; moves: number[] }>;
+/**
+ * The server's counts move a moment after a vote is saved. Until they do, the moves this person's votes and Undos made
+ * here are put on them, so the frame's tabs, To do, Done and the bar all read the same number, never one behind the
+ * paper that moved on. Each count, as it comes in again, takes back as many moves as it moved itself, the oldest first,
+ * and only in the direction it moved: a paper dealt to them meanwhile is never taken for a vote counted.
+ */
+export function useUnheardMoves(heard: Record<Moved, number>) {
+  const fresh = (): Unheard => ({ toDo: { seen: heard.toDo, moves: [] }, conflicts: { seen: heard.conflicts, moves: [] }, cast: { seen: heard.cast, moves: [] } });
+  const [unheard, setUnheard] = useState(fresh);
+  const kinds = Object.keys(heard) as Moved[];
+  if (kinds.some((kind) => unheard[kind].seen !== heard[kind])) {
+    const next = { ...unheard };
+    for (const kind of kinds) {
+      let by = heard[kind] - unheard[kind].seen;
+      const moves = [...unheard[kind].moves];
+      for (let at = 0; at < moves.length && by !== 0; ) {
+        if (Math.sign(moves[at]!) === Math.sign(by)) { by -= moves[at]!; moves.splice(at, 1); } else at++;
+      }
+      next[kind] = { seen: heard[kind], moves };
+    }
+    setUnheard(next);
+  }
+  const counts = Object.fromEntries(kinds.map((kind) => [kind, Math.max(0, heard[kind] + unheard[kind].moves.reduce((sum, move) => sum + move, 0))])) as Record<Moved, number>;
+  const move = (kind: Moved, by: 1 | -1) => setUnheard((now) => ({ ...now, [kind]: { ...now[kind], moves: [...now[kind].moves, by] } }));
+  return { counts, move };
+}
+
 /** A vote as a page casts it: a decision, a reason on Exclude, and the answers and note the person gave with it. */
 export type Ballot = { decision: Decision; reason?: string; note?: string; answers?: Record<string, Answer> };
 
@@ -264,7 +294,8 @@ export function useOpenScreening(id: string) {
       return { papers, cost, short: Math.max(0, cost - (view.credits ?? Infinity)) };
     },
     // `onlyAt` takes back a vote only while it is still the one cast at that moment (convex/screening/voting.ts).
-    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false, onlyAt }: { onlyWaiting?: boolean; onlyAt?: number } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), ...(onlyAt === undefined ? {} : { onlyAt }), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
+    // `answersOnly`: answers joining a vote already cast, which stays the vote it was (in Vote again too).
+    vote: (paperId: Id<"screeningResults">, ballot: Ballot | null, { onlyWaiting = false, onlyAt, answersOnly = false }: { onlyWaiting?: boolean; onlyAt?: number; answersOnly?: boolean } = {}) => vote({ jobId, paperId, ...(onlyWaiting ? { onlyWaiting } : {}), ...(onlyAt === undefined ? {} : { onlyAt }), ...(answersOnly ? { answersOnly } : {}), decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(ballot?.answers ? { answers: ballot.answers } : {}) }),
     // A vote on a selection, on the papers that still wait for it; `null` with `onlyAt` takes back what one call cast. Returns the papers it changed, and the moment it cast them.
     voteMany: (paperIds: Id<"screeningResults">[], ballot: Omit<Ballot, "answers"> | null, onlyAt?: number) => voteMany({ jobId, paperIds, decision: ballot?.decision ?? null, ...(ballot?.reason ? { reason: ballot.reason } : {}), ...(ballot?.note ? { note: ballot.note } : {}), ...(onlyAt === undefined ? {} : { onlyAt }) }),
     // Returns when the settlement was made, for an Undo to name; `onlyAt` takes one back only while it is still that one.

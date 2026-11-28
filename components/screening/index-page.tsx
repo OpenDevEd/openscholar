@@ -29,7 +29,7 @@ import { useRunBy } from "@/components/workspaces/run-by";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
+import { listDraws, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { nameHas } from "@/lib/screening/rules";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
@@ -120,6 +120,8 @@ export function ScreeningsIndex() {
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
   // An invitation needs the person as much as a vote does, and so does a screening waiting in another workspace (the rows above the list): counted in Needs you, as the rail's badge counts them.
   const counts = tally && mine ? { all: tally.open + tally.finished + mine.page.filter((row) => !row.member).length, you: mine.page.filter(needing).length + (invitations ?? []).filter((row) => row.kind === "screening").length + (elsewhere?.length ?? 0), open: tally.open + mine.page.filter((row) => !row.member && !row.finishedAt).length, finished: tally.finished + mine.page.filter((row) => !row.member && row.finishedAt).length } : undefined;
+  // Skeletons, the empty list at once, or the rows: as every list decides it (lib/hooks/use-cursor-page.ts `listDraws`). Needs you is read with the page.
+  const drawn = show === "you" ? ({ draw: "rows" } as const) : listDraws(listed, counts?.[show], PAGE);
   // The first-use block is for someone with no screening of their own: an invitation waiting doesn't make them a user of the list.
   const invitedCount = (invitations ?? []).filter((row) => row.kind === "screening").length;
   // Something needs the person outside this workspace's list too: what needs them in it says where, beside the tab's count of all of it.
@@ -157,8 +159,9 @@ export function ScreeningsIndex() {
                   <Button asChild size="sm" variant="outline"><NextLink href={draft.href}>{t("draft.continue")}</NextLink></Button>
                 </div>
               ) : null}
-              <WaitingInvitations rows={invitations} kind="screening" text={searched} />
-              <Elsewhere rows={(elsewhere ?? []).filter((row) => nameHas(row.name, searched))} />
+              {/* What waits for the person is open work: the Finished tab lists none of it. */}
+              <WaitingInvitations rows={show === "finished" ? [] : invitations} kind="screening" text={searched} />
+              <Elsewhere rows={show === "finished" ? [] : (elsewhere ?? []).filter((row) => nameHas(row.name, searched))} />
             </AutoHeight>
             <AutoHeight>
             {empty ? (
@@ -231,8 +234,8 @@ export function ScreeningsIndex() {
                 </div>
                 {/* The rows and what stands in for them while they are read are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
-                {(loading && !rows.length) || (otherList && counts?.[show] !== 0) ? (
-                  <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? UNCOUNTED_ROWS, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
+                {drawn.draw === "skeleton" || (loading && !rows.length && drawn.draw !== "empty") ? (
+                  <ListRowsSkeleton rows={drawn.draw === "skeleton" ? drawn.rows : Math.max(1, Math.min(counts?.[show] ?? UNCOUNTED_ROWS, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
                 ) : (
                 <ul className={cn("divide-y divide-border-subtle", listed.isStale && STALE_ROWS)}>
                   {listRows.map(({ row, group }, i) => {

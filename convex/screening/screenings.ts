@@ -19,6 +19,7 @@ import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf, papersOf } from "./dealing";
+import { own } from "./files";
 import { readInTurn } from "./living";
 import { modelsLimit, startWaitingVotes } from "./slots";
 import { screeningDestination } from "../library/collections";
@@ -115,7 +116,11 @@ export { EVERY_MS };
 
 /** Whether a source's row is the source the form holds: the same thing read, and the same papers of it. */
 const stable = (value: unknown): string => (Array.isArray(value) ? `[${value.map(stable).join(",")}]` : value && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${key}:${stable((value as Record<string, unknown>)[key])}`).join(",")}}` : JSON.stringify(value) ?? "");
-const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput>) => row.removedAt === undefined && stable(row.set) === stable(sent.set) && row.first === sent.first && row.last === sent.last;
+/** The same source asked for again: a range from its first paper to its last, or past it, is the whole of it, and reads nothing again. */
+const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput>) => {
+  const end = (last: number | undefined) => (last === undefined || (row.total !== undefined && last >= row.total) ? Infinity : last);
+  return row.removedAt === undefined && stable(row.set) === stable(sent.set) && (row.first ?? 1) === (sent.first ?? 1) && end(row.last) === end(sent.last);
+};
 
 /** A screening that isn't started yet, if it is this person's to go on with. */
 async function draftOf(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs"> | undefined) {
@@ -143,7 +148,7 @@ export const sync = workspaceMutation({
     const rows = was ? await sourcesOf(ctx, was._id) : [];
     if (was && sources.length >= rows.length && rows.length > 0 && rows.every((row, at) => sameSource(row, sources[at]!))) {
       const added = [];
-      for (const source of sources.slice(rows.length)) added.push(await addSource(ctx, was._id, actor.userId, source, now));
+      for (const source of sources.slice(rows.length)) added.push(await addSource(ctx, was._id, actor, source, now));
       if (added.length) {
         await ctx.db.patch("screeningJobs", was._id, touched(now));
         await readOn(ctx, was, actor.userId);
@@ -170,7 +175,7 @@ export const sync = workspaceMutation({
     });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
     const made = [];
-    for (const source of sources) made.push(await addSource(ctx, jobId, actor.userId, source, now));
+    for (const source of sources) made.push(await addSource(ctx, jobId, actor, source, now));
     await readOn(ctx, (await ctx.db.get("screeningJobs", jobId))!, actor.userId);
     return { jobId, sources: made };
   },
@@ -280,7 +285,7 @@ export const open = internalMutation({
     if (adopted) await ctx.db.patch("screeningJobs", jobId, settings);
     else {
       await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
-      for (const source of sources) await addSource(ctx, jobId, userId, source, now);
+      for (const source of sources) await addSource(ctx, jobId, { userId, workspaceId }, source, now);
     }
     for (const person of people) await ctx.db.insert("screeningReviewers", { jobId, kind: "person", userId: person, addedAt: now, addedBy: userId, dealt: 0 });
     for (const { model, effort } of picked) await ctx.db.insert("screeningReviewers", { jobId, kind: "model", modelId: model._id, ...(effort ? { effort } : {}), addedAt: now, addedBy: userId, dealt: 0 });
@@ -294,7 +299,15 @@ export const open = internalMutation({
 });
 
 /** A source's row, waiting to be read. */
-export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, userId: Id<"users">, { set, name, detail, facts, first, last }: Infer<typeof sourceInput>, now: number) {
+export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, { set, name, detail, facts, first, last }: Infer<typeof sourceInput>, now: number) {
+  const { userId } = actor;
+  // A drop of PDFs is its adder's, and a file is the screening's that read it first: one another workspace's screening reads isn't this one's to read.
+  if (set.kind === "pdf") await own(ctx, actor, set.batch);
+  if (set.kind === "upload" || set.kind === "dois") {
+    for (const other of await ctx.db.query("screeningSources").withIndex("by_file", (q) => q.eq("set.file", set.file)).take(MAX_SOURCE_ROWS)) {
+      if ((await ctx.db.get("screeningJobs", other.jobId))?.workspaceId !== actor.workspaceId) throw createError("FORBIDDEN", "This file was added by someone else.");
+    }
+  }
   if (first !== undefined && (!Number.isSafeInteger(first) || first < 1)) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (last !== undefined && (!Number.isSafeInteger(last) || last < (first ?? 1))) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if ((await sourcesOf(ctx, jobId)).length >= MAX_SOURCE_ROWS) throw createError("VALIDATION_ERROR", "This screening has had as many sources as one can have. Start another screening for more.");

@@ -385,7 +385,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
         {pair ? (
           <span className="flex items-center gap-1">
             <NextLink href={pairHref(screening.id, b!, a!)} className={cn("flex items-center gap-2 px-2 py-1 text-sm", ROW_LINK)}>
-              <span className="text-muted-foreground">{t("reviewers.agreement")}</span>
+              <span className="text-muted-foreground">{t("kappa.title")}</span>
               <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
               <span className="tabular-nums text-muted-foreground">{sameText(t, pair)}</span>
             </NextLink>
@@ -1080,7 +1080,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
               {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
               {/* Its papers are counted with the figures: until then the chip's room is held, so its words never change in place. */}
-              {figures === undefined ? <SkeletonBar className="h-6 w-44 rounded-md" /> : (() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
+              {figures === undefined ? <SkeletonBar className="h-6 w-44 rounded-md" /> : (() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: figures?.startedFrom ?? 0 }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>
           </div>
         </div>
@@ -1100,9 +1100,8 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
   const words = useWords();
   const id = screening.id;
   // What the sources held: the papers they brought, and what they left out for having no abstract or nothing to read.
-  const { left, bare, merged } = removedOf(screening.sources);
   const kept = open.total;
-  const found = kept + merged + left;
+  const { left, bare, merged, found, removed } = removedOf(screening.sources, kept);
   const arriving = open.gathering ? Math.max(0, open.gathering.of - open.gathering.done) : 0;
   // In conflict is a step only where a paper can be in conflict, or one is.
   const splits = splitsIn(screening, open.counts.conflict, open.invited);
@@ -1114,7 +1113,7 @@ function Flow({ open, figures, onExport }: { open: Open; figures: Figures | unde
     { title: t("flow.found"), total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source) + leftOf(source), ...(open.canChange ? { href: settingsHref(id, "papers") } : {}), fill: neutral })) },
     {
       title: t("flow.removed"),
-      total: found - kept,
+      total: removed,
       // Its sources are in its settings, which its workspace's members open: for anyone else these are counts.
       ...(open.canChange ? { href: settingsHref(id, "papers") } : {}),
       rows: [{ key: "duplicates", label: words.t("removed.merged"), value: merged }, { key: "bare", label: words.t("removed.bare"), value: bare }, { key: "unread", label: words.t("removed.unread"), value: left - bare }].flatMap((row) => (row.value ? [{ ...row, ...(open.canChange ? { href: settingsHref(id, "papers") } : {}), fill: neutral }] : [])),

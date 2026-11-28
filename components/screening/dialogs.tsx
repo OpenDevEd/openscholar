@@ -32,7 +32,7 @@ import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } f
 import { changeOpens, changeSays } from "./activity-words";
 import { blindOf, modelKey, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer } from "./data";
 import { gotThrough, theirsOf } from "@/lib/screening/rules";
-import { papersHref, reviewerHref } from "./links";
+import { papersHref, reviewerHref, bringPartIntoView } from "./links";
 import { blindSays, Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { pdfsOf, perPaper, type Open } from "./store";
 import { AddModel } from "./team";
@@ -95,7 +95,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
                       <span className="ms-auto shrink-0 text-xs font-normal text-muted-foreground">{words.ago(change.at)}</span>
                     </p>
                     {href ? (
-                      <NextLink href={href} className="-mx-2 flex items-start gap-2 rounded-lg px-2 py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
+                      <NextLink href={href} onClick={() => bringPartIntoView(href)} className="-mx-2 flex items-start gap-2 rounded-lg px-2 py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
                         {body}
                         <ChevronRight aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       </NextLink>
@@ -262,7 +262,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
                   // Someone invited to vote goes through the same question as anyone added as a reviewer.
                   invite: (email) => (addAs === "reviewer" ? onAdd(invitedReviewer(email, Date.now())) : void invite({ kind: "screening", id, email, role: "viewer" }).catch(failed)),
                   // A member typed by address is offered as the member, never invited: an invitation to them can't be sent.
-                  has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email) || (members?.page ?? []).some((person) => person.email?.toLowerCase() === email),
+                  has: (email) => invited.results.some((invitation) => invitation.email.toLowerCase() === email) || guests.results.some((guest) => guest.email.toLowerCase() === email) || (members?.page ?? []).some((person) => person.email?.toLowerCase() === email),
                   // The plan's guest places are for people from outside: an organization's own members can still be added as reviewers once they are full.
                   ...(limit !== null && (room?.used ?? 0) >= limit ? (workspace.kind === "organization" && addAs === "reviewer" ? { outsideFull: t("peopleDialog.fullHere", { own: "false", workspace: workspace.name, count: limit }) } : { full: t("peopleDialog.fullHere", { own: String(workspace.kind !== "organization"), workspace: workspace.name, count: limit }) }) : {}),
                 }

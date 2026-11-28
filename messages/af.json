@@ -8863,7 +8863,6 @@
         "title": "Beoordelaars",
         "everyoneDone": "Almal klaar oor omtrent {weeks, plural, =0 {{days, plural, =1 {’n dag} other {# dae}}} one {# week} other {# weke}}, teen hierdie tempo",
         "move": "Skuif artikels",
-        "agreement": "Ooreenstemming",
         "helpTitle": "Hoe artikels verdeel word",
         "eachOf": "{each, plural, one {# van die {people, plural, other {# mense}} stem} other {# van die {people, plural, other {# mense}} stem}} op elke artikel",
         "everyPerson": "Elke persoon stem op elke artikel",

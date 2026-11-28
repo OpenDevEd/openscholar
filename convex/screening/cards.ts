@@ -12,9 +12,19 @@ import type { MutationCtx } from "../_generated/server";
 
 const FACTS = ["result", "sourceId", "checkId", "reason", "withdrawn"] as const satisfies ReadonlyArray<keyof Doc<"screeningResults">>;
 
-/** The trigger that keeps a paper's card in step with it. Only a paper of a screening with reviewers has a place, and a card. */
+/**
+ * The trigger that keeps a paper's card in step with it. Only a paper of a screening with reviewers has a place, and a
+ * card. Its papers taken out with their source are counted on its progress row in the same write, so how many papers
+ * the screening holds is exact at every moment: what the plan's cap reads (./gathering.ts `fill`).
+ */
 export async function keepCard(ctx: MutationCtx, change: Change<DataModel, "screeningResults">) {
   const [was, now] = [change.oldDoc, change.newDoc];
+  const out = (paper: typeof was) => (paper?.place !== undefined && paper.withdrawn ? 1 : 0);
+  const moved = out(now) - out(was);
+  if (moved) {
+    const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", (now ?? was)!.jobId)).unique();
+    if (progress) await ctx.db.patch("screeningJobProgress", progress._id, { withdrawn: Math.max(0, (progress.withdrawn ?? 0) + moved) });
+  }
   const held = was?.place === undefined ? null : await ctx.db.query("screeningCards").withIndex("by_result", (q) => q.eq("resultId", change.id)).unique();
   if (!now || now.place === undefined) {
     if (held) await ctx.db.delete("screeningCards", held._id);

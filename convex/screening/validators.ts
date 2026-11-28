@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { PDF_BANDS } from "../../lib/pricing/estimate";
-import { CRITERION_LENGTH, GUIDANCE_LENGTH, MAX_TERMS, NOTE_LENGTH, SHORT_NAME_LENGTH } from "../../lib/screening/rules";
+import { CRITERION_LENGTH, GUIDANCE_LENGTH, MAX_TERMS, NAMED_REASONS, NOTE_LENGTH, SHORT_NAME_LENGTH } from "../../lib/screening/rules";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
@@ -472,13 +472,14 @@ export const PAIRS_MAX = 400;
 /** The figures a screening's overview and its files are drawn from (./view.ts `figures`). */
 export const figuresValidator = v.object({
   // Its excluded papers by the reason, and its included ones by the source that brought each.
-  reasons: capped(v.record(v.string(), v.number()), MAX_QUESTIONS + 2),
+  reasons: capped(v.record(v.string(), v.number()), MAX_QUESTIONS + RETIRED_CRITERIA + NAMED_REASONS.length),
   included: capped(v.record(v.string(), v.number()), MAX_SOURCE_ROWS),
   // Each pair of reviewers' votes on the papers both voted on: include, maybe and exclude by the same three, row by row.
   pairs: capped(v.array(v.object({ a: v.string(), b: v.string(), matrix: capped(v.array(v.number()), 9) })), PAIRS_MAX),
   // The votes each person cast since the time asked for.
   recent: capped(v.record(v.string(), v.number()), MAX_REVIEWERS),
   startedWith: v.number(),
+  startedFrom: v.number(),
   // Its checks for new papers after the start: how many, when the last one was, and what they found and added.
   checks: v.object({ later: v.number(), /** The rows the list of checks has: every look but the first and one still running, as the Overview lists them. */ listed: v.number(), lastAt: v.optional(v.number()), found: v.number(), added: v.number(), /** The later checks with a source they couldn't read. */ unread: v.optional(v.number()) }),
   // How many times its settings were changed, and which parts: the parts a save named (`partsOf` in ./settings.ts), and "reviewers" for each added or taken off.

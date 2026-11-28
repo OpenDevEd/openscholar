@@ -1,3 +1,5 @@
+import { excludedFor } from "./facets";
+import { NAMED_REASONS } from "../../lib/screening/rules";
 import { convexTest } from "convex-test";
 import type { FunctionArgs } from "convex/server";
 import { internal } from "../_generated/api";
@@ -56,13 +58,13 @@ type T = Team["t"];
 
 /** Gives a screening's source `at` these records in one step, and returns the papers it took, in their order. */
 export async function give(t: T, jobId: Id<"screeningJobs">, at: number, papers: FunctionArgs<typeof internal.screening.gathering.fill>["papers"]) {
-  const { checkId, sourceId } = await t.run(async (ctx) => {
+  const { checkId, sourceId, pass } = await t.run(async (ctx) => {
     const check = (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").first())!;
     const source = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect())[at]!;
-    return { checkId: check._id, sourceId: source._id };
+    return { checkId: check._id, sourceId: source._id, pass: source.pass ?? 0 };
   });
-  await t.mutation(internal.screening.gathering.begin, { sourceId });
-  await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, papers, read: papers.length, ended: true });
+  await t.mutation(internal.screening.gathering.begin, { sourceId, pass });
+  await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass, papers, read: papers.length, ended: true });
   return { checkId, sourceId, papers: await papersOf(t, jobId) };
 }
 
@@ -100,7 +102,7 @@ export async function standingOf(t: T, jobId: Id<"screeningJobs">) {
     return {
       papers: papers.map((one) => ({ title: one.title, result: one.result, reason: one.reason, on: Object.fromEntries(votes.filter((vote) => vote.resultId === one._id).map((vote) => [users.get(vote.reviewerId)!, vote.decision ?? vote.status])) })),
       counts: progress.counts,
-      reasons: progress.reasons,
+      reasons: await excludedFor(ctx as never, jobId, [...((await ctx.db.get("screeningJobs", jobId))!.criteria ?? []).map((one) => one.key), ...NAMED_REASONS]),
       reviewers: Object.fromEntries(reviewers.map((one) => [users.get(one._id)!, { dealt: one.dealt, ...progress.reviewers?.[one._id] }])),
       agreement: await ctx.db.query("screeningAgreement").withIndex("by_job_and_a_and_b", (q) => q.eq("jobId", jobId)).collect(),
     };

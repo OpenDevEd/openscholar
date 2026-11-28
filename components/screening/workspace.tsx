@@ -6,7 +6,7 @@
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useItemHome } from "@/components/workspaces/item-home";
 import { leaveBehind } from "./address";
-import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
+import { createContext, use, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, MotionConfig } from "motion/react";
@@ -39,7 +39,7 @@ import { useKept } from "./drafts";
 import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, reviewerHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
 import { blindSays, settleMeans, settleSays, Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
-import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
+import { useOpenScreening, useUnheardMoves, type Moved, type Open, modelsRead, perPaper } from "./store";
 import { useWords, type Words } from "./words";
 
 /** This part's messages, for a function that is handed them. */
@@ -84,7 +84,7 @@ if (typeof window !== "undefined" && "navigation" in window) {
 export const listedNames = new Map<string, string>();
 
 /** What the frame gives the page inside it: the screening as the person sees it, and the ways to open what opens over it. */
-const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void; takeOff: (reviewer: Reviewer) => void } | null>(null);
+const Workspace = createContext<{ open: Open; /** The votes the person cast, with theirs made here not counted yet. */ cast: number; /** A count a vote or an Undo made here moved, before the server's says so (./store.tsx `useUnheardMoves`). */ moved: (kind: Moved, by: 1 | -1) => void; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void; takeOff: (reviewer: Reviewer) => void } | null>(null);
 export function useWorkspace() {
   const workspace = use(Workspace);
   if (!workspace) throw new Error("A screening's page is shown inside its frame");
@@ -126,7 +126,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const search = useSearchParams();
   const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
   const read = useOpenScreening(id);
-  const open = read ?? null;
+  // The counts a vote moves read the same everywhere in the frame, the moves of votes made here included, until the server's counts catch up.
+  const unheard = useUnheardMoves({ toDo: read?.toDo ?? 0, conflicts: read?.conflicts ?? 0, cast: read?.screening.reviewers.find((one) => one.id === read.me)?.tally?.cast ?? 0 });
+  const open = useMemo(() => (read ? { ...read, toDo: unheard.counts.toDo, conflicts: unheard.counts.conflicts } : null), [read, unheard.counts.toDo, unheard.counts.conflicts]);
   // "Nothing new" stops being true by the clock alone, with nothing else to draw the strip again: a timer ends it.
   useRedrawAt(open?.lastCheck?.added === 0 ? open.lastCheck.at + NOTHING_SHOWN_MS : null);
   // Changes to its settings that were started and not saved.
@@ -436,7 +438,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           >
             {/* A tab's page takes the place of the last at once, as every other page with tabs does: no fade that reads as the page loading again. */}
             <div className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
-              <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity"), takeOff: overlays.takeOff }}>{children}</Workspace>
+              <Workspace value={{ open, cast: unheard.counts.cast, moved: unheard.move, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity"), takeOff: overlays.takeOff }}>{children}</Workspace>
             </div>
           </LibraryPageShell>
         </div>
@@ -473,8 +475,8 @@ function passingKind(open: Open): PassingKind | null {
   if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
   // The papers that came in for the person are said here on every tab, a chip in the strip: as a row on some tabs and a chip on Screen, going from one to the other moved everything under the strip.
   if (!open.screening.finishedAt && open.latest?.mine) return "arrived";
-  // A check that found nothing says so, where nothing else has to be said.
-  if (open.lastCheck?.added === 0 && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
+  // A check that found nothing says so, where nothing else has to be said: one that couldn't read a source didn't look everywhere, and its source says why.
+  if (open.lastCheck?.added === 0 && !open.lastCheck.unread && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
   return null;
 }
 

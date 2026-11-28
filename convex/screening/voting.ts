@@ -32,28 +32,30 @@ function requireReason(job: Doc<"screeningJobs">, reason: string | undefined, un
   if (reason !== undefined && !criteria.some((criterion) => criterion.key === reason) && !(NAMED_REASONS as readonly string[]).includes(reason)) throw createError("VALIDATION_ERROR", "Pick one of the reasons listed.");
 }
 
-const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by Undo or Take back: only while it is still the one cast at that moment, never one changed since. */ onlyAt: v.optional(v.number()) };
+const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()), /** A vote on a selection: cast only where the place still waits for one, never over a vote cast since. */ onlyWaiting: v.optional(v.boolean()), /** A vote taken back by Undo or Take back: only while it is still the one cast at that moment, never one changed since. */ onlyAt: v.optional(v.number()), /** Answers given to a vote already cast: it is not a new vote, and a vote asked for again is still asked for. */ answersOnly: v.optional(v.boolean()) };
 
 /** One person's vote on one paper, or their vote taken back. The paper is stamped: whoever calls wakes the worker once for all it cast. */
-async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyAt }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyAt?: number; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
+async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyAt, answersOnly }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyAt?: number; answersOnly?: boolean; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason, onlyAt !== undefined);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
-  if (onlyAt !== undefined && (mine?.status !== "cast" || mine.at !== onlyAt)) return false;
+  if (onlyAt !== undefined && (mine?.status !== "cast" || (mine.edited ?? mine.at) !== onlyAt)) return false;
   if (decision === null) {
-    // Taken back: the place is theirs again to vote from.
-    if (mine?.status !== "cast") return;
-    await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined });
+    // Taken back: the place is theirs again to vote from. One with no vote to take back changes nothing.
+    if (mine?.status !== "cast") return false;
+    await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, edited: undefined, flagged: undefined });
     return void (await stamp(ctx, paperId));
   }
   // Undo puts back the answers as they were, to criteria taken off since too.
   const known = new Set([...(job.criteria ?? []), ...(onlyAt !== undefined ? (job.retiredCriteria ?? []) : [])].map((criterion) => criterion.key));
   // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
-  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: Date.now(), flagged: undefined };
+  // Answers joining a vote already cast leave it the vote it was: cast when it was, which "first vote decides" reads, and asked for again if it was.
+  const kept = answersOnly && mine?.status === "cast" ? mine : undefined;
+  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: kept?.at ?? Date.now(), edited: kept ? Date.now() : undefined, flagged: kept?.flagged };
   if (mine) await ctx.db.patch("screeningVotes", mine._id, vote);
   else {
     // A reviewer who votes on a paper that wasn't given to them is on it from then on.
@@ -61,6 +63,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
     await countDealt(ctx, new Map([[reviewer._id, 1]]));
   }
   await stamp(ctx, paperId);
+  return vote.edited ?? vote.at;
 }
 
 /**
@@ -73,10 +76,10 @@ export const vote = workspaceMutation({
   // When the vote it cast was cast, for an Undo to name (`onlyAt`); null where it took a vote back or changed nothing.
   returns: v.union(v.number(), v.null()),
   handler: async (ctx, actor, args) => {
-    const done = (await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined })) !== false;
+    const at = await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined });
     await bookkeepLater(ctx);
-    // A mutation's clock stands still: this is the moment the vote was stamped with.
-    return done && args.decision !== null ? Date.now() : null;
+    // The moment the vote stands stamped with, which an Undo names, or the moment one was taken back; null where nothing changed.
+    return at === false ? null : (at ?? Date.now());
   },
 });
 

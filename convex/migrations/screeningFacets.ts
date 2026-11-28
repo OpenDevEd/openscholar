@@ -16,6 +16,8 @@ import { countEntries, paperEntries, recountVote, screeningCounts, staleWaiting,
  *   npx convex run migrations/screeningFacets:verify
  *
  * `verify` finds counts missing. `readVotes` takes out the stale ones a model's reading left (#1617).
+ *
+ *   npx convex run migrations/screeningFacets:clearCopies
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -43,6 +45,14 @@ export const readVotes = migrations.define({
     await recountVote(ctx, vote, await ctx.db.get("screeningResults", vote.resultId));
   },
 });
+
+/** The totals by reason and by source the progress row kept by hand beside these counts (#1619): read from the counts now, the copies go. */
+export const progressCopies = migrations.define({
+  table: "screeningJobProgress",
+  batchSize: 200,
+  migrateOne: async (_ctx, progress) => (progress.reasons !== undefined || progress.included !== undefined ? { reasons: undefined, included: undefined } : undefined),
+});
+export const clearCopies = migrations.runner([internal.migrations.screeningFacets.progressCopies]);
 
 export const run = migrations.runner([internal.migrations.screeningFacets.papers, internal.migrations.screeningFacets.votes, internal.migrations.screeningFacets.readVotes]);
 

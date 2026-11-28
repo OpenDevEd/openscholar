@@ -14,11 +14,10 @@ import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
 import { isFinal, leansOpen, nameHas, NO_REASON, showsEarly, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
-import { askedOf, invitationsTo, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
+import { askedOf, reviewersOf, seesPaper, viewId, votesOf } from "./dealing";
 import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
-import { progressRow } from "./bookkeeping";
-import { keepsVotes } from "./view";
+import { keepsVotesNow } from "./view";
 import { tallyForReason, tallyOfReviewer, tallyUnder } from "./facets";
 
 type Paper = Doc<"screeningResults">;
@@ -33,20 +32,24 @@ export type PaperView = Infer<typeof paperViewValidator>;
 
 /** A screening as the paper reads need it: who is on it, and what the person looking is to it. */
 type Looking = Standing & { reviewers: Map<Id<"screeningReviewers">, Reviewer>; first: Id<"screeningChecks"> | undefined; asked: Set<Id<"screeningResults">> };
-async function lookingAt(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">): Promise<Looking | null> {
+/** `rows`: the read lists papers, so it needs the ones the person has been asked about; a count or a file doesn't. */
+async function lookingAt(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">, { rows = true } = {}): Promise<Looking | null> {
   const standing = await standingOn(ctx, actor, jobId);
   if (!standing || standing.job.shape !== 2 || !standing.job.rule) return null;
-  const [first, reviewers, asked] = await Promise.all([ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first(), reviewersOf(ctx, jobId), askedOf(ctx, jobId, actor.userId)]);
+  const [first, reviewers, asked] = await Promise.all([ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first(), reviewersOf(ctx, jobId), rows ? askedOf(ctx, jobId, actor.userId) : []]);
   return { ...standing, reviewers: new Map(reviewers.map((one) => [one._id, one])), first: first?._id, asked: new Set(asked) };
 }
 
-/** A vote as a page shows it. A model's decision follows its answers under the criteria as they are now, as the rule reads it. */
+/**
+ * A vote as a page shows it: as it was counted (../screening/settling.ts), which every count, filter and file reads.
+ * A model's vote not yet counted is worked out from its answers under the criteria as they are now, as the rule reads it.
+ */
 function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): VoteView | undefined {
   if (vote.status !== "cast") return undefined;
   const answers = (vote.answers ?? {}) as Record<string, Answer>;
-  const read = ballotOf(placeOf(vote, reviewer), job.criteria ?? []);
+  const read = vote.decision ? { decision: vote.decision, reason: vote.reason } : ballotOf(placeOf(vote, reviewer), job.criteria ?? []);
   if (!read.decision) return undefined;
-  return { decision: read.decision, answers, ...(read.reason ? { reason: read.reason } : {}), ...(vote.note ? { note: vote.note } : {}), at: vote.at ?? vote._creationTime, ...(vote.flagged ? { flagged: true } : {}), ...(vote.confidences ? { confidences: vote.confidences } : {}), ...(vote.passages ? { passages: vote.passages } : {}) };
+  return { decision: read.decision, answers, ...(read.reason ? { reason: read.reason } : {}), ...(vote.note ? { note: vote.note } : {}), at: vote.edited ?? vote.at ?? vote._creationTime, ...(vote.flagged ? { flagged: true } : {}), ...(vote.confidences ? { confidences: vote.confidences } : {}), ...(vote.passages ? { passages: vote.passages } : {}) };
 }
 
 /**
@@ -105,6 +108,19 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
 const holdsAll = (paper: Paper, needle: string) => nameHas(paper.searchText ?? "", needle);
 const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOf(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
+/** A screening's cards narrowed the most telling way asked for, in the order their papers were added: the rest is asked of each card. */
+const cardsOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, { result, reason, check, source }: { result?: Doc<"screeningCards">["result"]; reason?: string; check?: Id<"screeningChecks">; source?: Id<"screeningSources"> }) => {
+  const cards = stream(ctx.db, schema).query("screeningCards");
+  return reason
+    ? cards.withIndex("by_job_and_reason", (q) => q.eq("jobId", jobId).eq("reason", reason))
+    : check
+      ? cards.withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", check))
+      : source
+        ? cards.withIndex("by_job_and_source", (q) => q.eq("jobId", jobId).eq("sourceId", source))
+        : result
+          ? cards.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result))
+          : cards.withIndex("by_job", (q) => q.eq("jobId", jobId));
+};
 const byJob = { jobId: v.id("screeningJobs") };
 /** Papers one page holds at most, and rows a page looks through for the ones its filters keep. */
 const PAGE_MAX = 100;
@@ -157,7 +173,7 @@ export const pdf = workspaceQuery({
   args: { ...byJob, paperId: v.id("screeningResults") },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, actor, { jobId, paperId }) => {
-    const looking = await lookingAt(ctx, actor, jobId);
+    const looking = await lookingAt(ctx, actor, jobId, { rows: false });
     const paper = looking ? await ctx.db.get("screeningResults", paperId) : null;
     return paper?.jobId === jobId && paper.file ? await ctx.storage.getUrl(paper.file) : null;
   },
@@ -183,7 +199,7 @@ export const counts = workspaceQuery({
   },
   returns: v.union(v.null(), v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number(), waiting: v.number() })),
   handler: async (ctx, actor, { jobId, source, check: asked, reason, reviewer, voted }) => {
-    const looking = await lookingAt(ctx, actor, jobId);
+    const looking = await lookingAt(ctx, actor, jobId, { rows: false });
     if (!looking) return null;
     const check = asked === "start" ? looking.first : asked;
     if (asked === "start" && !check) return null;
@@ -191,7 +207,7 @@ export const counts = workspaceQuery({
     if (reviewer && !row) return null;
     // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
     const others = row && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
-    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length)) return null;
+    if (others && !showsEarly(looking.job.rule!, row.kind) && (await keepsVotesNow(ctx, looking.job, looking.reviewer, looking.reviewers.values()))) return null;
     // Narrowed one way, the counts are kept already (./facets.ts): a few counted reads, whatever the screening's size.
     const narrowed = [source, check, reason, row].filter(Boolean).length;
     if (narrowed === 1) {
@@ -200,12 +216,13 @@ export const counts = workspaceQuery({
       if (check) return await tallyUnder(ctx, jobId, { check });
       return await tallyForReason(ctx, jobId, reason!);
     }
-    // Narrowed two ways at once, the papers' cards are counted one by one. ponytail: a namespace per pair of narrowings would count those too, if they come to be used on large screenings.
+    // Narrowed two ways at once, the cards of the narrower way are counted one by one: a reviewer's votes, or the papers of one reason, check or source.
+    // ponytail: a namespace per pair of narrowings would count those too, if they come to be used on screenings past a few thousand papers.
     const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? NO_REASON) === reason));
     const tally = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
-    const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
-    if (cards.length > COUNTED) return null;
     if (!row) {
+      const cards = await cardsOf(ctx, jobId, { reason, check, source }).take(COUNTED + 1);
+      if (cards.length > COUNTED) return null;
       for (const card of cards) if (keeps(card)) tally[card.result]++;
       return tally;
     }
@@ -217,9 +234,11 @@ export const counts = workspaceQuery({
         : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
     ).take(COUNTED + 1);
     if (theirs.length > COUNTED) return null;
-    // Their votes are matched to the screening's cards here: two reads, however many papers they voted on.
-    const cardOf = new Map(cards.map((card) => [card.resultId, card]));
-    for (const vote of theirs) { const card = cardOf.get(vote.resultId); if (card && keeps(card)) tally[card.result]++; }
+    // Their votes are matched to the cards of the other narrowing, read in one range: one read a vote would pass a transaction's index ranges on a large screening.
+    const cards = await cardsOf(ctx, jobId, { reason, check, source }).take(COUNTED + 1);
+    if (cards.length > COUNTED) return null;
+    const cardOn = new Map(cards.map((card) => [card.resultId, card]));
+    for (const vote of theirs) { const card = cardOn.get(vote.resultId); if (card && keeps(card)) tally[card.result]++; }
     return tally;
   },
 });
@@ -307,7 +326,7 @@ export const listAction = defineUserQuery({
     if (asked === "start" && !check) return NONE;
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     // While the others' votes are kept from the person (./view.ts `keepsVotes`), nothing worked out from those votes orders or narrows what they are given.
-    const kept = keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length);
+    const kept = (await keepsVotesNow(ctx, looking.job, looking.reviewer, looking.reviewers.values()));
     // How divided a paper's votes are, and the points their answers give it, put the papers in an order that says how the others voted: asked for then, the papers come as they were added.
     const sort = kept && (asked_sort === "split" || asked_sort === "points") ? "added" : asked_sort;
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
@@ -381,6 +400,12 @@ export const listAction = defineUserQuery({
       const theirs = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
       return { ...read, page: (await withVotes(theirs)).filter((paper) => !told || paper.sees) };
     }
+    if (sort === "added") {
+      // In the order they were added, narrowed on the papers' cards, their few facts: only the page's papers are read whole.
+      const read = await cardsOf(ctx, jobId, { result, reason, check, source }).filterWith(async (card) => keeps(card)).paginate({ ...options, maximumRowsRead: FILTER_ROWS });
+      const theirs = (await Promise.all(read.page.map((card) => ctx.db.get("screeningResults", card.resultId)))).filter((one): one is Paper => one !== null && keeps(one));
+      return { ...read, page: await withVotes(theirs) };
+    }
     const field = { title: "title", "title-desc": "title", newest: "publicationYear", split: "split", points: "score" } as const;
     const down = sort === "title-desc" || sort === "newest" || sort === "split" || sort === "points";
     // The one filter an index takes with each order, most telling first; whatever else was asked for is kept in passing.
@@ -390,16 +415,6 @@ export const listAction = defineUserQuery({
         ? result
           ? papers.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result))
           : papers.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId))
-        : sort === "added"
-        ? reason
-          ? papers.withIndex("by_job_and_reason", (q) => q.eq("jobId", jobId).eq("reason", reason))
-          : check
-            ? papers.withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", check))
-            : source
-              ? papers.withIndex("by_job_and_source", (q) => q.eq("jobId", jobId).eq("sourceId", source))
-              : result
-                ? papers.withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result))
-                : papers.withIndex("by_job", (q) => q.eq("jobId", jobId))
         : result
           ? papers.withIndex(`by_job_and_result_and_${field[sort]}`, (q) => q.eq("jobId", jobId).eq("result", result))
           : papers.withIndex(`by_job_and_${field[sort]}`, (q) => q.eq("jobId", jobId))

@@ -29,8 +29,8 @@ const STANDINGS = ["waiting", "known", "file", "broken"] as const satisfies read
 const placed = (ctx: Pick<QueryCtx, "db">, batch: string, at: number) => ctx.db.query("screeningFiles").withIndex("by_batch_and_at", (q) => q.eq("batch", batch).eq("at", at)).unique();
 const lastOf = (ctx: Pick<QueryCtx, "db">, batch: string) => ctx.db.query("screeningFiles").withIndex("by_batch_and_at", (q) => q.eq("batch", batch)).order("desc").first();
 
-/** A drop is its adder's, in the workspace it was added in: nobody else adds to it or reads it. */
-async function own(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, batch: string) {
+/** A drop is its adder's, in the workspace it was added in: nobody else adds to it, reads it, or makes a source of it. */
+export async function own(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, batch: string) {
   const last = await lastOf(ctx, batch);
   if (last && (last.userId !== actor.userId || last.workspaceId !== actor.workspaceId)) throw createError("FORBIDDEN", "These files were added by someone else.");
   return last;
@@ -55,6 +55,9 @@ export const add = workspaceMutation({
     const starting: Id<"screeningFiles">[] = [];
     for (const [i, { file, name, bytes }] of files.entries()) {
       if (bytes > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `${name} is over ${MAX_PDF_MB} MB.`);
+      // A file is the drop's that uploaded it: one already in someone else's drop is theirs.
+      const held = await ctx.db.query("screeningFiles").withIndex("by_file", (q) => q.eq("file", file)).first();
+      if (held && (held.userId !== actor.userId || held.workspaceId !== actor.workspaceId)) throw createError("FORBIDDEN", "These files were added by someone else.");
       const at = from + i;
       const fileId = await ctx.db.insert("screeningFiles", { userId: actor.userId, workspaceId: actor.workspaceId, batch, at, file, name: name.slice(0, MAX_FILE_NAME), bytes, state: "waiting" });
       // Its lane is free where the file `LANES` places before it has landed already: that landing found no file to start.

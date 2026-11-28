@@ -129,10 +129,6 @@ export type Source = {
   addedAt: number;
   /** The thing it reads, where two can share a name: a Zotero library or one of its collections, a pasted list. */
   ref?: string;
-  /** What it held and the screening doesn't take, each with why, where the form itself read them. */
-  left?: LeftOut[];
-  /** How many of the papers it held have no abstract, where they aren't named in `left`. `total` counts none of them. */
-  bare?: number;
 };
 /** What finds the words the criteria mark in a text, each with whatever ending the text gives it ("programme" marks "programmes" too). Splitting a text by it leaves the marked words at the odd places. Null with no word to find. */
 export function termsPattern(terms: string[]) {
@@ -154,15 +150,11 @@ export function termsPattern(terms: string[]) {
 const UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
 const JOINED = /\p{Script=Arabic}/u;
 
-/** Why a paper that was found isn't screened. */
-const NO_ABSTRACT = "No abstract";
 /** How many things a source held that the screening doesn't take. */
-export const leftOf = (source: Source) => source.read?.left ?? (source.left?.length ?? 0) + (source.bare ?? 0);
+export const leftOf = (source: Source) => source.read?.left ?? 0;
 /** How many of those are papers with no abstract. */
-export const bareOf = (source: Source) => source.read?.bare ?? (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length;
+export const bareOf = (source: Source) => source.read?.bare ?? 0;
 export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + leftOf(source), 0);
-/** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
-export type LeftOut = { name: string; why: string };
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 /** Sources whose papers can come with no abstract and their PDF, which a model is sent whole and charges for by the page. */
@@ -181,9 +173,15 @@ export const foundTotal = (sources: Source[]) => sources.reduce((sum, source) =>
 /** What was removed before screening, named the same on the Overview and in the flow diagram. */
 export const REMOVED_LABEL = { merged: "Duplicates merged", bare: "No abstract", unread: "Could not be read or found" } as const;
 /** What its sources held that it doesn't screen: what they left out, how much of that for having no abstract, and the duplicates merged. One count for the progress line and the flow. */
-export function removedOf(sources: Source[]) {
+/**
+ * What a screening's sources held, as its flow counts them: `found`, every record they gave; `removed`, the ones left
+ * before screening (duplicates merged, and what was left out, no abstract (`bare`) among it); `kept`, the papers screened.
+ * The Overview's flow, the diagram and the methods paragraph all count from this.
+ */
+export function removedOf(sources: Source[], kept = paperTotal(sources)) {
   const left = leftTotal(sources);
-  return { left, bare: sources.reduce((sum, source) => sum + bareOf(source), 0), merged: foundTotal(sources) - paperTotal(sources) };
+  const merged = foundTotal(sources) - paperTotal(sources);
+  return { left, bare: sources.reduce((sum, source) => sum + bareOf(source), 0), merged, found: kept + merged + left, removed: merged + left };
 }
 
 /** The rule as the pages hold it: the shared one (lib/screening/rules.ts), with how many people read each paper as the text a control holds. */

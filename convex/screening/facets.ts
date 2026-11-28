@@ -149,10 +149,15 @@ export async function tallyUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, unde
   return Object.fromEntries(RESULTS.map((result, at) => [result, counts[at]!])) as Tally;
 }
 
+/** How many of a screening's papers are excluded for each of `reasons`, those with none left out. */
+export async function excludedFor(ctx: QueryCtx, jobId: Id<"screeningJobs">, reasons: string[]): Promise<Record<string, number>> {
+  const counts = await countEach(ctx, reasonsOf(jobId), reasons);
+  return Object.fromEntries(reasons.flatMap((reason, at) => (counts[at] ? [[reason, counts[at]!]] : [])));
+}
+
 /** How many of a screening's papers are excluded for `reason`: they are the only ones that stand that way. */
 export async function tallyForReason(ctx: QueryCtx, jobId: Id<"screeningJobs">, reason: string): Promise<Tally> {
-  const [excluded] = await countEach(ctx, reasonsOf(jobId), [reason]);
-  return { ...none(), exclude: excluded! };
+  return { ...none(), exclude: (await excludedFor(ctx, jobId, [reason]))[reason] ?? 0 };
 }
 
 /** How many of the papers a reviewer stands one of `ways` on stand each way. */

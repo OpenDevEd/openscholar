@@ -450,6 +450,7 @@ import type * as research_topics from "../research/topics.js";
 import type * as research_web from "../research/web.js";
 import type * as screening_access from "../screening/access.js";
 import type * as screening_accounting from "../screening/accounting.js";
+import type * as screening_audit from "../screening/audit.js";
 import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_cards from "../screening/cards.js";
 import type * as screening_checks from "../screening/checks.js";
@@ -1009,6 +1010,7 @@ declare const fullApi: ApiFromModules<{
   "research/web": typeof research_web;
   "screening/access": typeof screening_access;
   "screening/accounting": typeof screening_accounting;
+  "screening/audit": typeof screening_audit;
   "screening/bookkeeping": typeof screening_bookkeeping;
   "screening/cards": typeof screening_cards;
   "screening/checks": typeof screening_checks;

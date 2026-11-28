@@ -255,3 +255,17 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     },
   };
 }
+
+/**
+ * What a list draws while it is read, decided one way for every list: a list its count already says is empty says so
+ * at once, from its first read and on another tab alike, never skeletons first; a list being read, or another list
+ * asked for, shows as many skeleton rows as its count says it will hold, up to a page; the rows otherwise.
+ */
+export function listDraws(listed: { isLoading: boolean; isOther: boolean }, total: number | undefined, page: number): { draw: "empty" } | { draw: "skeleton"; rows: number } | { draw: "rows" } {
+  if (!listed.isLoading && !listed.isOther) return { draw: "rows" };
+  if (total === 0) return { draw: "empty" };
+  return { draw: "skeleton", rows: skeletonRows(total, page) };
+}
+
+/** Skeleton rows for a list being read: as many as its count says it holds, up to a page, and one where none is known. */
+export const skeletonRows = (total: number | undefined, page: number) => Math.max(1, Math.min(total ?? page, page));

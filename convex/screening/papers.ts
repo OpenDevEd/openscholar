@@ -112,6 +112,8 @@ export const answerAction = defineUserMutation({
   run: async (ctx, { userId, workspaceId, author }, { jobId, paperId: given, questionKey, answer, expect }) => {
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || !(job.workspaceId === workspaceId)) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    // A screening with reviewers decides a paper on its votes, cast on its own pages: an answer changed here would move nothing they show.
+    if (job.shape === 2) throw createError("VALIDATION_ERROR", "This screening is decided by its reviewers' votes. Vote on the paper on its Screen page.");
     const question = job.questions.find((q) => q.key === questionKey);
     if (!question) throw createError("VALIDATION_ERROR", "This screening doesn't ask that question");
     let result = await screened(ctx, jobId, given);

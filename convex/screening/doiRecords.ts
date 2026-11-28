@@ -5,6 +5,7 @@
  * is known of.
  */
 import type { FileRecord } from "../../lib/screening/files";
+import { createError } from "../lib/errors";
 
 /** DOIs asked of the registries at once, and how long one may take. */
 const AT_ONCE = 16;
@@ -13,14 +14,18 @@ const HEADERS = { Accept: "application/json", "User-Agent": "Openscholar (https:
 
 /** A registry's abstract as plain text: Crossref sends JATS markup, with a heading that says "Abstract". */
 const plain = (text: string | undefined) => text?.replace(/<[^>]+>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().replace(/^abstract[:.]?\s+/i, "") || undefined;
-/** A registry's answer. One that didn't come, or came as a refusal other than "no such DOI", is asked for once more: a busy registry is not a DOI nothing is known of. */
+/**
+ * A registry's answer, or null for a DOI it has no record of. One that didn't come, or came as a refusal other than "no
+ * such DOI", is asked for once more, and then the reading stops with why: a busy registry is not a DOI nothing is
+ * known of, and the source is read again once it answers.
+ */
 const read = async (url: string): Promise<unknown> => {
   for (let tries = 0; tries < 2; tries++) {
     const response = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(WAIT_MS) }).catch(() => null);
     if (response?.ok) return await response.json().catch(() => null);
     if (response?.status === 404) return null;
   }
-  return null;
+  throw createError("EXTERNAL_SERVICE_ERROR", "Crossref or DataCite didn't answer. Read this source again in a few minutes.");
 };
 
 type Crossref = { message?: { title?: string[]; abstract?: string; author?: Array<{ given?: string; family?: string; name?: string }>; issued?: { "date-parts"?: number[][] }; "container-title"?: string[] } };
