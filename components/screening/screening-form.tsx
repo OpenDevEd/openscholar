@@ -40,7 +40,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { useCurrentWorkspace, useWorkspaces, WorkspaceTag } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -1096,7 +1096,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // What it held and doesn't take: a PDF source's files that can't be screened, a file's records with no title, the DOIs that weren't found.
                         const leftOut = leftOf(source);
                         // While the screening reads it, the row says only that: what it takes and leaves out isn't known yet.
-                        const busy = source.read?.state === "reading" || source.read?.state === "waiting" ? t("papers.readingIt") : null;
+                        const unread = source.read?.state === "reading" || source.read?.state === "waiting";
+                        // A screening finished while it read a source stopped reading it: the row says what it took, and that reopening reads on.
+                        const busy = unread && !saved?.finishedAt ? t("papers.readingIt") : null;
+                        const halted = unread && saved?.finishedAt ? t("papers.stoppedFinished") : null;
                         const stopped = source.read?.state === "failed";
                         const itemsLabel = leftOut ? t("papers.leftOutCount", { count: leftOut }) : null;
                         const found = sourceLink(source);
@@ -1160,6 +1163,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : (
                                         <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
                                       )}
+                                      {halted ? <Chip key="halted" icon={Clock} className="h-5 self-center">{halted}</Chip> : null}
                                       {range}
                                     </div>
                                     {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}

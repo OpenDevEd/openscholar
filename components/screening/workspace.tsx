@@ -9,7 +9,7 @@ import { leaveBehind } from "./address";
 import { createContext, use, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
 import { modelsAdvise } from "@/lib/screening/rules";
 import { useFormatter, useTranslations } from "next-intl";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { AnimatePresence, MotionConfig } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty, ListRowsSkeleton } from "@/components/evidence-libraries/list-controls";
@@ -18,7 +18,6 @@ import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-h
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "./parts";
-import { EASE } from "@/components/settings/model-map";
 import { Opening } from "@/components/ui/opening";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -28,7 +27,7 @@ import { FadeRow } from "@/components/ui/fade-row";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
@@ -202,9 +201,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages on a line of their own, the same on every page, and the rule on the line under them. On a phone, Screen keeps the room for the paper and leaves the rule to its "?".
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      {/* What is passing ends the rule's line on Overview and Papers. On Settings and Screen it ends the tabs' line, which never wraps: on Screen a rule line that wrapped while it showed would move the paper being read when it went. */}
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" || view === "screen" ? passing : null}</div>
-      {view === "settings" ? null : <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{view === "screen" ? null : <span className="ms-auto flex shrink-0 empty:hidden">{passing}</span>}</div>}
+      {/* What is passing ends the rule's line on every tab, in a place of its own that is there whether or not anything passes: its coming and going never moves the tabs, nor wraps the rule's chips onto another line. On a phone, where the tabs' line scrolls and the rule's line is short of room, it ends the tabs' line. */}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow><span className="contents sm:hidden">{passing}</span></div>
+      {/* The rule's line is on every tab, Settings too, so going from one to another moves nothing under it. */}
+      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{passing ? <span className="ms-auto flex w-64 shrink-0 justify-end max-sm:hidden">{passing}</span> : null}</div>
     </>
   );
 
@@ -425,7 +425,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             intro={
               <div ref={strip} className="@container/strip">
                 {stripOf(rule, passing)}
-                {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
+                {/* Hidden on Settings and Screen, never taken out: drawn anew on the next tab, the faces' pictures would blink. */}
+                <div className={cn("flex items-center gap-2 px-4 pb-3 sm:hidden", (view === "settings" || view === "screen") && "hidden")}>{team}</div>
                 {/* The row is for what asks something of the person: it slides in and out, and changes only when the screening's state does. What passes by itself is the chip in the tabs' row. */}
                 <AutoHeight>
                   <Banner kind={banner} open={open} workspace={workspace.name} onReopen={reopen} onResume={resume} />
@@ -433,10 +434,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
               </div>
             }
           >
-            {/* Each page rises in as it opens. */}
-            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
+            {/* A tab's page takes the place of the last at once, as every other page with tabs does: no fade that reads as the page loading again. */}
+            <div className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
               <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity"), takeOff: overlays.takeOff }}>{children}</Workspace>
-            </motion.div>
+            </div>
           </LibraryPageShell>
         </div>
 

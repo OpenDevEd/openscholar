@@ -11,7 +11,7 @@ import { useState, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "@/convex/_generated/api";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "./parts";

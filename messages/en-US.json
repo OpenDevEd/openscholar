@@ -8274,6 +8274,7 @@
         "link": "{upTo, select, true {Up to <n></n> {count, plural, one {paper} other {papers}}} other {<n></n> {count, plural, one {paper} other {papers}}}}",
         "toScreen": "<n></n> to screen",
         "readingIt": "Reading it",
+        "stoppedFinished": "Reading stopped when it was finished, and goes on when it is reopened",
         "leftOutCount": "{count, plural, other {# left out}}",
         "grew": "{doubled, plural, =0 {{count, plural, other {# more since it started}}} one {{count, plural, other {# more since it started}}, # duplicate merged} other {{count, plural, other {# more since it started}}, # duplicates merged}}",
         "newTab": "(opens in a new tab)",
@@ -8360,7 +8361,7 @@
         "repeated": "That question is already a criterion",
         "full": "A screening has up to {count} criteria",
         "guidanceFor": "Guidance for criterion {n}",
-        "guidancePlaceholder": "Such as \"Primary schools only, not universities\"",
+        "guidancePlaceholder": "What counts and what doesn't, in a few words",
         "wordsFor": "Words to mark for criterion {n}",
         "wordsFull": "Only the first {count} words are kept",
         "wordsPlaceholder": "Words with commas between them",
@@ -8628,7 +8629,7 @@
         "votesShow": "The votes that were hidden from reviewers show to everyone on it",
         "modelsStop": "The models stop reading",
         "checksStop": "It stops checking for new papers",
-        "arrivingStops": "Papers still arriving from its sources stop arriving. Reopen it to read on from where they stopped",
+        "arrivingStops": "Papers still coming in from the sources stop. Reopening the screening reads on from where they stopped",
         "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
       },
       "delete": {
@@ -9453,7 +9454,8 @@
       },
       "settle": {
         "changeTitle": "Change how it is settled",
-          "title": "Settle this conflict",
+        "title": "Settle this conflict",
+        "votedReasons": "Reasons in the votes",
         "helpTitle": "Settling a conflict",
         "yourVote": "Your vote as a reviewer",
         "rule": "Rule",

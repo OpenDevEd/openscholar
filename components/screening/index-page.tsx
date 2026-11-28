@@ -23,7 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import PlainLink from "next/link";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { useRunBy } from "@/components/workspaces/run-by";
 import { api } from "@/convex/_generated/api";
@@ -113,6 +113,12 @@ export function ScreeningsIndex() {
   const rows = (show === "you" ? needs : [...pinned, ...paged, ...(listed.page === 1 ? sharedShown : [])]).map((row) => ({ row, group: waiting.has(row.id) ? 0 : row.finishedAt ? 2 : 1 }))
     // Under "Needs you first" the rows sit in their groups, each group in the page's order: one group never splits around another.
     .sort((a, b) => (sort === "you" ? a.group - b.group : 0));
+  // Another tab, order, search or person asked for: until its rows come it shows skeletons, or at once says it is empty where its count is 0. Never the last tab's rows under the new one. Needs you is read with the page, so it has no wait.
+  const askedList = JSON.stringify([show, sort, runBy.by ?? null, searched]);
+  const [arrivedList, setArrivedList] = useState(askedList);
+  if ((show === "you" || (!listed.isLoading && !listed.isStale)) && arrivedList !== askedList) setArrivedList(askedList);
+  const otherList = arrivedList !== askedList;
+  const listRows = otherList ? [] : rows;
   // The rows wait for what is drawn above them too, so a list that has drawn is never pushed down.
   const loading = mine === undefined || tally === undefined || elsewhere === undefined || invitations === undefined || (show !== "you" && listed.isLoading);
   // An invitation needs the person as much as a vote does, and so does a screening waiting in another workspace (the rows above the list): counted in Needs you, as the rail's badge counts them.
@@ -228,11 +234,11 @@ export function ScreeningsIndex() {
                 </div>
                 {/* The rows and what stands in for them while they are read are different heights: the frame around them slides from one to the other. */}
                 <AutoHeight>
-                {loading && !rows.length ? (
+                {(loading && !rows.length) || (otherList && counts?.[show] !== 0) ? (
                   <ListRowsSkeleton rows={Math.max(1, Math.min(counts?.[show] ?? UNCOUNTED_ROWS, PAGE))} height={72} icon={false} label={t("loadingScreenings")} />
                 ) : (
                 <ul className={cn("divide-y divide-border-subtle", listed.isStale && "pointer-events-none opacity-60")}>
-                  {rows.map(({ row, group }, i) => {
+                  {listRows.map(({ row, group }, i) => {
                     const id = row.id;
                     const me = row.me as string;
                     // The workspace is named wherever it isn't the one the person looking works in.
@@ -314,7 +320,7 @@ export function ScreeningsIndex() {
                       </Group>
                     );
                   })}
-                  {!rows.length ? (
+                  {!listRows.length ? (
                     <li>
                       {/* "Show every screening" takes off every narrowing, the person a list is run by too. */}
                       <ListEmpty icon={searched ? Search : ListChecks} action={<Button variant="outline" size="sm" onClick={() => { runBy.clear(); go({ q: null, show: null, page: null }); }}>{t("showEvery")}</Button>}>{none}</ListEmpty>

@@ -10,7 +10,7 @@ import { useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { collectionHref } from "@/lib/library/links";
 import { AnimatePresence, motion } from "motion/react";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { FileText, Lock, TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "./parts";
@@ -680,7 +680,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               {done && papersAt ? <DropdownMenuItem asChild><NextLink href={papersAt}><ListChecks />{t("row.seeVotes", { mine: String(mine) })}</NextLink></DropdownMenuItem> : null}
               {unread && !screening.finishedAt ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => void open.retry(reviewer).catch((error) => notSaved(t, error))}><RotateCcw />{retryLabel(tp, unread, words.creditsOf(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{t("row.creditsShort", { credits: words.creditsOf(retry.short) })}</span> : null}</DropdownMenuItem> : null}
-              {reviewer.kind === "person" && !mine && left && !screening.finishedAt ? (
+              {reviewer.kind === "person" && !mine && left && !screening.finishedAt && !reviewer.quiet ? (
                 <DropdownMenuItem onSelect={() => void open.remind(reviewer).catch((error) => notSaved(t, error))}><Mail />{t("row.remind")}</DropdownMenuItem>
               ) : null}
               {onMove ? <DropdownMenuItem onSelect={onMove}><Move />{t("row.moveAway")}</DropdownMenuItem> : null}
@@ -765,7 +765,8 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const allPairs = every === "all";
-  if (reviewers.length < 3 || !pairs.length) return null;
+  // Shown as the rule says before the figures arrive, and kept once they do: a section that went when they came would pull the page up. With none of its pairs left, it says so.
+  if (reviewers.length < 3 || (!pairs.length && figures === undefined)) return null;
   // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
   const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
   // The figure over them is of the same pairs: one too thin to list counts in no figure either.

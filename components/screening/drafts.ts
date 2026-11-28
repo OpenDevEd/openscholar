@@ -6,7 +6,19 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { Answer } from "@/lib/screening/rules";
 import type { Reviewer, Screening } from "./data";
+import type { DiscussionDraft } from "./discussion";
+
+/** What is written on a paper and not sent yet, by paper: answers before the vote, a note, a message to the others. Kept here, not in the page, so going to another tab of the screening and back loses none of it. */
+type InHand = {
+  answers: Record<string, Record<string, Answer>>;
+  notes: Record<string, string>;
+  talks: Record<string, DiscussionDraft>;
+  /** The Papers drawer's notes, on a vote and on a settled result. */
+  paperNotes: Record<string, Partial<Record<"vote" | "result", string>>>;
+  paperTalks: Record<string, DiscussionDraft>;
+};
 
 type Kept = {
   /** Unsaved settings by where they are made: a screening's ID, or `new:<the screening it copies>`. */
@@ -21,6 +33,7 @@ type Kept = {
   paced: Record<string, { sum: number; n: number }>;
   /** Who was last picked to be added, and asked about: Forward or a reload over the question asks about them again. */
   adding?: Reviewer;
+  inHand: InHand;
 };
 type Store = Kept & {
   /** Changes a draft, or drops it when `change` gives nothing back. */
@@ -42,6 +55,7 @@ export const useKept = create<Store>()(
       folded: false,
       guides: [],
       paced: {},
+      inHand: { answers: {}, notes: {}, talks: {}, paperNotes: {}, paperTalks: {} },
       draft: (key, change) =>
         set((state) => {
           const next = change(state.drafts[key]);
@@ -53,3 +67,11 @@ export const useKept = create<Store>()(
     { name: "screening:kept:2", storage: createJSONStorage(() => sessionStorage) },
   ),
 );
+
+/** One kind of what is in hand, read and changed as a page's own state would be. */
+export function useInHand<K extends keyof InHand>(key: K) {
+  const value = useKept((kept) => kept.inHand[key]);
+  const set = (next: InHand[K] | ((now: InHand[K]) => InHand[K])) =>
+    useKept.setState((state) => ({ inHand: { ...state.inHand, [key]: typeof next === "function" ? (next as (now: InHand[K]) => InHand[K])(state.inHand[key]) : next } }));
+  return [value, set] as const;
+}

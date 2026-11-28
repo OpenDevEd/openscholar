@@ -122,7 +122,8 @@ async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
   const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
   if (!user) return { ...base, id: reviewer._id, kind: "person", name: SOMEONE };
   if (!members.has(user._id)) members.set(user._id, (await actorIn(ctx, user, job.workspaceId)) !== null);
-  return { ...base, ...personOf(user, user._id), kind: "person", ...(members.get(user._id) ? {} : { guest: true as const }) };
+  const quiet = (await noticeOf(ctx, job._id, user._id))?.off;
+  return { ...base, ...personOf(user, user._id), kind: "person", ...(members.get(user._id) ? {} : { guest: true as const }), ...(quiet ? { quiet: true as const } : {}) };
 }
 
 /** What a screening's models are doing, and the screening whose models read first where its own wait their turn. */

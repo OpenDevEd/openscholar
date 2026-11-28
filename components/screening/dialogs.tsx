@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { showStyledToast } from "@/components/ui/sonner";
-import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
+import { SamePageLink as NextLink } from "./same-page-link";
 import { WorkspaceTile } from "@/components/workspaces/parts";
 import { GuestMeter } from "@/components/workspaces/share-dialog";
 import { api } from "@/convex/_generated/api";
