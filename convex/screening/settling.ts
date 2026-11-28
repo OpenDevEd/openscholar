@@ -12,9 +12,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { cellOf, decidingVotes, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
-import { newCollection } from "../library/collections";
-import { readConvexErrorData } from "../lib/errors";
-import { progressOf, shelve, withMoved } from "./bookkeeping";
+import { progressOf, shelve, withCollection, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
 import { countDealt, invitedTo, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
 import { conflictsWait } from "./notices";
@@ -227,17 +225,12 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       // The collection its included papers go to is made with the first of them.
       // A workspace with no room for another collection still has its papers settled: they are kept in the screening, and the page says why they aren't saved.
       if (now === "include" && job.newCollection && !job.targetCollectionId) {
-        const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection).catch((error: unknown) => {
-          if (!readConvexErrorData(error)) throw error;
-          return null;
-        });
-        if (!targetCollectionId) {
-          if (job.libraryWriteProblem !== "full") await ctx.db.patch("screeningJobs", job._id, { libraryWriteProblem: "full" });
+        const made = await withCollection(ctx, job);
+        if (!made) {
           job = { ...job, libraryWriteProblem: "full" };
           continue;
         }
-        await ctx.db.patch("screeningJobs", job._id, { targetCollectionId, newCollection: undefined, libraryWriteProblem: undefined });
-        job = { ...job, targetCollectionId, newCollection: undefined, libraryWriteProblem: undefined };
+        job = made;
       }
       const to = await shelve(ctx, job, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
       moved.saved += to.saved;

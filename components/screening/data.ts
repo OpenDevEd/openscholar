@@ -25,7 +25,7 @@ export { SOMEONE };
 /** A reviewer's name where there is little room: a person's first name, and a model's whole name, since its first word alone only names its maker. */
 export const shortName = (reviewer: { kind: "person" | "model"; name: string; email?: string }) => (reviewer.kind === "person" && !reviewer.email ? firstName(reviewer.name) : reviewer.name);
 /** A name as part of a file's name or an address. */
-export const slug = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+export const slug = (name: string) => name.normalize("NFC").toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
 /** A number as people read it: "1,204". */
 export const num = (n: number) => n.toLocaleString("en-GB");
 /** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */

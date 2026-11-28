@@ -53,8 +53,11 @@ describe("what a source leaves out", () => {
     const leftOut = () => made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect());
     await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
     // A Zotero library reads a paper filed in two collections twice: in one step, and again in a later one.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: [bare, bare, paper(2)], read: 3, ended: false });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: [bare], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 0, papers: [bare, bare, paper(2)], read: 3, ended: false });
+    // A second reader of that first step, set off by the watch while the first was slow, comes after it and takes nothing in: the source stays where the first left it.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 0, papers: [paper(3)], read: 3, ended: false });
+    expect(await sourceOf()).toMatchObject({ read: 3, taken: 1 });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 3, papers: [bare], read: 1, ended: true });
     expect(await sourceOf()).toMatchObject({ taken: 1, left: 1, bare: 1 });
     expect(await leftOut()).toHaveLength(1);
 
@@ -63,10 +66,10 @@ describe("what a source leaves out", () => {
       await ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" });
       return checkId;
     });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(checkId), sourceId, pass: 1, papers: [bare, bare], read: 2, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(checkId), sourceId, pass: 1, from: 0, papers: [bare, bare], read: 2, ended: false });
     expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
     const later = await made.t.run((ctx) => ctx.db.insert("screeningChecks", { jobId, at: 2, state: "running", beat: 2, from: 1, found: 0, added: 0 }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(later), sourceId, pass: 2, papers: [bare, bare], read: 2, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: await again(later), sourceId, pass: 2, from: 0, papers: [bare, bare], read: 2, ended: true });
     expect(await sourceOf()).toMatchObject({ left: 1, bare: 1 });
     expect(await leftOut()).toHaveLength(1);
   });
@@ -78,15 +81,15 @@ describe("what a source leaves out", () => {
     const sourceOf = () => made.t.run((ctx) => ctx.db.get("screeningSources", sourceId));
     const listed = async () => (await made.as.ann!.query(api.screening.view.leftOut, { workspaceId: made.workspaceId, jobId, sourceId, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.name).sort();
     await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 0, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
     expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
     // A check reads it again, and has met the first paper and one that is new so far: the page still says two were left out, and lists the two it counted.
     await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [{ ...paper(1), abstract: undefined }, { ...paper(3), abstract: undefined }], read: 2, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 0, papers: [{ ...paper(1), abstract: undefined }, { ...paper(3), abstract: undefined }], read: 2, ended: false });
     expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
     expect(await listed()).toEqual(["Paper 1", "Paper 2"]);
     // The second paper is gone from the source: once the reading is whole, the count and the list are this reading's.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [], read: 0, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 2, papers: [], read: 0, ended: true });
     expect(await sourceOf()).toMatchObject({ left: 2, bare: 2 });
     expect((await sourceOf())!.next).toBeUndefined();
     expect(await listed()).toEqual(["Paper 1", "Paper 3"]);
@@ -101,7 +104,7 @@ describe("what a source leaves out", () => {
     await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
     // Two records of one export with the same DOI, each under its own key, a third paper, and that third paper's record once more. A file hands each over as the record it is.
     const held = [paper(1, { doi: "10.1000/same" }), paper(2, { doi: "10.1000/same" }), paper(3), paper(3)].map((one, at) => ({ ...one, record: String(at + 1) }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: held, read: 4, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 0, papers: held, read: 4, ended: true });
     expect(await sourceOf()).toMatchObject({ read: 4, taken: 2, duplicates: 2, left: 0 });
     expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toHaveLength(0);
     // Each repeat is named with the paper that stands for it, which this same file brought.
@@ -110,12 +113,12 @@ describe("what a source leaves out", () => {
 
     // Its range is widened by two records, a new paper twice, so it is read again from its start, and a step that was cut short gives its records twice. Until the reading is whole, the count and the list are the first reading's.
     await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
-    for (const read of [0, 4]) await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: held, read, ended: false });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [{ ...paper(4), record: "5" }, { ...paper(4), record: "6" }], read: 2, ended: false });
+    for (const read of [0, 4]) await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 0, papers: held, read, ended: false });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 4, papers: [{ ...paper(4), record: "5" }, { ...paper(4), record: "6" }], read: 2, ended: false });
     expect(await sourceOf()).toMatchObject({ taken: 3, duplicates: 2 });
     expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId]]);
     // Whole, it counts each repeat once: the two it met before, and the new one.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [], read: 0, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 6, papers: [], read: 0, ended: true });
     expect(await sourceOf()).toMatchObject({ read: 6, taken: 3, duplicates: 3, left: 0 });
     expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId], ["Paper 4", "Paper 4", sourceId]]);
   });
@@ -127,11 +130,19 @@ describe("what a source leaves out", () => {
     const [first, second, third] = sources as [Id<"screeningSources">, Id<"screeningSources">, Id<"screeningSources">];
     for (const sourceId of sources) await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
     // The first source has the paper with no DOI; the second has it with one, under another key, and is merged into it by its title and year.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, pass: 0, papers: [paper(1)], read: 1, ended: true });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, pass: 0, papers: [paper(2, { title: "Paper 1", doi: "10.1/one" })], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, pass: 0, from: 0, papers: [paper(1)], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, pass: 0, from: 0, papers: [paper(2, { title: "Paper 1", doi: "10.1/one" })], read: 1, ended: true });
     // The third has it by that DOI under a title written another way, and by the second's key under another title.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: third, pass: 0, papers: [paper(3, { title: "Paper one, revised", doi: "10.1/one" }), paper(2, { title: "Yet another title" })], read: 2, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: third, pass: 0, from: 0, papers: [paper(3, { title: "Paper one, revised", doi: "10.1/one" }), paper(2, { title: "Yet another title" })], read: 2, ended: true });
     expect(await papersOf(made.t, jobId)).toHaveLength(1);
+    // The first source taken out, the paper stays as the second's record: met again by its key under any title, it is still the one paper.
+    await made.t.run((ctx) => ctx.db.patch("screeningSources", first, { removedAt: 3 }));
+    await made.t.mutation(internal.screening.settings.withdraw, { jobId, sourceId: first, cursor: null });
+    const later = await made.t.run((ctx) => ctx.db.insert("screeningChecks", { jobId, at: 4, state: "running", beat: 4, from: 1, found: 0, added: 0 }));
+    await made.t.run(async (ctx) => ctx.db.patch("screeningSources", second, { ...readAgain((await ctx.db.get("screeningSources", second))!), state: "reading" }));
+    await made.t.mutation(internal.screening.gathering.fill, { checkId: later, sourceId: second, pass: 1, from: 0, papers: [paper(2, { title: "Paper 1, a title changed" })], read: 1, ended: true });
+    expect(await papersOf(made.t, jobId)).toHaveLength(1);
+    expect(await made.t.run((ctx) => ctx.db.get("screeningSources", second))).toMatchObject({ taken: 1, duplicates: 0 });
   });
 
   it("names a record another source already brought, and counts one it meets twice in a reading once", async () => {
@@ -140,9 +151,9 @@ describe("what a source leaves out", () => {
     const { checkId, sources } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sources: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((one) => one._id) }));
     const [first, second] = sources as [Id<"screeningSources">, Id<"screeningSources">];
     for (const sourceId of sources) await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, pass: 0, papers: [paper(1)], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, pass: 0, from: 0, papers: [paper(1)], read: 1, ended: true });
     // The second source holds that paper too, and lists it under two of its folders, as a Zotero library does.
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, pass: 0, papers: [paper(1), paper(1), paper(2)], read: 3, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, pass: 0, from: 0, papers: [paper(1), paper(1), paper(2)], read: 3, ended: true });
     expect(await made.t.run((ctx) => ctx.db.get("screeningSources", second))).toMatchObject({ taken: 1, duplicates: 1 });
     const merged = (await made.as.ann!.query(api.screening.view.merged, { workspaceId: made.workspaceId, jobId, sourceId: second, paginationOpts: { cursor: null, numItems: 10 } })).page;
     expect(merged.map((row) => [row.name, row.paper?.sourceId])).toEqual([["Paper 1", first]]);
@@ -153,9 +164,9 @@ describe("what a source leaves out", () => {
     const { jobId } = await started(made, ["ann"], 0);
     const { checkId, sourceId } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sourceId: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id }));
     await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, papers: [paper(1)], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 0, from: 0, papers: [paper(1)], read: 1, ended: true });
     await made.t.run(async (ctx) => ctx.db.patch("screeningSources", sourceId, { ...readAgain((await ctx.db.get("screeningSources", sourceId))!), state: "reading" }));
-    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, from: 0, papers: [{ ...paper(1), abstract: undefined }, { ...paper(2), abstract: undefined }], read: 2, ended: true });
     expect(await made.t.run((ctx) => ctx.db.get("screeningSources", sourceId))).toMatchObject({ taken: 1, left: 1, bare: 1 });
     expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toMatchObject([{ name: "Paper 2", why: "abstract" }]);
   });

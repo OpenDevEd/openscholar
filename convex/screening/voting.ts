@@ -23,8 +23,8 @@ async function paperOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">,
   return paper;
 }
 
-/** Stamps a paper a person voted on or settled, for the bookkeeping worker: their vote or decision lets go of a result held through a change of settings. */
-const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">) => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, reopen: "vote" });
+/** Stamps a paper a person voted on or settled, for the bookkeeping worker: their vote or decision lets go of a result held through a change of settings. Answers given to a vote already cast only have it scored again: the vote is the one counted, and holds nothing open. */
+const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">, release = true) => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, ...(release ? { reopen: "vote" as const } : {}) });
 
 /** A reason to exclude is one of the screening's criteria, or one of the others. Undo puts back a vote as it was cast, by a criterion taken off since too. */
 function requireReason(job: Doc<"screeningJobs">, reason: string | undefined, undoing: boolean) {
@@ -43,6 +43,8 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
   if (onlyAt !== undefined && (mine?.status !== "cast" || (mine.edited ?? mine.at) !== onlyAt)) return false;
+  // Answers to a vote taken back meanwhile, in another tab, cast nothing.
+  if (answersOnly && mine?.status !== "cast") return false;
   if (decision === null) {
     // Taken back: the place is theirs again to vote from. One with no vote to take back changes nothing.
     if (mine?.status !== "cast") return false;
@@ -55,7 +57,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
   // Answers joining a vote already cast change only the answers: it stays the vote it was, whatever another tab saved meanwhile, cast when it was, which
   // "first vote decides" reads, and asked for again if it was. An exclusion that rested on a criterion answered otherwise now rests on what the answers say.
-  const kept = answersOnly && mine?.status === "cast" ? mine : undefined;
+  const kept = answersOnly ? mine : undefined;
   const keptReason = kept?.decision === "exclude" ? ((kept.reason && (job.criteria ?? []).some((one) => one.key === kept.reason) && given[kept.reason] !== "no") || kept.reason === NO_REASON ? (givenReason(job.criteria ?? [], given, kept.note ?? "") ?? NO_REASON) : kept.reason) : undefined;
   const vote = kept
     ? { status: "cast" as const, decision: kept.decision!, answers: given, reason: keptReason, note: kept.note, at: kept.at ?? Date.now(), edited: Date.now(), flagged: kept.flagged }
@@ -66,7 +68,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
     await ctx.db.insert("screeningVotes", { ...personRow(job, paper, reviewer), ...vote });
     await countDealt(ctx, new Map([[reviewer._id, 1]]));
   }
-  await stamp(ctx, paperId);
+  await stamp(ctx, paperId, !kept);
   return vote.edited ?? vote.at;
 }
 

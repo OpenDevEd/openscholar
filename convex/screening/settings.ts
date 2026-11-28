@@ -11,13 +11,13 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
-import { newCollection, screeningDestination } from "../library/collections";
+import { screeningDestination } from "../library/collections";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
-import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
+import { bookkeepLater, progressRow, saveQualified, withCollection } from "./bookkeeping";
 import { keepVersion, keeperOf, readAgain, dealable, papersAStep, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./checks";
 import { check } from "./living";
@@ -303,7 +303,9 @@ export const withdraw = internalMutation({
         const { row } = kept;
         // Read again for each paper: an earlier paper of this step may have moved to the same source.
         const keeper = (await ctx.db.get("screeningSources", kept.source._id))!;
-        await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, record: undefined, doneAt: ctx.db.vars.commitTs });
+        // It is the record that source holds from now on, by which a later reading of it, or a record merged before, finds it (./gathering.ts `twinOf`): a file's by its place in the file, any other's by its key.
+        const fromFile = keeper.set.kind === "upload" || keeper.set.kind === "dois" || keeper.set.kind === "pdf";
+        await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, ...(fromFile ? { record: row.paperKey } : { record: undefined, ...(row.paperKey ? { paperKey: row.paperKey } : {}) }), doneAt: ctx.db.vars.commitTs });
         const filed = !paper.abstract && paper.file;
         const band = pdfBand(paper.pages ?? 0);
         const spread = { ...keeper.fileSpread };
@@ -345,10 +347,11 @@ export const shelveIncluded = internalMutation({
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || (job.unsaved && !job.libraryDestination)) return null;
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "include")).paginate({ cursor, numItems: SHELVE });
-    if (page.page.length && job.newCollection && !job.targetCollectionId) {
-      const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection);
-      await ctx.db.patch("screeningJobs", jobId, { targetCollectionId, newCollection: undefined });
-      job = { ...job, targetCollectionId, newCollection: undefined };
+    if (page.page.length) {
+      // With no room for its collection, the screening says so and its included papers wait in it.
+      const made = await withCollection(ctx, job);
+      if (!made) return null;
+      job = made;
     }
     for (const paper of page.page) {
       if (!job.unsaved) await saveQualified(ctx, job, paper);

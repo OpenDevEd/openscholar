@@ -492,8 +492,8 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
       // While "another reason" is being written, a key is a letter of it, wherever the focus is: never a vote or a step. Escape still goes back.
       if (writing) {
         if (event.key === "Escape") { event.preventDefault(); setWriting(null); }
-        // Typed before the field took the focus: the field takes it, and the letter goes in.
-        else document.querySelector<HTMLTextAreaElement>("[data-reason-note] textarea")?.focus();
+        // Typed before the field took the focus: the field takes it, and the letter goes in. Tab, Enter and Space move about and press the form's buttons as anywhere.
+        else if (event.key.length === 1 && event.key !== " ") document.querySelector<HTMLTextAreaElement>("[data-reason-note] textarea")?.focus();
         return;
       }
       // While the last queue stands dimmed, no key reaches it: not a vote, an answer or a step.

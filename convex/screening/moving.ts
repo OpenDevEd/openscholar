@@ -41,7 +41,8 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
   const holding = papersOf(job, await progressRow(ctx, job._id));
   if (holding > papersThere) throw createError("VALIDATION_ERROR", `This screening holds ${holding.toLocaleString("en")} papers. ${await workspaceName(ctx, to)}'s plan takes up to ${papersThere.toLocaleString("en")} in one screening.`);
   const people = (await reviewersOf(ctx, job._id)).filter(dealable);
-  // Its reviewers outside the workspace it goes to vote as its guests: one who could only look at it before is now let vote, and one with no place on it is given one.
+  // Its reviewers outside the workspace it goes to vote as its guests: one who had it as a member of the workspace it leaves and could only look at it as a guest is now let vote, and one with no place on it is given one. A guest made one who looks stays one: being taken off follows the change.
+  const from: Shared<"screening"> = { ...shared, workspaceId: job.workspaceId };
   const outside: Doc<"users">[] = [];
   const looking: Doc<"users">[] = [];
   for (const one of people) {
@@ -49,7 +50,7 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
     if (!person || (await holds(ctx, shared, person))) continue;
     const grant = await grantOf(ctx, job._id, person._id);
     if (!grant) outside.push(person);
-    else if (grant.role !== "editor") looking.push(person);
+    else if (grant.role !== "editor" && (await holds(ctx, from, person))) looking.push(person);
   }
   const most = await roomFor(ctx, shared);
   if (most !== undefined && outside.length && (await countOf(ctx, itemGuestsOf(job._id))) + outside.length > most) {

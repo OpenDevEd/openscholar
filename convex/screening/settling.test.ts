@@ -438,6 +438,33 @@ describe("a record a screening read from a file", () => {
     expect((await standingOf(made.t, jobId)).papers[0]).toMatchObject({ result: "include" });
     expect(await made.t.run((ctx) => ctx.db.query("libraryItems").collect())).toMatchObject([{ title: "A report no index knows", abstract: "What the report found." }]);
   });
+
+  it("is saved with those included while the workspace had no room for the collection, once there is room", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0, { rule: { each: 1, settle: "all", blind: "after" }, saveTo: { kind: "new", name: "Included in Tutoring" } });
+    // The plan takes one collection, and the workspace has it.
+    const room = (count: number) => made.t.run(async (ctx) => {
+      const counted = await ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", made.workspaceId)).unique();
+      if (counted) await ctx.db.patch("collectionCounts", counted._id, { count });
+      else await ctx.db.insert("collectionCounts", { workspaceId: made.workspaceId, count });
+      const account = await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", made.workspaceId)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { collections: 1 } });
+    });
+    await room(1);
+    const { papers } = await give(made.t, jobId, 0, [{ paper: "upload:export.0", title: "First included", abstract: "One." }, { paper: "upload:export.1", title: "Second included", abstract: "Two." }]);
+    const vote = voter(made, jobId);
+    await vote("ann", papers[0]!._id, "include");
+    await runAll(made.t, vi.runAllTimers);
+    expect(await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ libraryWriteProblem: "full" });
+    // A collection deleted, the next paper included makes the screening's, and the one included before goes in it too.
+    await room(0);
+    await vote("ann", papers[1]!._id, "include");
+    await runAll(made.t, vi.runAllTimers);
+    const job = (await made.t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!;
+    expect(job.libraryWriteProblem).toBeUndefined();
+    const held = await made.t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", job.targetCollectionId!)).collect());
+    expect(held).toHaveLength(2);
+  });
 });
 
 describe("the queue every screening's papers are settled from", () => {

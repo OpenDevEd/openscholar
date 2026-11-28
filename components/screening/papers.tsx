@@ -519,7 +519,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             // Votes kept from the person looking are no list to open: each decision says why, as the column's menu does.
             ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: words.decision(decision), icon: <Icon />, tone, ...(tally?.kept ? { shut: words.t("hiddenWhileToDo") } : { count: countVoted(decision) }) }; }),
             { value: "none" as Voted, label: words.t("noVote.yet"), icon: <Hourglass />, count: countVoted("none"), group: t("filter.noVote") },
-            ...(countVoted("failed") ? [{ value: "failed" as Voted, label: words.t("noVote.failed"), icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: t("filter.noVote") }] : []),
+            ...(tally?.failed || voted === "failed" ? [{ value: "failed" as Voted, label: words.t("noVote.failed"), icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: t("filter.noVote") }] : []),
             // Papers settled by hand, where the rule can leave a paper split: under "first vote decides" the votes settle every paper, and the list would be of none.
             ...(settles(who) && splitsIn(screening, open.counts.conflict, open.invited) ? [{ value: "settled" as Voted, label: t("filter.settled"), icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: t("filter.decisions") }] : []),
           ]}
