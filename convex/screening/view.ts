@@ -107,7 +107,7 @@ type Counts = NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screenin
  */
 export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule" | "finishedAt">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined, reviewers: Iterable<Doc<"screeningReviewers">>, /** People invited who haven't answered: they count among its readers, as do people taken off whose votes stay, as its pages count them (components/screening/data.ts `hidingReaders`). */ invited: number) => {
   const all = [...reviewers];
-  return job.rule !== undefined && hidesVotes(job.rule, readersFor(job.rule.each, all.filter((one) => dealable(one) || (one.kind === "person" && one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0)).length + invited), all.filter(readingModel).length) && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+  return job.rule !== undefined && hidesVotes(job.rule, readersFor(job.rule.each, all.filter((one) => dealable(one) || (one.kind === "person" && one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0)).length + invited), all.filter((one) => one.kind === "model" && (readingModel(one) || (one.left !== undefined && one.discarded === undefined && (counts?.[one._id]?.cast ?? 0) > 0))).length) && job.finishedAt === undefined && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
 };
 
 /** A reviewer's row as the pages read it, with their counts. `kept`: how they voted is kept from whoever looks (`keepsVotes`). */
