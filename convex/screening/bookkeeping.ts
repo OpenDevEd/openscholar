@@ -19,6 +19,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
 import { findItem } from "../library/find";
+import { newCollection } from "../library/collections";
+import { readConvexErrorData } from "../lib/errors";
 
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { reviewersOf, VOTE_WRITES, votesOf } from "./dealing";
@@ -154,6 +156,26 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   if (collection) await addCollectionMembership(ctx, { collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
   await ctx.db.patch("screeningResults", result._id, { savedToLibrary: true, libraryItemId });
+}
+
+/**
+ * The screening with the collection its included papers go to made, where it is to be made: null where its workspace
+ * has no room for another, which the screening then says (`libraryWriteProblem: "full"`), its papers still settled. Made
+ * after it said so, the papers included meanwhile are saved to it too.
+ */
+export async function withCollection(ctx: MutationCtx, job: Doc<"screeningJobs">): Promise<Doc<"screeningJobs"> | null> {
+  if (!job.newCollection || job.targetCollectionId) return job;
+  const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection).catch((error: unknown) => {
+    if (!readConvexErrorData(error)) throw error;
+    return null;
+  });
+  if (!targetCollectionId) {
+    if (job.libraryWriteProblem !== "full") await ctx.db.patch("screeningJobs", job._id, { libraryWriteProblem: "full" });
+    return null;
+  }
+  await ctx.db.patch("screeningJobs", job._id, { targetCollectionId, newCollection: undefined, libraryWriteProblem: undefined });
+  if (job.libraryWriteProblem === "full") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId: job._id, cursor: null });
+  return { ...job, targetCollectionId, newCollection: undefined, libraryWriteProblem: undefined };
 }
 
 /**

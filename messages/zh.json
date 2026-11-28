@@ -7963,7 +7963,8 @@
         "says": "文件与你下载时相同，不含对你隐藏的内容。回复会发给你。",
         "send": "发送",
         "sent": "{count, plural, other {已将 # 个文件发送给 {to}}}",
-        "failed": "文件未发送"
+        "failed": "文件未发送",
+        "tooLarge": "{count, plural, one {此文件太大，无法通过邮件发送。请改为下载。} other {这些文件太大，无法放在一封邮件中。请少选几个，或下载它们。}}"
       },
       "title": "导出",
       "description": "论文、所有投票、PRISMA 流程图、方法段落和完整记录",
@@ -8823,7 +8824,7 @@
         "onItsWay": "PDF 正在路上",
         "cantShow": "此 PDF 无法在这里显示。请在新标签页中打开。"
       },
-      "perPaper": "每篇论文 {credits, plural, other {# 积分}}",
+      "perPaper": "每篇论文约 {credits, plural, other {# 积分}}",
       "pickerCost": "每篇论文积分"
     },
     "overview": {
@@ -8916,8 +8917,6 @@
         "unreadLabel": "{count, plural, other {# 篇它无法读取的论文}}",
         "unread": "{count, number} 篇无法读取",
         "unreadSays": "{count, plural, other {它无法读取这 # 篇论文，因此对其没有发言权。}}",
-        "notGivenText": "{count, plural, other {未分配 # 个 PDF，因为它只读取文本}}",
-        "notGivenLong": "{count, plural, other {未分配 # 个超出它一次能读取长度的 PDF}}",
         "voted": "{decision, select, include {投了入选：{count, number}} maybe {投了待定：{count, number}} other {投了排除：{count, number}}}",
         "noOtherPerson": "没有其他人可比较",
         "aloneOnPapers": "没有其他人阅读其论文",
@@ -8972,7 +8971,7 @@
         "startedIt": "{ago}开始"
       },
       "included": {
-        "problem": "{why, select, role {你现在只能查看 {name}，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} notFound {{name} 已不在文献社区中，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} other {文献社区没有响应，因此部分入选论文{adding, select, true {未添加到 {name}} other {未从 {name} 移出}}}}",
+        "problem": "{why, select, role {你现在只能查看 {name}，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} notFound {{name} 已不在文献社区中，因此入选论文{adding, select, true {不会添加到其中} other {不会从中移出}}} full {你的工作区的合集数量已达到其方案的上限，因此纳入的论文不会保存到 {name}。请删除一个合集，或在设置中选择它们的去处。} other {文献社区没有响应，因此部分入选论文{adding, select, true {未添加到 {name}} other {未从 {name} 移出}}}}",
         "title": "入选论文保存到",
         "helpTitle": "入选论文去向",
         "savedEach": "每篇入选时即保存",
@@ -8996,7 +8995,6 @@
         "failed": "{count, plural, other {# 次读取失败}}",
         "arriving": "论文仍在到达",
         "allRead": "模型已没有要读的内容",
-        "leftIn": "{own, select, true {剩余 {credits}} other {{workspace} 剩余 {credits}}}",
         "takenOff": "已移出的模型用了 {credits}",
         "nothingToPay": "无需付费"
       },

@@ -25,9 +25,11 @@ export async function readOn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id
   const check = await firstCheck(ctx, job._id);
   if (!check) return void (await startCheck(ctx, job, by));
   if (check.state === "running") return;
-  await ctx.db.patch("screeningChecks", check._id, { state: "running", endedAt: undefined, beat: Date.now() });
+  // Read anew as a run of its own: a reader still out from before it ended writes nothing.
+  const run = (check.run ?? 0) + 1;
+  await ctx.db.patch("screeningChecks", check._id, { state: "running", endedAt: undefined, beat: Date.now(), run });
   await ctx.db.patch("screeningJobs", job._id, { reading: true });
-  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId: check._id });
+  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId: check._id, run });
   await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId: check._id, restarts: 0 });
 }
 
@@ -44,7 +46,7 @@ export async function startCheck(ctx: MutationCtx, job: Doc<"screeningJobs">, by
   const checkId = await ctx.db.insert("screeningChecks", { jobId: job._id, at: Date.now(), ...(by ? { by } : {}), ...(search ? { search } : {}), state: "running", from, found: 0, added: 0, beat: Date.now() });
   // Papers are arriving while it reads, whichever look it is: a check asked for meanwhile joins it.
   await ctx.db.patch("screeningJobs", job._id, { reading: true });
-  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });
+  await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId, run: 0 });
   await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId, restarts: 0 });
   return checkId;
 }

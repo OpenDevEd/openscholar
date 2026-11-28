@@ -78,6 +78,8 @@ describe("the reason an excluded paper is counted under", () => {
     expect(reasonOf(ballots)).toBe("b");
     expect(reasonOf(ballots, "other")).toBe("other");
     expect(reasonOf([cast("include")])).toBeUndefined();
+    // One person gave a reason and one gave none: the reason given stands.
+    expect(reasonOf([cast("exclude", 1, "unstated"), cast("exclude", 2, "c1")])).toBe("c1");
   });
 
   it("under the first vote decides, is the reason of the person's vote that settled it, not an earlier model's", () => {

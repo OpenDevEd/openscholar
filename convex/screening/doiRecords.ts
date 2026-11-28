@@ -50,10 +50,11 @@ async function datacite(doi: string): Promise<FileRecord | null> {
 }
 
 /** The records Crossref, then DataCite, hold for these DOIs, by DOI. A DOI neither holds isn't in what comes back. */
-export async function registered(dois: string[]): Promise<Map<string, FileRecord>> {
+export async function registered(dois: string[], { strict = false }: { /** A registry that doesn't answer stops the reading, for a list of DOIs whose records these are. Looking up abstracts, it only finds none. */ strict?: boolean } = {}): Promise<Map<string, FileRecord>> {
   const found = new Map<string, FileRecord>();
+  const look = async (doi: string) => (await crossref(doi)) ?? (await datacite(doi));
   for (let at = 0; at < dois.length; at += AT_ONCE) {
-    const records = await Promise.all(dois.slice(at, at + AT_ONCE).map(async (doi) => (await crossref(doi)) ?? (await datacite(doi))));
+    const records = await Promise.all(dois.slice(at, at + AT_ONCE).map((doi) => (strict ? look(doi) : look(doi).catch(() => null))));
     records.forEach((record, i) => { if (record) found.set(dois[at + i]!, record); });
   }
   return found;

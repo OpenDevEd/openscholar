@@ -7964,7 +7964,8 @@
         "says": "Faili ni kama ungezipakua, bila kilichofichwa kwako. Majibu yanakuja kwako.",
         "send": "Tuma",
         "sent": "{count, plural, one {Faili imetumwa kwa {to}} other {Faili # zimetumwa kwa {to}}}",
-        "failed": "Faili hazikutumwa"
+        "failed": "Faili hazikutumwa",
+        "tooLarge": "{count, plural, one {Faili hii ni kubwa mno kwa barua pepe. Ipakue badala yake.} other {Faili hizi ni kubwa mno kwa barua pepe moja. Tuma chache, au uzipakue.}}"
       },
       "title": "Hamisha",
       "description": "Makala, kila kura, mchoro wa PRISMA, aya ya mbinu na kumbukumbu nzima",
@@ -8824,7 +8825,7 @@
         "onItsWay": "PDF iko njiani",
         "cantShow": "PDF hii haiwezi kuonyeshwa hapa. Ifungue kwenye kichupo kipya."
       },
-      "perPaper": "{credits, plural, one {krediti #} other {krediti #}} kwa kila makala",
+      "perPaper": "Takriban {credits, plural, one {krediti #} other {krediti #}} kwa kila makala",
       "pickerCost": "Krediti kwa kila makala"
     },
     "overview": {
@@ -8917,8 +8918,6 @@
         "unreadLabel": "{count, plural, one {makala # ambayo haikuweza kusoma} other {makala # ambazo haikuweza kusoma}}",
         "unread": "{count, number} hazikuweza kusomwa",
         "unreadSays": "{count, plural, one {Haikuweza kusoma makala hii, kwa hivyo haina sauti juu yake.} other {Haikuweza kusoma makala hizi #, kwa hivyo haina sauti juu yake.}}",
-        "notGivenText": "{count, plural, one {Haipewi PDF, kwa kuwa inasoma maandishi tu} other {Haipewi PDF #, kwa kuwa inasoma maandishi tu}}",
-        "notGivenLong": "{count, plural, one {Haipewi PDF # iliyo ndefu kuliko inavyosoma kwa mara moja} other {Haipewi PDF # zilizo ndefu kuliko inavyosoma kwa mara moja}}",
         "voted": "{decision, select, include {{count, number} alipigia Jumuisha} maybe {{count, number} alipigia Labda} other {{count, number} alipigia Tenga}}",
         "noOtherPerson": "Hakuna mtu mwingine wa kulinganisha naye",
         "aloneOnPapers": "Hakuna mtu mwingine anayesoma makala zao",
@@ -8973,7 +8972,7 @@
         "startedIt": "aliuanzisha {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Sasa unaweza kutazama {name} tu, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} notFound {{name} haipo tena kwenye Evidence Community, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} other {Evidence Community haikujibu, kwa hivyo baadhi ya makala zilizojumuishwa {adding, select, true {hazikuongezwa kwenye {name}} other {hazikuondolewa kwenye {name}}}}}",
+        "problem": "{why, select, role {Sasa unaweza kutazama {name} tu, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} notFound {{name} haipo tena kwenye Evidence Community, kwa hivyo makala zilizojumuishwa {adding, select, true {haziongezwi humo} other {haziondolewi humo}}} full {Eneo lako la kazi lina mikusanyiko mingi kadiri mpango wake unavyoruhusu, kwa hivyo makala yaliyojumuishwa hayahifadhiwi kwenye {name}. Futa mkusanyiko au chagua yanakokwenda kwenye Mipangilio.} other {Evidence Community haikujibu, kwa hivyo baadhi ya makala zilizojumuishwa {adding, select, true {hazikuongezwa kwenye {name}} other {hazikuondolewa kwenye {name}}}}}",
         "title": "Makala zilizojumuishwa zinaenda",
         "helpTitle": "Makala zilizojumuishwa zinaenda wapi",
         "savedEach": "Inahifadhiwa kila moja inapojumuishwa",
@@ -8997,7 +8996,6 @@
         "failed": "{count, plural, one {usomaji # umeshindwa} other {usomaji # umeshindwa}}",
         "arriving": "Makala bado zinafika",
         "allRead": "Hakuna kilichobaki kwa miundo kusoma",
-        "leftIn": "{own, select, true {{credits} zimebaki} other {{credits} zimebaki kwenye {workspace}}}",
         "takenOff": "{credits} za modeli zilizoondolewa",
         "nothingToPay": "Hakuna cha kulipa"
       },

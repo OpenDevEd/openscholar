@@ -7963,7 +7963,8 @@
         "says": "The files are as you would download them, with what is hidden from you left out. Replies come to you.",
         "send": "Send",
         "sent": "{count, plural, one {Sent the file to {to}} other {Sent # files to {to}}}",
-        "failed": "The files weren’t sent"
+        "failed": "The files weren’t sent",
+        "tooLarge": "{count, plural, one {This file is too large for an email. Download it instead.} other {These files are too large for one email. Send fewer, or download them.}}"
       },
       "title": "Export",
       "description": "The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record",
@@ -8823,7 +8824,7 @@
         "onItsWay": "The PDF is on its way",
         "cantShow": "This PDF can't be shown here. Open it in a new tab."
       },
-      "perPaper": "{credits, plural, one {# credit} other {# credits}} a paper",
+      "perPaper": "About {credits, plural, one {# credit} other {# credits}} a paper",
       "pickerCost": "Credits a paper"
     },
     "overview": {
@@ -8916,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
         "unread": "{count, number} couldn't be read",
         "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
-        "notGivenText": "{count, plural, one {Not given the PDF, as it reads text only} other {Not given the # PDFs, as it reads text only}}",
-        "notGivenLong": "{count, plural, one {Not given # PDF that is longer than it reads at once} other {Not given # PDFs that are longer than it reads at once}}",
         "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
         "noOtherPerson": "No other person to compare with",
         "aloneOnPapers": "No other person reads their papers",
@@ -8972,7 +8971,7 @@
         "startedIt": "started it {ago}"
       },
       "included": {
-        "problem": "{why, select, role {You can only view {name} now, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} notFound {{name} is no longer in the community, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} other {The community didn't answer, so some included papers {adding, select, true {weren't added to {name}} other {weren't taken out of {name}}}}}",
+        "problem": "{why, select, role {You can only view {name} now, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} notFound {{name} is no longer in the community, so included papers {adding, select, true {aren't added to it} other {aren't taken out of it}}} full {Your workspace has as many collections as its plan allows, so included papers aren't saved to {name}. Delete a collection or choose where they go in Settings.} other {The community didn't answer, so some included papers {adding, select, true {weren't added to {name}} other {weren't taken out of {name}}}}}",
         "title": "Included papers go to",
         "helpTitle": "Where included papers go",
         "savedEach": "Saved as each is included",
@@ -8996,7 +8995,6 @@
         "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
         "arriving": "Papers are still arriving",
         "allRead": "Nothing left for the models to read",
-        "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
         "takenOff": "{credits} by models taken off",
         "nothingToPay": "Nothing to pay"
       },

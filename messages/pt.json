@@ -7964,7 +7964,8 @@
         "says": "Os arquivos são como os baixaria, sem o que está oculto para você. As respostas chegam a você.",
         "send": "Enviar",
         "sent": "{count, plural, one {Arquivo enviado para {to}} other {# arquivos enviados para {to}}}",
-        "failed": "Os arquivos não foram enviados"
+        "failed": "Os arquivos não foram enviados",
+        "tooLarge": "{count, plural, one {Este arquivo é grande demais para um e-mail. Baixe-o em vez disso.} other {Estes arquivos são grandes demais para um único e-mail. Envie menos ou baixe-os.}}"
       },
       "title": "Exportar",
       "description": "Os artigos, todos os votos, o diagrama PRISMA, um parágrafo de métodos e o registo completo",
@@ -8824,7 +8825,7 @@
         "onItsWay": "O PDF está a caminho",
         "cantShow": "Não é possível mostrar este PDF aqui. Abra-o num novo separador."
       },
-      "perPaper": "{credits, plural, one {# crédito} other {# créditos}} por artigo",
+      "perPaper": "Cerca de {credits, plural, one {# crédito} other {# créditos}} por artigo",
       "pickerCost": "Créditos por artigo"
     },
     "overview": {
@@ -8917,8 +8918,6 @@
         "unreadLabel": "{count, plural, one {# artigo que não conseguiu ler} other {# artigos que não conseguiu ler}}",
         "unread": "{count, number} não puderam ser lidos",
         "unreadSays": "{count, plural, one {Não conseguiu ler este artigo, por isso não tem voto nele.} other {Não conseguiu ler estes # artigos, por isso não tem voto neles.}}",
-        "notGivenText": "{count, plural, one {Não recebe o PDF, porque só lê texto} other {Não recebe os # PDF, porque só lê texto}}",
-        "notGivenLong": "{count, plural, one {Não recebe # PDF mais longo do que consegue ler de uma vez} other {Não recebe # PDF mais longos do que consegue ler de uma vez}}",
         "voted": "{decision, select, include {{count, number} votaram Incluir} maybe {{count, number} votaram Talvez} other {{count, number} votaram Excluir}}",
         "noOtherPerson": "Não há outra pessoa para comparar",
         "aloneOnPapers": "Nenhuma outra pessoa lê os artigos dessa pessoa",
@@ -8973,7 +8972,7 @@
         "startedIt": "iniciou-a {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Agora só pode ver {name}, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} notFound {{name} já não está na comunidade, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} other {A comunidade não respondeu, por isso alguns artigos incluídos {adding, select, true {não foram adicionados a {name}} other {não foram retirados de {name}}}}}",
+        "problem": "{why, select, role {Agora só pode ver {name}, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} notFound {{name} já não está na comunidade, por isso os artigos incluídos {adding, select, true {não são adicionados lá} other {não são retirados de lá}}} full {Seu espaço de trabalho tem tantas coleções quanto o plano permite, então os artigos incluídos não são salvos em {name}. Exclua uma coleção ou escolha para onde eles vão nas Configurações.} other {A comunidade não respondeu, por isso alguns artigos incluídos {adding, select, true {não foram adicionados a {name}} other {não foram retirados de {name}}}}}",
         "title": "Os artigos incluídos vão para",
         "helpTitle": "Para onde vão os artigos incluídos",
         "savedEach": "Guardado à medida que cada um é incluído",
@@ -8997,7 +8996,6 @@
         "failed": "{count, plural, one {# leitura falhou} other {# leituras falharam}}",
         "arriving": "Os artigos ainda estão a chegar",
         "allRead": "Não resta nada para os modelos lerem",
-        "leftIn": "{own, select, true {{credits} restantes} other {{credits} restantes em {workspace}}}",
         "takenOff": "{credits} de modelos retirados",
         "nothingToPay": "Nada a pagar"
       },

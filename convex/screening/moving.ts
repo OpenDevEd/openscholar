@@ -13,7 +13,8 @@ import { give, holds, roomFor } from "../sharing/access";
 import { grantOf, itemGuestsOf, type Shared } from "../sharing/items";
 import { workspaceName } from "../workspaces/personal";
 import { progressRow } from "./bookkeeping";
-import { dealable, keepVersion, modelsFree, readingModel, reviewersOf, sourcesOf, waitingOf } from "./dealing";
+import { dealable, keepVersion, modelsFree, papersOf, readingModel, reviewersOf, sourcesOf, waitingOf } from "./dealing";
+import { papersLimit } from "./slots";
 
 /** Why a screening can't move yet, in words for whoever asked, or null. */
 export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">): Promise<string | null> {
@@ -35,11 +36,21 @@ export async function heldHere(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJob
  */
 export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeningJobs">, to: Id<"workspaces">) {
   const shared: Shared<"screening"> = { kind: "screening", id: job._id, workspaceId: to, name: job.name ?? "Screening", size: job.totalPapers, createdBy: job.createdBy };
+  // A screening goes only where its plan takes as many papers as it holds.
+  const papersThere = await papersLimit(ctx, to);
+  const holding = papersOf(job, await progressRow(ctx, job._id));
+  if (holding > papersThere) throw createError("VALIDATION_ERROR", `This screening holds ${holding.toLocaleString("en")} papers. ${await workspaceName(ctx, to)}'s plan takes up to ${papersThere.toLocaleString("en")} in one screening.`);
   const people = (await reviewersOf(ctx, job._id)).filter(dealable);
+  // Its reviewers outside the workspace it goes to vote as its guests: one who had it as a member of the workspace it leaves and could only look at it as a guest is now let vote, and one with no place on it is given one. A guest made one who looks stays one: being taken off follows the change.
+  const from: Shared<"screening"> = { ...shared, workspaceId: job.workspaceId };
   const outside: Doc<"users">[] = [];
+  const looking: Doc<"users">[] = [];
   for (const one of people) {
     const person = await ctx.db.get("users", one.userId!);
-    if (person && !(await holds(ctx, shared, person)) && !(await grantOf(ctx, job._id, person._id))) outside.push(person);
+    if (!person || (await holds(ctx, shared, person))) continue;
+    const grant = await grantOf(ctx, job._id, person._id);
+    if (!grant) outside.push(person);
+    else if (grant.role !== "editor" && (await holds(ctx, from, person))) looking.push(person);
   }
   const most = await roomFor(ctx, shared);
   if (most !== undefined && outside.length && (await countOf(ctx, itemGuestsOf(job._id))) + outside.length > most) {
@@ -63,5 +74,5 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
   }
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
   for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });
-  for (const person of outside) await give(ctx, shared, person, "editor", { userId: by, author: "user" });
+  for (const person of [...outside, ...looking]) await give(ctx, shared, person, "editor", { userId: by, author: "user" });
 }

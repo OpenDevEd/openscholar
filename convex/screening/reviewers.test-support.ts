@@ -58,13 +58,13 @@ type T = Team["t"];
 
 /** Gives a screening's source `at` these records in one step, and returns the papers it took, in their order. */
 export async function give(t: T, jobId: Id<"screeningJobs">, at: number, papers: FunctionArgs<typeof internal.screening.gathering.fill>["papers"]) {
-  const { checkId, sourceId, pass } = await t.run(async (ctx) => {
+  const { checkId, sourceId, pass, from } = await t.run(async (ctx) => {
     const check = (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").first())!;
     const source = (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect())[at]!;
-    return { checkId: check._id, sourceId: source._id, pass: source.pass ?? 0 };
+    return { checkId: check._id, sourceId: source._id, pass: source.pass ?? 0, from: source.read };
   });
   await t.mutation(internal.screening.gathering.begin, { sourceId, pass });
-  await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass, papers, read: papers.length, ended: true });
+  await t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass, from, papers, read: papers.length, ended: true });
   return { checkId, sourceId, papers: await papersOf(t, jobId) };
 }
 

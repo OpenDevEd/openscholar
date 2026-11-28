@@ -7963,7 +7963,8 @@
         "says": "Amafayela anjengoba ubungawalanda, ngaphandle kwalokho okufihliwe kuwe. Izimpendulo zifika kuwe.",
         "send": "Thumela",
         "sent": "{count, plural, one {Ifayela lithunyelwe ku-{to}} other {Amafayela angu-# athunyelwe ku-{to}}}",
-        "failed": "Amafayela awathunyelwanga"
+        "failed": "Amafayela awathunyelwanga",
+        "tooLarge": "{count, plural, one {Leli fayela likhulu kakhulu ukuthi lingathunyelwa nge-imeyili. Lilande esikhundleni salokho.} other {Lawa mafayela makhulu kakhulu ukuthi angangena ku-imeyili eyodwa. Thumela ambalwa, noma uwalande.}}"
       },
       "title": "Landa",
       "description": "Amaphepha, onke amavoti, umdwebo we-PRISMA, isigaba sezindlela kanye nerekhodi lonke",
@@ -8823,7 +8824,7 @@
         "onItsWay": "I-PDF isendleleni",
         "cantShow": "Le PDF ayikwazi ukuboniswa lapha. Yivule kuthebhu entsha."
       },
-      "perPaper": "{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha",
+      "perPaper": "Cishe {credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha",
       "pickerCost": "Amakhredithi ngephepha"
     },
     "overview": {
@@ -8916,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {# iphepha engakwazanga ukulifunda} other {# amaphepha engakwazanga ukuwafunda}}",
         "unread": "{count, number} awakwazanga ukufundwa",
         "unreadSays": "{count, plural, one {Ayikwazanga ukufunda leli phepha, ngakho ayinalo izwi kulo.} other {Ayikwazanga ukufunda la maphepha angu-#, ngakho ayinalo izwi kuwo.}}",
-        "notGivenText": "{count, plural, one {Ayinikwa i-PDF, ngoba ifunda umbhalo kuphela} other {Ayinikwa ama-PDF angu-#, ngoba ifunda umbhalo kuphela}}",
-        "notGivenLong": "{count, plural, one {Ayinikwa i-PDF engu-# ende kunalokho ekufundayo ngesikhathi esisodwa} other {Ayinikwa ama-PDF angu-# amade kunalokho ekufundayo ngesikhathi esisodwa}}",
         "voted": "{decision, select, include {{count, number} kuvotwe ngokuthi Faka} maybe {{count, number} kuvotwe ngokuthi Mhlawumbe} other {{count, number} kuvotwe ngokuthi Khipha}}",
         "noOtherPerson": "Akekho omunye umuntu wokuqhathanisa naye",
         "aloneOnPapers": "Akekho omunye umuntu ofunda amaphepha abo",
@@ -8972,7 +8971,7 @@
         "startedIt": "ukuqale {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Manje ungabuka kuphela i-{name}, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} notFound {I-{name} ayisekho ku-Evidence Community, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} other {I-Evidence Community ayiphendulanga, ngakho amanye amaphepha afakiwe {adding, select, true {awengezwanga ku-{name}} other {awasuswanga ku-{name}}}}}",
+        "problem": "{why, select, role {Manje ungabuka kuphela i-{name}, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} notFound {I-{name} ayisekho ku-Evidence Community, ngakho amaphepha afakiwe {adding, select, true {awengezwa kuyo} other {awasuswa kuyo}}} full {Indawo yakho yokusebenza inamaqoqo amaningi njengoba uhlelo lwayo luvumela, ngakho amaphepha afakiwe awagcinwa ku-{name}. Susa iqoqo noma ukhethe lapho eya khona kuZilungiselelo.} other {I-Evidence Community ayiphendulanga, ngakho amanye amaphepha afakiwe {adding, select, true {awengezwanga ku-{name}} other {awasuswanga ku-{name}}}}}",
         "title": "Amaphepha afakiwe aya ku-",
         "helpTitle": "Lapho amaphepha afakiwe aya khona",
         "savedEach": "Agcinwa njengoba ngalinye lifakwa",
@@ -8996,7 +8995,6 @@
         "failed": "{count, plural, one {# ukufunda kwehlulekile} other {# ukufunda kwehlulekile}}",
         "arriving": "Amaphepha asafika",
         "allRead": "Akukho okusele ukuba amamodeli akufunde",
-        "leftIn": "{own, select, true {{credits} kusele} other {{credits} kusele ku-{workspace}}}",
         "takenOff": "{credits} ngamamodeli asusiwe",
         "nothingToPay": "Akukho okukhokhwayo"
       },

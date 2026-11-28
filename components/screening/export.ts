@@ -4,7 +4,7 @@
 // same rows, and what is hidden from someone on a page is hidden from them in every file.
 
 import type { ConvexReactClient } from "convex/react";
-import { hidesVotes, modelsAdvise } from "@/lib/screening/rules";
+import { hidesVotes, modelsAdvise, OTHER_REASON } from "@/lib/screening/rules";
 import { effortOf } from "@/components/settings/model-map";
 import type { EFFORTS } from "@/lib/ai/core/call-options";
 import { api } from "@/convex/_generated/api";
@@ -79,6 +79,9 @@ const filedOf = (sources: Screening["sources"]) => sources.reduce((sum, source) 
 /** A source's set as a file gives it: an upload's, a list's or a drop's handle opens nothing outside the app, so it is left out. */
 /** Everyone the whole record lists as a reviewer: all who were on the screening, taken off or not; someone invited who never joined is counted apart. */
 export const recordReviewers = (screening: Pick<Screening, "reviewers">) => screening.reviewers.filter((reviewer) => !reviewer.email);
+/** Who sees a vote before casting their own, as the record says it of the rule now and of each version before. */
+const HIDDEN_SEEN = "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished";
+const ADVICE_SEEN = "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote";
 const withoutFiles = (set: NonNullable<Screening["sources"][number]["set"]>) => {
   const { file: _file, batch: _batch, ...rest } = set as typeof set & { file?: unknown; batch?: unknown };
   return rest;
@@ -176,7 +179,8 @@ export function paperRows({ screening }: Pick<Taken, "screening">, papers: Paper
       source: screening.sources.find((source) => source.id === paper.source)?.name ?? "",
       added: paper.addedAt === undefined ? "At the start" : iso(paper.addedAt),
       result: RESULT_LABEL[settled.result],
-      excluded_for: settled.result === "exclude" && paper.reason ? failedLabel(paper.reason, reasonCriteria(screening)) : "",
+      // Another reason carries what was written for it: the settler's words, else the voter's.
+      excluded_for: settled.result === "exclude" && paper.reason ? [failedLabel(paper.reason, reasonCriteria(screening)), ...(paper.reason === OTHER_REASON ? [settled.resolvedBy ? settled.note : paper.cast.find((one) => one.vote?.reason === OTHER_REASON && one.vote?.note)?.vote?.note].filter(Boolean).map((text) => `"${text}"`) : [])].join(", ") : "",
       settled_by: settled.resolvedBy ? nameOn(screening, settled.resolvedBy) : "",
       settled_note: settled.note ?? "",
       votes_include: how("include"),
@@ -474,7 +478,8 @@ export function methodsOf(out: Taken) {
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began${changedParts.length ? ` (${listed(changedParts)})` : ""}. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${pairOn![0].name} and ${pairOn![1].name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (${pair.kappa === null ? "Cohen's kappa could not be estimated, as both gave the same decision every time" : `Cohen's kappa ${pair.kappa.toFixed(2)}`}).` : "",
     kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value${modelPairs ? `, ${modelPairs} among them` : ""}, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${alike ? `; ${alike === 1 ? "one other pair" : `${alike} other pairs`} gave the same decision on every record they shared, so kappa has no value for ${alike === 1 ? "it" : "them"}` : ""}.` : "",
-    `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
+    // Where the records stand: included, and the excluded and Maybe ones where there are any.
+    `${listed([`${plural(counts.include, "record was", "records were")} included`, ...(counts.exclude ? [`${num(counts.exclude)} excluded`] : []), ...(counts.maybe ? [`${num(counts.maybe)} left at Maybe`] : [])])}.`,
   ].filter(Boolean).join(" ");
 }
 
@@ -504,8 +509,8 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const rows = voteRows(screening, papers);
   const hidden = { votes: rows.filter((row) => row.kept).length, papers: new Set(rows.flatMap((row) => (row.kept ? [row.paper.id] : []))).size };
   // A rule and a criterion, said one way wherever the file says them: as they stand now, and in each version of the history.
-  // A version of the history is said from its own rule alone: who reviewed then isn't kept, and today's reviewers say nothing of it.
-  const ruleOut = (rule: Rule, now = true) => ({ people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: now && !modelsOf(screening).length ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !now ? "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" : !hidesVotes(rule, hidingReaders(screening, out.invited), modelsVoting(screening)) ? (modelsVoting(screening) ? "At any time, since one person reads each paper and the AI models' votes are advice" : "At any time, since one person reads each paper") : advisedIn(screening, out.invited) ? "People's votes are hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished. The AI models' votes are advice, and show to a reviewer before they vote" : "Hidden from a reviewer only while the paper waits for that reviewer's own vote, and from nobody once the screening is marked finished" });
+  // A version of the history is said from its own rule and the models that were on the screening while it stood (`span`, from it to the next): who else reviewed then isn't kept.
+  const ruleOut = (rule: Rule, span?: readonly [number, number]) => { const now = !span; const modelsThen = span ? screening.reviewers.filter((one) => one.kind === "model" && one.addedAt < span[1] && (one.left === undefined || one.left > span[0])).length : 0; return ({ people_on_each_paper: rule.each === "all" ? "Everyone" : eachOf(rule), settled_when: SETTLE_LABEL[rule.settle], models_votes: (now ? !modelsOf(screening).length : !modelsThen) ? null : rule.settle === "one" ? "Advice on papers a person has" : rule.models === "advice" ? "Advice only" : "Count like a person's", conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind !== "after" ? "At any time" : !now ? (modelsThen && (rule.settle === "one" || rule.models === "advice") ? ADVICE_SEEN : HIDDEN_SEEN) : !hidesVotes(rule, hidingReaders(screening, out.invited), modelsVoting(screening)) ? (modelsVoting(screening) ? "At any time, since one person reads each paper and the AI models' votes are advice" : "At any time, since one person reads each paper") : advisedIn(screening, out.invited) ? ADVICE_SEEN : HIDDEN_SEEN }); };
   const criterionOut = (criterion: Omit<Criterion, "addedAt">, [yes, no, unclear]: readonly number[]) => ({ key: criterion.key, short_name: criterion.short, question: criterion.text, must_have: criterion.must, guidance: criterion.note ?? null, marked_words: criterion.terms, points: { yes, no, unclear } });
   // What a part of the screening carries from before it began is dated from its start.
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
@@ -537,11 +542,11 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     sources: screening.sources.map((source, at) => ({ id: source.id, kind: source.kind, name: source.name, detail: source.detail, set: source.set ? withoutFiles(source.set) : null, filters: source.filters ?? [], records_taken: source.scope === "range" ? { first: source.range[0], last: source.range[1] } : "all", last_checked_at: source.read?.checkedAt ? iso(source.read.checkedAt) : null, last_read_failed: source.read?.state === "failed" ? (source.read.failure ?? true) : null, left_out_count: leftOf(source), left_out_without_abstract: bareOf(source), left_out: leftOut[at]!.map((row) => ({ name: row.name, why: english.words.t(`leftWhy.${row.why}`) })), duplicates_merged: merged[at]!.map((row) => ({ name: row.name, same_as_paper_id: row.paper?.id ?? null })), added_at: since(source.addedAt), found: taken(source) + leftOf(source), after_duplicates: keptOf(source) })),
     papers: paperRows(out, papers).map((row, i) => ({ ...row, source_id: papers[i]!.source ?? null, settled_at: papers[i]!.settledAt ? iso(papers[i]!.settledAt!) : null })),
     // What its rule and criteria were from each moment on, the first first: a paper's result is read against the version in force at its settled_at. Changes made before these were kept are not in it.
-    history: versions.map((one) => ({
+    history: versions.map((one, at) => ({
       from: iso(one.at),
       // Null where nobody made the change by hand: who settles conflicts passed on when they left.
       by: one.by,
-      rule: ruleOut({ ...one.rule, each: one.rule.each === "all" ? "all" : `${one.rule.each}`, resolver: one.rule.resolver as string, models: one.rule.models ?? "vote" }, false),
+      rule: ruleOut({ ...one.rule, each: one.rule.each === "all" ? "all" : `${one.rule.each}`, resolver: one.rule.resolver as string, models: one.rule.models ?? "vote" }, [one.at, versions[at + 1]?.at ?? Infinity]),
       criteria: one.criteria.map((criterion) => criterionOut(criterion, [criterion.points.yes, criterion.points.no, criterion.points.unclear])),
     })),
     // The votes that were cast and show, each with the sentence a model named for its answers and how sure it was.

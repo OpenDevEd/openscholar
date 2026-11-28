@@ -7963,7 +7963,8 @@
         "says": "Les fichiers sont tels que vous les téléchargeriez, sans ce qui vous est caché. Les réponses vous parviennent.",
         "send": "Envoyer",
         "sent": "{count, plural, one {Fichier envoyé à {to}} other {# fichiers envoyés à {to}}}",
-        "failed": "Les fichiers n’ont pas été envoyés"
+        "failed": "Les fichiers n’ont pas été envoyés",
+        "tooLarge": "{count, plural, one {Ce fichier est trop volumineux pour un e-mail. Téléchargez-le plutôt.} other {Ces fichiers sont trop volumineux pour un seul e-mail. Envoyez-en moins, ou téléchargez-les.}}"
       },
       "title": "Exporter",
       "description": "Les articles, chaque vote, le diagramme PRISMA, un paragraphe de méthodes et le dossier complet",
@@ -8823,7 +8824,7 @@
         "onItsWay": "Le PDF arrive",
         "cantShow": "Ce PDF ne peut pas s'afficher ici. Ouvrez-le dans un nouvel onglet."
       },
-      "perPaper": "{credits, plural, one {# crédit} other {# crédits}} par article",
+      "perPaper": "Environ {credits, plural, one {# crédit} other {# crédits}} par article",
       "pickerCost": "Crédits par article"
     },
     "overview": {
@@ -8916,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {# article qu'il n'a pas pu lire} other {# articles qu'il n'a pas pu lire}}",
         "unread": "{count, number} illisibles",
         "unreadSays": "{count, plural, one {Il n'a pas pu lire cet article, il ne compte donc pas dans sa décision.} other {Il n'a pas pu lire ces # articles, il ne compte donc pas dans leur décision.}}",
-        "notGivenText": "{count, plural, one {Le PDF ne lui est pas confié, car il ne lit que du texte} other {Les # PDF ne lui sont pas confiés, car il ne lit que du texte}}",
-        "notGivenLong": "{count, plural, one {# PDF trop long pour une seule lecture ne lui est pas confié} other {# PDF trop longs pour une seule lecture ne lui sont pas confiés}}",
         "voted": "{decision, select, include {{count, number} votés Inclure} maybe {{count, number} votés Peut-être} other {{count, number} votés Exclure}}",
         "noOtherPerson": "Aucune autre personne avec qui comparer",
         "aloneOnPapers": "Personne d’autre ne lit ses articles",
@@ -8972,7 +8971,7 @@
         "startedIt": "l'a démarré {ago}"
       },
       "included": {
-        "problem": "{why, select, role {Vous ne pouvez plus que consulter {name}, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} notFound {{name} n'est plus dans l'Evidence Community, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} other {L'Evidence Community n'a pas répondu, donc certains articles inclus {adding, select, true {n'ont pas été ajoutés à {name}} other {n'ont pas été retirés de {name}}}}}",
+        "problem": "{why, select, role {Vous ne pouvez plus que consulter {name}, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} notFound {{name} n'est plus dans l'Evidence Community, donc les articles inclus {adding, select, true {n'y sont pas ajoutés} other {n'en sont pas retirés}}} full {Votre espace de travail a autant de collections que son forfait le permet, donc les articles inclus ne sont pas enregistrés dans {name}. Supprimez une collection ou choisissez où ils vont dans les Paramètres.} other {L'Evidence Community n'a pas répondu, donc certains articles inclus {adding, select, true {n'ont pas été ajoutés à {name}} other {n'ont pas été retirés de {name}}}}}",
         "title": "Les articles inclus vont dans",
         "helpTitle": "Où vont les articles inclus",
         "savedEach": "Enregistrés à mesure qu'ils sont inclus",
@@ -8996,7 +8995,6 @@
         "failed": "{count, plural, one {# lecture a échoué} other {# lectures ont échoué}}",
         "arriving": "Les articles arrivent encore",
         "allRead": "Il ne reste rien à lire pour les modèles",
-        "leftIn": "{own, select, true {{credits} restants} other {{credits} restants dans {workspace}}}",
         "takenOff": "{credits} par des modèles retirés",
         "nothingToPay": "Rien à payer"
       },

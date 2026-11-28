@@ -39,6 +39,12 @@ const checkOf = (jobId: Id<"screeningJobs">, checkId: Id<"screeningChecks">) => 
 const reasonsOf = (jobId: Id<"screeningJobs">) => `${jobId}:reason`;
 const reviewerOf = (reviewerId: Id<"screeningReviewers">) => `${reviewerId}`;
 const castOf = (reviewerId: Id<"screeningReviewers">) => `${reviewerId}:at`;
+// Two narrowings at once, as Papers offers them: a reviewer with a source, a check or a reason, and a source, a check and a reason with each other.
+type Under = { source: Id<"screeningSources"> } | { check: Id<"screeningChecks"> };
+const reviewerUnder = (reviewerId: Id<"screeningReviewers">, under: Under) => ("source" in under ? `${reviewerId}:source:${under.source}` : `${reviewerId}:check:${under.check}`);
+const reviewerReasons = (reviewerId: Id<"screeningReviewers">) => `${reviewerId}:reason`;
+const sourceAndCheck = (jobId: Id<"screeningJobs">, sourceId: Id<"screeningSources">, checkId: Id<"screeningChecks">) => `${jobId}:source:${sourceId}:check:${checkId}`;
+const reasonsUnder = (jobId: Id<"screeningJobs">, under: Under) => ("source" in under ? `${jobId}:source:${under.source}:reason` : `${jobId}:check:${under.check}:reason`);
 
 type Entry = { namespace: string; key: Key; id: string };
 type Paper = Pick<Doc<"screeningResults">, "_id" | "jobId" | "place" | "withdrawn" | "result" | "sourceId" | "checkId" | "reason">;
@@ -63,16 +69,23 @@ export function paperEntries(paper: Paper | null): Entry[] {
     ...(paper.sourceId ? [{ namespace: sourceOf(paper.jobId, paper.sourceId), key: result, id: paper._id }] : []),
     ...(paper.checkId ? [{ namespace: checkOf(paper.jobId, paper.checkId), key: result, id: paper._id }] : []),
     ...(result === "exclude" ? [{ namespace: reasonsOf(paper.jobId), key: paper.reason ?? NO_REASON, id: paper._id }] : []),
+    ...(paper.sourceId && paper.checkId ? [{ namespace: sourceAndCheck(paper.jobId, paper.sourceId, paper.checkId), key: result, id: paper._id }] : []),
+    ...(result === "exclude" && paper.sourceId ? [{ namespace: reasonsUnder(paper.jobId, { source: paper.sourceId }), key: paper.reason ?? NO_REASON, id: paper._id }] : []),
+    ...(result === "exclude" && paper.checkId ? [{ namespace: reasonsUnder(paper.jobId, { check: paper.checkId }), key: paper.reason ?? NO_REASON, id: paper._id }] : []),
   ];
 }
 
 type Vote = Pick<Doc<"screeningVotes">, "_id" | "reviewerId" | "status" | "decision" | "at">;
 /** A vote's entries: how its reviewer stands on its paper with where the paper stands, and, cast, when it was. */
-export function voteEntries(vote: Vote | null, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null): Entry[] {
+export function voteEntries(vote: Vote | null, paper: Pick<Paper, "place" | "withdrawn" | "result" | "sourceId" | "checkId" | "reason"> | null): Entry[] {
   if (!vote) return [];
   const way = vote.status === "cast" ? (vote.decision ?? "cast") : vote.status;
+  const on = way && counted(paper) ? `${way}|${resultOf(paper)}` : null;
   return [
-    ...(way && counted(paper) ? [{ namespace: reviewerOf(vote.reviewerId), key: `${way}|${resultOf(paper)}`, id: vote._id }] : []),
+    ...(on ? [{ namespace: reviewerOf(vote.reviewerId), key: on, id: vote._id }] : []),
+    ...(on && paper!.sourceId ? [{ namespace: reviewerUnder(vote.reviewerId, { source: paper!.sourceId }), key: on, id: vote._id }] : []),
+    ...(on && paper!.checkId ? [{ namespace: reviewerUnder(vote.reviewerId, { check: paper!.checkId }), key: on, id: vote._id }] : []),
+    ...(on && resultOf(paper!) === "exclude" ? [{ namespace: reviewerReasons(vote.reviewerId), key: `${way}|${paper!.reason ?? NO_REASON}`, id: vote._id }] : []),
     ...(vote.status === "cast" && vote.at !== undefined ? [{ namespace: castOf(vote.reviewerId), key: vote.at, id: vote._id }] : []),
   ];
 }
@@ -103,8 +116,10 @@ export async function countPaperFacets(ctx: QueueingCtx, change: Change<DataMode
   const [was, now] = [change.oldDoc, change.newDoc];
   known(ctx)?.set(change.id, now);
   await move(ctx, paperEntries(was), paperEntries(now));
-  const before = counted(was) ? resultOf(was!) : null;
-  const after = counted(now) ? resultOf(now!) : null;
+  // Its votes are counted under where it stands, its source, its check and its reason: they move when any of those does.
+  const standing = (paper: Paper | null) => (counted(paper) ? `${resultOf(paper!)}|${paper!.sourceId}|${paper!.checkId}|${paper!.reason}` : null);
+  const before = standing(was);
+  const after = standing(now);
   // A paper just made has no votes yet: they are dealt after it, and counted by their own trigger.
   if (before === after || !was) return;
   const votes = await ctx.db.query("screeningVotes").withIndex("by_result", (q) => q.eq("resultId", change.id)).take(MAX_REVIEWERS);
@@ -127,13 +142,13 @@ export const countEntries = (ctx: QueueingCtx, entries: Entry[]) => move(ctx, []
  * completion ran with the triggers (../lib/functions.ts `withAppWrites`) left its vote counted as waiting, under where
  * its paper stood then, whatever the vote has done since, waited again included.
  */
-export const staleWaiting = (vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null): Entry[] => {
+export const staleWaiting = (vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result" | "sourceId" | "checkId" | "reason"> | null): Entry[] => {
   const kept = voteEntries(vote, paper).find((entry) => entry.namespace === reviewerOf(vote.reviewerId))?.key;
   return RESULTS.map((result) => `waiting|${result}`).filter((key) => key !== kept).map((key) => ({ namespace: reviewerOf(vote.reviewerId), key, id: vote._id }));
 };
 
 /** Takes out a vote's stale waiting entries, and counts it as it stands. */
-export async function recountVote(ctx: QueueingCtx, vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null) {
+export async function recountVote(ctx: QueueingCtx, vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result" | "sourceId" | "checkId" | "reason"> | null) {
   await queueCounts(ctx, screeningCounts, staleWaiting(vote, paper).map((entry) => ({ type: "deleteIfExists" as const, ...entry })));
   await countEntries(ctx, voteEntries(vote, paper));
 }
@@ -144,8 +159,8 @@ const countEach = (ctx: QueryCtx, namespace: string, keys: Key[]) =>
   screeningCounts.countBatch(ctx, keys.map((key) => ({ namespace, bounds: { eq: key } })) as never, { stale: true });
 
 /** How many of a screening's papers stand each way under one source, or one check. */
-export async function tallyUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, under: { source: Id<"screeningSources"> } | { check: Id<"screeningChecks"> }): Promise<Tally> {
-  const counts = await countEach(ctx, "source" in under ? sourceOf(jobId, under.source) : checkOf(jobId, under.check), [...RESULTS]);
+export async function tallyUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, under: Under | { source: Id<"screeningSources">; check: Id<"screeningChecks"> }): Promise<Tally> {
+  const counts = await countEach(ctx, "source" in under && "check" in under ? sourceAndCheck(jobId, under.source, under.check) : "source" in under ? sourceOf(jobId, under.source) : checkOf(jobId, under.check), [...RESULTS]);
   return Object.fromEntries(RESULTS.map((result, at) => [result, counts[at]!])) as Tally;
 }
 
@@ -160,10 +175,10 @@ export async function tallyForReason(ctx: QueryCtx, jobId: Id<"screeningJobs">, 
   return { ...none(), exclude: (await excludedFor(ctx, jobId, [reason]))[reason] ?? 0 };
 }
 
-/** How many of the papers a reviewer stands one of `ways` on stand each way. */
-export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[]): Promise<Tally> {
+/** How many of the papers a reviewer stands one of `ways` on stand each way: all of them, or those one source or one check brought. */
+export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[], under?: Under): Promise<Tally> {
   const keys = ways.flatMap((way) => RESULTS.map((result) => `${way}|${result}`));
-  const counts = await countEach(ctx, reviewerOf(reviewerId), keys);
+  const counts = await countEach(ctx, under ? reviewerUnder(reviewerId, under) : reviewerOf(reviewerId), keys);
   const tally = none();
   keys.forEach((key, at) => (tally[key.split("|")[1] as Result] += counts[at]!));
   return tally;
@@ -172,3 +187,15 @@ export async function tallyOfReviewer(ctx: QueryCtx, reviewerId: Id<"screeningRe
 /** How many votes a reviewer cast from `since` on. */
 export const castSince = (ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, since: number) =>
   screeningCounts.count(ctx, { namespace: castOf(reviewerId), bounds: { lower: { key: since, inclusive: true } }, stale: true });
+
+/** How many of the papers a reviewer stands one of `ways` on are excluded for `reason`. */
+export async function tallyOfReviewerForReason(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, ways: Way[], reason: string): Promise<Tally> {
+  const counts = await countEach(ctx, reviewerReasons(reviewerId), ways.map((way) => `${way}|${reason}`));
+  return { ...none(), exclude: counts.reduce((sum, n) => sum + n, 0) };
+}
+
+/** How many of the papers one source or one check brought are excluded for `reason`. */
+export async function tallyForReasonUnder(ctx: QueryCtx, jobId: Id<"screeningJobs">, reason: string, under: Under): Promise<Tally> {
+  const [excluded] = await countEach(ctx, reasonsUnder(jobId, under), [reason]);
+  return { ...none(), exclude: excluded! };
+}

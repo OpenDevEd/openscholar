@@ -7963,7 +7963,8 @@
         "says": "ファイルはダウンロードするときと同じ内容で、あなたに非表示のものは含まれません。返信はあなたに届きます。",
         "send": "送信",
         "sent": "{count, plural, other {{to} に # 件のファイルを送りました}}",
-        "failed": "ファイルを送れませんでした"
+        "failed": "ファイルを送れませんでした",
+        "tooLarge": "{count, plural, one {このファイルはメールで送るには大きすぎます。代わりにダウンロードしてください。} other {これらのファイルは1通のメールには大きすぎます。数を減らすか、ダウンロードしてください。}}"
       },
       "title": "エクスポート",
       "description": "論文、すべての投票、PRISMA 図、方法の段落、記録全体",
@@ -8823,7 +8824,7 @@
         "onItsWay": "PDF を取得中です",
         "cantShow": "この PDF はここに表示できません。新しいタブで開いてください。"
       },
-      "perPaper": "論文 1 件あたり {credits, plural, other {# クレジット}}",
+      "perPaper": "論文 1 件あたり約 {credits, plural, other {# クレジット}}",
       "pickerCost": "論文 1 件あたりのクレジット"
     },
     "overview": {
@@ -8916,8 +8917,6 @@
         "unreadLabel": "{count, plural, other {読み取れなかった論文 # 件}}",
         "unread": "{count, number} 件を読み取れませんでした",
         "unreadSays": "{count, plural, other {この論文 # 件を読み取れなかったため、その結果には関わりません。}}",
-        "notGivenText": "{count, plural, other {テキストしか読めないため、PDF # 件は割り当てられていません}}",
-        "notGivenLong": "{count, plural, other {一度に読める長さを超える PDF # 件は割り当てられていません}}",
         "voted": "{decision, select, include {採用に投票 {count, number} 件} maybe {保留に投票 {count, number} 件} other {除外に投票 {count, number} 件}}",
         "noOtherPerson": "比べるほかの人がいません",
         "aloneOnPapers": "この人の論文を読む人はほかにいません",
@@ -8972,7 +8971,7 @@
         "startedIt": "{ago}に開始"
       },
       "included": {
-        "problem": "{why, select, role {{name} は閲覧のみになったため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} notFound {{name} はもうコミュニティにないため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} other {コミュニティから応答がなかったため、採用した論文の一部が{adding, select, true {{name} に追加されませんでした} other {{name} から取り除かれませんでした}}}}",
+        "problem": "{why, select, role {{name} は閲覧のみになったため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} notFound {{name} はもうコミュニティにないため、採用した論文は{adding, select, true {そこに追加されません} other {そこから取り除かれません}}} full {ワークスペースのコレクション数がプランの上限に達しているため、採用した論文は {name} に保存されません。コレクションを削除するか、設定で保存先を選んでください。} other {コミュニティから応答がなかったため、採用した論文の一部が{adding, select, true {{name} に追加されませんでした} other {{name} から取り除かれませんでした}}}}",
         "title": "採用した論文の保存先",
         "helpTitle": "採用した論文の行き先",
         "savedEach": "採用されるたびに保存",
@@ -8996,7 +8995,6 @@
         "failed": "{count, plural, other {読み取り失敗 # 回}}",
         "arriving": "論文はまだ届いています",
         "allRead": "モデルが読むものは残っていません",
-        "leftIn": "{own, select, true {残り {credits}} other {{workspace} に残り {credits}}}",
         "takenOff": "外されたモデルが {credits}",
         "nothingToPay": "支払いはありません"
       },

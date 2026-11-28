@@ -56,17 +56,18 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     const kept = progress.reviewers?.[reviewer._id];
     if ((kept?.cast ?? 0) !== cast.length) problems.push(`${names.get(reviewer._id)}: counted ${kept?.cast ?? 0} votes, has ${cast.length}`);
     for (const decision of DECISIONS) if ((kept?.[decision] ?? 0) !== cast.filter((vote) => vote.decision === decision).length) problems.push(`${names.get(reviewer._id)}: counted ${kept?.[decision] ?? 0} ${decision}, has ${cast.filter((vote) => vote.decision === decision).length}`);
-    const holds = mine.filter((vote) => vote.status !== "discarded").length;
+    // A paper that left with its source is no longer one of its reviewers' papers.
+    const holds = mine.filter((vote) => vote.status !== "discarded" && liveIds.has(vote.resultId)).length;
     if (reviewer.dealt !== holds) problems.push(`${names.get(reviewer._id)}: said to hold ${reviewer.dealt} papers, holds ${holds}`);
   }
 
   for (const paper of live) {
     const on = votes.filter((vote) => vote.resultId === paper._id);
     const result: Result = paper.result ?? "waiting";
-    const ballots: Ballot[] = on.map((vote) => ({ status: vote.status, decision: vote.decision, at: vote.at, reason: vote.reason }));
+    const ballots: Ballot[] = on.map((vote) => ({ status: vote.status, decision: vote.decision, at: vote.at, reason: vote.reason, kind: byId.get(vote.reviewerId)?.kind }));
     // A paper settled before the settings last changed keeps its result. Any other stands where its votes put it.
     const held = isFinal(result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
-    const voted = paper.resolved ? paper.resolved.decision : settle(rule.settle, ballots);
+    const voted = paper.resolved ? paper.resolved.decision : settle(rule.settle, ballots, rule.models);
     if (!held && result !== voted) problems.push(`${paper.title}: stands at ${result}, its votes say ${voted}`);
     const people = on.filter((vote) => byId.get(vote.reviewerId)?.kind === "person");
     const places = people.filter((vote) => vote.status === "waiting" || vote.status === "cast");
@@ -123,6 +124,24 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     });
     const counted = await tallyOfReviewer(ctx, reviewer._id, ["include", "maybe", "exclude", "cast", "waiting", "failed"]);
     if (JSON.stringify(counted) !== JSON.stringify(tally(on))) problems.push(`${names.get(reviewer._id)}: counted on ${JSON.stringify(counted)}, their papers ${JSON.stringify(tally(on))}`);
+  }
+
+  // And the counts of two narrowings at once: each reviewer under each source and each check, and each source under each check.
+  const sourceIds = [...new Set(liveCards.flatMap((card) => (card.sourceId ? [card.sourceId] : [])))];
+  const checkIds = [...new Set(liveCards.flatMap((card) => (card.checkId ? [card.checkId] : [])))];
+  const ways = ["include", "maybe", "exclude", "cast", "waiting", "failed"] as const;
+  for (const reviewer of reviewers) {
+    const theirs = votes.filter((vote) => vote.reviewerId === reviewer._id && (vote.status === "waiting" || vote.status === "cast" || vote.status === "failed")).flatMap((vote) => { const card = cardOf.get(vote.resultId); return card && !card.withdrawn ? [card] : []; });
+    for (const under of [...sourceIds.map((source) => ({ source })), ...checkIds.map((check) => ({ check }))]) {
+      const read = tally(theirs.filter((card) => ("source" in under ? card.sourceId === under.source : card.checkId === under.check)).map((card) => card.result));
+      const counted = await tallyOfReviewer(ctx, reviewer._id, [...ways], under);
+      if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`${names.get(reviewer._id)} under ${JSON.stringify(under)}: counted ${JSON.stringify(counted)}, their papers ${JSON.stringify(read)}`);
+    }
+  }
+  for (const sourceId of sourceIds) for (const checkId of checkIds) {
+    const read = tally(liveCards.filter((card) => card.sourceId === sourceId && card.checkId === checkId).map((card) => card.result));
+    const counted = await tallyUnder(ctx, jobId, { source: sourceId, check: checkId });
+    if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`source ${sourceId} under check ${checkId}: counted ${JSON.stringify(counted)}, its papers ${JSON.stringify(read)}`);
   }
 
   const cast = Object.fromEntries(reviewers.map((one) => [names.get(one._id)!, progress.reviewers?.[one._id]?.cast ?? 0]));

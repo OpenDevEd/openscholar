@@ -7964,7 +7964,8 @@
         "says": "Die Dateien sind so, wie Sie sie herunterladen würden, ohne das, was vor Ihnen verborgen ist. Antworten gehen an Sie.",
         "send": "Senden",
         "sent": "{count, plural, one {Datei an {to} gesendet} other {# Dateien an {to} gesendet}}",
-        "failed": "Die Dateien wurden nicht gesendet"
+        "failed": "Die Dateien wurden nicht gesendet",
+        "tooLarge": "{count, plural, one {Diese Datei ist zu groß für eine E-Mail. Lade sie stattdessen herunter.} other {Diese Dateien sind zusammen zu groß für eine E-Mail. Sende weniger oder lade sie herunter.}}"
       },
       "title": "Exportieren",
       "description": "Die Artikel, alle Stimmen, das PRISMA-Diagramm, ein Methodenabsatz und das vollständige Protokoll",
@@ -8824,7 +8825,7 @@
         "onItsWay": "Das PDF ist unterwegs",
         "cantShow": "Dieses PDF kann hier nicht angezeigt werden. Öffnen Sie es in einem neuen Tab."
       },
-      "perPaper": "{credits, plural, one {# Credit} other {# Credits}} pro Artikel",
+      "perPaper": "Etwa {credits, plural, one {# Credit} other {# Credits}} pro Artikel",
       "pickerCost": "Credits pro Artikel"
     },
     "overview": {
@@ -8917,8 +8918,6 @@
         "unreadLabel": "{count, plural, one {# Artikel, den es nicht lesen konnte} other {# Artikel, die es nicht lesen konnte}}",
         "unread": "{count, number} nicht lesbar",
         "unreadSays": "{count, plural, one {Es konnte diesen Artikel nicht lesen und hat darüber nicht mitzureden.} other {Es konnte diese # Artikel nicht lesen und hat darüber nicht mitzureden.}}",
-        "notGivenText": "{count, plural, one {Bekommt das PDF nicht, da es nur Text liest} other {Bekommt die # PDFs nicht, da es nur Text liest}}",
-        "notGivenLong": "{count, plural, one {Bekommt # PDF nicht, das länger ist, als es auf einmal liest} other {Bekommt # PDFs nicht, die länger sind, als es auf einmal liest}}",
         "voted": "{decision, select, include {{count, number} für Einschließen gestimmt} maybe {{count, number} für Vielleicht gestimmt} other {{count, number} für Ausschließen gestimmt}}",
         "noOtherPerson": "Keine andere Person zum Vergleich",
         "aloneOnPapers": "Niemand sonst liest diese Paper",
@@ -8973,7 +8972,7 @@
         "startedIt": "hat es {ago} gestartet"
       },
       "included": {
-        "problem": "{why, select, role {Sie können {name} jetzt nur noch ansehen, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} notFound {{name} ist nicht mehr in der Evidence Community, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} other {Die Evidence Community hat nicht geantwortet, daher wurden einige eingeschlossene Artikel {adding, select, true {nicht zu {name} hinzugefügt} other {nicht aus {name} entfernt}}}}",
+        "problem": "{why, select, role {Sie können {name} jetzt nur noch ansehen, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} notFound {{name} ist nicht mehr in der Evidence Community, daher werden eingeschlossene Artikel {adding, select, true {nicht dort hinzugefügt} other {nicht daraus entfernt}}} full {Ihr Arbeitsbereich hat so viele Sammlungen, wie sein Tarif erlaubt, daher werden eingeschlossene Artikel nicht in {name} gespeichert. Löschen Sie eine Sammlung oder wählen Sie in den Einstellungen, wohin sie gehen.} other {Die Evidence Community hat nicht geantwortet, daher wurden einige eingeschlossene Artikel {adding, select, true {nicht zu {name} hinzugefügt} other {nicht aus {name} entfernt}}}}",
         "title": "Ziel für eingeschlossene Artikel",
         "helpTitle": "Wohin eingeschlossene Artikel gehen",
         "savedEach": "Gespeichert, sobald jeder eingeschlossen ist",
@@ -8997,7 +8996,6 @@
         "failed": "{count, plural, one {# Lesevorgang fehlgeschlagen} other {# Lesevorgänge fehlgeschlagen}}",
         "arriving": "Die Artikel kommen noch an",
         "allRead": "Für die Modelle bleibt nichts zu lesen",
-        "leftIn": "{own, select, true {{credits} übrig} other {{credits} übrig in {workspace}}}",
         "takenOff": "{credits} durch entfernte Modelle",
         "nothingToPay": "Nichts zu bezahlen"
       },

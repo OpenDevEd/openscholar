@@ -28,6 +28,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { EMAILED_FILES_BYTES } from "@/lib/export";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -408,6 +409,8 @@ function SendFiles({ jobId, files }: { jobId: string; files: Array<{ format: str
     setBusy(true);
     try {
       const made = await Promise.all(chosen.map((one) => one.make()));
+      // Files too large for one email together are said to be before they go: the server would refuse them, or the request never reach it.
+      if (new TextEncoder().encode(JSON.stringify(made)).length > EMAILED_FILES_BYTES) return void showStyledToast("error", t("send.tooLarge", { count: made.length }));
       await sendFiles({ jobId: jobId as Id<"screeningJobs">, to: to.trim(), files: made, ...(note.trim() ? { note: note.trim() } : {}) });
       toast(t("send.sent", { to: to.trim(), count: made.length }));
       setOpen(false);

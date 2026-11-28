@@ -12,8 +12,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { cellOf, decidingVotes, DECISIONS, emptyMatrix, isFinal, NO_REASON, reasonOf, scoreOf, type Answer, type Decision, type Result } from "../../lib/screening/rules";
-import { newCollection } from "../library/collections";
-import { progressOf, shelve, withMoved } from "./bookkeeping";
+import { progressOf, shelve, withCollection, withMoved } from "./bookkeeping";
 import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
 import { countDealt, invitedTo, modelRow, personRow, readsOf, reviewersOf, teamFor, teamOf, votesOf } from "./dealing";
 import { conflictsWait } from "./notices";
@@ -122,12 +121,14 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   const reads = await readsOf(ctx, reviewers);
   for (const paper of papers) {
     let votes = await votesOf(ctx, paper._id);
-    const ballots = () => votes.map(ballot);
     const was: Result = paper.result ?? "waiting";
     // Held through a change of settings: settled by then, and nobody has voted on it or asked for it to be checked again since.
     // One brought over from before screenings had reviewers stands as it stood then, until someone votes on it or its settled papers are checked again.
     const carried = paper.kept && !paper.resolved && !paper.reopen ? paper.kept : undefined;
     const held = carried !== undefined || (isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0));
+    // A held paper's votes stand as they were counted: a model's vote is not worked out again under criteria the paper wasn't settled under.
+    const read = (vote: Vote) => (held && vote.status === "cast" && vote.decision ? { ...ballot(vote), decision: vote.decision, reason: vote.reason } : ballot(vote));
+    const ballots = () => votes.map(read);
     // Where it stands and who is on it is one sum, the same one a change's preview runs (lib/screening/project.ts): this applies it to the rows.
     const places = votes.map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
     // One whose source was taken out and that another source brought back (./gathering.ts `fill`): its open places were let go, and are given out again.
@@ -175,7 +176,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const after: typeof before = [];
     let changed = false;
     for (const vote of votes) {
-      const cast = ballot(vote);
+      const cast = read(vote);
       // What a model's reading cost is kept counted whatever becomes of its paper: the credits went.
       const counted: Counted = paper.withdrawn ? { status: "discarded", ...(vote.credits ? { credits: vote.credits } : {}) } : { status: vote.status, ...(cast.decision ? { decision: cast.decision } : {}), ...(vote.credits ? { credits: vote.credits } : {}) };
       if (!paper.withdrawn && cast.status === "cast" && cast.decision) after.push({ id: vote.reviewerId, decision: cast.decision });
@@ -222,12 +223,18 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     if ((now === "include") !== (was === "include") || (now === "exclude") !== (was === "exclude")) {
       const sets = await setsOf(ctx, paper);
       // The collection its included papers go to is made with the first of them.
+      // A workspace with no room for another collection still has its papers settled: they are kept in the screening, and the page says why they aren't saved.
+      // With no room for it, the paper is saved once there is (`withCollection`): it still goes back to a collection it was taken out of.
+      let saving = job;
       if (now === "include" && job.newCollection && !job.targetCollectionId) {
-        const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection);
-        await ctx.db.patch("screeningJobs", job._id, { targetCollectionId, newCollection: undefined });
-        job = { ...job, targetCollectionId, newCollection: undefined };
+        const made = await withCollection(ctx, job);
+        if (made) job = saving = made;
+        else {
+          job = { ...job, libraryWriteProblem: "full" };
+          saving = { ...job, unsaved: true };
+        }
       }
-      const to = await shelve(ctx, job, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
+      const to = await shelve(ctx, saving, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
       moved.saved += to.saved;
       moved.removed += to.removed;
     }

@@ -11,13 +11,13 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
-import { newCollection, screeningDestination } from "../library/collections";
+import { screeningDestination } from "../library/collections";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
-import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
+import { bookkeepLater, progressRow, saveQualified, withCollection } from "./bookkeeping";
 import { keepVersion, keeperOf, readAgain, dealable, papersAStep, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./checks";
 import { check } from "./living";
@@ -96,10 +96,14 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
     dropped: before.filter((criterion) => !keys.has(criterion.key)),
     stricter: criteria.filter((criterion) => criterion.must && was.get(criterion.key)?.must === false).map((criterion) => criterion.key),
     moves,
-    // Whether the change touches what decides where a paper stands: its papers as well.
-    decides: moves || Boolean(change.addSources?.length || change.removeSources?.length || change.ranges?.length),
+    // Whether the change touches what decides where a paper stands. Sources added, taken out or read to another range move no paper it has: their papers come and go on their own.
+    decides: moves,
+    // Whether the papers' points or stars change: every settled paper is scored again, keeping its result. A criterion's words changed alone change neither.
+    rescores: JSON.stringify(stars) !== JSON.stringify(job.stars ?? []) || pointsOf(criteria) !== pointsOf(before),
   };
 }
+/** What each answer to each criterion is worth. */
+const pointsOf = (criteria: Criterion[]) => JSON.stringify(criteria.map((criterion) => [criterion.key, criterion.points]));
 /** What of its criteria decides a model's vote: which there are, and which a paper must meet. */
 const settling = (criteria: Criterion[]) => criteria.map((criterion) => `${criterion.key}:${criterion.must}`).join();
 
@@ -180,7 +184,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars), retiredCriteria: retiredOf(job, plan.criteria) } : {}),
     rule: plan.rule,
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
-    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
+    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, libraryWriteProblem: undefined, libraryPruneProblem: undefined, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
     ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
     ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
     ...touched(now),
@@ -222,8 +226,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   if (!checks && reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId);
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
-  if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {
-    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck ? ["waiting", "conflict", "include", "maybe", "exclude"] : change.stars && !plan.decides ? ["include", "maybe", "exclude", "waiting", "conflict"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
+  if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || plan.rescores) {
+    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck || plan.rescores ? ["waiting", "conflict", "include", "maybe", "exclude"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
   }
   // The papers it has included go to a collection it is newly sent to.
   if (change.saveTo && change.saveTo.kind !== "none") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: null });
@@ -299,7 +303,9 @@ export const withdraw = internalMutation({
         const { row } = kept;
         // Read again for each paper: an earlier paper of this step may have moved to the same source.
         const keeper = (await ctx.db.get("screeningSources", kept.source._id))!;
-        await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, record: undefined, doneAt: ctx.db.vars.commitTs });
+        // It is the record that source holds from now on, by which a later reading of it, or a record merged before, finds it (./gathering.ts `twinOf`): a file's by its place in the file, any other's by its key.
+        const fromFile = keeper.set.kind === "upload" || keeper.set.kind === "dois" || keeper.set.kind === "pdf";
+        await ctx.db.patch("screeningResults", paper._id, { sourceId: keeper._id, ...(fromFile ? { record: row.paperKey } : { record: undefined, ...(row.paperKey ? { paperKey: row.paperKey } : {}) }), doneAt: ctx.db.vars.commitTs });
         const filed = !paper.abstract && paper.file;
         const band = pdfBand(paper.pages ?? 0);
         const spread = { ...keeper.fileSpread };
@@ -341,10 +347,11 @@ export const shelveIncluded = internalMutation({
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || (job.unsaved && !job.libraryDestination)) return null;
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", "include")).paginate({ cursor, numItems: SHELVE });
-    if (page.page.length && job.newCollection && !job.targetCollectionId) {
-      const targetCollectionId = await newCollection(ctx, { userId: job.createdBy, workspaceId: job.workspaceId }, job.newCollection);
-      await ctx.db.patch("screeningJobs", jobId, { targetCollectionId, newCollection: undefined });
-      job = { ...job, targetCollectionId, newCollection: undefined };
+    if (page.page.length) {
+      // With no room for its collection, the screening says so and its included papers wait in it.
+      const made = await withCollection(ctx, job);
+      if (!made) return null;
+      job = made;
     }
     for (const paper of page.page) {
       if (!job.unsaved) await saveQualified(ctx, job, paper);

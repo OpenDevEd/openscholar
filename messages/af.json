@@ -7964,7 +7964,8 @@
         "says": "Die lêers is soos jy hulle sou aflaai, sonder wat vir jou versteek is. Antwoorde kom na jou.",
         "send": "Stuur",
         "sent": "{count, plural, one {Lêer na {to} gestuur} other {# lêers na {to} gestuur}}",
-        "failed": "Die lêers is nie gestuur nie"
+        "failed": "Die lêers is nie gestuur nie",
+        "tooLarge": "{count, plural, one {Hierdie lêer is te groot vir 'n e-pos. Laai dit eerder af.} other {Hierdie lêers is saam te groot vir een e-pos. Stuur minder, of laai hulle af.}}"
       },
       "title": "Voer uit",
       "description": "Die artikels, elke stem, die PRISMA-diagram, ’n metodeparagraaf en die hele rekord",
@@ -8824,7 +8825,7 @@
         "onItsWay": "Die PDF is op pad",
         "cantShow": "Hierdie PDF kan nie hier gewys word nie. Maak dit in ’n nuwe oortjie oop."
       },
-      "perPaper": "{credits, plural, one {# krediet} other {# krediete}} per artikel",
+      "perPaper": "Omtrent {credits, plural, one {# krediet} other {# krediete}} per artikel",
       "pickerCost": "Krediete per artikel"
     },
     "overview": {
@@ -8917,8 +8918,6 @@
         "unreadLabel": "{count, plural, one {# artikel wat dit nie kon lees nie} other {# artikels wat dit nie kon lees nie}}",
         "unread": "{count, number} kon nie gelees word nie",
         "unreadSays": "{count, plural, one {Dit kon nie hierdie artikel lees nie, so dit het geen sê daaroor nie.} other {Dit kon nie hierdie # artikels lees nie, so dit het geen sê daaroor nie.}}",
-        "notGivenText": "{count, plural, one {Kry nie die PDF nie, want dit lees net teks} other {Kry nie die # PDF’e nie, want dit lees net teks}}",
-        "notGivenLong": "{count, plural, one {Kry nie # PDF wat langer is as wat dit op een slag lees nie} other {Kry nie # PDF’e wat langer is as wat dit op een slag lees nie}}",
         "voted": "{decision, select, include {{count, number} het Sluit in gestem} maybe {{count, number} het Miskien gestem} other {{count, number} het Sluit uit gestem}}",
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
         "aloneOnPapers": "Geen ander persoon lees hul artikels nie",
@@ -8973,7 +8972,7 @@
         "startedIt": "het dit {ago} begin"
       },
       "included": {
-        "problem": "{why, select, role {Jy kan {name} nou net bekyk, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} notFound {{name} is nie meer in die Evidence Community nie, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} other {Die Evidence Community het nie geantwoord nie, so sommige ingesluite artikels {adding, select, true {is nie by {name} gevoeg nie} other {is nie uit {name} gehaal nie}}}}",
+        "problem": "{why, select, role {Jy kan {name} nou net bekyk, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} notFound {{name} is nie meer in die Evidence Community nie, so ingesluite artikels {adding, select, true {word nie daarby gevoeg nie} other {word nie daaruit gehaal nie}}} full {Jou werkruimte het soveel versamelings as wat sy plan toelaat, so ingesluite artikels word nie in {name} gestoor nie. Skrap 'n versameling of kies in Instellings waarheen hulle gaan.} other {Die Evidence Community het nie geantwoord nie, so sommige ingesluite artikels {adding, select, true {is nie by {name} gevoeg nie} other {is nie uit {name} gehaal nie}}}}",
         "title": "Ingesluite artikels gaan na",
         "helpTitle": "Waarheen ingesluite artikels gaan",
         "savedEach": "Gestoor soos elkeen ingesluit word",
@@ -8997,7 +8996,6 @@
         "failed": "{count, plural, one {# lesing het misluk} other {# lesings het misluk}}",
         "arriving": "Die artikels kom nog aan",
         "allRead": "Niks bly oor vir die modelle om te lees nie",
-        "leftIn": "{own, select, true {{credits} oor} other {{credits} oor in {workspace}}}",
         "takenOff": "{credits} deur modelle wat afgehaal is",
         "nothingToPay": "Niks om te betaal nie"
       },

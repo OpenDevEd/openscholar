@@ -124,7 +124,8 @@ export function settle(rule: Rule["settle"], ballots: Ballot[], models: Rule["mo
 export function reasonOf(ballots: Ballot[], settled?: string): string | undefined {
   if (settled) return settled;
   const given = ballots.flatMap((one) => (one.status === "cast" && one.decision === "exclude" && one.reason ? [one.reason] : []));
-  return [...new Set(given)].sort((a, b) => given.filter((reason) => reason === b).length - given.filter((reason) => reason === a).length)[0];
+  // As often given as another, a stated reason goes before no reason given.
+  return [...new Set(given)].sort((a, b) => given.filter((reason) => reason === b).length - given.filter((reason) => reason === a).length || Number(a === NO_REASON) - Number(b === NO_REASON))[0];
 }
 
 /** A paper's points and stars, from the answer most of its reviewers gave to each criterion. `stars` holds the points each star starts at. */
