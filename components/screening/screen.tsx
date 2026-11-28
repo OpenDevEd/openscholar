@@ -374,7 +374,14 @@ function Screen({ open }: { open: Open }) {
     // Each vote after the first of a sitting adds the time since the one before to the person's pace. Five minutes or more is a break, not a paper.
     const gap = history.length ? (Date.now() - history.at(-1)!.at) / 1000 : Infinity;
     if (gap < 300) setKept({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
-    const stamped = (at: number | null) => { if (at !== null) (cast as { saved?: number }).saved = at; };
+    // Once saved, what was in hand for it is the vote's own: kept, it would stand over a note or answers changed since on another page. Anything changed while it was saved stays.
+    const key = noteKey(paper.id);
+    const sent = { note: notes[key], answers: answers[paper.id] };
+    const stamped = (at: number | null) => {
+      if (at !== null) (cast as { saved?: number }).saved = at;
+      setNotes(({ [key]: was, ...rest }) => (was === sent.note || was === undefined ? rest : { ...rest, [key]: was }));
+      if (!resolving) setAnswers(({ [paper.id]: was, ...rest }) => (was === sent.answers || was === undefined ? rest : { ...rest, [paper.id]: was }));
+    };
     // Undo waits for this save's answer, so it always names the moment it took back.
     (cast as { pending?: Promise<unknown> }).pending = resolving
       ? open.resolve(paper.id, decision, note, reason).then(stamped, refused)
