@@ -536,7 +536,10 @@ export const watch = internalMutation({
     const quiet = Date.now() - (check.beat ?? check.at);
     if (quiet < QUIET_MS) return void (await ctx.scheduler.runAfter(QUIET_MS - quiet, internal.screening.gathering.watch, { checkId, restarts }));
     if (restarts >= RESTARTS) {
-      await ctx.db.patch("screeningChecks", checkId, { state: "failed", endedAt: Date.now() });
+      // Its sources left part read fail with it, so each offers Read again: none waits on a look that has stopped.
+      const stuck = (await sourcesOf(ctx, check.jobId)).filter((source) => source.removedAt === undefined && (source.state === "waiting" || source.state === "reading"));
+      for (const source of stuck) await ctx.db.patch("screeningSources", source._id, { state: "failed", failure: "Reading this source stopped part way. Read it again to go on from where it stopped." });
+      await ctx.db.patch("screeningChecks", checkId, { state: "failed", endedAt: Date.now(), unread: [...new Set([...(check.unread ?? []), ...stuck.map((source) => source._id)])].slice(-MAX_SOURCE_ROWS) });
       await ctx.db.patch("screeningJobs", check.jobId, { reading: undefined, ...touched() });
       return null;
     }

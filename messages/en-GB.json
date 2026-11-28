@@ -7913,6 +7913,8 @@
         "checkedNone": "Checked for new papers and found none",
         "scheduledFound": "The scheduled check found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
         "scheduledNone": "The scheduled check found no new papers",
+        "sourcesReadFound": "Read the sources added or changed and found {count, plural, one {# paper} other {# papers}}{allNew, select, true {} other {, {added, number} of them new}}",
+        "sourcesReadNone": "Read the sources added or changed and found no paper",
         "known": "{count, plural, one {# was} other {# were}} already in the screening",
         "leftOut": "{count, plural, one {# was left out} other {# were left out}}",
         "unread": "{count, plural, one {Couldn't read # source} other {Couldn't read # sources}}",
@@ -8625,6 +8627,7 @@
         "votesShow": "The votes that were hidden from reviewers show to everyone on it",
         "modelsStop": "The models stop reading",
         "checksStop": "It stops checking for new papers",
+        "arrivingStops": "Papers still arriving from its sources stop arriving. Reopen it to read on from where they stopped",
         "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
       },
       "delete": {
@@ -8919,6 +8922,7 @@
         "notGivenLong": "{count, plural, one {Not given # PDF that is longer than it reads at once} other {Not given # PDFs that are longer than it reads at once}}",
         "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
         "noOtherPerson": "No other person to compare with",
+        "aloneOnPapers": "No other person reads their papers",
         "noPeople": "No people to compare with",
         "nothingYet": "Nothing to compare yet",
         "agrees": "{share, number, percent}<muted>{person, select, true { same vote as the others} other { same vote as the people}}</muted>",
@@ -9010,6 +9014,7 @@
         "onlyWhenAsked": "Checks only when asked",
         "schedule": "Check on a schedule",
         "checkedBy": "{you, select, true {You checked} other {{name} checked}}",
+        "readBy": "{you, select, true {You added or changed sources} other {{name} added or changed sources}}",
         "scheduled": "Scheduled check",
         "failed": "Couldn't be finished",
         "found": "{count, number} found",

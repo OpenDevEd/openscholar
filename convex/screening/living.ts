@@ -53,7 +53,7 @@ export const checkNow = workspaceMutation({
  * the first look goes on, or a new look starts, so what it brings counts where the screening's other papers do.
  */
 /** A source set to be read again is read: by the look under way, in its turn, or by the look the screening started with while that still runs, or by a check of its own. A finished screening reopens by its own check (`checked`). */
-async function readInTurn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
+export async function readInTurn(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<"users">) {
   if (await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", job._id).eq("state", "running")).first()) return;
   const [first, last] = await Promise.all([firstCheck(ctx, job._id), ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", job._id)).order("desc").first()]);
   if (last && last._id === first?._id && job.finishedAt === undefined) await readOn(ctx, job, by);
@@ -109,6 +109,9 @@ export const swapDois = internalMutation({
   },
 });
 
+/** How often the schedule runs (../crons.ts). */
+const HOUR_MS = 60 * 60_000;
+
 /** Screenings one run of the schedule starts a check for. */
 const DUE = 25;
 
@@ -121,7 +124,9 @@ export const due = internalMutation({
     const jobs = await ctx.db.query("screeningJobs").withIndex("by_living_next", (q) => q.gt("living.next", 0).lte("living.next", now)).take(DUE);
     for (const job of jobs) {
       if (!job.living) continue;
-      await ctx.db.patch("screeningJobs", job._id, { living: { ...job.living, next: now + EVERY_MS[job.living.every] } });
+      // One still reading when its check falls due is checked once that reading ends, at the next run of the schedule, not a whole period later.
+      const waits = job.finishedAt === undefined && Boolean(job.reading);
+      await ctx.db.patch("screeningJobs", job._id, { living: { ...job.living, next: now + (waits ? HOUR_MS : EVERY_MS[job.living.every]) } });
       if (job.finishedAt === undefined && !job.reading) await check(ctx, job, undefined);
     }
     // More than one run's worth were due: the rest follow at once.
@@ -142,7 +147,7 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
     await placeGuests(ctx, job._id);
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId: job._id, cursor: null });
   }
-  await logChange(ctx, { userId: check.by ?? job.createdBy }, job, check.by ? "checked" : "scheduledCheck", { count: check.found, more: [...(check.found - check.added - (check.left ?? 0) > 0 ? [{ code: "known", count: check.found - check.added - (check.left ?? 0) }] : []), ...(check.left ? [{ code: "leftOut", count: check.left }] : []), ...(check.unread?.length ? [{ code: "unread", count: check.unread.length }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(reopens ? [{ code: "reopened" }] : [])] });
+  await logChange(ctx, { userId: check.by ?? job.createdBy }, job, !check.by ? "scheduledCheck" : check.search ? "checked" : "sourcesRead", { count: check.found, more: [...(check.found - check.added - (check.left ?? 0) > 0 ? [{ code: "known", count: check.found - check.added - (check.left ?? 0) }] : []), ...(check.left ? [{ code: "leftOut", count: check.left }] : []), ...(check.unread?.length ? [{ code: "unread", count: check.unread.length }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(reopens ? [{ code: "reopened" }] : [])] });
   if (!check.added) return;
   for (const reviewer of await reviewersOf(ctx, job._id)) {
     if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });

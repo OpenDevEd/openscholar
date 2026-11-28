@@ -7914,6 +7914,8 @@
         "checkedNone": "Makala mpya zilitafutwa na hakuna iliyopatikana",
         "scheduledFound": "Ukaguzi wa ratiba ulipata {count, plural, one {makala #} other {makala #}}{allNew, select, true {} other {, {added, number} kati yake mpya}}",
         "scheduledNone": "Ukaguzi wa ratiba haukupata makala mpya",
+        "sourcesReadFound": "Ilisoma vyanzo vilivyoongezwa au kubadilishwa na ikapata {count, plural, one {makala #} other {makala #}}{allNew, select, true {} other {, {added, number} kati yake mpya}}",
+        "sourcesReadNone": "Ilisoma vyanzo vilivyoongezwa au kubadilishwa na haikupata makala yoyote",
         "known": "{count, plural, one {# ilikuwa} other {# zilikuwa}} tayari kwenye uchujaji",
         "leftOut": "{count, plural, one {# iliachwa} other {# ziliachwa}}",
         "unread": "{count, plural, one {Haukuweza kusoma chanzo #} other {Haukuweza kusoma vyanzo #}}",
@@ -8626,6 +8628,7 @@
         "votesShow": "Kura zilizofichwa kwa wakaguzi zinaonekana kwa kila mtu aliye kwenye uchujaji huu",
         "modelsStop": "Modeli zinaacha kusoma",
         "checksStop": "Unaacha kutafuta makala mpya",
+        "arrivingStops": "Makala ambazo bado zinafika kutoka vyanzo vyake zinaacha kufika. Ufungue tena ili kuendelea kusoma kutoka zilipoishia",
         "movesToFinished": "Unahamia Zilizokamilika kwenye orodha, na unaweza kufunguliwa tena au kubadilishwa wakati wowote"
       },
       "delete": {
@@ -8920,6 +8923,7 @@
         "notGivenLong": "{count, plural, one {Haipewi PDF # iliyo ndefu kuliko inavyosoma kwa mara moja} other {Haipewi PDF # zilizo ndefu kuliko inavyosoma kwa mara moja}}",
         "voted": "{decision, select, include {{count, number} alipigia Jumuisha} maybe {{count, number} alipigia Labda} other {{count, number} alipigia Tenga}}",
         "noOtherPerson": "Hakuna mtu mwingine wa kulinganisha naye",
+        "aloneOnPapers": "Hakuna mtu mwingine anayesoma makala zao",
         "noPeople": "Hakuna watu wa kulinganisha nao",
         "nothingYet": "Bado hakuna cha kulinganisha",
         "agrees": "{share, number, percent}<muted>{person, select, true { kura sawa na wengine} other { kura sawa na watu}}</muted>",
@@ -9011,6 +9015,7 @@
         "onlyWhenAsked": "Inakagua ukiomba tu",
         "schedule": "Kagua kwa ratiba",
         "checkedBy": "{you, select, true {Ulikagua} other {{name} alikagua}}",
+        "readBy": "{you, select, true {Uliongeza au kubadilisha vyanzo} other {{name} aliongeza au kubadilisha vyanzo}}",
         "scheduled": "Ukaguzi wa ratiba",
         "failed": "Haukuweza kukamilika",
         "found": "{count, number} zimepatikana",

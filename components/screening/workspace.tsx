@@ -202,9 +202,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages on a line of their own, the same on every page, and the rule on the line under them. On a phone, Screen keeps the room for the paper and leaves the rule to its "?".
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      {/* What is passing ends the rule's line, so the tabs keep their widths as it comes and goes. Where there is no rule line (Settings, Screen on a phone) it ends the tabs' line. */}
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" ? passing : view === "screen" ? <span className="contents sm:hidden">{passing}</span> : null}</div>
-      {view === "settings" ? null : <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div><span className="ms-auto flex shrink-0 empty:hidden">{passing}</span></div>}
+      {/* What is passing ends the rule's line on Overview and Papers. On Settings and Screen it ends the tabs' line, which never wraps: on Screen a rule line that wrapped while it showed would move the paper being read when it went. */}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" || view === "screen" ? passing : null}</div>
+      {view === "settings" ? null : <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{view === "screen" ? null : <span className="ms-auto flex shrink-0 empty:hidden">{passing}</span>}</div>}
     </>
   );
 
@@ -333,7 +333,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   // Whether a paper here can be in conflict: with one vote on each, nobody settles anything, and the help says nothing of it.
   const splits = splitsIn(screening, open.counts.conflict, open.invited);
-  // How a paper is decided. From a tablet's width it is one line, and its chips scroll sideways where the line is too short for them. On a phone its name and the way to change it share a line, and the chips wrap under them at the card's whole width, so none is cut. In the settings the form itself says the same.
+  // How a paper is decided. From a tablet's width its chips share a line, and take a second where the line is too short for them. On a phone its name and the way to change it share a line, and the chips wrap under them at the card's whole width, so none is cut. In the settings the form itself says the same.
   const rule = (
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
       <span className="flex shrink-0 items-center gap-1 text-sm font-medium">

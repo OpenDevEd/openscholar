@@ -7913,6 +7913,8 @@
         "checkedNone": "检查了新论文，没有找到",
         "scheduledFound": "定期检查找到 {count, plural, other {# 篇论文}}{allNew, select, true {} other {，其中 {added, number} 篇是新的}}",
         "scheduledNone": "定期检查没有发现新论文",
+        "sourcesReadFound": "读取了新增或更改的来源,找到 {count, plural, other {# 篇论文}}{allNew, select, true {} other {,其中 {added, number} 篇为新}}",
+        "sourcesReadNone": "读取了新增或更改的来源,未找到论文",
         "known": "{count, plural, other {# 篇}}已在筛选中",
         "leftOut": "{count, plural, other {# 篇被排除在外}}",
         "unread": "{count, plural, other {无法读取 # 个来源}}",
@@ -8625,6 +8627,7 @@
         "votesShow": "原先对审核人隐藏的投票会向筛选中的所有人显示",
         "modelsStop": "模型停止阅读",
         "checksStop": "停止检查新论文",
+        "arrivingStops": "仍在从来源送达的论文将停止送达。重新打开即可从停止处继续读取",
         "movesToFinished": "它会移至列表中的已完成，随时可以重新打开或更改"
       },
       "delete": {
@@ -8919,6 +8922,7 @@
         "notGivenLong": "{count, plural, other {未分配 # 个超出它一次能读取长度的 PDF}}",
         "voted": "{decision, select, include {投了入选：{count, number}} maybe {投了待定：{count, number}} other {投了排除：{count, number}}}",
         "noOtherPerson": "没有其他人可比较",
+        "aloneOnPapers": "没有其他人阅读其论文",
         "noPeople": "没有人可比较",
         "nothingYet": "暂无可比较的内容",
         "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted>",
@@ -9010,6 +9014,7 @@
         "onlyWhenAsked": "仅在手动时检查",
         "schedule": "定期检查",
         "checkedBy": "{you, select, true {你进行了检查} other {{name} 进行了检查}}",
+        "readBy": "{you, select, true {你添加或更改了来源} other {{name} 添加或更改了来源}}",
         "scheduled": "定期检查",
         "failed": "未能完成",
         "found": "找到 {count, number} 篇",

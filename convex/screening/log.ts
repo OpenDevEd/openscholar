@@ -28,6 +28,7 @@ export const CODES = {
   asked: "edited",
   checked: "added",
   scheduledCheck: "added",
+  sourcesRead: "added",
   settings: "edited",
 } as const satisfies Record<string, Note["happened"]>;
 export type Code = keyof typeof CODES;

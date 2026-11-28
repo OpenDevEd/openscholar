@@ -144,6 +144,11 @@ const SOURCES_SETTLE_MS = 1_200;
 const heldBy = (source: Source) => (source.set?.kind === "zotero" && source.set.deep ? (source.read?.state === "done" ? source.read.taken + source.read.duplicates + source.read.left : null) : baseTotal(source));
 /** The papers a source's open row shows a sample of: what it brought, or, while it is still read, what its range promises. */
 const promised = (source: Source) => (source.read?.state === "waiting" || source.read?.state === "reading" ? Math.max(taken(source), baseTaken(source)) : taken(source));
+/** Whether a list of sources, as sent to the server, begins with another, the same sources in the same order. */
+const startsWith = (list: string, first: string) => {
+  const [all, some] = [JSON.parse(list) as unknown[], JSON.parse(first) as unknown[]];
+  return some.length <= all.length && some.every((one, at) => JSON.stringify(one) === JSON.stringify(all[at]));
+};
 /** A source the server hasn't read yet, as its row shows it. */
 const READING: NonNullable<Source["read"]> = { state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0, bare: 0, filed: 0, filePages: 0 };
 const sourceOf = (source: Source) => ({ set: source.set as never, name: source.untitled ? "" : source.name, ...(source.detail ? { detail: source.detail } : {}), ...(source.filters?.length && source.kind !== "dois" ? { facts: source.filters } : {}), ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) });
@@ -456,7 +461,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [carried, setCarried] = useState<{ from: string; to: string; read: NonNullable<typeof readAhead.data> } | null>(null);
   const carries = carried !== null && held === carried.to && (settled === carried.from || (settled === held && !readAhead.data));
   // What was read is of the sources as they are now: after a change, the rows wait for the next read.
-  const early = carries ? carried.read : settled === held ? (readAhead.data ?? null) : null;
+  const readNow = carries ? carried.read : settled === held ? (readAhead.data ?? null) : null;
+  // Except where the change only adds sources after the ones read: those keep what was read of them (the server reads only the one added, convex/screening/screenings.ts `sync`), and only the new rows wait. A count never drops to nothing and back.
+  const [lastRead, setLastRead] = useState<{ held: string; read: NonNullable<typeof readNow> } | null>(null);
+  if (readNow && lastRead?.read !== readNow) setLastRead({ held, read: readNow });
+  const early = readNow ?? (lastRead && startsWith(held, lastRead.held) ? lastRead.read : null);
   const earlyRead = useOpenScreening(early?.jobId ?? "")?.screening.sources;
   /** A source's row on the server, where the server reads it: a running screening's own, or the early read's. */
   const rowOf = (source: Source): { jobId: Id<"screeningJobs">; sourceId: Id<"screeningSources"> } | null => {
@@ -816,7 +825,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       // People from outside the workspace are given it, or invited to it, once it is there to share: to vote, or to look. Its models wait for them, so no paper meant for them is settled first.
       const guests = activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).length;
       const voters = guests > 0;
-      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(early ? { draft: early.jobId } : {}), ...(voters ? { hold: true, guests } : {}) });
+      const { jobId } = await create({ ...setupOf(say, { ...draft, name }), ...(readNow ? { draft: readNow.jobId } : {}), ...(voters ? { hold: true, guests } : {}) });
       // From here the screening exists: whatever fails after, the person is taken to it, and told what is left to do there.
       const outside = [...activeReviewers(draft).filter((one) => one.kind === "person" && one.guest).map((one) => ({ one, role: "editor" as const })), ...(draft.viewers ?? []).map((one) => ({ one, role: "viewer" as const }))];
       const sent = await Promise.allSettled(outside.map(({ one, role }) => (one.email ? invite({ kind: "screening", id: jobId, email: one.email, role }) : give({ kind: "screening", id: jobId, personId: one.id as Id<"users">, role }))));
@@ -1668,7 +1677,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {fromCollection ? (
               <label className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
                 <span className="min-w-0 flex-1 space-y-1.5">
-                  <span className="block truncate text-sm font-medium">{t("goes.prune", { name: fromCollection.name })}</span>
+                  <span className="block text-sm font-medium [overflow-wrap:anywhere]">{t("goes.prune", { name: fromCollection.name })}</span>
                   <span className="flex flex-wrap gap-1.5"><Chip icon={X}>{t("goes.excludedLeave")}</Chip><Chip>{t("goes.othersStay")}</Chip></span>
                 </span>
                 <Switch checked={draft.destination.prune} onCheckedChange={(prune) => set({ destination: { ...draft.destination, prune } })} aria-label={t("goes.prune", { name: fromCollection.name })} />

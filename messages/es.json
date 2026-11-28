@@ -7914,6 +7914,8 @@
         "checkedNone": "Comprobó si había artículos nuevos y no encontró ninguno",
         "scheduledFound": "La comprobación programada encontró {count, plural, one {# artículo} other {# artículos}}{allNew, select, true {} other {, {added, number} de ellos nuevos}}",
         "scheduledNone": "La comprobación programada no encontró artículos nuevos",
+        "sourcesReadFound": "Leyó las fuentes añadidas o cambiadas y encontró {count, plural, one {# artículo} other {# artículos}}{allNew, select, true {} other {, {added, number} de ellos nuevos}}",
+        "sourcesReadNone": "Leyó las fuentes añadidas o cambiadas y no encontró ningún artículo",
         "known": "{count, plural, one {# ya estaba} other {# ya estaban}} en el cribado",
         "leftOut": "{count, plural, one {# se descartó} other {# se descartaron}}",
         "unread": "{count, plural, one {No pudo leer # fuente} other {No pudo leer # fuentes}}",
@@ -8626,6 +8628,7 @@
         "votesShow": "Los votos que estaban ocultos para los revisores se muestran a todos los que están en él",
         "modelsStop": "Los modelos dejan de leer",
         "checksStop": "Deja de comprobar si hay artículos nuevos",
+        "arrivingStops": "Los artículos que aún llegan de sus fuentes dejan de llegar. Vuelve a abrirlo para seguir leyendo desde donde se detuvieron",
         "movesToFinished": "Pasa a Terminados en la lista, y se puede reabrir o cambiar en cualquier momento"
       },
       "delete": {
@@ -8920,6 +8923,7 @@
         "notGivenLong": "{count, plural, one {No recibe # PDF más largo de lo que lee de una vez} other {No recibe # PDF más largos de lo que lee de una vez}}",
         "voted": "{decision, select, include {{count, number} votados Incluir} maybe {{count, number} votados Quizá} other {{count, number} votados Excluir}}",
         "noOtherPerson": "No hay otra persona con quien comparar",
+        "aloneOnPapers": "Ninguna otra persona lee sus artículos",
         "noPeople": "No hay personas con quienes comparar",
         "nothingYet": "Todavía no hay nada que comparar",
         "agrees": "{share, number, percent}<muted>{person, select, true { mismo voto que los demás} other { mismo voto que las personas}}</muted>",
@@ -9011,6 +9015,7 @@
         "onlyWhenAsked": "Solo comprueba cuando se pide",
         "schedule": "Comprobar de forma programada",
         "checkedBy": "{you, select, true {Usted comprobó} other {{name} comprobó}}",
+        "readBy": "{you, select, true {Añadiste o cambiaste fuentes} other {{name} añadió o cambió fuentes}}",
         "scheduled": "Comprobación programada",
         "failed": "No se pudo terminar",
         "found": "{count, number} encontrados",

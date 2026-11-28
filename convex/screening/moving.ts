@@ -58,8 +58,8 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
   // Who settles conflicts passing to whoever moved it is a change of the rule: the whole record lists it.
   if (job.rule && !settlesThere) {
     await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
-    // The questions put to the one who settled them go with it to whoever moved it.
-    if (job.rule.resolver !== by) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: job.rule.resolver, to: by });
+    // The questions put to the one who settled them, about its conflicts, go with it to whoever moved it. What they were asked about their own votes stays theirs.
+    if (job.rule.resolver !== by) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: job.rule.resolver, to: by, settling: true });
   }
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
   for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });

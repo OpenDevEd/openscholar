@@ -265,6 +265,7 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
     setSending((now) => [...now, { batch, total: sized.length, sent: 0 }]);
     const [queue, kept]: [File[], Array<{ file: Id<"_storage">; name: string; bytes: number }>] = [[...sized], []];
     let [added, failed] = [0, 0];
+    const handed: string[] = [];
     // One call at a time hands over what has arrived since the last, so the files keep the order they came in.
     let handing = Promise.resolve();
     const hand = () => (handing = handing.then(async () => {
@@ -272,6 +273,7 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
         const files = kept.splice(0, PDFS_A_CALL);
         await addPdfs({ batch, files });
         added += files.length;
+        handed.push(...files.map((one) => one.name));
       }
     }));
     await Promise.all(Array.from({ length: UPLOADS_AT_ONCE }, async () => {
@@ -293,7 +295,8 @@ export function UploadTab({ sources, onAdd, lookCredits: given }: {
       refuse(sized.length === 1 ? sized[0]!.name : words.count("pdfs", sized.length), getErrorMessage(error, t("upload.why.allUnsent")));
     }
     setSending((now) => now.filter((one) => one.batch !== batch));
-    if (added) onAdd({ ref, name: added > 1 ? t("upload.uploadedPdfs", { count: added }) : sized[0]!.name, detail: added === 1 ? t("upload.onePdf") : t("andMore", { name: sized[0]!.name, count: added - 1 }), total: added, set: { kind: "pdf", batch } });
+    // Named by the files it holds: one that failed to send is none of them.
+    if (added) onAdd({ ref, name: added > 1 ? t("upload.uploadedPdfs", { count: added }) : handed[0]!, detail: added === 1 ? t("upload.onePdf") : t("andMore", { name: handed[0]!, count: added - 1 }), total: added, set: { kind: "pdf", batch } });
     else if (!failed) refuse(sized.length === 1 ? sized[0]!.name : words.count("pdfs", sized.length), t("upload.why.allUnsent"));
   };
   const addPending = async (table: PendingTable & { file: File }) => {

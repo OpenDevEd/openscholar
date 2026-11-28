@@ -7913,6 +7913,8 @@
         "checkedNone": "Kuhlolelwe amaphepha amasha futhi akutholakalanga lutho",
         "scheduledFound": "Ukuhlola okuhleliwe kuthole {count, plural, one {# iphepha} other {# amaphepha}}{allNew, select, true {} other {, angu-{added, number} kuwo amasha}}",
         "scheduledNone": "Ukuhlola okuhleliwe akutholanga maphepha amasha",
+        "sourcesReadFound": "Kufundwe imithombo engeziwe noma eshintshiwe kwatholakala {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}{allNew, select, true {} other {, angu-{added, number} amasha}}",
+        "sourcesReadNone": "Kufundwe imithombo engeziwe noma eshintshiwe akutholakalanga phepha",
         "known": "{count, plural, one {# belisevele} other {# abesevele}} ekuskrinini",
         "leftOut": "{count, plural, one {# lishiywe ngaphandle} other {# ashiywe ngaphandle}}",
         "unread": "{count, plural, one {Akukwazanga ukufunda # umthombo} other {Akukwazanga ukufunda # imithombo}}",
@@ -8625,6 +8627,7 @@
         "votesShow": "Amavoti ayefihlelwe ababuyekezi ayabonakala kubo bonke abakukho",
         "modelsStop": "Amamodeli ayeka ukufunda",
         "checksStop": "Kuyeka ukuhlolela amaphepha amasha",
+        "arrivingStops": "Amaphepha asafika emithonjeni yawo ayayeka ukufika. Kuvule futhi ukuze uqhubeke ufunda lapho ame khona",
         "movesToFinished": "Kuya ku-Kuqediwe ohlwini, futhi kungavulwa futhi noma kushintshwe noma nini"
       },
       "delete": {
@@ -8919,6 +8922,7 @@
         "notGivenLong": "{count, plural, one {Ayinikwa i-PDF engu-# ende kunalokho ekufundayo ngesikhathi esisodwa} other {Ayinikwa ama-PDF angu-# amade kunalokho ekufundayo ngesikhathi esisodwa}}",
         "voted": "{decision, select, include {{count, number} kuvotwe ngokuthi Faka} maybe {{count, number} kuvotwe ngokuthi Mhlawumbe} other {{count, number} kuvotwe ngokuthi Khipha}}",
         "noOtherPerson": "Akekho omunye umuntu wokuqhathanisa naye",
+        "aloneOnPapers": "Akekho omunye umuntu ofunda amaphepha abo",
         "noPeople": "Abekho abantu bokuqhathanisa nabo",
         "nothingYet": "Akukho okuqhathaniswayo okwamanje",
         "agrees": "{share, number, percent}<muted>{person, select, true { ivoti elifanayo nelabanye} other { ivoti elifanayo nelabantu}}</muted>",
@@ -9010,6 +9014,7 @@
         "onlyWhenAsked": "Kuhlolwa kuphela uma kucelwa",
         "schedule": "Hlola ngesheduli",
         "checkedBy": "{you, select, true {Uhlolile} other {{name} uhlolile}}",
+        "readBy": "{you, select, true {Wengeze noma washintsha imithombo} other {U-{name} wengeze noma washintsha imithombo}}",
         "scheduled": "Ukuhlola okuhleliwe",
         "failed": "Akukwazanga ukuqedwa",
         "found": "{count, number} atholakele",

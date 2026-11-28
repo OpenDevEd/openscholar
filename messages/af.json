@@ -7914,6 +7914,8 @@
         "checkedNone": "Het vir nuwe artikels gekontroleer en niks gevind nie",
         "scheduledFound": "Die geskeduleerde kontrole het {count, plural, one {# artikel} other {# artikels}} gevind{allNew, select, true {} other {, waarvan {added, number} nuut is}}",
         "scheduledNone": "Die geskeduleerde kontrole het geen nuwe artikels gevind nie",
+        "sourcesReadFound": "Het die bronne gelees wat bygevoeg of verander is en {count, plural, one {# artikel} other {# artikels}} gevind{allNew, select, true {} other {, {added, number} daarvan nuut}}",
+        "sourcesReadNone": "Het die bronne gelees wat bygevoeg of verander is en geen artikel gevind nie",
         "known": "{count, plural, one {# was} other {# was}} reeds in die siftering",
         "leftOut": "{count, plural, one {# is uitgelaat} other {# is uitgelaat}}",
         "unread": "{count, plural, one {Kon # bron nie lees nie} other {Kon # bronne nie lees nie}}",
@@ -8626,6 +8628,7 @@
         "votesShow": "Die stemme wat vir beoordelaars versteek was, word vir almal daarop gewys",
         "modelsStop": "Die modelle hou op lees",
         "checksStop": "Dit hou op om vir nuwe artikels te kontroleer",
+        "arrivingStops": "Artikels wat nog uit sy bronne aankom, hou op aankom. Heropen dit om voort te lees van waar hulle gestop het",
         "movesToFinished": "Dit skuif na Klaar in die lys, en kan enige tyd heropen of verander word"
       },
       "delete": {
@@ -8920,6 +8923,7 @@
         "notGivenLong": "{count, plural, one {Kry nie # PDF wat langer is as wat dit op een slag lees nie} other {Kry nie # PDF’e wat langer is as wat dit op een slag lees nie}}",
         "voted": "{decision, select, include {{count, number} het Sluit in gestem} maybe {{count, number} het Miskien gestem} other {{count, number} het Sluit uit gestem}}",
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
+        "aloneOnPapers": "Geen ander persoon lees hul artikels nie",
         "noPeople": "Geen mense om mee te vergelyk nie",
         "nothingYet": "Nog niks om te vergelyk nie",
         "agrees": "{share, number, percent}<muted>{person, select, true { dieselfde stem as die ander} other { dieselfde stem as die mense}}</muted>",
@@ -9011,6 +9015,7 @@
         "onlyWhenAsked": "Kontroleer net wanneer gevra",
         "schedule": "Kontroleer volgens ’n skedule",
         "checkedBy": "{you, select, true {Jy het gekontroleer} other {{name} het gekontroleer}}",
+        "readBy": "{you, select, true {Jy het bronne bygevoeg of verander} other {{name} het bronne bygevoeg of verander}}",
         "scheduled": "Geskeduleerde kontrole",
         "failed": "Kon nie voltooi word nie",
         "found": "{count, number} gevind",

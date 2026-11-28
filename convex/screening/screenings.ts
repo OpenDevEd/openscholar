@@ -20,6 +20,7 @@ import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf, papersOf } from "./dealing";
+import { readInTurn } from "./living";
 import { startWaitingVotes } from "./slots";
 import { readOn, startCheck } from "./gathering";
 import { logChange } from "./log";
@@ -371,7 +372,10 @@ export const finish = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     if (job.finishedAt !== undefined) return null;
     const now = Date.now();
-    await ctx.db.patch("screeningJobs", jobId, { finishedAt: now, status: "completed", completedAt: now, ...touched(now) });
+    // A look under way stops with it: no paper joins a screening nobody votes on. Its sources stay where they were read to, and Reopen reads on from there.
+    const running = await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first();
+    if (running) await ctx.db.patch("screeningChecks", running._id, { state: "done", endedAt: now });
+    await ctx.db.patch("screeningJobs", jobId, { finishedAt: now, status: "completed", completedAt: now, reading: undefined, ...touched(now) });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId, cursor: null });
     // What it leaves open is said with it: the papers nobody settled, and a living screening's checks.
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
@@ -396,6 +400,8 @@ export const reopen = workspaceMutation({
     await ctx.db.patch("screeningJobs", jobId, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now), ...(job.living ? { living: { ...job.living, next: now + EVERY_MS[job.living.every] } } : {}) });
     await placeGuests(ctx, jobId);
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
+    // Sources left part read when it was finished are read on from where they stopped.
+    if ((await sourcesOf(ctx, jobId)).some((source) => source.removedAt === undefined && (source.state === "waiting" || source.state === "reading"))) await readInTurn(ctx, (await ctx.db.get("screeningJobs", jobId))!, actor.userId);
     await logChange(ctx, actor, job, "reopened");
     return null;
   },

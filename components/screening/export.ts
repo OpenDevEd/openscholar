@@ -50,6 +50,7 @@ import {
   type Result,
   type Screening,
   collectionName,
+  MIN_SHARED,
   pairOf,
   REMOVED_LABEL,
   removedOf,
@@ -391,12 +392,15 @@ export function methodsOf(out: Taken) {
   const { people, each, invited } = readersOf(screening, out.invited ?? []);
   const [models, reviewers] = [modelsOf(screening), activeReviewers(screening)];
   // The pair a two-reviewer screening reports, whoever the two are: two people, or one person and the model whose votes count.
-  const pairOn = out.kept ? null : people.length > 1 ? [people[0]!, people[1]!] : reviewers.length === 2 ? [reviewers[0]!, reviewers[1]!] : null;
-  const pair = pairOn ? pairOf(figures, pairOn[0].id, pairOn[1].id) : null;
-  // Every pair of reviewers who voted on a record in common: kappa where it has a value, and how many pairs voted the same way every time, where it has none. Pairs who shared no record are no pair here.
-  const met = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return pair ? [pair] : []; }));
+  // Only where there are two: with more, every pair is in the range below, never the first two alone.
+  const pairOn = out.kept ? null : reviewers.length === 2 ? [reviewers[0]!, reviewers[1]!] : null;
+  // A pair is stated on as many records in common as the Overview lists it on (./data.ts `MIN_SHARED`).
+  const counted = (a: { id: string }, b: { id: string }) => ((pair) => (pair && pair.papers >= MIN_SHARED ? pair : null))(pairOf(figures, a.id, b.id));
+  const pair = pairOn ? counted(pairOn[0], pairOn[1]) : null;
+  // Every pair of reviewers who voted on enough records in common: kappa where it has a value, and how many pairs voted the same way every time, where it has none.
+  const met = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => { const pair = counted(a, b); return pair ? [pair] : []; }));
   // Whether a pair with a kappa has a model in it: the sentence names the models' pairs only where they count.
-  const valued = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => ((pairOf(figures, a.id, b.id)?.kappa ?? null) !== null ? [[a.kind, b.kind].filter((kind) => kind === "model").length] : [])));
+  const valued = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => ((counted(a, b)?.kappa ?? null) !== null ? [[a.kind, b.kind].filter((kind) => kind === "model").length] : [])));
   // Which kinds of pair the range covers, named where a model is in one: a person with a model, or two models.
   const modelPairs = listed([...(valued.includes(1) ? ["pairs of a human reviewer and an AI model"] : []), ...(valued.includes(2) ? ["pairs of AI models"] : [])]);
   const kappas = met.flatMap((pair) => (pair.kappa === null ? [] : [pair.kappa])).sort((a, b) => a - b);
