@@ -19,6 +19,7 @@ import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { progressRow } from "./bookkeeping";
 import { keepsVotes } from "./view";
+import { tallyForReason, tallyOfReviewer, tallyUnder } from "./facets";
 
 type Paper = Doc<"screeningResults">;
 type Vote = Doc<"screeningVotes">;
@@ -186,19 +187,28 @@ export const counts = workspaceQuery({
     if (!looking) return null;
     const check = asked === "start" ? looking.first : asked;
     if (asked === "start" && !check) return null;
+    const row = reviewer ? [...looking.reviewers.values()].find((one) => viewId(one) === reviewer || one._id === reviewer) : undefined;
+    if (reviewer && !row) return null;
+    // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
+    const others = row && voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
+    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length)) return null;
+    // Narrowed one way, the counts are kept already (./facets.ts): a few counted reads, whatever the screening's size.
+    const narrowed = [source, check, reason, row].filter(Boolean).length;
+    if (narrowed === 1) {
+      if (row) return await tallyOfReviewer(ctx, row._id, voted === "none" ? ["waiting"] : voted === "failed" ? ["failed"] : voted ? [voted] : ["include", "maybe", "exclude", "cast"]);
+      if (source) return await tallyUnder(ctx, jobId, { source });
+      if (check) return await tallyUnder(ctx, jobId, { check });
+      return await tallyForReason(ctx, jobId, reason!);
+    }
+    // Narrowed two ways at once, the papers' cards are counted one by one. ponytail: a namespace per pair of narrowings would count those too, if they come to be used on large screenings.
     const keeps = (card: Doc<"screeningCards">) => !card.withdrawn && (!source || card.sourceId === source) && (!check || card.checkId === check) && (!reason || (card.result === "exclude" && (card.reason ?? NO_REASON) === reason));
     const tally = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
     const cards = await ctx.db.query("screeningCards").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(COUNTED + 1);
     if (cards.length > COUNTED) return null;
-    if (!reviewer) {
+    if (!row) {
       for (const card of cards) if (keeps(card)) tally[card.result]++;
       return tally;
     }
-    const row = [...looking.reviewers.values()].find((one) => viewId(one) === reviewer || one._id === reviewer);
-    if (!row) return null;
-    // Which way someone else voted is kept from a reviewer who still has papers to vote on (./view.ts `keepsVotes`): so is how many they voted each way.
-    const others = voted && voted !== "none" && voted !== "failed" && row._id !== looking.reviewer?._id;
-    if (others && !showsEarly(looking.job.rule!, row.kind) && keepsVotes(looking.job, looking.reviewer, (await progressRow(ctx as QueryCtx, jobId))?.reviewers, looking.reviewers.values(), (await invitationsTo(ctx, jobId)).length)) return null;
     const votes = ctx.db.query("screeningVotes");
     const theirs = await (voted === "none" || voted === "failed"
       ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))

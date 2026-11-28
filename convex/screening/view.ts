@@ -25,6 +25,7 @@ import { dealable, firstCheck, inWhole, invitationsTo, laterChecks, modelName, m
 import { noticeOf } from "./notices";
 import { NO_RESULTS } from "./settling";
 import { askedWhereValidator, ruleValidator, invitedViewValidator, libraryWriteProblemValidator, retiredCriteriaValidator, unreadSourcesValidator, modelVotesValidator, checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { castSince } from "./facets";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -497,7 +498,6 @@ const CHANGED = new Set(["settings", "reviewerAdded", "reviewerRemoved", "madeVi
 /** Checks counted for a methods paragraph, saves of its settings counted, and votes counted for a person's pace. */
 const CHECKS_COUNTED = 400;
 const CHANGES_COUNTED = 200;
-const RECENT_VOTES = 500;
 
 export const figuresAction = defineUserQuery({
   path: "screening/view:figures",
@@ -518,7 +518,7 @@ export const figuresAction = defineUserQuery({
     ]);
     const idOf = new Map(reviewers.map((one) => [one._id, viewId(one)]));
     const people = reviewers.filter((one) => one.kind === "person" && one.left === undefined && one.userId);
-    const recent = await Promise.all(people.map(async (one) => [viewId(one), (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", one._id).eq("status", "cast").gte("at", since)).take(RECENT_VOTES)).length] as const));
+    const recent = await Promise.all(people.map(async (one) => [viewId(one), await castSince(ctx as QueryCtx, one._id, since)] as const));
     // The searches for papers its sources gained. A save that read a source it added or widened searched nothing again.
     const later = checks.filter((check) => check.search && check.state === "done");
     return {
