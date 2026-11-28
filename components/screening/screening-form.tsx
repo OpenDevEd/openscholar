@@ -102,6 +102,12 @@ const searchOffer = (search: SearchResult, noQuery: string): Offer => ({ ref: `s
 /** The source an offer becomes when it is added: all of what it holds, until a range is picked. */
 const sourceFrom = (offer: Offer): Source => ({ id: `new:${offer.ref}`, kind: offer.set.kind, name: offer.name, ...(offer.untitled ? { untitled: true } : {}), detail: offer.detail, total: offer.total, scope: "all", range: [1, Math.max(1, offer.total)], duplicates: 0, set: offer.set, ref: offer.ref, addedAt: Date.now(), ...(offer.filters ? { filters: offer.filters } : {}), ...(offer.questions?.length ? { questions: offer.questions } : {}) });
 /** A criterion made from a question as it was written. */
+/** A source whose papers it can take out of where they came from: a collection, or a reader's collection in a community, as the server's `prunable` says (convex/screening/validators.ts). */
+const prunes = (source: Source) => {
+  if (source.kind === "collection") return true;
+  const from = source.set?.kind === "evidenceLibrary" ? (source.set.source as object | undefined) : undefined;
+  return Boolean(from && "readerCollection" in from && !("search" in from));
+};
 const criterionFrom = (question: string, more: { short?: string; terms?: string[] } = {}): Criterion => ({ key: `new:${hash(question)}`, text: question, short: more.short ?? shortOf(question), must: true, terms: more.terms ?? [], addedAt: Date.now() });
 
 type Pager = { page: number; canPrevious: boolean; canNext: boolean; hasPages: boolean; previous: () => void; next: () => void; offset: number; items: unknown[]; isStale: boolean };
@@ -169,7 +175,7 @@ function setupOf(say: Say, draft: Screening) {
     models: modelsOf(draft).map(modelOf),
     saveTo: saveToOf(say, draft),
     // Only while a collection is one of its sources: the switch goes with it, and so does what it set.
-    ...(draft.destination.prune && draft.sources.some((source) => source.kind === "collection") ? { prune: true } : {}),
+    ...(draft.destination.prune && draft.sources.some(prunes) ? { prune: true } : {}),
     ...(draft.living ? { living: draft.living.every } : {}),
   };
 }
@@ -192,7 +198,7 @@ function changeOf(say: Say, saved: Screening, draft: Screening, recheck: boolean
     // A guest already reviewing it may settle its conflicts too (the server checks they are on it): only someone invited and not joined yet can't.
     ...(differs("rule") ? { rule: ruleOf(draft, activeReviewers(draft).filter((one) => one.kind === "person" && !one.email)) } : {}),
     ...(differs("living") ? { living: draft.living?.every ?? null } : {}),
-    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune && draft.sources.some((source) => source.kind === "collection") } : {}),
+    ...(differs("destination") ? { saveTo: saveToOf(say, draft), prune: draft.destination.prune && draft.sources.some(prunes) } : {}),
     ...(draft.sources.some((source) => !saved.sources.some((one) => one.id === source.id)) ? { addSources: draft.sources.filter((source) => !saved.sources.some((one) => one.id === source.id)).map(sourceOf) } : {}),
     ...(saved.sources.some((source) => !draft.sources.some((one) => one.id === source.id)) ? { removeSources: saved.sources.filter((source) => !draft.sources.some((one) => one.id === source.id)).map((source) => source.id as Id<"screeningSources">) } : {}),
     ...(ranged.length ? { ranges: ranged.map((source) => ({ sourceId: source.id as Id<"screeningSources">, ...(source.scope === "range" ? { first: source.range[0], last: source.range[1] } : {}) })) } : {}),

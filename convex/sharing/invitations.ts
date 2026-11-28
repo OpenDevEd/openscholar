@@ -100,13 +100,20 @@ export const readDelivery = internalQuery({
   },
 });
 
+/** When an invitation ends: which sending of it a caller made, since each sending restarts its seven days. */
+export const endsAt = internalQuery({
+  args: { invitationId: v.id("itemInvitations") },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { invitationId }) => (await ctx.db.get("itemInvitations", invitationId))?.expiresAt ?? null,
+});
+
 /** Undoes a replacement whose email couldn't be sent: the invitations it took back wait again, and it is taken back. */
 export const unreplace = internalMutation({
-  args: { invitationId: v.id("itemInvitations"), emails: v.array(v.string()) },
+  args: { invitationId: v.id("itemInvitations"), emails: v.array(v.string()), attempt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { invitationId, emails }) => {
+  handler: async (ctx, { invitationId, emails, attempt }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
-    if (invitation?.state !== "pending") return null;
+    if (invitation?.state !== "pending" || invitation.expiresAt !== attempt) return null;
     for (const email of emails.slice(0, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)) {
       const old = await invitationTo(ctx, invitation.item, email.trim().toLowerCase());
       if (old?.state === "cancelled" && old.expiresAt > Date.now()) await ctx.db.patch("itemInvitations", old._id, { state: "pending" });
@@ -195,11 +202,13 @@ export const inviteAction = defineChangingAction({
     // Taking invitations back in the same step is the Settings save's own: the assistant asks for one invitation, and takes nothing back with it.
     const replaced = author === "user" && replacing?.length ? replacing : undefined;
     const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args, ...(replaced ? { replacing: replaced } : {}) });
+    // This attempt, by when it ends: a later sending of the same invitation ends later, and is never undone by this one failing.
+    const attempt: number | null = replaced ? await ctx.runQuery(internal.sharing.invitations.endsAt, { invitationId }) : null;
     try {
       await ctx.runAction(internal.sharing.mail.deliver, { invitationId });
     } catch (error) {
       // An invitation that took others' place and couldn't be sent gives it back: theirs wait again, in one step, and nothing settles between.
-      if (replaced) await ctx.runMutation(internal.sharing.invitations.unreplace, { invitationId, emails: replaced });
+      if (replaced && attempt !== null) await ctx.runMutation(internal.sharing.invitations.unreplace, { invitationId, emails: replaced, attempt });
       throw error;
     }
     return null;
