@@ -143,7 +143,6 @@ function Screen({ open }: { open: Open }) {
   const workspaceId = usePageWorkspace();
   // Another queue, order or choice of votes is a step Back returns from. Going from paper to paper and typing in the search box change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
-  const router = useWorkspaceRouter();
   const { paper: inAddress, q: find, voted, order } = place;
   // A step back past a page's first paper names the page's last one as "last": the paper it is shows once the page arrives, and is named before the next step, so Back and Forward show it again.
   const fromEnd = inAddress === "last";
@@ -322,11 +321,18 @@ function Screen({ open }: { open: Open }) {
   if (arrived && arrivedList !== holding) setArrivedList(holding);
   // A page turned and not read yet counts too.
   const switching = (arrivedList !== holding || listed.isStale) && !picked;
+  // Another queue picked: until its papers arrive its rows and paper show as skeletons in their places, never the last queue's papers under the new tab.
+  const otherQueue = switching && arrivedList.split(":")[1] !== queue;
+  // Where the open paper stands in its queue. Another queue opens at its first paper, which its count already places.
+  const shownAt = otherQueue ? 1 : listed.offset + at + 1;
   // Nothing is voted or settled on the last queue's paper while it stands dimmed: not by a press, not by a key.
   // A paper that left with its source, named by an address from before, is read and voted on by nobody.
   const gone = Boolean(paper?.withdrawn);
   const mayDecide = !finished && !switching && !gone && (resolving ? open.canResolve : open.isReviewer);
   const answering = !finished && !gone && !resolving && open.isReviewer && !switching;
+  // What the panes show while another queue is read: the same controls as before, dimmed and out of reach (the frame's aria-busy), never swapped for the reading view and back.
+  const decideLook = !finished && !gone && (resolving ? open.canResolve : open.isReviewer);
+  const answerLook = !finished && !gone && !resolving && open.isReviewer;
   const settlesHere = screening.rule.resolver === open.me;
   const settler = words.nameOn(screening, screening.rule.resolver);
 
@@ -483,7 +489,7 @@ function Screen({ open }: { open: Open }) {
   const given: Record<string, Answer> = paper && !resolving ? { ...mine?.answers, ...answers[paper.id] } : {};
   const current = paper && lit?.paper === paper.id ? criteria.find((criterion) => criterion.key === lit.key) : undefined;
   // The criterion Y, N and U answer: the one being looked at, or the first still unanswered.
-  const toAnswer = answering ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined)) : undefined;
+  const toAnswer = answerLook ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined)) : undefined;
   /** Looks at a criterion, or away from it when it is the one being looked at. The words marked for it open under the question and stand out in the abstract. The paper is never scrolled: whoever is reading the votes further down keeps their place. */
   const light = (criterion: Criterion) => {
     if (!paper) return;
@@ -555,7 +561,8 @@ function Screen({ open }: { open: Open }) {
       value={queue}
       fill="labels"
       // Another queue is a step in the history, and the paper on the screen is named in its own entry first, so Back comes back to it whatever the queue has done since.
-      onChange={(which) => namedThen(() => router.push(screenHref(id, which === "todo" ? undefined : { queue: which })))}
+      // Changed in the address where it stands, with no trip to the server: the page stays mounted, and only the queue is read again.
+      onChange={(which) => namedThen(() => void setPlace({ queue: which === "todo" ? null : which, paper: null, q: null, voted: null, order: null }))}
       options={queues.map((which) => ({
         id: which,
         label: t(`queue.${which}`),
@@ -815,15 +822,22 @@ function Screen({ open }: { open: Open }) {
               {queueFilters(QUEUE_FILTER)}
             </div>
             <ScrollArea key={holding} shades className="flex min-h-0 flex-1 border-t border-border-subtle">
-              <ul className="divide-y divide-border-subtle">
-                {items.map((one) => row(one, openIt))}
-              </ul>
+              {otherQueue ? <ListRowsSkeleton rows={Math.min(queueTotal || QUEUE_PAGE, QUEUE_PAGE)} height={72} icon={false} label={t("queue.loading")} /> : (
+                <ul className="divide-y divide-border-subtle">
+                  {items.map((one) => row(one, openIt))}
+                </ul>
+              )}
             </ScrollArea>
             {listed.hasPages ? <div className="flex justify-center border-t border-border-subtle px-2 py-1.5">{pager("w-28")}</div> : null}
           </div>
         </div>
 
-        {!paper && opening ? (
+        {otherQueue ? (
+          <>
+            <PaperSkeleton label={t("queue.loading")} className="lg:col-start-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
+            <div className={cn("space-y-3 border-t border-border-subtle p-5 lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}><SkeletonBar className="h-4 w-1/3" /><SkeletonBar className="h-28 w-full rounded-2xl" /></div>
+          </>
+        ) : !paper && opening ? (
           <PaperSkeleton label={t("queue.loadingPaper")} className="lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2" />
         ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
@@ -900,17 +914,17 @@ function Screen({ open }: { open: Open }) {
             <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
               <div data-criteria className="p-5">
                 <Section
-                  title={answering ? t("criteria.yours") : t("criteria.title")}
+                  title={answerLook ? t("criteria.yours") : t("criteria.title")}
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
-                  aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? t("criteria.answered", { answered: criteria.filter((criterion) => given[criterion.key] !== undefined).length, count: criteria.length }) : words.count("criteria", criteria.length)}</span> : undefined}
+                  aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answerLook ? t("criteria.answered", { answered: criteria.filter((criterion) => given[criterion.key] !== undefined).length, count: criteria.length }) : words.count("criteria", criteria.length)}</span> : undefined}
                   help={
-                    <Help title={answering ? t("criteria.yours") : t("criteria.title")} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>{t("criteria.mustHaveFact")}</HelpFact><HelpFact icon={BookOpen}>{t("criteria.guidanceFact")}</HelpFact><HelpFact icon={Highlighter}>{t("criteria.markedFact")}</HelpFact><HelpFact>{t.rich("criteria.showsFact", { mark: (chunk) => <mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</HelpFact></>}>
-                      {answering ? t("criteria.helpAnswering") : t("criteria.helpReading")}
+                    <Help title={answerLook ? t("criteria.yours") : t("criteria.title")} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>{t("criteria.mustHaveFact")}</HelpFact><HelpFact icon={BookOpen}>{t("criteria.guidanceFact")}</HelpFact><HelpFact icon={Highlighter}>{t("criteria.markedFact")}</HelpFact><HelpFact>{t.rich("criteria.showsFact", { mark: (chunk) => <mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</HelpFact></>}>
+                      {answerLook ? t("criteria.helpAnswering") : t("criteria.helpReading")}
                     </Help>
                   }
                 >
                   {/* What the star means, in sight: it was taken for "an answer is required". */}
-                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>{t("criteria.mustHave", { answering: String(answering) })}</p> : null}
+                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>{t("criteria.mustHave", { answering: String(answerLook) })}</p> : null}
                   {criteria.length ? (
                     <ol key={paper.id} className={LIST}>
                       {criteria.map((criterion, i) => {
@@ -956,7 +970,7 @@ function Screen({ open }: { open: Open }) {
                                 </motion.div>
                               ) : null}
                             </AnimatePresence>
-                            {answering ? (
+                            {answerLook ? (
                               <div role="radiogroup" aria-label={t("criteria.answerTo", { n: i + 1 })} className="mt-2.5 grid grid-cols-[repeat(3,minmax(max-content,1fr))] gap-1.5 ps-6.5">{/* Three of one width, unless a language's word for an answer is longer than its third: then that one takes what it needs. */}
                                 {ANSWERS.map((answer) => {
                                   const { icon: Icon, tone } = ANSWER_SIGN[answer];
@@ -1006,13 +1020,13 @@ function Screen({ open }: { open: Open }) {
 
       {paper ? (
         /* The vote stays at the foot of the window: under the panes from a laptop's width, where it is the workbench's last row. From 1400px it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under that the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
-        <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0">
+        <ActionBar aria-busy={switching || undefined} className={cn("max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0 *:transition-opacity", switching && "*:pointer-events-none *:opacity-60")}>
           <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES)}>
             {/* Where you are */}
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" && kept ? t("bar.notInList") : queue === "done" || !mayDecide || floor ? (at < 0 || (queueTotal !== undefined && listed.offset + at + 1 > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
+                <span className="font-medium">{queue === "done" && kept && !otherQueue ? t("bar.notInList") : queue === "done" || !decideLook || floor ? ((!otherQueue && at < 0) || (queueTotal !== undefined && shownAt > queueTotal) ? t("bar.notInList") : queueTotal === undefined && listed.canNext ? words.num(shownAt) : t("bar.atOf", { at: shownAt, count: queueTotal ?? listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
@@ -1027,7 +1041,7 @@ function Screen({ open }: { open: Open }) {
                 </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
                   <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
-                  {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? mayDecide : answering)) && (criteria.length > 0 || (what !== "select" && what !== "answer")) && (what !== "undo" || Boolean(last?.mayUndo))).map(([keys, what]) => (
+                  {SHORTCUTS.filter(([, what, who]) => (!who || (who === "vote" ? decideLook : answerLook)) && (criteria.length > 0 || (what !== "select" && what !== "answer")) && (what !== "undo" || Boolean(last?.mayUndo))).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
                       <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key) => (backwards ? ({ "→": "←", "←": "→" }[key] ?? key) : key)).map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>
@@ -1035,8 +1049,9 @@ function Screen({ open }: { open: Open }) {
                   ))}
                 </PopoverContent>
               </Popover>
-              {mayDecide && queue !== "done" ? (
-                <label className="flex basis-full items-center justify-between gap-2 text-xs text-muted-foreground max-lg:hidden">
+              {decideLook ? (
+                // Done moves on by itself from no vote, so the switch is not there: its row keeps its room, so the bar holds still between the queues.
+                <label className={cn("flex basis-full items-center justify-between gap-2 text-xs text-muted-foreground max-lg:hidden", queue === "done" && "invisible")}>
                   {nextAfter}
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
@@ -1046,8 +1061,8 @@ function Screen({ open }: { open: Open }) {
               <span className="ms-auto flex items-center gap-1 lg:hidden">
                 {/* Under a laptop's width the criteria sit below the paper, a long scroll away on a phone: the way to them is beside the votes. */}
                 {criteria.length ? <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs lg:hidden" onClick={() => reach("data-criteria")}><ListChecks />{t("criteria.title")}</Button> : null}
-                {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />{t("note.label")}</Button> : null}
-                {mayDecide && queue !== "done" ? (
+                {decideLook && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />{t("note.label")}</Button> : null}
+                {decideLook && queue !== "done" ? (
                   <Popover>
                     <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t("bar.more")}><MoreHorizontal /></Button></PopoverTrigger>
                     <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
@@ -1071,7 +1086,7 @@ function Screen({ open }: { open: Open }) {
 
             {/* The vote */}
             <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 min-[110rem]:max-w-none">
-              {!mayDecide ? (
+              {!decideLook ? (
                 <ShutNote by={resolving ? "settler" : "reviewer"}>{gone ? t("shut.left") : finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setWriting(null); } }} onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER_REASON); }}>
