@@ -52,7 +52,7 @@ export function changeSays(say: EffectsSay, row: Logged): { what: string; effect
     }
   }
   // A change from before changes carried a code, or one another page made: said by its kind.
-  const KIND: Record<string, string> = { created: t("activity.started"), renamed: t("activity.renamed", { name: words.quoted(detail) }), edited: detail || t("activity.changedIt"), added: detail ? t("activity.added", { what: detail }) : t("activity.addedPapers"), removed: detail ? t("activity.removed", { what: detail }) : t("activity.removedPapers"), screened: t("activity.screened", { count }), paused: t("activity.paused"), resumed: t("activity.resumed"), retried: t("activity.readAgain"), stopped: t("activity.stopped"), moved: detail ? t("activity.movedFrom", { from: detail }) : t("activity.movedAway"), shared: detail ? t("activity.shared", { who: detail }) : t("activity.sharedSomeone") };
+  const KIND: Record<string, string> = { created: t("activity.started"), renamed: t("activity.renamed", { name: words.quoted(detail) }), edited: detail || t("activity.changedIt"), added: detail ? t("activity.added", { what: detail }) : t("activity.addedPapers"), removed: detail ? t("activity.removed", { what: detail }) : t("activity.removedPapers"), screened: t("activity.screened", { count }), paused: t("activity.paused"), resumed: t("activity.resumed"), retried: t("activity.readAgain"), stopped: t("activity.stopped"), moved: detail ? t("activity.movedFrom", { from: detail }) : t("activity.movedAway"), shared: detail ? t("activity.shared", { who: detail }) : t("activity.sharedSomeone"), unshared: t("activity.unshared", { who: detail }) };
   return { what: KIND[row.happened] ?? (detail || t("activity.changedIt")) };
 }
 

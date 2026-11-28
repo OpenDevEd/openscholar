@@ -61,6 +61,12 @@ export const noteShared = async (ctx: Pick<MutationCtx, "db">, shared: Shared, b
   await noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.pageId ?? shared.id, happened: "shared", detail: withWhom });
 };
 
+/** Writes to an item's Activity that `by` took it back from someone, or took back the invitation to them, named as given. */
+export const noteUnshared = async (ctx: Pick<MutationCtx, "db">, shared: Shared, by: Pick<Acting, "userId" | "author">, fromWhom: string) => {
+  if (shared.kind === "chat") return;
+  await noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.pageId ?? shared.id, happened: "unshared", detail: fromWhom });
+};
+
 /**
  * Gives a person the item, or changes what they may do with it. An invitation to their address
  * that still waits is answered by it, and its place becomes theirs.
