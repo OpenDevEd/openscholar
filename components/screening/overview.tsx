@@ -38,7 +38,7 @@ import { reasonCriteria, DAY, pairOf, inOrder, leftOf, removedOf, readersOf, spl
 import { gotThrough, modelsAdvise, theirsOf } from "@/lib/screening/rules";
 import type { ExportTab } from "./dialogs";
 import { papersHref, reviewerHref, screenHref, settingsHref } from "./links";
-import { SENTENCE_CHIP, settleMeans, votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
+import { Faces, SENTENCE_CHIP, settleMeans, votesBy, TONE, FIGURE_LINK, HATCH, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, StateChip } from "./pieces";
 import { pdfsMissed, pdfsOf, unreadPdfs, useFigures, PACE_DAYS, type Figures, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -794,65 +794,30 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
           </div>
-          {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
-          <ScrollArea axis="x" shades className={cn(LIST, "@max-2xl/overview:hidden")}>
-          <div className="p-4">
-            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, max-content) repeat(${reviewers.length - 1}, minmax(3.5rem, 7rem))` }}>
-              <span />
-              {reviewers.slice(0, -1).map((reviewer) => (
-                <LinkOr key={reviewer.id} href={reviewerHref(screening.id, reviewer)} aria-label={votesBy(tp, reviewer, open.me)} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
-                  <ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} />
-                  <span className="max-w-full truncate text-2xs text-muted-foreground">{short(reviewer)}</span>
-                </LinkOr>
-              ))}
-              {reviewers.slice(1).map((a, i) => (
-                <div key={a.id} className="contents">
-                  <LinkOr href={reviewerHref(screening.id, a)} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></LinkOr>
-                  {reviewers.slice(0, -1).map((b, column) => {
-                    if (column > i) return <span key={b.id} className="h-12" />;
-                    const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
-                    if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">{t("agreement.noneYet")}</span>;
-                    return (
-                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
-                        <span className="text-xs font-semibold tabular-nums">{kappaText(format, pair.kappa, t("kappa.none"))}</span>
-                        <span className="text-2xs tabular-nums text-foreground/70">{sameText(t, pair)}</span>
-                      </NextLink>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-          </ScrollArea>
-          {/* On a phone, the same pairs as a list. */}
-          <ul className={cn(LIST, "@2xl/overview:hidden")}>
-            {pairs.map(({ a, b, pair }) => {
-              const row = (
-                <>
-                  <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
-                    {/* How often they agreed goes under the names, so the names keep the row's width on a phone. */}
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="[overflow-wrap:anywhere]">{words.listed([b.name, a.name])}</span>
-                      {pair ? <span className="text-xs tabular-nums text-muted-foreground">{sameText(t, pair)}</span> : null}
-                    </span>
-                    {pair ? (
-                      <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
-                    ) : (
-                      <span className="shrink-0 text-xs text-muted-foreground">{t("agreement.noneYet")}</span>
-                    )}
-                </>
-              );
-              return (
+          {/* Each pair that has voted on the same papers, the one that agrees least first: who, how often they voted alike, and the figure. Each opens the papers they both voted on. */}
+          <ul className={cn(LIST, "grid @5xl/overview:grid-cols-2 @5xl/overview:divide-y-0 @5xl/overview:[&>li]:border-b @5xl/overview:[&>li]:border-border-subtle @5xl/overview:[&>li:nth-child(odd)]:border-e @5xl/overview:[&>li:last-child:nth-child(odd)]:col-span-2 @5xl/overview:[&>li:last-child:nth-child(odd)]:border-e-0 @5xl/overview:[&>li:last-child]:border-b-0")}>
+            {pairs.flatMap((one) => (one.pair ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2)).map(({ a, b, pair }) => (
               <li key={`${a.id}:${b.id}`}>
-                {/* A pair with nothing to compare opens no list, as on the grid. */}
-                {pair ? (
-                  <NextLink href={pairHref(screening.id, a, b)} className={cn(PAIR_ROW, "outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40")}>{row}</NextLink>
-                ) : (
-                  <div className={PAIR_ROW}>{row}</div>
-                )}
+                <NextLink href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
+                  <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-7" /><ReviewerMark reviewer={a} className="-ms-2 size-7 ring-2 ring-card" /></span>
+                  <span className="min-w-0 space-y-1.5">
+                    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="font-medium [overflow-wrap:anywhere]">{words.listed([b.id === open.me ? words.t("you") : b.name, a.id === open.me ? words.t("you") : a.name])}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{t("agreement.sameCount", { same: Math.round(pair.same * pair.papers), papers: pair.papers })}</span>
+                    </span>
+                    <Meter value={pair.same} max={1} fill="bg-foreground/25" />
+                  </span>
+                  <span className="min-w-12 rounded-md px-2 py-1 text-center text-sm font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{kappaText(format, pair.kappa, t("kappa.none"))}</span>
+                </NextLink>
               </li>
-              );
-            })}
+            ))}
+            {/* The pairs with no paper in common yet, in one line rather than a square each. */}
+            {pairs.some((one) => !one.pair) ? (
+              <li className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground @5xl/overview:col-span-2">
+                <Faces reviewers={[...new Map(pairs.filter((one) => !one.pair).flatMap((one) => [one.a, one.b]).map((one) => [one.id, one])).values()]} me={open.me} max={5} mark="size-6" />
+                <span>{t("agreement.notYet", { count: pairs.filter((one) => !one.pair).length })}</span>
+              </li>
+            ) : null}
           </ul>
         </div>
       )}
