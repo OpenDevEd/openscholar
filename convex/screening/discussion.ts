@@ -20,14 +20,26 @@ import { SCREENING_TEXT } from "./validators";
 const LINES = 100;
 const ANSWERED = 200;
 
-/** The paper and what the person is to its screening, where they may read what was written about it. */
-async function readable(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">, paperId: Id<"screeningResults">) {
+/**
+ * What the person is to a screening, worked out once, and a way to ask of any of its papers whether they may read
+ * what was written about it: the paper with their standing, or null. Null for a screening they can't open.
+ */
+async function readerOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">) {
   const standing = await standingOn(ctx, actor, jobId);
-  const paper = standing?.job.shape === 2 ? await ctx.db.get("screeningResults", paperId) : null;
-  if (!standing || paper?.jobId !== jobId) return null;
-  const [votes, reviewers] = await Promise.all([votesOf(ctx, paperId), reviewersOf(ctx, jobId)]);
-  const kinds = new Map(reviewers.map((one) => [one._id, one.kind]));
-  return seesPaper(standing.job, paper.result, votes, (id) => kinds.get(id), standing.reviewer?._id) ? { ...standing, paper } : null;
+  if (!standing || standing.job.shape !== 2) return null;
+  const kinds = new Map((await reviewersOf(ctx, jobId)).map((one) => [one._id, one.kind]));
+  return async (paperId: Id<"screeningResults">) => {
+    const paper = await ctx.db.get("screeningResults", paperId);
+    if (paper?.jobId !== jobId) return null;
+    return seesPaper(standing.job, paper.result, await votesOf(ctx, paperId), (id) => kinds.get(id), standing.reviewer?._id) ? { ...standing, paper } : null;
+  };
+}
+
+/** The people some lines name, each read once. */
+async function peopleIn(ctx: Pick<QueryCtx, "db">, lines: Array<{ by: Id<"users">; to?: Id<"users"> }>) {
+  const ids = [...new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))];
+  const users = await Promise.all(ids.map((id) => ctx.db.get("users", id)));
+  return new Map(ids.map((id, at) => [id, personOf(users[at] ?? null, id)]));
 }
 
 const person = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -38,14 +50,10 @@ export const threadAction = defineUserQuery({
   args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ id: v.id("screeningMessages"), by: person, at: v.number(), text: v.string(), to: v.optional(person), open: v.optional(v.boolean()) })),
   run: async (ctx, actor, { jobId, paperId, paginationOpts }) => {
-    if (!(await readable(ctx, actor, jobId, paperId))) return { page: [], isDone: true, continueCursor: "" };
+    if (!(await (await readerOf(ctx, actor, jobId))?.(paperId))) return { page: [], isDone: true, continueCursor: "" };
     const read = await ctx.db.query("screeningMessages").withIndex("by_result", (q) => q.eq("resultId", paperId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LINES) });
     const lines = read.page;
-    const people = new Map<Id<"users">, { id: Id<"users">; name: string; imageUrl?: string }>();
-    for (const id of new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))) {
-      const user = await ctx.db.get("users", id);
-      people.set(id, personOf(user, id));
-    }
+    const people = await peopleIn(ctx, lines);
     return { ...read, page: lines.map((line) => ({ id: line._id, by: people.get(line.by)!, at: line._creationTime, text: line.text, ...(line.to ? { to: people.get(line.to)! } : {}), ...(line.open ? { open: true } : {}) })) };
   },
 });
@@ -58,18 +66,15 @@ export const allAction = defineUserQuery({
   args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ id: v.id("screeningMessages"), paperId: v.id("screeningResults"), by: person, at: v.number(), text: v.string(), to: v.optional(person) })),
   run: async (ctx, actor, { jobId, paginationOpts }) => {
-    const standing = await standingOn(ctx, actor, jobId);
-    if (!standing || standing.job.shape !== 2) return { page: [], isDone: true, continueCursor: "" };
+    const readable = await readerOf(ctx, actor, jobId);
+    if (!readable) return { page: [], isDone: true, continueCursor: "" };
     const read = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LINES) });
     // Each paper the page speaks of is looked at once: whether the person may read what was written about it.
-    const seen = new Map<Id<"screeningResults">, boolean>();
-    for (const paperId of new Set(read.page.map((line) => line.resultId))) seen.set(paperId, (await readable(ctx, actor, jobId, paperId)) !== null);
-    const lines = read.page.filter((line) => seen.get(line.resultId));
-    const people = new Map<Id<"users">, { id: Id<"users">; name: string; imageUrl?: string }>();
-    for (const id of new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))) {
-      const user = await ctx.db.get("users", id);
-      people.set(id, personOf(user, id));
-    }
+    const papers = [...new Set(read.page.map((line) => line.resultId))];
+    const shown = await Promise.all(papers.map(readable));
+    const seen = new Set(papers.filter((_, at) => shown[at] !== null));
+    const lines = read.page.filter((line) => seen.has(line.resultId));
+    const people = await peopleIn(ctx, lines);
     return { ...read, page: lines.map((line) => ({ id: line._id, paperId: line.resultId, by: people.get(line.by)!, at: line._creationTime, text: line.text, ...(line.to ? { to: people.get(line.to)! } : {}) })) };
   },
 });
@@ -85,7 +90,7 @@ export const say = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), text: v.string(), to: v.optional(v.id("users")) },
   returns: v.null(),
   handler: async (ctx, actor, { jobId, paperId, text, to }) => {
-    const place = await readable(ctx, actor, jobId, paperId);
+    const place = await (await readerOf(ctx, actor, jobId))?.(paperId);
     if (!place) throw createError("NOT_FOUND", "Paper not found");
     const { job, reviewer, paper } = place;
     if (!reviewer && job.rule?.resolver !== actor.userId) throw createError("FORBIDDEN", "Only this screening's reviewers, and whoever settles its conflicts, write here.");

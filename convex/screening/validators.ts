@@ -94,15 +94,19 @@ export const screeningPaperInputValidator = v.object({
  * The papers a job reads (#341), resolved on the server: a saved search by its ID in the
  * browser, a collection, every saved paper, or an earlier job's included papers.
  */
-export const paperSetValidator = v.union(
+/** The sets a job reads and a screening's sources both name the same way. */
+const sharedSets = [
   v.object({ kind: v.literal("search"), searchId: v.string() }),
   v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
   v.object({ kind: v.literal("saved") }),
   v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
-  // The person's own Zotero library, or one collection of it, or a group's of theirs: read through their connected account.
-  v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()) }),
   // An Evidence Library's records as the person may read them there (plans/evidence-library-sources): its keys are kept when the job starts.
   v.object({ kind: v.literal("evidenceLibrary"), libraryId: v.id("evidenceLibraries"), source: librarySourceValidator }),
+] as const;
+export const paperSetValidator = v.union(
+  ...sharedSets,
+  // The person's own Zotero library, or one collection of it, or a group's of theirs: read through their connected account.
+  v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()) }),
 );
 
 /** Where a job's included papers go: nowhere, a new collection by name, or one the person has. */
@@ -255,11 +259,7 @@ export const voteStatusValidator = v.union(v.literal("waiting"), v.literal("cast
  * table kept in storage, PDFs kept in storage, or a pasted list of DOIs kept there too.
  */
 export const sourceSetValidator = v.union(
-  v.object({ kind: v.literal("search"), searchId: v.string() }),
-  v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
-  v.object({ kind: v.literal("saved") }),
-  v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
-  v.object({ kind: v.literal("evidenceLibrary"), libraryId: v.id("evidenceLibraries"), source: librarySourceValidator }),
+  ...sharedSets,
   // `deep`: with the collections under the one it names.
   v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), deep: v.optional(v.boolean()) }),
   // `columns`: which of a table's columns is the title, the abstract and so on, where its headings didn't say.
