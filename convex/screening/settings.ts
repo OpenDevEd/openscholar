@@ -24,7 +24,7 @@ import { check } from "./living";
 import { logChange, type Line } from "./log";
 import { addModel, addPerson, takeOff } from "./reviewers";
 import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, NEEDS_CRITERIA, ruleFrom, ruleInput, sourceInput, starsFrom } from "./screenings";
-import { startWaitingVotes } from "./slots";
+import { papersLimit, startWaitingVotes } from "./slots";
 import { everyValidator, libraryDestinationValidator, prunable, RETIRED_CRITERIA, saveToValidator, SCREENING_TEXT } from "./validators";
 
 /** The criteria taken off by a save, kept by key and name with the ones taken off before: a criterion put back is no longer one of them. */
@@ -207,7 +207,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     const source = sources.find((one) => one._id === sourceId && one.removedAt === undefined);
     if (!source) continue;
     await ctx.db.patch("screeningSources", sourceId, { removedAt: now });
-    await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: null });
+    await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: null, by: actor.userId });
   }
   // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
   for (const range of change.ranges ?? []) {
@@ -286,9 +286,9 @@ export const follow = internalMutation({
 
 /** Takes a removed source's papers out of the screening, a step at a time: each is stamped, and the worker takes it out of the counts and keeps its votes on record. */
 export const withdraw = internalMutation({
-  args: { jobId: v.id("screeningJobs"), sourceId: v.id("screeningSources"), cursor: v.union(v.string(), v.null()) },
+  args: { jobId: v.id("screeningJobs"), sourceId: v.id("screeningSources"), cursor: v.union(v.string(), v.null()), /** Who took the source out: the reading that fills the room it leaves is theirs. */ by: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { jobId, sourceId, cursor }) => {
+  handler: async (ctx, { jobId, sourceId, cursor, by }) => {
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_source", (q) => q.eq("jobId", jobId).eq("sourceId", sourceId)).paginate({ cursor, numItems: FOLLOW });
     const sources = await sourcesOf(ctx, jobId);
     for (const paper of page.page) {
@@ -305,7 +305,6 @@ export const withdraw = internalMutation({
         const spread = { ...keeper.fileSpread };
         if (filed && paper.pages) spread[band] = { papers: (spread[band]?.papers ?? 0) + 1, pages: (spread[band]?.pages ?? 0) + paper.pages, most: Math.max(spread[band]?.most ?? 0, paper.pages) };
         await ctx.db.patch("screeningSources", keeper._id, { taken: keeper.taken + 1, duplicates: Math.max(0, keeper.duplicates - 1), ...(filed ? { filed: (keeper.filed ?? 0) + 1, filePages: (keeper.filePages ?? 0) + (paper.pages ?? 0), fileSpread: spread } : {}) });
-        if (paper.result === "include") await moveIncluded(ctx, jobId, sourceId, keeper._id);
         await ctx.db.delete("screeningMerged", row._id);
         continue;
       }
@@ -314,19 +313,24 @@ export const withdraw = internalMutation({
       for (const vote of await votesOf(ctx, paper._id)) if (vote.flagged) await ctx.db.patch("screeningVotes", vote._id, { flagged: undefined });
     }
     if (page.page.length) await bookkeepLater(ctx);
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: page.continueCursor });
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.settings.withdraw, { jobId, sourceId, cursor: page.continueCursor, ...(by ? { by } : {}) });
+    else await refill(ctx, jobId, by);
     return null;
   },
 });
 
-/** An included paper that moved from one source to another is counted under the one it moved to (the Overview's and the flow's included papers by source). */
-async function moveIncluded(ctx: MutationCtx, jobId: Id<"screeningJobs">, from: Id<"screeningSources">, to: Id<"screeningSources">) {
-  const progress = await progressRow(ctx, jobId);
-  if (!progress) return;
-  const included = { ...progress.included };
-  included[from] = Math.max(0, (included[from] ?? 1) - 1);
-  included[to] = (included[to] ?? 0) + 1;
-  await ctx.db.patch("screeningJobProgress", progress._id, { included });
+/**
+ * Once a source's papers have left, the room they leave under the plan's cap is filled: the sources that stopped at the
+ * cap are read again from their start, passing over the papers the screening holds, until it is full again. A source
+ * added in the same save that met the cap while the papers were still leaving is one of them.
+ */
+async function refill(ctx: MutationCtx, jobId: Id<"screeningJobs">, by: Id<"users"> | undefined) {
+  const job = await ctx.db.get("screeningJobs", jobId);
+  if (!job || job.finishedAt !== undefined) return;
+  const capped = (await sourcesOf(ctx, jobId)).filter((source) => source.capped && source.removedAt === undefined && source.state === "done");
+  if (!capped.length || job.totalPapers - ((await progressRow(ctx, jobId))?.withdrawn ?? 0) >= (await papersLimit(ctx, job.workspaceId))) return;
+  for (const source of capped) await ctx.db.patch("screeningSources", source._id, readAgain(source));
+  await startCheck(ctx, job, by);
 }
 
 /** Saves the papers a screening has included to the collection it was just sent to, a step at a time. */

@@ -44,8 +44,8 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   if (onlyWaiting && mine?.status !== "waiting") return false;
   if (onlyAt !== undefined && (mine?.status !== "cast" || mine.at !== onlyAt)) return false;
   if (decision === null) {
-    // Taken back: the place is theirs again to vote from.
-    if (mine?.status !== "cast") return;
+    // Taken back: the place is theirs again to vote from. One with no vote to take back changes nothing.
+    if (mine?.status !== "cast") return false;
     await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined });
     return void (await stamp(ctx, paperId));
   }
@@ -53,7 +53,9 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const known = new Set([...(job.criteria ?? []), ...(onlyAt !== undefined ? (job.retiredCriteria ?? []) : [])].map((criterion) => criterion.key));
   // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
-  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: Date.now(), flagged: answersOnly && mine?.status === "cast" ? mine.flagged : undefined };
+  // Answers joining a vote already cast leave it the vote it was: cast when it was, which "first vote decides" reads, and asked for again if it was.
+  const kept = answersOnly && mine?.status === "cast" ? mine : undefined;
+  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: kept?.at ?? Date.now(), flagged: kept?.flagged };
   if (mine) await ctx.db.patch("screeningVotes", mine._id, vote);
   else {
     // A reviewer who votes on a paper that wasn't given to them is on it from then on.
@@ -61,6 +63,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
     await countDealt(ctx, new Map([[reviewer._id, 1]]));
   }
   await stamp(ctx, paperId);
+  return vote.at;
 }
 
 /**
@@ -73,10 +76,10 @@ export const vote = workspaceMutation({
   // When the vote it cast was cast, for an Undo to name (`onlyAt`); null where it took a vote back or changed nothing.
   returns: v.union(v.number(), v.null()),
   handler: async (ctx, actor, args) => {
-    const done = (await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined })) !== false;
+    const at = await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined });
     await bookkeepLater(ctx);
-    // A mutation's clock stands still: this is the moment the vote was stamped with.
-    return done && args.decision !== null ? Date.now() : null;
+    // The moment the vote stands stamped with, which an Undo names, or the moment one was taken back; null where nothing changed.
+    return at === false ? null : (at ?? Date.now());
   },
 });
 

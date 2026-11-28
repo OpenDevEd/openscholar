@@ -64,7 +64,7 @@ const QUEUE_PAGE = 12;
 const QUEUE_TONE: Record<Queue, Tone> = { todo: "primary", again: "warning", done: "neutral", conflicts: "info" };
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
 /** The keys, each with who it is for: a vote's are for whoever may vote here, an answer's for whoever answers the criteria. */
-const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
+const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select", "answer"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
 /** The queue's sheet is open: the one value its key in the address takes. */
 const LIST_OPEN = ["open"] as const;
 const WHY_OPEN = ["reasons"] as const;
@@ -458,7 +458,8 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
       // A save the server refused was never made: there is nothing to take back.
       if (last.saved === undefined) return;
       if (last.resolved) return open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
-      return open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then(restamp, failed);
+      // Changed since in another tab, the vote stands: the counts it moved here stand with it.
+      return open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then((at) => { if (at === null) for (const [kind, by] of movesOf(last)) moved(kind, by); restamp(last.before ? at : null); }, failed);
     });
     // Undo pressed again at once waits for this one, so it names the moment this one stamps.
     if (earlier) earlier.pending = Promise.all([earlier.pending, undoing]);

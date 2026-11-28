@@ -182,14 +182,15 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       // The slot is free once the reading has come back, whatever it left on the row: a reading that didn't go ahead leaves it waiting.
       const finished = vote.slot && vote.workId === undefined;
       if (finished) freed++;
-      if (same(vote.counted, counted) && !finished && vote.decision === cast.decision) continue;
+      const decided = cast.status !== "cast" || (vote.decision === cast.decision && vote.reason === cast.reason);
+      if (same(vote.counted, counted) && !finished && decided) continue;
       changed = true;
       // A vote that stops counting is no longer one of its reviewer's papers, and one that counts again is.
       if ((vote.counted?.status === "discarded") !== (counted.status === "discarded")) dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) + (counted.status === "discarded" ? -1 : 1));
       add(countsOf(vote.reviewerId), vote.counted, -1);
       add(countsOf(vote.reviewerId), counted, 1);
-      // A model's vote follows its answers under the criteria as they are now, so its decision can move with them.
-      await ctx.db.patch("screeningVotes", vote._id, { counted, ...(cast.status === "cast" && vote.decision !== cast.decision ? { decision: cast.decision, reason: cast.reason } : {}), ...(finished ? { slot: undefined } : {}) });
+      // A model's vote follows its answers under the criteria as they are now: its decision, and the criterion it excludes for, can move with them.
+      await ctx.db.patch("screeningVotes", vote._id, { counted, ...(!decided ? { decision: cast.decision, reason: cast.reason } : {}), ...(finished ? { slot: undefined } : {}) });
     }
     if (changed || before.length !== after.length) {
       for (const [i, x] of before.entries()) for (const y of before.slice(i + 1)) pair(x.id, y.id, x.decision, y.decision, -1);

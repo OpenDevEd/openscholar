@@ -1937,8 +1937,9 @@ function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKee
   const name = <ReviewerName reviewer={gone ? { ...reviewer, left: undefined } : reviewer} you={you} className={cn("text-sm font-medium", gone && "text-muted-foreground line-through")} />;
   return (
     <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER, DIVIDED_ROW)}>
-      <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
-        <ReviewerMark reviewer={reviewer} className="size-9 self-start" />
+      {/* Mark, name and chips start on one line: where the chips run onto more lines, the name stays beside the mark, never centred below it. */}
+      <div className={cn("flex min-h-14 items-start gap-x-3 gap-y-2 px-4 py-2.5 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
+        <ReviewerMark reviewer={reviewer} className="size-9" />
         {/* The name keeps its room: where the chips beside it are many, they run onto a second line among themselves. */}
         <div className="min-w-40 flex-1">
           {href && !gone ? <NextLink href={href} className="flex w-fit max-w-full rounded outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{name}</NextLink> : name}

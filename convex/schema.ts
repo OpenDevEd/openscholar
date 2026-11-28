@@ -1824,6 +1824,8 @@ export default defineSchema({
     from: v.number(),
     found: v.number(),
     added: v.number(),
+    // Papers taken out with a source that it brought back: in the screening again, in the places they had.
+    restored: v.optional(v.number()),
     // Of what it found, the records left out (no abstract, nothing to read): neither added nor already in the screening.
     left: v.optional(v.number()),
     // The sources it couldn't read (each failed, with why, on its own row): a check that read none of them found nothing it can vouch for.

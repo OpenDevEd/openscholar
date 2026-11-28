@@ -141,7 +141,7 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   if ((await firstCheck(ctx, job._id))?._id === check._id) return;
   const now = Date.now();
   // Only a check asked for once it was finished reopens it: one already under way when it was marked finished doesn't undo that.
-  const reopens = Boolean(check.added) && job.finishedAt !== undefined && check.at >= job.finishedAt;
+  const reopens = Boolean(check.added || check.restored) && job.finishedAt !== undefined && check.at >= job.finishedAt;
   if (reopens) {
     await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now) });
     await placeGuests(ctx, job._id);

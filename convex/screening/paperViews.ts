@@ -108,7 +108,6 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
 const holdsAll = (paper: Paper, needle: string) => nameHas(paper.searchText ?? "", needle);
 const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOf(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
-const cardOf = (ctx: Pick<QueryCtx, "db">, resultId: Id<"screeningResults">) => ctx.db.query("screeningCards").withIndex("by_result", (q) => q.eq("resultId", resultId)).unique();
 /** A screening's cards narrowed the most telling way asked for, in the order their papers were added: the rest is asked of each card. */
 const cardsOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, { result, reason, check, source }: { result?: Doc<"screeningCards">["result"]; reason?: string; check?: Id<"screeningChecks">; source?: Id<"screeningSources"> }) => {
   const cards = stream(ctx.db, schema).query("screeningCards");
@@ -235,8 +234,11 @@ export const counts = workspaceQuery({
         : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
     ).take(COUNTED + 1);
     if (theirs.length > COUNTED) return null;
-    // Each of their votes is matched to its paper's card.
-    for (const card of await Promise.all(theirs.map((vote) => cardOf(ctx, vote.resultId)))) if (card && keeps(card)) tally[card.result]++;
+    // Their votes are matched to the cards of the other narrowing, read in one range: one read a vote would pass a transaction's index ranges on a large screening.
+    const cards = await cardsOf(ctx, jobId, { reason, check, source }).take(COUNTED + 1);
+    if (cards.length > COUNTED) return null;
+    const cardOn = new Map(cards.map((card) => [card.resultId, card]));
+    for (const vote of theirs) { const card = cardOn.get(vote.resultId); if (card && keeps(card)) tally[card.result]++; }
     return tally;
   },
 });

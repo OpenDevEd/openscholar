@@ -970,14 +970,18 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   // What whoever settled it wrote down, beside the votes they settled: the reason a settled paper has.
   const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(state.note)}</span></TooltipHint> : null;
   if (!visible) return settledNote;
-  // A paper excluded by hand gives the reason it was excluded for, as one its votes excluded does: the settler's.
   if (state.result === "conflict" || (state.resolvedBy && !(state.result === "exclude" && reasonKey))) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
+  // A paper excluded by hand gives the reason the settler gave, beside the votes they settled and what they wrote.
+  if (state.resolvedBy && reasonKey) {
+    const link = narrow({ result: "exclude", reason: reasonKey }, ["reason"]);
+    return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" /><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>{settledNote}</span>;
+  }
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     // Another reason is what its voter wrote: it stands beside the reason, as a settled paper's note does.
-    const written = reasonKey === OTHER_REASON ? (state.resolvedBy ? state.note : cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note) : undefined;
+    const written = reasonKey === OTHER_REASON ? cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note : undefined;
     if (written) return <span className="flex min-w-0 items-center gap-2"><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>

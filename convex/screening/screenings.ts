@@ -116,7 +116,11 @@ export { EVERY_MS };
 
 /** Whether a source's row is the source the form holds: the same thing read, and the same papers of it. */
 const stable = (value: unknown): string => (Array.isArray(value) ? `[${value.map(stable).join(",")}]` : value && typeof value === "object" ? `{${Object.keys(value).sort().map((key) => `${key}:${stable((value as Record<string, unknown>)[key])}`).join(",")}}` : JSON.stringify(value) ?? "");
-const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput>) => row.removedAt === undefined && stable(row.set) === stable(sent.set) && row.first === sent.first && row.last === sent.last;
+/** The same source asked for again: a range from its first paper to its last, or past it, is the whole of it, and reads nothing again. */
+const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput>) => {
+  const end = (last: number | undefined) => (last === undefined || (row.total !== undefined && last >= row.total) ? Infinity : last);
+  return row.removedAt === undefined && stable(row.set) === stable(sent.set) && (row.first ?? 1) === (sent.first ?? 1) && end(row.last) === end(sent.last);
+};
 
 /** A screening that isn't started yet, if it is this person's to go on with. */
 async function draftOf(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs"> | undefined) {

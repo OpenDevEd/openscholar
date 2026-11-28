@@ -21,7 +21,7 @@ const run = (t: T) => runAll(t, vi.runAllTimers);
 
 const audit = (t: T, jobId: Id<"screeningJobs">) => t.run((ctx) => auditJob(ctx, jobId));
 
-/** Votes on a screening's papers in a fixed pattern: every holder includes one, the first two split on the next, and one alone votes Maybe on the third. */
+/** Votes on a screening's papers in a fixed pattern: every holder includes one, the first two split on the next, and one alone votes Maybe on the third; every holder excludes the last. */
 async function voteAround({ t, as, workspaceId }: Team, jobId: Id<"screeningJobs">) {
   const { papers, holders } = await t.run(async (ctx) => {
     const papers = await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect();
@@ -33,7 +33,9 @@ async function voteAround({ t, as, workspaceId }: Team, jobId: Id<"screeningJobs
   const vote = (name: string, paperId: Id<"screeningResults">, decision: (typeof DECISIONS)[number]) => as[name]!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId, decision, ...(decision === "exclude" ? { reason: "other" } : {}) });
   for (const [i, paperId] of papers.entries()) {
     const on = holders[paperId] ?? [];
-    if (i % 3 === 0) for (const name of on) await vote(name, paperId, "include");
+    // The last paper everyone excludes, so the reasons it is counted under are audited too.
+    if (i === papers.length - 1) for (const name of on) await vote(name, paperId, "exclude");
+    else if (i % 3 === 0) for (const name of on) await vote(name, paperId, "include");
     else if (i % 3 === 1) for (const [k, name] of on.slice(0, 2).entries()) await vote(name, paperId, k ? "exclude" : "include");
     else if (on[0]) await vote(on[0], paperId, "maybe");
     // Each vote is settled before the next is cast, as it is when people vote: under "the first vote decides", a second vote on a settled paper is refused.

@@ -9,8 +9,8 @@
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalQuery, type QueryCtx } from "../_generated/server";
-import { isFinal, settle, type Ballot, type Result } from "../../lib/screening/rules";
-import { tallyOfReviewer, tallyUnder, type Tally } from "./facets";
+import { isFinal, NAMED_REASONS, NO_REASON, settle, type Ballot, type Result } from "../../lib/screening/rules";
+import { excludedFor, tallyOfReviewer, tallyUnder, type Tally } from "./facets";
 
 const DECISIONS = ["include", "maybe", "exclude"] as const;
 /** Rows of one kind an audit reads: a screening's papers, votes or cards, which a screening of 5,000 papers stays well within. */
@@ -38,8 +38,6 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
   const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
   for (const paper of live) if (paper.result && paper.result !== "waiting") counts[paper.result]++;
   if (JSON.stringify(counts) !== JSON.stringify({ include: 0, maybe: 0, exclude: 0, conflict: 0, ...progress.counts })) problems.push(`counts say ${JSON.stringify(progress.counts)}, the papers ${JSON.stringify(counts)}`);
-  const reasons = Object.values(progress.reasons ?? {}).reduce((sum, n) => sum + n, 0);
-  if (reasons !== counts.exclude) problems.push(`${reasons} reasons for ${counts.exclude} excluded papers`);
 
   // Each paper's card, which the Papers page lists and narrows by, says what the paper says.
   const cardOf = new Map(cards.map((card) => [card.resultId, card]));
@@ -108,6 +106,10 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
   for (const [key, counted] of matrices) if (counted.some((n) => n > 0)) problems.push(`a pair's agreement isn't kept: ${key}`);
 
   // The counts Papers narrows by (./facets.ts), against the cards and votes: a moment behind the writes, so read once they settle.
+  const byReason = new Map<string, number>();
+  for (const paper of live) if (paper.result === "exclude") byReason.set(paper.reason ?? NO_REASON, (byReason.get(paper.reason ?? NO_REASON) ?? 0) + 1);
+  const keptReasons = await excludedFor(ctx, jobId, [...new Set([...byReason.keys(), ...(job.criteria ?? []).map((one) => one.key), ...NAMED_REASONS])]);
+  for (const key of new Set([...byReason.keys(), ...Object.keys(keptReasons)])) if ((byReason.get(key) ?? 0) !== (keptReasons[key] ?? 0)) problems.push(`reason ${key}: counted ${keptReasons[key] ?? 0} excluded, the papers ${byReason.get(key) ?? 0}`);
   const tally = (results: Result[]): Tally => ({ include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0, ...Object.fromEntries((["include", "maybe", "exclude", "conflict", "waiting"] as const).map((result) => [result, results.filter((one) => one === result).length])) });
   const liveCards = cards.filter((card) => !card.withdrawn);
   for (const sourceId of new Set(liveCards.flatMap((card) => (card.sourceId ? [card.sourceId] : [])))) {
