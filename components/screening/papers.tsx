@@ -674,7 +674,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                   <TableHeader className={cn("z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] [&_tr]:border-b-0", fits && cn("sticky", UNDER_FRAME))}>
                     <TableRow className="hover:bg-transparent">
                       <TableHead rowSpan={2} className="w-12 ps-4 sm:ps-6">
-                        <Checkbox checked={allShown} onCheckedChange={() => setPicked(allShown ? pickedPapers.filter((p) => !shown.some((one) => one.id === p.id)) : [...pickedPapers, ...shown.filter((one) => !chosen.includes(one.id))])} aria-label={t("table.selectPage")} />
+                        <Checkbox checked={allShown ? true : shown.some((one) => chosen.includes(one.id)) ? "indeterminate" : false} onCheckedChange={() => setPicked(allShown ? pickedPapers.filter((p) => !shown.some((one) => one.id === p.id)) : [...pickedPapers, ...shown.filter((one) => !chosen.includes(one.id))])} aria-label={t("table.selectPage")} />
                       </TableHead>
                       <TableHead rowSpan={2} aria-sort={sort === "title" ? "ascending" : sort === "title-desc" ? "descending" : "none"}>
                         {sortHead(t("table.paper"), sort === "title" || sort === "title-desc", sort === "title" ? "title-desc" : "title", sort === "title-desc")}

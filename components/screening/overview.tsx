@@ -746,10 +746,11 @@ function KappaHelp() {
   );
 }
 
-/** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 /** The fewest papers two reviewers vote on in common for their agreement to be listed, and how many pairs the list shows before "Show all". */
 const MIN_SHARED = 3;
 const PAIRS_SHOWN = 6;
+
+/** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 
 function Agreement({ open, figures }: { open: Open; figures: Figures | undefined }) {
   const { screening } = open;
@@ -808,14 +809,16 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
           </div>
           {/* Each pair that has voted on the same papers, the one that agrees least first: who, how often they voted alike, and the figure. Each opens the papers they both voted on. */}
-          <ul className={cn(LIST, "grid @5xl/overview:grid-cols-2 @5xl/overview:divide-y-0 @5xl/overview:[&>li]:border-b @5xl/overview:[&>li]:border-border-subtle @5xl/overview:[&>li:nth-child(odd)]:border-e @5xl/overview:[&>li:last-child]:border-b-0")}>
+          {/* The lines between the rows are the gap over the frame's colour: one line between any two, however many there are to a row. */}
+          <ul className="grid gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle @5xl/overview:grid-cols-2 [&>li]:bg-card">
             {shownPairs.map(({ a, b, pair }, at) => (
               // Two to a row on a wide card: a last one alone takes the whole row, so no half of it stands empty.
-              <li key={`${a.id}:${b.id}`} className={cn(at === shownPairs.length - 1 && shownPairs.length % 2 === 1 && "@5xl/overview:col-span-2 @5xl/overview:border-e-0")}>
+              <li key={`${a.id}:${b.id}`} className={cn(at === shownPairs.length - 1 && shownPairs.length % 2 === 1 && "@5xl/overview:col-span-2")}>
                 <NextLink href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
                   <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-7" /><ReviewerMark reviewer={a} className="-ms-2 size-7 ring-2 ring-card" /></span>
                   <span className="min-w-0 space-y-1.5">
-                    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    {/* Who, then how often alike, each on its line: every row lays out the same, however long the names. */}
+                    <span className="flex flex-col gap-0.5">
                       <span className="font-medium [overflow-wrap:anywhere]">{words.listed([b.id === open.me ? words.t("you") : b.name, a.id === open.me ? words.t("you") : a.name])}</span>
                       <span className="text-xs tabular-nums text-muted-foreground">{t("agreement.sameCount", { same: Math.round(pair.same * pair.papers), papers: pair.papers })}</span>
                     </span>
@@ -848,7 +851,6 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   );
 }
 
-/** A reviewer pair's row in the phone's list. */
 
 // ── Facts ────────────────────────────────────────────────────────────────────────────────────────
 

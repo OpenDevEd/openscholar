@@ -939,7 +939,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     )),
     <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name={t("goes.nowhere")} facts={<Chip>{t("goes.kept")}</Chip>} />,
   ];
-  const fromCollection = draft.sources.find((source) => source.kind === "collection");
+  // Every source excluded papers can leave, named together: the switch takes them out of each of them.
+  const prunable = draft.sources.filter(prunes);
+  const fromCollection = prunable.length ? { name: words.listed(prunable.map((source) => source.name)) } : undefined;
   // In a community: one of the person's collections there that they can change, or a new one of theirs.
   const there = draft.destination.kind === "community" ? draft.destination.community : undefined;
   const community = communities.libraries.find((one) => one.libraryId === there?.libraryId) ?? communities.libraries[0];

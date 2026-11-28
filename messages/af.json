@@ -9498,7 +9498,6 @@
     "sources": {
       "add": "Voeg by",
       "added": "Bygevoeg",
-      "empty": "Leeg",
       "in": "In {name}",
       "andMore": "{name} en nog {count, number}",
       "remove": "Verwyder {name}",

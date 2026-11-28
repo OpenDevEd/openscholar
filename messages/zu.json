@@ -9497,7 +9497,6 @@
     "sources": {
       "add": "Engeza",
       "added": "Kungeziwe",
-      "empty": "Akunalutho",
       "in": "Ku-{name}",
       "andMore": "{name} nabanye abangu-{count, number}",
       "remove": "Susa i-{name}",

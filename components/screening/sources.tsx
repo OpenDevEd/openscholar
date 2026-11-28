@@ -96,7 +96,8 @@ export function OfferRow({ offer, label, icon: Icon, chips, trail, added, onAdd,
       </div>
       {/* A row that says where it sits has that for its second line: what else it has to say stands where its count would. */}
       {count ? <Chip className="max-sm:ms-7">{words.count("papers", offer.total)}</Chip> : trail && chips ? <span className="flex shrink-0 items-center gap-1.5 max-sm:ms-7">{chips}</span> : null}
-      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || (count && !offer.total)} onClick={onAdd}>{added ? <><Check />{t("added")}</> : count && !offer.total ? t("empty") : <><Plus />{t("add")}</>}</Button>
+      {/* A search with no papers has nothing to add: its count says so, and no button stands there saying it again. Its room is kept, so the rows' buttons line up. */}
+      {count && !offer.total && !added ? <span aria-hidden className="w-24 shrink-0 max-sm:hidden" /> : <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added} onClick={onAdd}>{added ? <><Check />{t("added")}</> : <><Plus />{t("add")}</>}</Button>}
     </div>
   );
 }

@@ -9497,7 +9497,6 @@
     "sources": {
       "add": "追加",
       "added": "追加済み",
-      "empty": "空",
       "in": "{name} 内",
       "andMore": "{name} ほか {count, number} 件",
       "remove": "{name} を削除",

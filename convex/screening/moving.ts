@@ -44,7 +44,7 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
   const most = await roomFor(ctx, shared);
   if (most !== undefined && outside.length && (await countOf(ctx, itemGuestsOf(job._id))) + outside.length > most) {
     const there = await workspaceName(ctx, to);
-    throw createError("VALIDATION_ERROR", `${outside.length === 1 ? "One of its reviewers isn't" : `${outside.length} of its reviewers aren't`} in ${there} and would be its ${outside.length === 1 ? "guest" : "guests"} there. ${there}'s plan allows ${most.toLocaleString("en")} on a screening. Take reviewers off it first.`);
+    throw createError("VALIDATION_ERROR", `${outside.length === 1 ? "One reviewer isn't" : `${outside.length} reviewers aren't`} in ${there} and would join as ${outside.length === 1 ? "a guest" : "guests"} there. ${there}'s plan allows ${most.toLocaleString("en")} on a screening. Take reviewers off it first.`);
   }
   const saved = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   const settles = job.rule ? await ctx.db.get("users", job.rule.resolver) : null;

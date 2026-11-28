@@ -9498,7 +9498,6 @@
     "sources": {
       "add": "إضافة",
       "added": "مُضاف",
-      "empty": "فارغ",
       "in": "في {name}",
       "andMore": "{name} و{count, number} أخرى",
       "remove": "إزالة {name}",

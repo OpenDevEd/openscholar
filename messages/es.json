@@ -9498,7 +9498,6 @@
     "sources": {
       "add": "Añadir",
       "added": "Añadida",
-      "empty": "Vacía",
       "in": "En {name}",
       "andMore": "{name} y {count, number} más",
       "remove": "Quitar {name}",

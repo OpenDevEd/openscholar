@@ -9497,7 +9497,6 @@
     "sources": {
       "add": "जोड़ें",
       "added": "जोड़ा गया",
-      "empty": "खाली",
       "in": "{name} में",
       "andMore": "{name} और {count, number} और",
       "remove": "{name} हटाएँ",
