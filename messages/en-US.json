@@ -8361,7 +8361,7 @@
         "repeated": "That question is already a criterion",
         "full": "A screening has up to {count} criteria",
         "guidanceFor": "Guidance for criterion {n}",
-        "guidancePlaceholder": "Such as \"Primary schools only, not universities\"",
+        "guidancePlaceholder": "What counts and what doesn't, in a few words",
         "wordsFor": "Words to mark for criterion {n}",
         "wordsFull": "Only the first {count} words are kept",
         "wordsPlaceholder": "Words with commas between them",

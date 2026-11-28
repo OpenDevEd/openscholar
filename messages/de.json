@@ -8362,7 +8362,7 @@
         "repeated": "Diese Frage ist schon ein Kriterium",
         "full": "Ein Screening hat höchstens {count} Kriterien",
         "guidanceFor": "Hinweise für Kriterium {n}",
-        "guidancePlaceholder": "Etwa „Nur Grundschulen, keine Universitäten“",
+        "guidancePlaceholder": "Was zählt und was nicht, in wenigen Worten",
         "wordsFor": "Zu markierende Wörter für Kriterium {n}",
         "wordsFull": "Nur die ersten {count} Wörter werden behalten",
         "wordsPlaceholder": "Wörter, durch Kommas getrennt",

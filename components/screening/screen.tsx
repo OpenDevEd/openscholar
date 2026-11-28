@@ -816,7 +816,17 @@ function Screen({ open }: { open: Open }) {
             </Button>
             {askedChip}
             <Sheet open={listing} onOpenChange={setListing}>
-              <SheetContent side={tablet ? "bottom" : "left"} className={cn("flex flex-col gap-0 p-0 min-[87.5rem]:hidden", tablet && "max-h-[85dvh]")}>
+              {/* Q opens the queue and Q shuts it, as the shortcuts say: it opens on itself, not in its search box, where Q would be typed. */}
+              <SheetContent
+                side={tablet ? "bottom" : "left"}
+                className={cn("flex flex-col gap-0 p-0 outline-none min-[87.5rem]:hidden", tablet && "max-h-[85dvh]")}
+                onOpenAutoFocus={(event) => { event.preventDefault(); (event.currentTarget as HTMLElement).focus(); }}
+                onKeyDown={(event) => {
+                  if (event.key.toLowerCase() !== "q" || event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest("input, textarea, [role=menu], [role=listbox]")) return;
+                  event.preventDefault();
+                  setListing(false);
+                }}
+              >
                 <SheetHeader className="space-y-3 border-b border-border-subtle p-4">
                   <SheetTitle>{t(`queue.${queue}`)}</SheetTitle>
                   <SheetDescription className="sr-only">{t("queue.everyPaper")}</SheetDescription>

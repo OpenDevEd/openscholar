@@ -8362,7 +8362,7 @@
         "repeated": "Esa pregunta ya es un criterio",
         "full": "Un cribado tiene como máximo {count} criterios",
         "guidanceFor": "Orientación para el criterio {n}",
-        "guidancePlaceholder": "Por ejemplo, «Solo escuelas primarias, no universidades»",
+        "guidancePlaceholder": "Qué cuenta y qué no, en pocas palabras",
         "wordsFor": "Palabras que marcar para el criterio {n}",
         "wordsFull": "Solo se guardan las primeras {count} palabras",
         "wordsPlaceholder": "Palabras separadas por comas",

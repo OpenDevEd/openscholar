@@ -8362,7 +8362,7 @@
         "repeated": "Essa pergunta já é um critério",
         "full": "Uma triagem tem no máximo {count} critérios",
         "guidanceFor": "Orientações para o critério {n}",
-        "guidancePlaceholder": "Por exemplo, \"Só escolas primárias, não universidades\"",
+        "guidancePlaceholder": "O que conta e o que não conta, em poucas palavras",
         "wordsFor": "Palavras a marcar para o critério {n}",
         "wordsFull": "Só as primeiras {count} palavras são guardadas",
         "wordsPlaceholder": "Palavras separadas por vírgulas",

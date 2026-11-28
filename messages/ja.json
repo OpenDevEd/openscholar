@@ -8361,7 +8361,7 @@
         "repeated": "その質問はすでに基準です",
         "full": "スクリーニングの基準は最大{count}件です",
         "guidanceFor": "基準 {n} の目安",
-        "guidancePlaceholder": "例「小学校のみ、大学は除く」",
+        "guidancePlaceholder": "該当するもの・しないものを簡潔に",
         "wordsFor": "基準 {n} でマークする語",
         "wordsFull": "最初の{count}語だけが保存されます",
         "wordsPlaceholder": "カンマで区切った語",

@@ -8361,7 +8361,7 @@
         "repeated": "Cette question est déjà un critère",
         "full": "Un tri compte au plus {count} critères",
         "guidanceFor": "Consignes pour le critère {n}",
-        "guidancePlaceholder": "Par exemple « Écoles primaires seulement, pas les universités »",
+        "guidancePlaceholder": "Ce qui compte et ce qui ne compte pas, en quelques mots",
         "wordsFor": "Mots à surligner pour le critère {n}",
         "wordsFull": "Seuls les {count} premiers mots sont gardés",
         "wordsPlaceholder": "Mots séparés par des virgules",

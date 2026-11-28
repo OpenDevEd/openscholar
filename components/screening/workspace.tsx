@@ -203,7 +203,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     <>
       {/* What is passing ends the rule's line on Overview and Papers. On Settings and Screen it ends the tabs' line, which never wraps: on Screen a rule line that wrapped while it showed would move the paper being read when it went. */}
       <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" || view === "screen" ? passing : null}</div>
-      {view === "settings" ? null : <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{view === "screen" ? null : <span className="ms-auto flex shrink-0 empty:hidden">{passing}</span>}</div>}
+      {/* The rule's line is on every tab, Settings too, so going from one to another moves nothing under it. */}
+      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{view === "screen" || view === "settings" ? null : <span className="ms-auto flex shrink-0 empty:hidden">{passing}</span>}</div>
     </>
   );
 
@@ -214,11 +215,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // While it is read the frame holds its place: the name the list showed, or a line where it will be, the strip of pages, and lines where the page will be.
   if (read === undefined || goingHome) {
     const name = listedNames.get(id);
-    // The same frame as the loaded page, element for element (MotionConfig, the page, its wrapper, the shell): when the screening arrives it fills in, never drawn again from the top.
     return (
-      <MotionConfig reducedMotion="user">
       <PageWrapper className={view === "screen" ? "lg:[&>footer]:hidden" : undefined}>
-        <div className={`contents ${AVATARS_FADE_IN} [&_[data-sticky-page-header]_h1]:min-w-32 @7xl:[&_[data-sticky-page-header]_h1]:min-w-64`}>
         <LibraryPageShell
           wide
           fill={view === "screen"}
@@ -249,9 +247,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         >
           <ListRowsSkeleton rows={6} height={64} icon={false} label={t("loading")} />
         </LibraryPageShell>
-        </div>
       </PageWrapper>
-      </MotionConfig>
     );
   }
   if (!open) {
