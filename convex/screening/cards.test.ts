@@ -13,7 +13,11 @@ it("counts a source's papers and a reviewer's by where they stand, follows a pap
   const { jobId, papers } = await started(made, ["ann", "ben"], 3);
   const source = papers[0]!.sourceId!;
   const vote = (name: string, paperId: Id<"screeningResults">, decision: "include" | "exclude") => made.as[name]!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId, decision, ...(decision === "exclude" ? { reason: "other" } : {}) });
-  const counts = (name: string, narrowed: object = {}) => made.as[name]!.query(api.screening.paperViews.counts, { workspaceId, jobId, ...narrowed });
+  // Counts are kept by a worker a moment after each change (./facets.ts): it runs before each is read.
+  const counts = async (name: string, narrowed: object = {}) => {
+    await made.t.finishAllScheduledFunctions(vi.runAllTimers);
+    return await made.as[name]!.query(api.screening.paperViews.counts, { workspaceId, jobId, ...narrowed });
+  };
   expect(await counts("ann", { source })).toEqual({ include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 3 });
 
   // The first is included by both, the second splits them, the third waits for Ben.

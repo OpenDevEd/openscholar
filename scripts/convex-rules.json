@@ -124,7 +124,6 @@
       "PAIRS_MAX": "the pairs of reviewers a screening's overview draws agreement for; a screening with more reviewers than that many pairs shows the first",
       "CHECKS_COUNTED": "a screening's checks for new papers counted for its methods paragraph: the first of them",
       "CHANGES_COUNTED": "a screening's latest activity, looked through for how often its settings were changed",
-      "RECENT_VOTES": "one person's votes of the last days, counted for their pace",
       "CHECK_COUNTED": "the papers one check added, looked at for where they stand; a check that added more shows no such count",
       "READING_LOOKED": "The rail looks at a workspace's newest open screenings for one whose models are reading: the first few, since the ring shows one."
     },
