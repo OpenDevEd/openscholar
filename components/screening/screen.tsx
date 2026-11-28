@@ -121,6 +121,8 @@ const PLACE = {
   q: parseAsString.withDefault(""),
   voted: parseAsStringLiteral(["any", ...DECISIONS] as const).withDefault("any"),
   order: parseAsStringLiteral(["dealt", "fresh", "lean"] as const).withDefault("dealt"),
+  // The queue's page, which its list keeps (lib/hooks/use-cursor-page.ts): named here only so another queue opens at its first.
+  page: parseAsString,
 };
 
 /** Screen as a page of the open screening. */
@@ -393,7 +395,8 @@ function Screen({ open }: { open: Open }) {
     else if (!picked && !fromSheet) void setPlace({ paper: paper.id }, { history: "replace" });
   };
   const answerIt = (criterion: string, answer: Answer, keep = false) => {
-    if (!paper) return;
+    // The last list's paper, standing dimmed while another is read, is answered by nobody.
+    if (!paper || switching) return;
     // A second press on the chosen answer takes it back. A key only ever sets it: pressed twice, the answer stays. What is shown is what was set here and, under it, what the vote holds, so both are counted.
     const given = { ...(resolving ? undefined : mine?.answers), ...answers[paper.id] };
     if (given[criterion] === answer && !keep) delete given[criterion];
@@ -562,7 +565,7 @@ function Screen({ open }: { open: Open }) {
       fill="labels"
       // Another queue is a step in the history, and the paper on the screen is named in its own entry first, so Back comes back to it whatever the queue has done since.
       // Changed in the address where it stands, with no trip to the server: the page stays mounted, and only the queue is read again.
-      onChange={(which) => namedThen(() => void setPlace({ queue: which === "todo" ? null : which, paper: null, q: null, voted: null, order: null }))}
+      onChange={(which) => namedThen(() => void setPlace({ queue: which === "todo" ? null : which, paper: null, q: null, voted: null, order: null, page: null }))}
       options={queues.map((which) => ({
         id: which,
         label: t(`queue.${which}`),
@@ -852,7 +855,7 @@ function Screen({ open }: { open: Open }) {
         ) : (
           <>
             {/* The paper, and everyone's votes under it: the pane in the middle, which a long paper scrolls. */}
-            <div className={cn("lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col min-[87.5rem]:col-start-2", PANE)}>
+            <div inert={switching} className={cn("lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col min-[87.5rem]:col-start-2", PANE)}>
             <ScrollArea shades className="lg:min-h-0 lg:flex-1">
               <div ref={article} tabIndex={-1} role="region" aria-label={t("paper.label")} className={cn("outline-none", BELOW_HEADER)}>
                 <AnimatePresence mode="wait" initial={false}>
@@ -911,7 +914,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* Your answers to the criteria: a pane of their own. Each paper has its own, so another paper's start at their top. */}
-            <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
+            <ScrollArea key={paper.id} inert={switching} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
               <div data-criteria className="p-5">
                 <Section
                   title={answerLook ? t("criteria.yours") : t("criteria.title")}
@@ -1020,7 +1023,7 @@ function Screen({ open }: { open: Open }) {
 
       {paper ? (
         /* The vote stays at the foot of the window: under the panes from a laptop's width, where it is the workbench's last row. From 1400px it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under that the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
-        <ActionBar aria-busy={switching || undefined} className={cn("max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0 *:transition-opacity", switching && "*:pointer-events-none *:opacity-60")}>
+        <ActionBar inert={switching} aria-busy={switching || undefined} className={cn("max-lg:fixed max-lg:inset-x-0 max-lg:z-30 md:max-lg:start-20 lg:shrink-0 *:transition-opacity", switching && "*:pointer-events-none *:opacity-60")}>
           <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES)}>
             {/* Where you are */}
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
