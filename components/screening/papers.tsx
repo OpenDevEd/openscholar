@@ -463,7 +463,9 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const settles = (reviewerId: string) => resolves(screening, reviewerId);
   // What the server has counted of the reviewer the table is narrowed to. The conflicts someone settled are not counted apart.
   const tally = reviewers.find((one) => one.id === who)?.tally;
-  const countVoted = (kind: Voted) => (!tally || kind === "settled" ? undefined : kind === "any" ? tally.cast : kind === "none" ? tally.waiting : tally[kind]);
+  // Their counts are of every paper of theirs: beside another narrowing (a source, a reason, a check, a result tab) they would promise more than the choice gives, so none is shown.
+  const narrowedElsewhere = from !== "all" || Boolean(reason) || added !== "all" || filter !== "all";
+  const countVoted = (kind: Voted) => (!tally || kind === "settled" || narrowedElsewhere ? undefined : kind === "any" ? tally.cast : kind === "none" ? tally.waiting : tally[kind]);
   // The filters, in the row over the table and in a phone's sheet.
   const filters = (trigger: string) => (
     <>
@@ -473,7 +475,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
           value={from}
           onChange={(next) => go({ source: next === "all" ? null : next })}
           className={trigger}
-          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, count: keptOf(source) }; })]}
+          choices={[{ value: "all", label: t("filter.all"), icon: <Layers />, count: open.total }, ...screening.sources.map((source) => { const Icon = kindIcon(source.kind); return { value: source.id as string, label: source.name, icon: <Icon />, ...(who || reason || added !== "all" || filter !== "all" ? {} : { count: keptOf(source) }) }; })]}
         />
       ) : null}
       {/* Any number of reviewers: with several, the table shows the papers all of them voted on. The menu stays open while they are picked. */}
