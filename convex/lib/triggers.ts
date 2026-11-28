@@ -114,7 +114,7 @@ triggers.register("itemAccess", async (ctx, change) => {
 triggers.register("itemInvitations", async (ctx, change) => {
   const waits = (one: Doc<"itemInvitations"> | null) => one?.kind === "screening" && one.state === "pending" && one.role === "editor";
   // An invitation to vote holds a reviewer's place from when it is sent (./screening/seats.ts).
-  if (waits(change.newDoc) && !waits(change.oldDoc)) await takeVotingSeat(ctx, change.newDoc!.item);
+  if (waits(change.newDoc) && !waits(change.oldDoc)) await takeVotingSeat(ctx, change.newDoc!.item, change.newDoc!.email);
   if (!waits(change.oldDoc) || waits(change.newDoc)) return;
   await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { jobId: string; cursor: null; results: Array<"waiting">; recheck: boolean; stricter: string[]; reread: boolean }, null>("screening/settings:follow"), { jobId: change.oldDoc!.item, cursor: null, results: ["waiting"], recheck: false, stricter: [], reread: false });
 });
