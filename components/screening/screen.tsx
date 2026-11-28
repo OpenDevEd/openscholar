@@ -1067,7 +1067,7 @@ function Screen({ open }: { open: Open }) {
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
               ) : null}
-              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label={t("bar.nowInConflicts")} className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">{t("bar.nowInConflicts")}</span></LinkChip> : null}
+              {madeConflict && last ? <TooltipHint label={t("bar.nowInConflicts")}><LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label={t("bar.nowInConflicts")} className="min-[87.5rem]:hidden">{/* On a phone, and in the bar's narrow first column from a laptop's width, the row has no room for the words: the sign alone keeps the bar its height, so the vote never moves under the pointer or the thumb. */}<span className="max-sm:hidden lg:hidden">{t("bar.nowInConflicts")}</span></LinkChip></TooltipHint> : null}
               {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
                 {/* Under a laptop's width the criteria sit below the paper, a long scroll away on a phone: the way to them is beside the votes. */}
