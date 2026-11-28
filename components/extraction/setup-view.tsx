@@ -48,6 +48,7 @@ import { PdfUpload } from "./pdf-upload";
 import { LibrarySources, useLibrarySources, useRowLabel } from "@/components/screening/library-sources";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, setOfRow, type HeldRow } from "@/lib/evidence-libraries/reader-sources";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 /** The sources the page offers; a Zotero set is one a chat starts an extraction from. */
 type Kind = Exclude<PickedSource["set"]["kind"], "zotero"> | "pdf";
@@ -517,7 +518,7 @@ function List({ rows, empty, stale = false, pages = false, label, children }: { 
   if (!rows) return <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{empty}</p>;
   return (
     <div style={pages ? { minHeight: SOURCE_PAGE * SOURCE_ROW + 1 } : undefined}>
-      <div className={cn(LIST, stale && "pointer-events-none opacity-60")} role="group" aria-label={label}>
+      <div className={cn(LIST, stale && STALE_ROWS)} role="group" aria-label={label}>
         {children}
       </div>
     </div>

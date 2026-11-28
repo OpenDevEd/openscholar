@@ -24,6 +24,7 @@ import { DisclosureButton, DisclosureContent } from "../disclosure-button";
 import { SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
 import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 /** The running community the Added papers row reads, and the person's role there; null until it runs. */
 export function useAddedPapersCommunity(libraryId: Id<"evidenceLibraries">) {
@@ -101,7 +102,7 @@ export function AddedPapersRow({ libraryId, adding, onAddingChange }: {
             <DisclosureContent>
               <section aria-label={t("name")} className="border-b border-border-subtle bg-muted/40 px-4 pb-3 pt-3">
                 {/* Every page holds five rows' height, so a short last page doesn't move the pager. */}
-                <ul className={cn("min-h-[calc(5*3.5rem+4*1px)] divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background transition-opacity", stale && "pointer-events-none opacity-60")} inert={stale}>
+                <ul className={cn("min-h-[calc(5*3.5rem+4*1px)] divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background", stale && STALE_ROWS)} inert={stale}>
                   {papers?.papers.map((paper) => (
                     <li key={paper.itemKey}>
                       <AddedLine paper={paper} libraryId={libraryId} community={community} onChanged={refresh} />

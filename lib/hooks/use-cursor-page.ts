@@ -14,7 +14,7 @@ type PageArgs<Query extends PageQuery> = Omit<Query["_args"], "paginationOpts">;
 type PageItem<Query extends PageQuery> = Query["_returnType"]["page"][number];
 type Read = { cursor: string | null; numItems: number };
 type Result<Query extends PageQuery> = { page: PageItem<Query>[]; isDone: boolean; continueCursor: string };
-type Shown<Query extends PageQuery> = Result<Query> & { key: string; number: number; offset: number; from: Result<Query>[] };
+type Shown<Query extends PageQuery> = Result<Query> & { key: string; list: string | undefined; number: number; offset: number; from: Result<Query>[] };
 /** Where a page after the first starts, and how many rows the pages before it held. */
 type Start = { cursor: string; offset: number };
 /** The first page's place: one array, so a list at its first page is the same place on every draw. */
@@ -47,8 +47,13 @@ const invalidCursor = (error: Error) =>
  * A list that ends exactly on a full page finds that out from the empty page after it, and
  * stops offering next there until a row is added after it.
  */
-/** `open`: a query anyone may read, signed in or not, which doesn't wait for sign-in. */
-type Options = { open?: boolean };
+/**
+ * `open`: a query anyone may read, signed in or not, which doesn't wait for sign-in.
+ * `list`: what makes it another list rather than another page, search or order of the same one, such as a tab or a
+ * filter. While the rows up are of another list than the one asked for, `isOther` says so: a page shows skeletons
+ * then, never the last list's rows under the new tab, and only dims rows of the same list (`isStale`).
+ */
+type Options = { open?: boolean; list?: string };
 /** `scroll: false` for a list that is one part of a long page: its next page opens where the list is, not at the page's top. */
 type PlacedOptions = Options & { scroll?: boolean };
 
@@ -96,7 +101,7 @@ export function useCursorPageAt<Query extends PageQuery>(name: string, query: Qu
   return usePages({ placed, setPlaced: (next) => void setPlaced(next) }, query, args, pageSize, options);
 }
 
-function usePages<Query extends PageQuery>(place: Place | null, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: Options) {
+function usePages<Query extends PageQuery>(place: Place | null, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false, list }: Options) {
   const { canRunProtectedQueries } = useAuthReadiness();
   // A page of another size starts somewhere else, so the size is part of what the pages are of.
   const key = JSON.stringify([args, pageSize]);
@@ -180,11 +185,11 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
       // person works through it, the rows past its last read never reach it: it is read again from its start, which
       // they fill. A sparse filter leaves it as short as it was, and it is then shown as it is.
       setState({ ...current, reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }], id: id + 1, end: undefined, packed: count });
-    } else if (shown?.key === key && shown.number === starts.length + 1 && shown.from.length === from.length && shown.from.every((result, i) => result === from[i])) {
+    } else if (shown?.key === key && shown.list === list && shown.number === starts.length + 1 && shown.from.length === from.length && shown.from.every((result, i) => result === from[i])) {
       data = shown;
     } else {
       const offset = starts.at(-1)?.offset ?? 0;
-      data = { key, number: starts.length + 1, offset, from, page: from.flatMap((result) => result.page), isDone: last.isDone, continueCursor: last.continueCursor };
+      data = { key, list, number: starts.length + 1, offset, from, page: from.flatMap((result) => result.page), isDone: last.isDone, continueCursor: last.continueCursor };
     }
   }
 
@@ -217,6 +222,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   if (ended === undefined && peek !== undefined && peekAt === peek && !emptied && !passing && after !== undefined && !(after instanceof Error) && found !== foundBefore) setState({ ...current, found });
   const more = ended === undefined ? peek === undefined || after instanceof Error || (after === undefined ? (foundBefore ?? true) : found) : found;
 
+  // A list not read (`"skip"`) lets go of the rows it showed: asked for again, it is another list's rows until it is read.
+  if (args === "skip" && shown !== undefined) setShown(undefined);
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
   const page = visible?.number ?? want + 1;
   // The same array until the page shown changes, so what's derived from it isn't rebuilt each render.
@@ -227,6 +234,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     isLoading: visible === undefined || (page === 1 && peek !== undefined && ended === undefined && after === undefined && foundBefore === undefined),
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */
     isStale: visible !== undefined && visible !== data,
+    /** What's shown is of another `list` than the one asked for, still waiting for it: its rows aren't this list's. */
+    isOther: visible !== undefined && visible.list !== list,
     /** The number of the page shown, from 1; it moves when the page it steps to arrives. */
     page,
     /** How many rows the pages before the one shown held; short pages make it less than (page - 1) × size. */

@@ -17,6 +17,11 @@ export const LIST_TILE =
  * Every filter shares the search box's small text. A select's value takes the
  * free space, so a wide select still reads from the left.
  */
+/**
+ * Rows of a list still up while the next page, search or order is read (`isStale` from lib/hooks/use-cursor-page.ts):
+ * dimmed and out of reach of the pointer, the same in every list.
+ */
+export const STALE_ROWS = "pointer-events-none opacity-60 transition-opacity";
 export const LIST_FILTER = "border-transparent bg-inset text-xs shadow-none md:text-xs *:data-[slot=select-value]:flex-1";
 
 /**

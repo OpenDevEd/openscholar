@@ -29,7 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "./admin-area-link";
-import { LIST_FILTER } from "./list-controls";
+import { LIST_FILTER, STALE_ROWS } from "./list-controls";
 import { LibraryImage } from "./library-image";
 import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 
@@ -220,7 +220,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
           ) : rows.length ? (
             <ul
               style={hasPages ? { minHeight: `${PER_PAGE * ROW_REM}rem` } : undefined}
-              className={cn(read.isStale && "opacity-60")}
+              className={cn(read.isStale && STALE_ROWS)}
               inert={read.isStale || undefined}
             >
               {rows.map((community) => <CommunityRow key={community.invitationId ?? (community.application ? `applied:${community.id}` : community.id)} community={community} actions={actions} />)}

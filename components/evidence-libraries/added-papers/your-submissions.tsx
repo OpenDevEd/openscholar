@@ -19,7 +19,7 @@ import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { StatusChip } from "../configuration/status-chip";
-import { LIST_FILTER, ListEmpty, ListLoading } from "../list-controls";
+import { LIST_FILTER, ListEmpty, ListLoading, STALE_ROWS } from "../list-controls";
 import { CommunityIcon } from "../your-communities";
 import { LINK, refusalOr } from "./add-papers-dialog";
 
@@ -86,7 +86,7 @@ export function YourSubmissions({ search, heading, submissions }: { search: stri
           // A full page's height while there are pages, so a short last page keeps the pager where it was.
           <ul
             key={`${show}:${search}:${read.page}`}
-            className={cn("fade-enter divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle", read.isStale && "opacity-60")}
+            className={cn("fade-enter divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle", read.isStale && STALE_ROWS)}
             inert={read.isStale || undefined}
             style={read.hasPages ? { minHeight: `calc(${PER_PAGE * ROW_REM}rem + ${PER_PAGE + 1}px)` } : undefined}
           >

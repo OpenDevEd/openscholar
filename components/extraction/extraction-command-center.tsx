@@ -24,7 +24,7 @@ import {
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListLoading, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
@@ -101,7 +101,7 @@ export function ExtractionCommandCenter() {
     >
       {/* Extractions shared with the person that wait for their answer, above their own. */}
       <WaitingInvitations rows={invitations} kind="extraction" text={searchFilter} />
-      <div className={cn(jobs.isStale && "pointer-events-none opacity-60")}>
+      <div className={cn(jobs.isStale && STALE_ROWS)}>
         {/* The list waits for the invitations above it too, so they never push it down. */}
         {jobs.isLoading || invitations === undefined ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={jobs.items}

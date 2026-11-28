@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
+import { LIST_FILTER, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { useTranslations, useLocale } from "next-intl";
 
 interface SmartPaginationProps {
@@ -56,7 +56,7 @@ export function SmartPagination({
   const endIdx = offset + displayedCount;
 
   return (
-    <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
+    <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 sm:flex-row md:px-6", stale && STALE_ROWS)}>
       {/* Left: Results info */}
       {/* The sides share the row evenly, so the steps stay put when the count's text changes width. */}
       <p className="text-xs tabular-nums text-muted-foreground sm:flex-1">

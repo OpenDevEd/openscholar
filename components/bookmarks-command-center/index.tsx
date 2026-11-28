@@ -24,7 +24,7 @@ import { useAppToast } from "@/lib/toast";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ListLoading, STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { useResearchStatus } from "@/lib/research/provider";
 import { ResearchAccountChangedError } from "@/lib/research/binding";
@@ -224,7 +224,7 @@ export function BookmarksCommandCenter() {
     >
 
       {/* A page kept from before the filter, sort or search changed is dimmed and takes no clicks until its own arrives. */}
-      <div className={cn(bookmarks.isStale && "opacity-60")} inert={bookmarks.isStale || undefined}>
+      <div className={cn(bookmarks.isStale && STALE_ROWS)} inert={bookmarks.isStale || undefined}>
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={bookmarks.items}
           viewMode={bookmarkViewMode}

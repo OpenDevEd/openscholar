@@ -45,6 +45,7 @@ import { useWorkspace } from "./workspace";
 import { useOpenInAddress } from "./address";
 import { useWords } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { STALE_ROWS } from "@/components/evidence-libraries/list-controls";
 
 /** What the Overview shows, kept in its address: the order of the reviewers, and every check for new papers or the last few. */
 const PLACE = {
@@ -706,7 +707,7 @@ function Unread({ open, model }: { open: Open; model: Reviewer }) {
   return (
     <>
       <ScrollArea shades className="-mx-1 min-h-10 flex-1">
-        <ul className={cn("space-y-0.5 transition-opacity", papers.isStale && "opacity-60")}>
+        <ul className={cn("space-y-0.5", papers.isStale && STALE_ROWS)}>
           {/* Each row holds two lines, the most a title takes here, loaded or not: a long title never moves what is under the list. */}
           {Array.from({ length: coming }, (_, at) => <li key={`coming-${at}`} aria-hidden className="min-h-10 space-y-1 px-1 py-1"><SkeletonBar className="h-3.5 w-11/12" /><SkeletonBar className="h-3.5 w-3/5" /></li>)}
           {papers.items.map((paper) => (
