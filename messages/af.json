@@ -8764,7 +8764,7 @@
       "upToDate": "Op datum",
       "allSettled": "{finish, select, true {Elke artikel is beslis, gereed om af te sluit} other {Elke artikel is beslis}}",
       "none": "{show, select, you {Niks het jou nodig nie.} finished {Geen voltooide sifterings nie.} open {Geen sifterings aan die gang nie.} other {Geen sifterings nie.}}",
-      "noneElse": "Niks anders in hierdie werkruimte het jou nodig nie.",
+      "noneElse": "Niks in hierdie werkruimte het jou nodig nie.",
       "noneCalled": "{show, select, you {Niks genaamd {name} het jou nodig nie.} finished {Geen voltooide sifterings genaamd {name} nie.} open {Geen sifterings aan die gang genaamd {name} nie.} other {Geen sifterings genaamd {name} nie.}}",
       "showEvery": "Wys elke siftering",
       "pagerItems": "sifterings",

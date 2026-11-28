@@ -8763,7 +8763,7 @@
       "upToDate": "已是最新",
       "allSettled": "{finish, select, true {所有论文均已定案，可以完成} other {所有论文均已定案}}",
       "none": "{show, select, you {没有需要你处理的。} finished {没有已完成的筛选。} open {没有进行中的筛选。} other {没有筛选。}}",
-      "noneElse": "此工作区中没有其他需要你处理的内容。",
+      "noneElse": "此工作区中没有需要你处理的内容。",
       "noneCalled": "{show, select, you {没有名为 {name} 且需要你处理的筛选。} finished {没有名为 {name} 的已完成筛选。} open {没有名为 {name} 的进行中筛选。} other {没有名为 {name} 的筛选。}}",
       "showEvery": "显示所有筛选",
       "pagerItems": "个筛选",

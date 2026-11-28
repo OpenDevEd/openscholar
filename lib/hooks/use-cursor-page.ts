@@ -119,6 +119,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }] as Read[], id: 0, end: undefined as { page: number; cursor: string } | undefined,
     // How many rows the page held when it was last read again from its start for running out of reads.
     packed: undefined as number | undefined,
+    // Where a full page that may be the list's last stops: one row past it is read, so next is offered only where there is one.
+    peek: undefined as string | undefined,
   });
   const [state, setState] = useState(() => fresh(named ?? 0, NO_STARTS, NO_STARTS));
   // A list that keeps its page to itself keeps it here, for as long as it is the same list.
@@ -128,7 +130,7 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   const moved = state.key !== key || state.placed !== placed;
   const current = moved ? from(state.key === key ? state.known.slice(0, placed) : NO_STARTS, state.key === key ? state.known : NO_STARTS) : state;
   if (moved) setState(current);
-  const { starts, reads, id, known, want } = current;
+  const { starts, reads, id, known, want, peek } = current;
   const ended = current.end?.page === starts.length ? current.end.cursor : undefined;
 
   const run = args !== "skip" && (open || canRunProtectedQueries);
@@ -139,11 +141,13 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
       const request = (read: Read) => ({ query, args: { ...args, paginationOpts: { ...read, id } } });
       const page = Object.fromEntries(reads.map((read, i) => [String(i), request(read)]));
       // On the page the list ended on, the read after it stays up, so next comes back when a row is added there.
-      return ended === undefined ? page : { ...page, after: request({ cursor: ended, numItems: 1 }) };
+      // After a full page, the read of one row past it says whether there is a next page before anyone steps to it.
+      const past = ended ?? peek;
+      return past === undefined ? page : { ...page, after: request({ cursor: past, numItems: 1 }) };
     },
     // `key` stands for `args`, and the name for `query`, whose `api.*` reference is a new object on every read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [run, getFunctionName(query), key, reads, id, ended],
+    [run, getFunctionName(query), key, reads, id, ended, peek],
   );
   const results = useQueries(requests) as Record<string, Result<Query> | Error | undefined>;
   const read = reads.map((_, i) => results[String(i)]);
@@ -200,10 +204,13 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     if (data !== shown) setShown(data);
   }
   if (passing) data = undefined;
+  const peekAt = data !== undefined && !data.isDone && data.page.length >= pageSize && ended === undefined ? data.continueCursor : undefined;
+  if (data !== undefined && !emptied && peekAt !== peek) setState({ ...current, peek: peekAt });
 
   // Past the page the list ended on there is more once the read after it finds a row, or stops short of the end.
   const after = results.after;
-  const more = ended === undefined || (after !== undefined && !(after instanceof Error) && (after.page.length > 0 || !after.isDone));
+  const found = after !== undefined && !(after instanceof Error) && (after.page.length > 0 || !after.isDone);
+  const more = ended === undefined ? peek === undefined || after === undefined || after instanceof Error || found : found;
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
   const page = visible?.number ?? want + 1;
@@ -211,8 +218,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
   return {
     items,
-    /** Nothing has loaded yet. */
-    isLoading: visible === undefined,
+    /** Nothing has loaded yet, or a first full page still waits to know whether a page comes after it: the pager comes with the rows, never after them. */
+    isLoading: visible === undefined || (page === 1 && peek !== undefined && ended === undefined && after === undefined),
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */
     isStale: visible !== undefined && visible !== data,
     /** The number of the page shown, from 1; it moves when the page it steps to arrives. */
@@ -220,7 +227,7 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
     /** How many rows the pages before the one shown held; short pages make it less than (page - 1) × size. */
     offset: visible?.offset ?? 0,
     /** Whether the list runs past one page, from the page shown, so a pager stays up while the next loads. */
-    hasPages: page > 1 || (visible !== undefined && !visible.isDone),
+    hasPages: page > 1 || (visible !== undefined && !visible.isDone && more),
     canPrevious: starts.length > 0,
     canNext: data !== undefined && !data.isDone && more,
     previous: () => step(starts.slice(0, -1)),

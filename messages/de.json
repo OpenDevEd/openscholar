@@ -8764,7 +8764,7 @@
       "upToDate": "Aktuell",
       "allSettled": "{finish, select, true {Alle Artikel sind entschieden, bereit zum Abschließen} other {Alle Artikel sind entschieden}}",
       "none": "{show, select, you {Nichts wartet auf Sie.} finished {Keine abgeschlossenen Screenings.} open {Keine laufenden Screenings.} other {Keine Screenings.}}",
-      "noneElse": "Sonst braucht dich in diesem Arbeitsbereich nichts.",
+      "noneElse": "In diesem Arbeitsbereich braucht Sie nichts.",
       "noneCalled": "{show, select, you {Nichts namens {name} wartet auf Sie.} finished {Keine abgeschlossenen Screenings namens {name}.} open {Keine laufenden Screenings namens {name}.} other {Keine Screenings namens {name}.}}",
       "showEvery": "Alle Screenings anzeigen",
       "pagerItems": "Screenings",

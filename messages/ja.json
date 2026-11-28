@@ -8763,7 +8763,7 @@
       "upToDate": "最新です",
       "allSettled": "{finish, select, true {すべての論文の結果が確定しました。完了にできます} other {すべての論文の結果が確定しました}}",
       "none": "{show, select, you {対応が必要なものはありません。} finished {完了したスクリーニングはありません。} open {進行中のスクリーニングはありません。} other {スクリーニングはありません。}}",
-      "noneElse": "このワークスペースで他に対応が必要なものはありません。",
+      "noneElse": "このワークスペースで対応が必要なものはありません。",
       "noneCalled": "{show, select, you {「{name}」という名前で対応が必要なものはありません。} finished {「{name}」という名前の完了したスクリーニングはありません。} open {「{name}」という名前の進行中のスクリーニングはありません。} other {「{name}」という名前のスクリーニングはありません。}}",
       "showEvery": "すべてのスクリーニングを表示",
       "pagerItems": "件",

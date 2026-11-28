@@ -8763,7 +8763,7 @@
       "upToDate": "À jour",
       "allSettled": "{finish, select, true {Tous les articles sont tranchés, prêt à terminer} other {Tous les articles sont tranchés}}",
       "none": "{show, select, you {Rien ne vous attend.} finished {Aucun criblage terminé.} open {Aucun criblage en cours.} other {Aucun criblage.}}",
-      "noneElse": "Rien d’autre dans cet espace de travail n’attend après vous.",
+      "noneElse": "Rien dans cet espace de travail n’attend après vous.",
       "noneCalled": "{show, select, you {Rien de nommé {name} ne vous attend.} finished {Aucun criblage terminé nommé {name}.} open {Aucun criblage en cours nommé {name}.} other {Aucun criblage nommé {name}.}}",
       "showEvery": "Afficher tous les criblages",
       "pagerItems": "criblages",

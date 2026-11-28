@@ -71,9 +71,13 @@ export function CommandCenterFilters<TSort extends string>({
         className="w-56 rounded-full"
       />
       <Select value={currentSort} onValueChange={(value) => onSortChange(value as TSort)}>
-        <SelectTrigger size="sm" aria-label={t("sortBy")} className={cn("w-40 rounded-full px-3.5", LIST_FILTER)}>
+        <SelectTrigger size="sm" aria-label={t("sortBy")} className={cn("w-auto min-w-40 rounded-full px-3.5", LIST_FILTER)}>
           <ArrowUpDown className="size-3.5" />
-          <SelectValue />
+          {/* As wide as its longest order, whichever is picked: no label is cut, and picking another moves nothing beside it. */}
+          <span className="grid flex-1 text-start">
+            <span className="[grid-area:1/1]"><SelectValue /></span>
+            {sortOptions.map((option) => <span key={option.value} aria-hidden className="invisible whitespace-nowrap [grid-area:1/1]">{option.label}</span>)}
+          </span>
         </SelectTrigger>
         <SelectContent>
           {sortOptions.map((option) => (

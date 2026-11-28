@@ -8763,7 +8763,7 @@
       "upToDate": "Up to date",
       "allSettled": "{finish, select, true {Every paper is settled, ready to finish} other {Every paper is settled}}",
       "none": "{show, select, you {Nothing needs you.} finished {No finished screenings.} open {No screenings in progress.} other {No screenings.}}",
-      "noneElse": "Nothing else in this workspace needs you.",
+      "noneElse": "Nothing in this workspace needs you.",
       "noneCalled": "{show, select, you {Nothing called {name} needs you.} finished {No finished screenings called {name}.} open {No screenings in progress called {name}.} other {No screenings called {name}.}}",
       "showEvery": "Show every screening",
       "pagerItems": "screenings",
@@ -8938,7 +8938,7 @@
           "between": "{from, number} to {to, number}",
           "above": "{from, number} and up"
         },
-        "sameOf": "{share, number, percent} same of {count, plural, one {# paper} other {# papers}}",
+        "sameOf": "Same vote on {share, number, percent} of {count, plural, one {# paper} other {# papers}}",
         "kept": "How far the reviewers agree shows once you have voted on every paper of yours. Before that, it would give away how the others voted.",
         "none": "How far the reviewers agree shows here once two of them have voted on the same papers.",
         "mean": "Mean pairwise Cohen's kappa",

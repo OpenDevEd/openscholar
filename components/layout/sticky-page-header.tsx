@@ -38,8 +38,8 @@ export function StickyPageHeader({ children, wide = false }: { children: ReactNo
 
   return (
     <div ref={ref} data-sticky-page-header className="sticky top-[var(--app-navbar-height)] z-20 border-b border-sidebar-border bg-background data-scrolls:static">
-      {/* As wide as a wide page under it (components/evidence-libraries/library-page-shell.tsx), so their left edges stay together. */}
-      <div className={wide ? "mx-auto max-w-[115rem] px-4 sm:px-6" : "container mx-auto max-w-6xl px-4 sm:px-6"}>{children}</div>
+      {/* As wide as a wide page under it (components/evidence-libraries/library-page-shell.tsx), and ending where it ends, so both edges line up with its card. */}
+      <div className={wide ? "mx-auto max-w-[115rem] px-4 sm:px-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl px-4 sm:px-6"}>{children}</div>
     </div>
   );
 }

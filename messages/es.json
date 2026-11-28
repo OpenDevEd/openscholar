@@ -8764,7 +8764,7 @@
       "upToDate": "Al día",
       "allSettled": "{finish, select, true {Todos los artículos están resueltos, listo para terminar} other {Todos los artículos están resueltos}}",
       "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
-      "noneElse": "Nada más en este espacio de trabajo te necesita.",
+      "noneElse": "Nada en este espacio de trabajo te necesita.",
       "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
       "showEvery": "Mostrar todos los cribados",
       "pagerItems": "cribados",

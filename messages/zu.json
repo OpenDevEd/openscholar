@@ -8763,7 +8763,7 @@
       "upToDate": "Kusesikhathini",
       "allSettled": "{finish, select, true {Onke amaphepha axazululiwe, sekulungele ukuqedwa} other {Onke amaphepha axazululiwe}}",
       "none": "{show, select, you {Akukho okudinga wena.} finished {Azikho izinkuskrini eziqediwe.} open {Azikho izinkuskrini eziqhubekayo.} other {Azikho izinkuskrini.}}",
-      "noneElse": "Akukho okunye kule ndawo yokusebenzela okudinga wena.",
+      "noneElse": "Akukho lutho kule ndawo yokusebenzela oludinga wena.",
       "noneCalled": "{show, select, you {Akukho okubizwa ngokuthi {name} okudinga wena.} finished {Azikho izinkuskrini eziqediwe ezibizwa ngokuthi {name}.} open {Azikho izinkuskrini eziqhubekayo ezibizwa ngokuthi {name}.} other {Azikho izinkuskrini ezibizwa ngokuthi {name}.}}",
       "showEvery": "Bonisa zonke izinkuskrini",
       "pagerItems": "izinkuskrini",

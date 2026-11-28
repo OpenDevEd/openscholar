@@ -369,7 +369,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       help={
         <Help title={t("reviewers.helpTitle")} facts={<>{each ? <HelpFact>{each < people ? t("reviewers.eachOf", { each, people }) : t("reviewers.everyPerson")}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>{t("reviewers.modelsRead")}</HelpFact> : null}</>}>
           <p>{t("reviewers.sharing", { share: String(each < people), models: String(modelsOf(screening).length > 0) })}</p>
-          <p>{t("reviewers.pace")}</p>
+          {/* Said only where a row shows when its person gets through. */}
+          {takers.some((row) => row.perDay > 0) ? <p>{t("reviewers.pace")}</p> : null}
         </Help>
       }
       aside={

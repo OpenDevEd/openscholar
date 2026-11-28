@@ -175,8 +175,9 @@ export const inviteAction = defineChangingAction({
     requireRole(kind, role);
     await sharedIn(ctx, actor, kind, id);
   },
-  run: async (ctx, { userId, workspaceId, author }, args) => {
-    const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args });
+  run: async (ctx, { userId, workspaceId, author }, { replacing, ...args }) => {
+    // Taking invitations back in the same step is the Settings save's own: the assistant asks for one invitation, and takes nothing back with it.
+    const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args, ...(author === "user" && replacing ? { replacing } : {}) });
     await ctx.runAction(internal.sharing.mail.deliver, { invitationId });
     return null;
   },

@@ -8764,7 +8764,7 @@
       "upToDate": "Atualizada",
       "allSettled": "{finish, select, true {Todos os artigos estão decididos, pronto a terminar} other {Todos os artigos estão decididos}}",
       "none": "{show, select, you {Nada precisa de si.} finished {Não há triagens terminadas.} open {Não há triagens em curso.} other {Não há triagens.}}",
-      "noneElse": "Mais nada neste espaço de trabalho precisa de você.",
+      "noneElse": "Nada neste espaço de trabalho precisa de você.",
       "noneCalled": "{show, select, you {Nada chamado {name} precisa de si.} finished {Não há triagens terminadas chamadas {name}.} open {Não há triagens em curso chamadas {name}.} other {Não há triagens chamadas {name}.}}",
       "showEvery": "Mostrar todas as triagens",
       "pagerItems": "triagens",
