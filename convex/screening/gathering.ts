@@ -24,7 +24,7 @@ import { actorIn } from "../workspaces/actor";
 import { ZOTERO_AT_ONCE, ZOTERO_LIST_PAGE, ZOTERO_PDFS_A_CALL } from "../zotero/libraryValidators";
 import { bookkeepLater } from "./bookkeeping";
 import { countDealt, dealable, dealNew, firstCheck, readingModel, readsOf, reviewersOf, sourcesOf, touched } from "./dealing";
-import { progressRow } from "./bookkeeping";
+import { progressRow, shelve, withMoved } from "./bookkeeping";
 import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
@@ -414,6 +414,15 @@ export const fill = internalMutation({
         // A paper kept before its source named records is told by its paper alone.
         const own = twin.sourceId === sourceId && (paper.record === undefined || twin.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
         if (!own && (await merge(title, twin._id, named))) duplicates++;
+        // A paper already excluded, met in a collection read since, leaves it too where the screening takes excluded papers out: it would otherwise stay there for good, as its result never changes again.
+        if (!own && job.prune && twin.result === "exclude" && !twin.withdrawn) {
+          const source = await ctx.db.get("screeningSources", sourceId);
+          if (source && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois") {
+            const moved = await shelve(ctx, job, twin, { becameIncluded: false, left: true }, [{ set: source.set, paperKey: paper.paper }]);
+            const progress = moved.removed ? await progressRow(ctx, job._id) : null;
+            if (progress) await ctx.db.patch("screeningJobProgress", progress._id, withMoved(progress, moved));
+          }
+        }
         // A paper kept before its source named records takes the record it is met by now: a second record of its work met later is then a duplicate merged, as it is for a paper kept since.
         if (own && paper.record && twin.record === undefined) await ctx.db.patch("screeningResults", twin._id, { record: paper.record });
         continue;

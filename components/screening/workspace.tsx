@@ -201,10 +201,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages on a line of their own, the same on every page, and the rule on the line under them. On a phone, Screen keeps the room for the paper and leaves the rule to its "?".
   const stripOf = (rule: ReactNode, passing?: ReactNode) => (
     <>
-      {/* What is passing ends the rule's line on Overview and Papers. On Settings and Screen it ends the tabs' line, which never wraps: on Screen a rule line that wrapped while it showed would move the paper being read when it went. */}
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow>{view === "settings" || view === "screen" ? passing : null}</div>
+      {/* What is passing ends the rule's line on every tab, in a place of its own that is there whether or not anything passes: its coming and going never moves the tabs, nor wraps the rule's chips onto another line. On a phone, where the tabs' line scrolls and the rule's line is short of room, it ends the tabs' line. */}
+      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages}</FadeRow><span className="contents sm:hidden">{passing}</span></div>
       {/* The rule's line is on every tab, Settings too, so going from one to another moves nothing under it. */}
-      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{view === "screen" || view === "settings" ? null : <span className="ms-auto flex shrink-0 empty:hidden">{passing}</span>}</div>
+      <div className={cn("flex items-center gap-3 px-4 py-3 sm:px-6", view === "screen" && "max-sm:hidden")}><div className="min-w-0">{rule}</div>{passing ? <span className="ms-auto flex w-64 shrink-0 justify-end max-sm:hidden">{passing}</span> : null}</div>
     </>
   );
 
