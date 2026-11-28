@@ -247,13 +247,15 @@ export const getAction = defineUserQuery({
     if (!shared) return null;
     // One that was accepted shows only to whoever holds the place it gave, or has it by having joined its workspace since.
     const reader = await ctx.db.get("users", userId);
-    const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (reader && (await holds(ctx, shared, reader)))) ? ("accepted" as const) : null;
+    const grant = invitation.state === "accepted" ? await grantOf(ctx, shared.id, userId) : null;
+    const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (grant || (reader && (await holds(ctx, shared, reader)))) ? ("accepted" as const) : null;
     if (!state) return null;
     // The link alone says nothing of the item: it may have been passed on. The address it was sent to does.
     if (state === "pending" && !(reader && addressesOf(reader).includes(invitation.email))) return { state: "other" as const };
     const [inviter, from] = await Promise.all([ctx.db.get("users", invitation.invitedBy), workspaceFrom(ctx, shared.workspaceId)]);
     return {
-      kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
+      // One accepted says what its guest may do now, which whoever shared it may have changed since.
+      kind: shared.kind, id: shared.id, name: shared.name, role: grant?.role ?? invitation.role,
       // Someone whose account is gone is named by the workspace they shared it from, as the list of invitations names them.
       by: { name: inviter ? personName(inviter) || inviter.email : from.name, ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
       from, ...(shared.size === undefined ? {} : { size: shared.size }), state, ...(await screeningFacts(ctx, shared)),
