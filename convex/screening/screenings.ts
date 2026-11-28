@@ -7,7 +7,6 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { planLimit } from "../billing/accounts";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -21,10 +20,10 @@ import { defaultPoints, defaultStars, EVERY_MS, MAX_SOURCES, shortOf, type Crite
 import { requireMember } from "./access";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS, countDealt, keepVersion, placeGuests, dealNew, readingModel, readsOf, reviewersOf, sourcesOf, touched, votesOf, papersOf } from "./dealing";
 import { readInTurn } from "./living";
-import { startWaitingVotes } from "./slots";
-import { readOn, startCheck } from "./gathering";
+import { modelsLimit, startWaitingVotes } from "./slots";
+import { screeningDestination } from "../library/collections";
+import { readOn, startCheck } from "./checks";
 import { logChange } from "./log";
-import { destination } from "./mutations";
 import { NO_RESULTS } from "./settling";
 import { everyValidator, libraryDestinationValidator, MAX_TERMS, modelVotesValidator, prunable, saveToValidator, SCREENING_TEXT, SOURCE_FACTS, sourceSetValidator } from "./validators";
 
@@ -48,11 +47,8 @@ export function ruleFrom(sent: Infer<typeof ruleInput>) {
 export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), facts: v.optional(v.array(v.string())), first: v.optional(v.number()), last: v.optional(v.number()) });
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
-/** The most sources one screening has, and the most models where its workspace's plan sets no number. */
+/** The most sources one screening has. */
 export { MAX_SOURCES };
-const MODELS_A_SCREENING = 5;
-/** How many models one screening in the workspace may have reading: its plan's number (lib/billing/plans.ts `screening_models`). */
-export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
 
 /** A model votes by answering the criteria: with none it would include every paper it reads. People vote without them. */
 /** A model votes Exclude only on a must-have it finds unmet: with no must-have it would include every paper. */
@@ -268,7 +264,7 @@ export const open = internalMutation({
       rule: { ...kept, resolver },
       ...(living ? { living: { every: living, next: now + EVERY_MS[living] } } : {}),
       ...legacyOf(criteria, stars),
-      ...(later ? { newCollection: later } : await destination(ctx, writer, saveTo)),
+      ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, saveTo)),
       ...(libraryDestination ? { libraryDestination } : {}),
       ...(prune ? { prune: true as const } : {}),
       ...(pruneName ? { pruneName } : {}),

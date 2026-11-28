@@ -13,7 +13,7 @@ import { assistantAction, defineChangingAction, defineUserAction, reversedBy, us
 import type { screeningPaperInputValidator } from "../screening/validators";
 import { LIBRARY_COLLECTION_DESCRIPTION_MAX, LIBRARY_COLLECTION_NAME_MAX, parseSourceAddress } from "../../lib/evidence-libraries/source-address";
 import { paperPage, parsePaperKey } from "../../lib/papers/paper-ref";
-import { LIBRARY_CHANGE_MAX } from "./sourceClient";
+import { LIBRARY_CHANGE_MAX } from "../../lib/evidence-libraries/reader-sources";
 import { ABSTRACT_SHOWN, AUTHORS_SHOWN, READ_LIBRARIES_MAX, RECORDS_PAGE, librariesContentsValidator, libraryContentsValidator, libraryRecordValidator, libraryRecordsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 
 const reads = { spendsCredits: false, outsideEffect: false, undoable: true } as const;

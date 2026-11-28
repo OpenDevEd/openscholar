@@ -22,6 +22,11 @@ import type { startFactsValidator } from "./validators";
  */
 const DEFAULT_PAPER_CONCURRENCY = SCREENING_POOL_SIZE;
 
+/** The most models one screening may have reading where its workspace's plan sets no number. */
+const MODELS_A_SCREENING = 5;
+/** How many models one screening in the workspace may have reading: its plan's number (lib/billing/plans.ts `screening_models`). */
+export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
+
 /** How many papers a workspace may have running at once, never more than the pool. */
 export async function paperLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
   const concurrency = (await planLimit(ctx, workspaceId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;

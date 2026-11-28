@@ -17,7 +17,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn, isRatingFilterActive, getEffectiveSearchId } from "@/lib/utils";
+import { cn, getEffectiveSearchId } from "@/lib/utils";
+import { isRatingFilterActive } from "@/lib/search/rating-filter";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
   useRatingsStore,

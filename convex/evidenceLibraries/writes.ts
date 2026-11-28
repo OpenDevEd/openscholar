@@ -10,7 +10,7 @@ import type { MutationCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { libraryWriteProblemValidator, libraryWriteValidator } from "../screening/validators";
 import { paperRefValidator, crossRefsValidator } from "../lib/paperRef";
-import { LIBRARY_CHANGE_MAX } from "./sourceClient";
+import { LIBRARY_CHANGE_MAX } from "../../lib/evidence-libraries/reader-sources";
 
 /** How long a write waits for others of its job, so they go in one call. */
 const GATHER_MS = 5_000;

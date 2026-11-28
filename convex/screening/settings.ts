@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
-import { newCollection } from "../library/collections";
+import { newCollection, screeningDestination } from "../library/collections";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { type Criterion } from "../../lib/screening/rules";
@@ -19,10 +19,9 @@ import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
 import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
 import { keepVersion, keeperOf, readAgain, dealable, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
-import { startCheck } from "./gathering";
+import { startCheck } from "./checks";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
-import { destination } from "./mutations";
 import { addModel, addPerson, takeOff } from "./reviewers";
 import { addSource, criteriaFrom, criterionInput, EVERY_MS, legacyOf, MAX_SOURCES, modelInput, NEEDS_CRITERIA, ruleFrom, ruleInput, sourceInput, starsFrom } from "./screenings";
 import { startWaitingVotes } from "./slots";
@@ -181,7 +180,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...(change.criteria || change.stars ? { criteria: plan.criteria, stars: plan.stars, ...legacyOf(plan.criteria, plan.stars), retiredCriteria: retiredOf(job, plan.criteria) } : {}),
     rule: plan.rule,
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
-    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await destination(ctx, writer, change.saveTo)) } : {}),
+    ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
     ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
     ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
     ...touched(now),

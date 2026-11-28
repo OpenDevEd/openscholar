@@ -1,5 +1,4 @@
 import { v, type Infer } from "convex/values";
-import { format, parseISO } from "date-fns";
 import { partial, validate } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
 import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped, listsIn, overCap } from "../../convex/lib/listCaps";
@@ -202,7 +201,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * the picked day in every timezone from UTC-11 to UTC+11.
  */
 export function calendarDay(value: Date | string): string {
-  if (value instanceof Date) return format(value, "yyyy-MM-dd");
+  // Its local day, as date-fns writes `yyyy-MM-dd`: a year before 1 counts back from it (0 is 1 BC, written 0001).
+  if (value instanceof Date) { const year = value.getFullYear(); return [year > 0 ? year : 1 - year, value.getMonth() + 1, value.getDate()].map((part, at) => String(part).padStart(at ? 2 : 4, "0")).join("-"); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return new Date(Math.round(Date.parse(value) / DAY_MS) * DAY_MS).toISOString().slice(0, 10);
 }
@@ -237,10 +237,19 @@ export function restoreResponses(responses: SavedSearch["screeningResponses"]): 
 }
 
 export function restoreSearch(search: SavedSearch): SearchResult {
-  // A calendar day reads as that day's local midnight, wherever it's read.
+  // A calendar day reads as that day's local midnight, wherever it's read. Worked out here rather than with date-fns:
+  // the schema loads this module, and so does every Convex function on every call.
+  // As date-fns' parseISO reads one: a year below 100 is that year, not 19xx, and a day the month hasn't is no date.
+  const midnight = (day: Date | string) => {
+    const [y, m, d] = calendarDay(day).split("-").map(Number);
+    const date = new Date(0);
+    date.setFullYear(y!, m! - 1, d!);
+    date.setHours(0, 0, 0, 0);
+    return date.getMonth() === m! - 1 && date.getDate() === d ? date : new Date(NaN);
+  };
   const dateRange = search.dateRange && {
-    from: search.dateRange.from ? parseISO(calendarDay(search.dateRange.from)) : undefined,
-    to: search.dateRange.to ? parseISO(calendarDay(search.dateRange.to)) : undefined,
+    from: search.dateRange.from ? midnight(search.dateRange.from) : undefined,
+    to: search.dateRange.to ? midnight(search.dateRange.to) : undefined,
   };
   return {
     ...search, dateRange,

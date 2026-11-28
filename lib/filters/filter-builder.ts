@@ -11,12 +11,12 @@ import {
   isDateFilterActive,
   isCountryFilterActive,
   isCountryFocusActive,
-  isRatingFilterActive,
   isReviewFilterActive,
   isCitesFilterActive,
   isCitedByFilterActive,
   isRelatedToFilterActive,
 } from "@/lib/utils";
+import { isRatingFilterActive } from "@/lib/search/rating-filter";
 import {
   FilterParams,
   FilterSection,

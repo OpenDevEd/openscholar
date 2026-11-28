@@ -15,7 +15,7 @@ import { currentSearch, restoreSearch, type SavedSearch } from "../../lib/resear
 import { DEFAULT_SEARCH_PARAMS } from "../../lib/search-params/parsers";
 import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/bucket/search-filters";
-import { isRatingFilterActive } from "../../lib/utils";
+import { isRatingFilterActive } from "../../lib/search/rating-filter";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";

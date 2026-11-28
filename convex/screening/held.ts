@@ -17,7 +17,8 @@ import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from 
 import { readsPdfs } from "../../lib/assistant/files";
 import { pdfLookCredits } from "../../lib/pricing/estimate";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
-import { FILE_MAX_BYTES, REFERENCES, itemRecords, plainTitle, readTable, sameTitle, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
+import { plainTitle, sameTitle } from "../../lib/papers/paper-ref";
+import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
 import { registered } from "./doiRecords";
 import { DOIS_MAX, doisKeptValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
 import type { Infer } from "convex/values";

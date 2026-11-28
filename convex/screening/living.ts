@@ -12,7 +12,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
 import { placeGuests, readAgain, reviewersOf, sourcesOf, touched } from "./dealing";
-import { readOn, startCheck } from "./gathering";
+import { readOn, startCheck } from "./checks";
 import { firstCheck } from "./dealing";
 import { logChange } from "./log";
 import { EVERY_MS } from "./screenings";

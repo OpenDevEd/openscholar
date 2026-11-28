@@ -29,7 +29,7 @@ import { deriveCompletionTransition } from "./completion";
 import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { answeredFully, ensureScreening } from "../research/answers";
-import { newCollection } from "../library/collections";
+import { newCollection, screeningDestination } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater, finishIfDone, noteEnded } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
@@ -43,17 +43,6 @@ import { assistantMutation, defineUserMutation, userMutation } from "../lib/user
 import { requirePaperKey } from "../library/find";
 import { resultOf } from "./access";
 import { keepKeys } from "../paperSets/libraryKeys";
-
-/** Where the job's included papers go, as its fields: a collection, or nowhere. */
-export async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
-  if (!saveTo) return {};
-  if (saveTo.kind === "none") return { unsaved: true as const };
-  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
-  // A library collection is checked, or made, by the start before the job is: it comes as `libraryDestination`.
-  if (saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection") return { unsaved: true as const };
-  if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
-  return { targetCollectionId: saveTo.collectionId };
-}
 
 /** What a job is made from, whoever makes it and whether or not its papers are read yet. */
 const jobSetup = {
@@ -139,7 +128,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     ...(name?.trim() ? { name: name.trim() } : {}),
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
-    ...(await destination(ctx, writer, saveTo)),
+    ...(await screeningDestination(ctx, writer, saveTo)),
     ...(prune ? { prune: true as const } : {}),
     ...serverStamp(serverPick),
     createdAt: now,

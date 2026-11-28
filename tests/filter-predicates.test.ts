@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   isDateFilterActive,
-  isRatingFilterActive,
   isCountryFilterActive,
   isCountryFocusActive,
   isCitesFilterActive,
@@ -9,6 +8,7 @@ import {
   isRelatedToFilterActive,
   isReviewFilterActive,
 } from "../lib/utils";
+import { isRatingFilterActive } from "../lib/search/rating-filter";
 
 describe("isDateFilterActive", () => {
   it("returns false for year filter when not enabled", () => {

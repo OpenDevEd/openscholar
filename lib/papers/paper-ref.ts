@@ -168,3 +168,11 @@ export function crossRefsOf(ref: PaperRef, given: { openalexId?: string | null; 
   const doi = normalDoi(given.doi);
   return { ...(openalexId ? { openalexId } : {}), ...(doi ? { doi } : {}) };
 }
+
+/** A title as two sources of one paper would both give it: its letters and digits, in lower case. */
+export const plainTitle = (title: string) => title.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "");
+/** Whether two titles name one paper: one holds the other, a subtitle or not, and neither is too short to tell. */
+export function sameTitle(one: string, other: string) {
+  const [a, b] = [plainTitle(one), plainTitle(other)];
+  return a.length > 12 && b.length > 12 && (a.includes(b) || b.includes(a));
+}
