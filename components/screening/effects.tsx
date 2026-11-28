@@ -102,8 +102,10 @@ export type EffectFor = {
   waiting?: boolean;
   /** The papers still open: someone who joins later gets a share of those, and none where every paper is settled. */
   openNow?: number;
+  /** The papers its plan still has room for: what added sources promise past it is never read, so never priced. */
+  room?: number;
 };
-export function effectItems(say: EffectsSay, before: Screening, after: Screening, counted: Preview, { me, wallet = Infinity, waiting = false, openNow }: EffectFor = {}): EffectLine[] {
+export function effectItems(say: EffectsSay, before: Screening, after: Screening, counted: Preview, { me, wallet = Infinity, waiting = false, openNow, room = Infinity }: EffectFor = {}): EffectLine[] {
   const { words, t } = say;
   const lines: EffectLine[] = [];
   // A reviewer as the reader is told of them: "you" for themselves.
@@ -222,7 +224,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: t("living.every", { every: after.living.every }), kind: "schedule", section: "new-papers" });
 
   // What a source this adds brings is known once the screening has read it: until then, what its range promises is the most it can be.
-  const promised = promisedBy(before, after);
+  const promised = Math.min(promisedBy(before, after), room);
   // Nobody has read them yet: each is priced as a paper with an abstract. Where one can come as its PDF, which a model is charged for by the page, no figure is a cap: the line gives none, and says when the cost is known.
   const reading = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!) * promised, 0);
   const byThePage = pdfsPromised(before, after);

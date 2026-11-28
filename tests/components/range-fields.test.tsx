@@ -79,6 +79,18 @@ describe("a screening's range fields", () => {
     expect(from).toHaveValue(50);
   });
 
+  it("take each arrow key on a slider end as the range, the step shown", async () => {
+    const seen: [number, number][] = [];
+    render(<Range start={[100, 300]} seen={seen} />);
+    const to = screen.getAllByRole("slider")[1]!;
+    to.focus();
+
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+
+    expect(seen).toEqual([[100, 301], [100, 302]]);
+    expect(screen.getByRole("spinbutton", { name: "Last paper" })).toHaveValue(302);
+  });
+
   it("snap an emptied To to the range's first paper when it's left", async () => {
     const seen: [number, number][] = [];
     render(<Range start={[10, 40]} seen={seen} />);

@@ -599,7 +599,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const papers = most !== null && promises > most ? most : promises;
   const pdfs = pdfsOf(sources);
   // A running screening's new sources aren't read until the save: what they promise is the most they can bring, and every figure that counts them says "up to". So does one that promises more than the plan's limit.
-  const promisedNew = saved ? promisedBy(saved, draft) : 0;
+  // They bring no more than the room the plan has left: reading stops there, so the papers past it are never read nor priced.
+  const promisedAll = saved ? promisedBy(saved, draft) : 0;
+  const room = most === null ? undefined : Math.max(0, most - (promises - promisedAll));
+  const promisedNew = Math.min(promisedAll, room ?? Infinity);
   const upTo = Boolean(promisedNew) || papers < promises;
   // Some of those can come as their PDF, which costs by the page: the figures count each as a paper with an abstract, and the cost says what they leave out.
   const pdfsUnpriced = Boolean(saved && pdfsPromised(saved, draft));
@@ -640,7 +643,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const pdfsCome = bringsPdfs(growing(draft)) && models.some((model) => takesFiles(model.model!));
   // What keeps its models from reading now: a model added here starts once that is over, and the line says so.
   const heldNow = open?.modelsNow ?? null;
-  const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
+  const lines = saved && changing && known ? effectItems(effectsSay, saved, draft, preview, { me, wallet, waiting: heldNow === "waiting", ...(room === undefined ? {} : { room }), ...(open ? { openNow: open.counts.waiting + open.counts.conflict } : {}) }) : [];
   const moves = saved && changing && known ? preview.moves : [];
   // A model answers criteria: with none it would include every paper it reads.
   // A model excludes only for a must-have it finds unmet: with none it would include every paper.
@@ -1076,7 +1079,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {reading ? <Chip><Spinner className="size-3" />{t("papers.stillReading")}</Chip> : null}
                 <Chip>{t.rich("papers.found", { soFar, n: () => <AnimatedNumber value={found + leftTotal(sources)} /> })}</Chip>
                 {leftTotal(sources) ? <Chip>{t.rich("papers.leftOut", { n: () => <AnimatedNumber value={leftTotal(sources)} /> })}</Chip> : null}
-                {found - papers > 0 ? <Chip>{t.rich("papers.merged", { count: found - papers, n: () => <AnimatedNumber value={found - papers} /> })}</Chip> : null}
+                {found - promises > 0 ? <Chip>{t.rich("papers.merged", { count: found - promises, n: () => <AnimatedNumber value={found - promises} /> })}</Chip> : null}
                 {/* A running screening's papers open on its Papers page, under the same name the summary gives them. */}
                 {saved && papers ? (
                   <LinkChip href={papersHref(saved.id)} tone="primary">{t.rich("papers.link", { upTo: String(upTo), count: papers, n: () => <AnimatedNumber value={papers} /> })}</LinkChip>
@@ -1131,10 +1134,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // The part of it that is read, which is also where that is changed: offered while it is being read too.
                         const range = baseTotal(source) > 1 ? (
                                         <button type="button" aria-expanded={isOpen} onClick={() => setOpenSource(isOpen ? null : { id: source.id, part: "papers" })} className="inline-flex items-center gap-0.5 rounded-sm text-start text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source), ...capped }) : keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}
+                                          {source.scope === "range" ? t("papers.fromRange", { first: words.num(source.range[0]), last: words.num(source.range[1]), total: baseTotal(source), ...capped }) : keptOf(source) === baseTotal(source) && capped.capped === "false" ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}
                                           <ChevronDown aria-hidden className={cn("size-3 transition-transform duration-200", isOpen && "rotate-180")} />
                                         </button>
-                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}</span>;
+                                      ) : <span className="text-muted-foreground">{keptOf(source) === baseTotal(source) && capped.capped === "false" ? t("papers.wholeSource") : t("papers.fromAll", { total: baseTotal(source), ...capped })}</span>;
                         return (
                           <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             {/* What arrives once it is read (a line of counts under the bar on a phone, a chip) slides the row open rather than pushing the rows under it. */}

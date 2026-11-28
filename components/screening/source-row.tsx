@@ -4,7 +4,7 @@
 // papers or a screening. Screening picks one; extraction takes several. Picked, a row opens to how
 // many of its papers to read.
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Check, type AppIcon } from "@/components/icons";
@@ -155,6 +155,11 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
   const [first, last] = dragged ? moved(value, dragged.end, dragged.n) : value;
   /** The end the slider moved: the one whose paper differs from what it was drawn with. */
   const endOf = (next: number[]): 0 | 1 => (next[0] !== first ? 0 : 1);
+  /** Sets the range to `range` where it differs. */
+  const commit = (range: [number, number]) => (range[0] !== value[0] || range[1] !== value[1]) && onChange(range);
+  // A key moves the slider a step and is let go of at once, so each step is the range. The slider tells it
+  // committed before it tells it moved, so a key's move is taken where it moves, and its commit passed over.
+  const keyed = useRef(false);
   const field = (end: 0 | 1, label: string) => {
     const [low, high] = end === 0 ? [1, Math.min(last, held?.range[0] ?? last)] : [Math.max(first, held?.range[1] ?? first), top];
     return (
@@ -169,8 +174,7 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
           setTyping(null);
           if (typing?.end !== end) return;
           // What was typed snaps into what that end can reach: an emptied field to the nearest it can.
-          const range = moved(value, end, Math.round(Number(typing.text)) || 0);
-          if (range[0] !== value[0] || range[1] !== value[1]) onChange(range);
+          commit(moved(value, end, Math.round(Number(typing.text)) || 0));
         }}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
         aria-label={label}
@@ -185,13 +189,19 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
         max={top}
         step={1}
         value={[first, last]}
-        onValueChange={(next) => setDragged({ end: endOf(next), n: next[endOf(next)]! })}
-        // Released, or moved by a key. A key press commits in the same moment it moves, before the drag is drawn: its end is told from what it moved.
+        onKeyDown={() => (keyed.current = true)}
+        onPointerDown={() => (keyed.current = false)}
+        onValueChange={(next) => {
+          const [end, n] = [endOf(next), next[endOf(next)]!];
+          if (keyed.current) commit(moved(value, end, n));
+          else setDragged({ end, n });
+        }}
+        // Released after a drag.
         onValueCommit={(next) => {
+          if (keyed.current) return;
           const { end, n } = dragged ?? { end: endOf(next), n: next[endOf(next)]! };
           setDragged(null);
-          const range = moved(value, end, n);
-          if (range[0] !== value[0] || range[1] !== value[1]) onChange(range);
+          commit(moved(value, end, n));
         }}
         aria-label={labels.slider}
       />
