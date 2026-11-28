@@ -88,10 +88,10 @@ export const step = internalQuery({
       }
       const was: Result = paper.result ?? "waiting";
       const thrown = before.some((place) => discards.get(place.reviewer) && place.status === "cast");
-      // As the save leaves them: the votes of a reviewer taken off stay unless they are thrown out, the models answer a new criterion on the papers still open, and whoever joins takes their share of the places nobody voted from.
+      // As the save leaves them: the votes of a reviewer taken off stay unless they are thrown out, the models answer a new criterion on the papers still open and on those checked again, and whoever joins takes their share of the places nobody voted from.
       const left = before.map((place): Place => {
         if (discards.get(place.reviewer) && place.status === "cast") return { ...place, status: "discarded" };
-        if (plan.added.length && !isFinal(was) && place.status === "cast" && readers.includes(place.reviewer)) return { ...place, status: "waiting" };
+        if (plan.added.length && (recheck || !isFinal(was)) && place.status === "cast" && readers.includes(place.reviewer)) return { ...place, status: "waiting" };
         return place;
       });
       const places = withJoined({ id: paper._id, result: was }, left, joiners, plan.rule.each === "all");

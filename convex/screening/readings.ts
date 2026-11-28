@@ -104,7 +104,8 @@ export const done = screeningPool.defineOnComplete({
       await startWaitingVotes(ctx, job.workspaceId, vote.slot ? 1 : 0);
     } else if (reading?.read && vote.status === "waiting") {
       // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
-      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: reading.askedAt ?? Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+      // It is cast when it comes back, never when it was asked: under "first vote decides" a slower reading started earlier never overturns a vote cast before it.
+      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
     } else if ((result.kind === "failed" || (reading && !reading.read && reading.why === "unreadable")) && vote.status === "waiting") {
       await ctx.db.patch("screeningVotes", vote._id, { status: "failed", error: (result.kind === "failed" ? result.error : (reading as { error: string }).error).slice(0, ERROR_SHOWN), workId: undefined });
     } else {

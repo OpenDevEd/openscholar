@@ -186,7 +186,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
     ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, libraryWriteProblem: undefined, libraryPruneProblem: undefined, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
     ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
-    ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
+    // Settled papers keep their results through any save that doesn't check them again: one that only re-scores them, or takes out a source another still holds, moves none back for votes.
+    ...(!change.recheck ? { heldAt: now } : {}),
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
@@ -250,9 +251,9 @@ const resultValidator = v.union(v.literal("waiting"), v.literal("conflict"), v.l
 /**
  * What a save does to a screening's papers, a step at a time: each paper of the results it names is stamped for the
  * bookkeeping worker, which settles it under the settings as they are now. With `recheck`, a settled paper lets go of
- * its result first. Where a criterion became a must-have, the votes people cast on the papers still open are marked
- * for a new one, unless they exclude already. Where a criterion was added, the models that read an open paper read it
- * again, to answer it.
+ * its result first. Where a criterion became a must-have, the votes people cast on the papers still open, and on those
+ * checked again, are marked for a new one, unless they exclude already or answered it Yes. Where a criterion was added,
+ * the models that read those papers read them again, to answer it.
  */
 export const follow = internalMutation({
   args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()), results: v.array(resultValidator), recheck: v.boolean(), stricter: v.array(v.string()), reread: v.boolean() },
@@ -266,11 +267,14 @@ export const follow = internalMutation({
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: papersAStep(reviewers.size, FOLLOW) });
     let queued = 0;
     for (const paper of page.page) {
-      if (open && (stricter.length || reread)) {
+      // A settled paper checked again is asked again as an open one is: the models answer a new criterion on it, and a person's vote is asked for anew.
+      if ((open || recheck) && (stricter.length || reread)) {
         for (const vote of await votesOf(ctx, paper._id)) {
           const reviewer = reviewers.get(vote.reviewerId);
           if (vote.status !== "cast" || !reviewer) continue;
-          if (reviewer.kind === "person" && stricter.length && vote.decision !== "exclude" && !vote.flagged) await ctx.db.patch("screeningVotes", vote._id, { flagged: true });
+          // A vote whose answers already meet each new must-have stands as it is: nobody is asked what they answered Yes to.
+          const meets = stricter.every((key) => (vote.answers as Record<string, string> | undefined)?.[key] === "yes");
+          if (reviewer.kind === "person" && stricter.length && vote.decision !== "exclude" && !vote.flagged && !meets) await ctx.db.patch("screeningVotes", vote._id, { flagged: true });
           if (reviewer.kind === "model" && reread && readingModel(reviewer)) {
             await ctx.db.patch("screeningVotes", vote._id, { ...modelRow(job, paper, reviewer), decision: undefined, answers: undefined, confidences: undefined, passages: undefined, reason: undefined, at: undefined });
             queued++;

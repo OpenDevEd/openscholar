@@ -19,6 +19,7 @@ import { countAnswerChange, countPaperChange as countPaperFacets } from "../extr
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
 import { keepCard } from "../screening/cards";
+import { takeVotingSeat } from "../screening/seats";
 import { countPaperFacets as countScreeningPaper, countVoteFacets as countScreeningVote } from "../screening/facets";
 import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, screeningFileList, screeningList, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
@@ -105,11 +106,15 @@ triggers.register("screeningVotes", countScreeningVote);
 triggers.register("itemAccess", async (ctx, change) => {
   const grant = change.newDoc ?? change.oldDoc;
   if (grant.kind !== "screening" || (change.operation === "update" && change.oldDoc.role === change.newDoc.role)) return;
+  // One given it to vote takes a reviewer's place now, or is refused: never "Can vote" with no queue.
+  if (change.newDoc?.role === "editor") await takeVotingSeat(ctx, grant.item, grant.userId);
   await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { item: string; userId: Id<"users"> }, null>("screening/reviewers:guestChanged"), { item: grant.item, userId: grant.userId });
 });
 // An invitation to vote on a screening that stops waiting: the papers that waited for its person are settled again (../screening/settings.ts `follow`). Accepted, its person is a reviewer by then (`guestChanged`, scheduled first) and is given the places; declined or cancelled, they are settled without them; and accepted by someone who had joined the workspace meanwhile, who isn't made a reviewer, likewise.
 triggers.register("itemInvitations", async (ctx, change) => {
   const waits = (one: Doc<"itemInvitations"> | null) => one?.kind === "screening" && one.state === "pending" && one.role === "editor";
+  // An invitation to vote holds a reviewer's place from when it is sent (./screening/seats.ts).
+  if (waits(change.newDoc) && !waits(change.oldDoc)) await takeVotingSeat(ctx, change.newDoc!.item);
   if (!waits(change.oldDoc) || waits(change.newDoc)) return;
   await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { jobId: string; cursor: null; results: Array<"waiting">; recheck: boolean; stricter: string[]; reread: boolean }, null>("screening/settings:follow"), { jobId: change.oldDoc!.item, cursor: null, results: ["waiting"], recheck: false, stricter: [], reread: false });
 });
