@@ -9007,7 +9007,6 @@
         "skips": "{count, plural, one {Omite # fuente que nunca cambia} other {Omite # fuentes que nunca cambian}}",
         "means": "Una comprobación vuelve a leer cada fuente y añade los artículos que este cribado aún no tiene. Los archivos subidos y los DOI pegados no cambian nunca, así que las comprobaciones los omiten.",
         "checkNow": "Comprobar ahora",
-        "checkReopens": "Comprobar y reabrir si llegan artículos nuevos",
         "every": "{every, select, day {Comprueba cada día} week {Comprueba cada semana} other {Comprueba cada mes}}",
         "onlyWhenAsked": "Solo comprueba cuando se pide",
         "schedule": "Comprobar de forma programada",
@@ -9499,7 +9498,6 @@
     "sources": {
       "add": "Añadir",
       "added": "Añadida",
-      "empty": "Vacía",
       "in": "En {name}",
       "andMore": "{name} y {count, number} más",
       "remove": "Quitar {name}",

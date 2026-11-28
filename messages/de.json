@@ -9007,7 +9007,6 @@
         "skips": "{count, plural, one {Überspringt # Quelle, die sich nie ändert} other {Überspringt # Quellen, die sich nie ändern}}",
         "means": "Eine Abfrage liest jede Quelle erneut und fügt die Artikel hinzu, die dieses Screening noch nicht hat. Hochgeladene Dateien und eingefügte DOIs ändern sich nie, daher überspringen Abfragen sie.",
         "checkNow": "Jetzt abfragen",
-        "checkReopens": "Prüfen und bei neuen Artikeln wieder öffnen",
         "every": "{every, select, day {Fragt jeden Tag ab} week {Fragt jede Woche ab} other {Fragt jeden Monat ab}}",
         "onlyWhenAsked": "Fragt nur auf Anfrage ab",
         "schedule": "Nach Zeitplan abfragen",
@@ -9499,7 +9498,6 @@
     "sources": {
       "add": "Hinzufügen",
       "added": "Hinzugefügt",
-      "empty": "Leer",
       "in": "In {name}",
       "andMore": "{name} und {count, number} weitere",
       "remove": "{name} entfernen",

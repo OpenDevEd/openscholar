@@ -170,7 +170,9 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // A community's collection is checked, or made, before the save (`saveToCommunity`).
   if (toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
   const prune = change.prune ?? job.prune === true;
-  if (prune && !sources.some((source) => source.removedAt === undefined && prunable(source.set.kind === "upload" || source.set.kind === "pdf" || source.set.kind === "dois" ? undefined : source.set))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+  // Checked against the sources as the save leaves them: those it takes out don't count, and those it adds do.
+  const canTake = (set: (typeof sources)[number]["set"]) => prunable(set.kind === "upload" || set.kind === "pdf" || set.kind === "dois" ? undefined : set);
+  if (prune && !sources.some((source) => source.removedAt === undefined && !change.removeSources?.includes(source._id) && canTake(source.set)) && !(change.addSources ?? []).some((source) => canTake(source.set as (typeof sources)[number]["set"]))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
 
   // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
   await ctx.db.patch("screeningJobs", jobId, {
@@ -215,7 +217,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
   const reads = Boolean(change.addSources?.length || change.ranges?.length);
   if (change.living && !job.living && !reads) await check(ctx, saved, actor.userId);
-  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId, saved.totalPapers);
+  else if (reads && !(await ctx.db.query("screeningChecks").withIndex("by_job_and_state", (q) => q.eq("jobId", jobId).eq("state", "running")).first())) await startCheck(ctx, saved, actor.userId);
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
   if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || change.stars) {

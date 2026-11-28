@@ -236,7 +236,7 @@ export const open = internalMutation({
     if ((question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
     // It may start with no source: its reviewers and criteria are set, and it waits for papers until one is added.
     if (sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads up to ${MAX_SOURCES} sources.`);
-    if (!people.length && !models.length && !guests) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
+    if (!people.length && !models.length && !guests) throw createError("VALIDATION_ERROR", "Add at least one reviewer, a person or a model.");
     if (new Set(people).size !== people.length || new Set(models.map((one) => `${one.model}:${one.effort ?? ""}`)).size !== models.length) throw createError("VALIDATION_ERROR", "Each reviewer is on a screening once.");
     const most = await modelsLimit(ctx, workspaceId);
     if (models.length > most) throw createError("VALIDATION_ERROR", `This workspace's plan runs up to ${most} models on a screening.`);
@@ -290,7 +290,7 @@ export const open = internalMutation({
     await keepVersion(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId);
     // Papers read before it started are given out now. The ones still to arrive are dealt as they come, by the look that is reading them.
     if (adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.deal, { jobId, cursor: null });
-    else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId, 0);
+    else await startCheck(ctx, (await ctx.db.get("screeningJobs", jobId))!, userId);
     await logChange(ctx, { userId, author }, { _id: jobId, workspaceId }, "started", { detail: title, more: [{ code: "sources", count: sources.length }, ...(people.length ? [{ code: "people", count: people.length }] : []), ...(picked.length ? [{ code: "models", count: picked.length }] : [])] });
     return { jobId };
   },

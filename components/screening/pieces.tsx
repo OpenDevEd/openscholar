@@ -320,7 +320,7 @@ export function LinkChip({ href, tone = "neutral", icon, children, className, el
 }
 
 /** A titled part of a page, with an anchor other pages link to. Its "?" (a Help) holds what would otherwise be a sentence under the title. */
-export function Section({ id, title, help, aside, problems = [], className, children }: { id?: string; title: ReactNode; help?: ReactNode; aside?: ReactNode; /** What in it stops the form from going on, each said under its title in the danger colour, as a field says its error. */ problems?: string[]; className?: string; children: ReactNode }) {
+export function Section({ id, title, help, aside, problems = [], className, children }: { id?: string; title: ReactNode; help?: ReactNode; aside?: ReactNode; /** What in it stops the form from going on, each said under its title in the danger colour, as a field says its error. */ problems?: Array<{ id: string; text: string }>; className?: string; children: ReactNode }) {
   return (
     <section id={id} className={cn("space-y-3", BELOW_HEADER, className)}>
       <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
@@ -329,10 +329,10 @@ export function Section({ id, title, help, aside, problems = [], className, chil
         {aside ? <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{aside}</div> : null}
       </div>
       <AnimatePresence initial={false}>
-        {/* Keyed by place, not by words: a figure in one that changes, such as the credits short, changes the line in place. */}
-        {problems.map((problem, at) => (
-          <motion.p key={at} role="alert" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-start gap-1.5 overflow-hidden text-sm font-medium ink-destructive">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{problem}
+        {/* Keyed by which problem it is, not by its words: a figure in one that changes, such as the credits short, changes the line in place, and one fixed leaves without another taking its line. */}
+        {problems.map((problem) => (
+          <motion.p key={problem.id} role="alert" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-start gap-1.5 overflow-hidden text-sm font-medium ink-destructive">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />{problem.text}
           </motion.p>
         ))}
       </AnimatePresence>

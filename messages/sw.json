@@ -9007,7 +9007,6 @@
         "skips": "{count, plural, one {Inaruka chanzo # kisichobadilika kamwe} other {Inaruka vyanzo # visivyobadilika kamwe}}",
         "means": "Ukaguzi unasoma tena kila chanzo na kuongeza makala ambazo uchujaji huu bado hauna. Faili zilizopakiwa na DOI zilizobandikwa hazibadiliki kamwe, kwa hivyo ukaguzi unaziruka.",
         "checkNow": "Kagua sasa",
-        "checkReopens": "Kagua, na ufungue tena makala mapya yakija",
         "every": "{every, select, day {Inakagua kila siku} week {Inakagua kila wiki} other {Inakagua kila mwezi}}",
         "onlyWhenAsked": "Inakagua ukiomba tu",
         "schedule": "Kagua kwa ratiba",
@@ -9499,7 +9498,6 @@
     "sources": {
       "add": "Ongeza",
       "added": "Imeongezwa",
-      "empty": "Tupu",
       "in": "Kwenye {name}",
       "andMore": "{name} na {count, number} zaidi",
       "remove": "Ondoa {name}",

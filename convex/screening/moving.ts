@@ -4,6 +4,7 @@
  * that workspace, so one under way finishes where it began. Its papers, votes, criteria and activity are its own and
  * go with it by its ID. What is the workspace's stays: the collection its papers were saved to.
  */
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -43,7 +44,7 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
   const most = await roomFor(ctx, shared);
   if (most !== undefined && outside.length && (await countOf(ctx, itemGuestsOf(job._id))) + outside.length > most) {
     const there = await workspaceName(ctx, to);
-    throw createError("VALIDATION_ERROR", `${outside.length === 1 ? "One of its reviewers isn't" : `${outside.length} of its reviewers aren't`} in ${there} and would be its ${outside.length === 1 ? "guest" : "guests"} there. ${there}'s plan allows ${most.toLocaleString("en")} on a screening. Take reviewers off it first.`);
+    throw createError("VALIDATION_ERROR", `${outside.length === 1 ? "One reviewer isn't" : `${outside.length} reviewers aren't`} in ${there} and would join as ${outside.length === 1 ? "a guest" : "guests"} there. ${there}'s plan allows ${most.toLocaleString("en")} on a screening. Take reviewers off it first.`);
   }
   const saved = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   const settles = job.rule ? await ctx.db.get("users", job.rule.resolver) : null;
@@ -55,7 +56,11 @@ export async function carry(ctx: MutationCtx, by: Id<"users">, job: Doc<"screeni
     ...(job.rule && !settlesThere ? { rule: { ...job.rule, resolver: by } } : {}),
   });
   // Who settles conflicts passing to whoever moved it is a change of the rule: the whole record lists it.
-  if (job.rule && !settlesThere) await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
+  if (job.rule && !settlesThere) {
+    await keepVersion(ctx, (await ctx.db.get("screeningJobs", job._id))!, by);
+    // The questions put to the one who settled them go with it to whoever moved it.
+    if (job.rule.resolver !== by) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId: job._id, userId: job.rule.resolver, to: by });
+  }
   await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
   for (const source of await sourcesOf(ctx, job._id)) if (source.workspaceId === undefined) await ctx.db.patch("screeningSources", source._id, { workspaceId: job.workspaceId });
   for (const person of outside) await give(ctx, shared, person, "editor", { userId: by, author: "user" });

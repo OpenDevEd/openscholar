@@ -653,7 +653,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       })}
       {/* The share goes to the comparison it is drawn from, pair by pair: the rest of the row opens the reviewer's votes. */}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : <NextLink href={agreesHref} className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</NextLink>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null && !known && peopleOn - (reviewer.kind === "person" ? 1 : 0) >= 1 ? <span aria-hidden className="invisible">0%</span> : agrees === null ? <span className="font-normal text-muted-foreground">{peopleOn - (reviewer.kind === "person" ? 1 : 0) < 1 ? (open.invited.length ? t("row.untilInvitedJoin", { count: open.invited.length }) : reviewer.kind === "person" ? t("row.noOtherPerson") : t("row.noPeople")) : t("row.nothingYet")}</span> : <NextLink href={agreesHref} className={cn(above, "rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50", FIGURE_LINK)}>{t.rich("row.agrees", { share: agrees, person: String(reviewer.kind === "person"), muted: (chunks) => <span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{chunks}</span> })}</NextLink>}</p>
         {/* How many pairs of votes the share rests on, a model's as a person's: a share of two votes reads as one. */}
         {agrees !== null && reviewer.kind === "model" && included ? <p className="text-xs tabular-nums text-muted-foreground">{t("row.ofPairs", { count: compared })}</p> : null}
         {reviewer.kind === "model" && included ? (
@@ -746,10 +746,11 @@ function KappaHelp() {
   );
 }
 
-/** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 /** The fewest papers two reviewers vote on in common for their agreement to be listed, and how many pairs the list shows before "Show all". */
 const MIN_SHARED = 3;
 const PAIRS_SHOWN = 6;
+
+/** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 
 function Agreement({ open, figures }: { open: Open; figures: Figures | undefined }) {
   const { screening } = open;
@@ -757,19 +758,22 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const words = useWords();
   const format = useFormatter();
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: pairOf(figures, a.id, b.id) })));
+  // The pairs that can share a paper: under one person on each paper, two people never do, and nothing is said of them, unless they voted on the same papers under an earlier rule.
+  const apart = (a: Reviewer, b: Reviewer, pair: ReturnType<typeof pairOf>) => screening.rule.each === "1" && a.kind === "person" && b.kind === "person" && !pair;
+  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return apart(a, b, pair) ? [] : [{ a, b, pair }]; }));
   // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const allPairs = every === "all";
-  if (reviewers.length < 3) return null;
-  const known = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.kappa] : []));
+  if (reviewers.length < 3 || !pairs.length) return null;
+  // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
+  const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
+  // The figure over them is of the same pairs: one too thin to list counts in no figure either.
+  const known = compared.flatMap((one) => (one.pair.kappa != null ? [one.pair.kappa] : []));
   // The papers each pair's figure is of: the fewest and the most two reviewers both voted on.
-  const shared = pairs.flatMap((one) => (one.pair?.kappa != null ? [one.pair.papers] : []));
+  const shared = compared.flatMap((one) => (one.pair.kappa != null ? [one.pair.papers] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
   const kept = screening.reviewers.some((one) => one.tally?.kept);
-  // The pairs whose figure means something, least agreement first: a pair needs a few papers in common, and a team's many pairs show a few at a time.
-  const compared = pairs.flatMap((one) => (one.pair && one.pair.papers >= MIN_SHARED ? [{ ...one, pair: one.pair }] : [])).sort((x, y) => (x.pair.kappa ?? 2) - (y.pair.kappa ?? 2));
   const thin = pairs.filter((one) => !one.pair || one.pair.papers < MIN_SHARED);
   const shownPairs = allPairs ? compared : compared.slice(0, PAIRS_SHOWN);
 
@@ -788,9 +792,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
     >
       {/* The figures arrive after the page: until they do a block holds the note's room, and the frame slides to what comes. */}
       <AutoHeight>
-      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : !pairs.some((one) => one.pair) ? (
+      {figures === undefined ? <SkeletonBar className="h-[4.25rem] w-full rounded-2xl" /> : !compared.length ? (
         // Kept from a reviewer who still has papers to vote on (convex/screening/view.ts `keepsVotes`): that is why it is empty for them, and it says so.
-        kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{t("agreement.none")}</EmptyNote>
+        kept ? <ShutNote by="vote">{t("agreement.kept")}</ShutNote> : <EmptyNote>{pairs.some((one) => one.pair) ? t("agreement.thin", { count: thin.length, least: MIN_SHARED }) : t("agreement.none")}</EmptyNote>
       ) : (
         <div className="space-y-3">
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
@@ -799,20 +803,22 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{kappaText(format, overall, t("kappa.none"))}</span>
               <span className="text-sm">
                 <span className="font-medium">{t("agreement.mean")}</span>
-                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, left: pairs.filter((one) => one.pair).length - known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
+                {known.length ? <span className="block text-xs text-muted-foreground">{t("agreement.across", { pairs: known.length, left: compared.length - known.length, range: String(Math.min(...shared) !== Math.max(...shared)), min: Math.min(...shared), max: Math.max(...shared) })}</span> : null}
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>{t("agreement.splitMost")}</LinkChip>
           </div>
           {/* Each pair that has voted on the same papers, the one that agrees least first: who, how often they voted alike, and the figure. Each opens the papers they both voted on. */}
-          <ul className={cn(LIST, "grid @5xl/overview:grid-cols-2 @5xl/overview:divide-y-0 @5xl/overview:[&>li]:border-b @5xl/overview:[&>li]:border-border-subtle @5xl/overview:[&>li:nth-child(odd)]:border-e @5xl/overview:[&>li:last-child]:border-b-0")}>
+          {/* The lines between the rows are the gap over the frame's colour: one line between any two, however many there are to a row. */}
+          <ul className="grid gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle @5xl/overview:grid-cols-2 [&>li]:bg-card">
             {shownPairs.map(({ a, b, pair }, at) => (
               // Two to a row on a wide card: a last one alone takes the whole row, so no half of it stands empty.
-              <li key={`${a.id}:${b.id}`} className={cn(at === shownPairs.length - 1 && shownPairs.length % 2 === 1 && "@5xl/overview:col-span-2 @5xl/overview:border-e-0")}>
+              <li key={`${a.id}:${b.id}`} className={cn(at === shownPairs.length - 1 && shownPairs.length % 2 === 1 && "@5xl/overview:col-span-2")}>
                 <NextLink href={pairHref(screening.id, a, b)} aria-label={t("agreement.cell", { a: a.name, b: b.name, kappa: kappaText(format, pair.kappa, t("kappa.none")), share: pair.same, papers: pair.papers })} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
                   <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-7" /><ReviewerMark reviewer={a} className="-ms-2 size-7 ring-2 ring-card" /></span>
                   <span className="min-w-0 space-y-1.5">
-                    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    {/* Who, then how often alike, each on its line: every row lays out the same, however long the names. */}
+                    <span className="flex flex-col gap-0.5">
                       <span className="font-medium [overflow-wrap:anywhere]">{words.listed([b.id === open.me ? words.t("you") : b.name, a.id === open.me ? words.t("you") : a.name])}</span>
                       <span className="text-xs tabular-nums text-muted-foreground">{t("agreement.sameCount", { same: Math.round(pair.same * pair.papers), papers: pair.papers })}</span>
                     </span>
@@ -845,7 +851,6 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   );
 }
 
-/** A reviewer pair's row in the phone's list. */
 
 // ── Facts ────────────────────────────────────────────────────────────────────────────────────────
 
@@ -985,7 +990,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
         </Help>
       }
       aside={open.canChange && !screening.finishedAt ? (() => { // While papers arrive it waits, and says why where it is pointed at. A finished screening offers its check once, in the bar over the page.
-        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
+        const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t("checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -1070,7 +1075,8 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{t("checks.atStart")}</span><span className="text-xs text-muted-foreground">{words.ago(screening.createdAt)}</span></p>
               {/* It opens the papers it started with, where there are any: a count of none, or one not yet known, opens nothing. */}
-              {(() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
+              {/* Its papers are counted with the figures: until then the chip's room is held, so its words never change in place. */}
+              {figures === undefined ? <SkeletonBar className="h-6 w-44 rounded-md" /> : (() => { const says = t("checks.startedWith", { known: String(Boolean(figures)), papers: figures?.startedWith ?? 0, sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).length }); return figures?.startedWith ? <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{says}</LinkChip> : <Chip className="w-fit">{says}</Chip>; })()}
             </div>
           </div>
         </div>

@@ -9006,7 +9006,6 @@
         "skips": "{count, plural, other {跳过 # 个永不变化的来源}}",
         "means": "检查会重新读取每个来源，并加入此筛选还没有的论文。上传的文件和粘贴的 DOI 永远不变，因此检查会跳过它们。",
         "checkNow": "立即检查",
-        "checkReopens": "检查，有新论文则重新开启",
         "every": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
         "onlyWhenAsked": "仅在手动时检查",
         "schedule": "定期检查",
@@ -9498,7 +9497,6 @@
     "sources": {
       "add": "添加",
       "added": "已添加",
-      "empty": "空",
       "in": "在 {name} 中",
       "andMore": "{name} 及另外 {count, number} 个",
       "remove": "移除 {name}",

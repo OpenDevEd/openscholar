@@ -9007,7 +9007,6 @@
         "skips": "{count, plural, one {Slaan # bron oor wat nooit verander nie} other {Slaan # bronne oor wat nooit verander nie}}",
         "means": "’n Kontrole lees elke bron weer en voeg die artikels by wat hierdie siftering nog nie het nie. Opgelaaide lêers en geplakte DOI’s verander nooit nie, so kontroles slaan hulle oor.",
         "checkNow": "Kontroleer nou",
-        "checkReopens": "Kyk, en heropen as nuwe artikels kom",
         "every": "{every, select, day {Kontroleer elke dag} week {Kontroleer elke week} other {Kontroleer elke maand}}",
         "onlyWhenAsked": "Kontroleer net wanneer gevra",
         "schedule": "Kontroleer volgens ’n skedule",
@@ -9499,7 +9498,6 @@
     "sources": {
       "add": "Voeg by",
       "added": "Bygevoeg",
-      "empty": "Leeg",
       "in": "In {name}",
       "andMore": "{name} en nog {count, number}",
       "remove": "Verwyder {name}",

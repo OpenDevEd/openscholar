@@ -134,7 +134,8 @@ function TooltipHint({
     <Tooltip
       open={open}
       onOpenChange={(next) =>
-        setOpen(next && (!onlyWhenClipped || isClipped(triggerRef.current)))
+        // Never over the menu or popover its own trigger has open: what that opened is what the person is looking at.
+        setOpen(next && triggerRef.current?.getAttribute("aria-expanded") !== "true" && (!onlyWhenClipped || isClipped(triggerRef.current)))
       }
     >
       <TooltipTrigger asChild ref={triggerRef}>
