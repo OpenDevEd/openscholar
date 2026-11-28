@@ -4,7 +4,7 @@
 // turned into the shape the pages share (./data.ts), with what they can do to it. Every page of an
 // open screening reads this one, so the frame, the Overview and the settings always agree.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -234,6 +234,12 @@ export function useOpenScreening(id: string) {
   const remind = useWorkspaceMutation(api.screening.reviewers.remind);
   const move = useWorkspaceMutation(api.screening.reviewers.move);
   const takeOff = useWorkspaceMutation(api.screening.reviewers.remove);
+  // The latest of each, read when it is called: the screening below is the same object until its data changes, so what renders under it renders again only then.
+  const acts = useRef({ vote, voteMany, resolve, pause, resume, finish, reopen, rename, remove, check, join, setEmails, retry, remind, move, takeOff, told });
+  acts.current = { vote, voteMany, resolve, pause, resume, finish, reopen, rename, remove, check, join, setEmails, retry, remind, move, takeOff, told };
+  return useMemo(() => {
+  // Each name below calls the latest of that action when it is called (`acts`), so the object made here never holds an old one.
+  const { vote, voteMany, resolve, pause, resume, finish, reopen, rename, remove, check, join, setEmails, retry, remind, move, takeOff, told } = new Proxy({} as typeof acts.current, { get: (_, name: keyof typeof acts.current) => (...args: unknown[]) => (acts.current[name] as (...all: unknown[]) => unknown)(...args) });
   if (view === undefined) return undefined;
   if (!view || !screening || !filed) return null;
   const models = screening.reviewers.filter((one) => one.kind === "model" && !one.left);
@@ -322,6 +328,7 @@ export function useOpenScreening(id: string) {
     /** Takes a reviewer off. Their votes keep counting unless they are thrown out. */
     takeOff: (reviewer: Reviewer, discard: boolean) => (reviewer.row ? takeOff({ jobId, reviewerId: reviewer.row, ...(discard ? { discard: true } : {}) }) : Promise.resolve(null)),
   };
+  }, [view, screening, filed, jobId]);
 }
 export type Open = NonNullable<ReturnType<typeof useOpenScreening>>;
 
