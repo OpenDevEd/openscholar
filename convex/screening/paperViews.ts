@@ -195,7 +195,7 @@ export const counts = workspaceQuery({
     // Narrowed one way, the counts are kept already (./facets.ts): a few counted reads, whatever the screening's size.
     const narrowed = [source, check, reason, row].filter(Boolean).length;
     if (narrowed === 1) {
-      if (row) return await tallyOfReviewer(ctx, row._id, voted === "none" ? ["waiting"] : voted === "failed" ? ["failed"] : voted ? [voted] : ["include", "maybe", "exclude"]);
+      if (row) return await tallyOfReviewer(ctx, row._id, voted === "none" ? ["waiting"] : voted === "failed" ? ["failed"] : voted ? [voted] : ["include", "maybe", "exclude", "cast"]);
       if (source) return await tallyUnder(ctx, jobId, { source });
       if (check) return await tallyUnder(ctx, jobId, { check });
       return await tallyForReason(ctx, jobId, reason!);
