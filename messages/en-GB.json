@@ -8916,8 +8916,6 @@
         "unreadLabel": "{count, plural, one {# paper it couldn't read} other {# papers it couldn't read}}",
         "unread": "{count, number} couldn't be read",
         "unreadSays": "{count, plural, one {It couldn't read this paper, so it has no say in it.} other {It couldn't read these # papers, so it has no say in them.}}",
-        "notGivenText": "{count, plural, one {Not given the PDF, as it reads text only} other {Not given the # PDFs, as it reads text only}}",
-        "notGivenLong": "{count, plural, one {Not given # PDF that is longer than it reads at once} other {Not given # PDFs that are longer than it reads at once}}",
         "voted": "{decision, select, include {{count, number} voted Include} maybe {{count, number} voted Maybe} other {{count, number} voted Exclude}}",
         "noOtherPerson": "No other person to compare with",
         "aloneOnPapers": "No other person reads their papers",
@@ -8996,7 +8994,6 @@
         "failed": "{count, plural, one {# reading failed} other {# readings failed}}",
         "arriving": "Papers are still arriving",
         "allRead": "Nothing left for the models to read",
-        "leftIn": "{own, select, true {{credits} left} other {{credits} left in {workspace}}}",
         "takenOff": "{credits} by models taken off",
         "nothingToPay": "Nothing to pay"
       },

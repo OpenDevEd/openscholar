@@ -8917,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {# artikel wat dit nie kon lees nie} other {# artikels wat dit nie kon lees nie}}",
         "unread": "{count, number} kon nie gelees word nie",
         "unreadSays": "{count, plural, one {Dit kon nie hierdie artikel lees nie, so dit het geen sê daaroor nie.} other {Dit kon nie hierdie # artikels lees nie, so dit het geen sê daaroor nie.}}",
-        "notGivenText": "{count, plural, one {Kry nie die PDF nie, want dit lees net teks} other {Kry nie die # PDF’e nie, want dit lees net teks}}",
-        "notGivenLong": "{count, plural, one {Kry nie # PDF wat langer is as wat dit op een slag lees nie} other {Kry nie # PDF’e wat langer is as wat dit op een slag lees nie}}",
         "voted": "{decision, select, include {{count, number} het Sluit in gestem} maybe {{count, number} het Miskien gestem} other {{count, number} het Sluit uit gestem}}",
         "noOtherPerson": "Geen ander persoon om mee te vergelyk nie",
         "aloneOnPapers": "Geen ander persoon lees hul artikels nie",
@@ -8997,7 +8995,6 @@
         "failed": "{count, plural, one {# lesing het misluk} other {# lesings het misluk}}",
         "arriving": "Die artikels kom nog aan",
         "allRead": "Niks bly oor vir die modelle om te lees nie",
-        "leftIn": "{own, select, true {{credits} oor} other {{credits} oor in {workspace}}}",
         "takenOff": "{credits} deur modelle wat afgehaal is",
         "nothingToPay": "Niks om te betaal nie"
       },

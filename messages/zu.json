@@ -8916,8 +8916,6 @@
         "unreadLabel": "{count, plural, one {# iphepha engakwazanga ukulifunda} other {# amaphepha engakwazanga ukuwafunda}}",
         "unread": "{count, number} awakwazanga ukufundwa",
         "unreadSays": "{count, plural, one {Ayikwazanga ukufunda leli phepha, ngakho ayinalo izwi kulo.} other {Ayikwazanga ukufunda la maphepha angu-#, ngakho ayinalo izwi kuwo.}}",
-        "notGivenText": "{count, plural, one {Ayinikwa i-PDF, ngoba ifunda umbhalo kuphela} other {Ayinikwa ama-PDF angu-#, ngoba ifunda umbhalo kuphela}}",
-        "notGivenLong": "{count, plural, one {Ayinikwa i-PDF engu-# ende kunalokho ekufundayo ngesikhathi esisodwa} other {Ayinikwa ama-PDF angu-# amade kunalokho ekufundayo ngesikhathi esisodwa}}",
         "voted": "{decision, select, include {{count, number} kuvotwe ngokuthi Faka} maybe {{count, number} kuvotwe ngokuthi Mhlawumbe} other {{count, number} kuvotwe ngokuthi Khipha}}",
         "noOtherPerson": "Akekho omunye umuntu wokuqhathanisa naye",
         "aloneOnPapers": "Akekho omunye umuntu ofunda amaphepha abo",
@@ -8996,7 +8994,6 @@
         "failed": "{count, plural, one {# ukufunda kwehlulekile} other {# ukufunda kwehlulekile}}",
         "arriving": "Amaphepha asafika",
         "allRead": "Akukho okusele ukuba amamodeli akufunde",
-        "leftIn": "{own, select, true {{credits} kusele} other {{credits} kusele ku-{workspace}}}",
         "takenOff": "{credits} ngamamodeli asusiwe",
         "nothingToPay": "Akukho okukhokhwayo"
       },

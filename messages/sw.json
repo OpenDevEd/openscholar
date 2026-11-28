@@ -8917,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {makala # ambayo haikuweza kusoma} other {makala # ambazo haikuweza kusoma}}",
         "unread": "{count, number} hazikuweza kusomwa",
         "unreadSays": "{count, plural, one {Haikuweza kusoma makala hii, kwa hivyo haina sauti juu yake.} other {Haikuweza kusoma makala hizi #, kwa hivyo haina sauti juu yake.}}",
-        "notGivenText": "{count, plural, one {Haipewi PDF, kwa kuwa inasoma maandishi tu} other {Haipewi PDF #, kwa kuwa inasoma maandishi tu}}",
-        "notGivenLong": "{count, plural, one {Haipewi PDF # iliyo ndefu kuliko inavyosoma kwa mara moja} other {Haipewi PDF # zilizo ndefu kuliko inavyosoma kwa mara moja}}",
         "voted": "{decision, select, include {{count, number} alipigia Jumuisha} maybe {{count, number} alipigia Labda} other {{count, number} alipigia Tenga}}",
         "noOtherPerson": "Hakuna mtu mwingine wa kulinganisha naye",
         "aloneOnPapers": "Hakuna mtu mwingine anayesoma makala zao",
@@ -8997,7 +8995,6 @@
         "failed": "{count, plural, one {usomaji # umeshindwa} other {usomaji # umeshindwa}}",
         "arriving": "Makala bado zinafika",
         "allRead": "Hakuna kilichobaki kwa miundo kusoma",
-        "leftIn": "{own, select, true {{credits} zimebaki} other {{credits} zimebaki kwenye {workspace}}}",
         "takenOff": "{credits} za modeli zilizoondolewa",
         "nothingToPay": "Hakuna cha kulipa"
       },

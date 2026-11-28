@@ -56,7 +56,8 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     const kept = progress.reviewers?.[reviewer._id];
     if ((kept?.cast ?? 0) !== cast.length) problems.push(`${names.get(reviewer._id)}: counted ${kept?.cast ?? 0} votes, has ${cast.length}`);
     for (const decision of DECISIONS) if ((kept?.[decision] ?? 0) !== cast.filter((vote) => vote.decision === decision).length) problems.push(`${names.get(reviewer._id)}: counted ${kept?.[decision] ?? 0} ${decision}, has ${cast.filter((vote) => vote.decision === decision).length}`);
-    const holds = mine.filter((vote) => vote.status !== "discarded").length;
+    // A paper that left with its source is no longer one of its reviewers' papers.
+    const holds = mine.filter((vote) => vote.status !== "discarded" && liveIds.has(vote.resultId)).length;
     if (reviewer.dealt !== holds) problems.push(`${names.get(reviewer._id)}: said to hold ${reviewer.dealt} papers, holds ${holds}`);
   }
 
@@ -66,7 +67,7 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     const ballots: Ballot[] = on.map((vote) => ({ status: vote.status, decision: vote.decision, at: vote.at, reason: vote.reason }));
     // A paper settled before the settings last changed keeps its result. Any other stands where its votes put it.
     const held = isFinal(result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
-    const voted = paper.resolved ? paper.resolved.decision : settle(rule.settle, ballots);
+    const voted = paper.resolved ? paper.resolved.decision : settle(rule.settle, ballots, rule.models);
     if (!held && result !== voted) problems.push(`${paper.title}: stands at ${result}, its votes say ${voted}`);
     const people = on.filter((vote) => byId.get(vote.reviewerId)?.kind === "person");
     const places = people.filter((vote) => vote.status === "waiting" || vote.status === "cast");

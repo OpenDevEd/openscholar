@@ -8916,8 +8916,6 @@
         "unreadLabel": "{count, plural, other {# 篇它无法读取的论文}}",
         "unread": "{count, number} 篇无法读取",
         "unreadSays": "{count, plural, other {它无法读取这 # 篇论文，因此对其没有发言权。}}",
-        "notGivenText": "{count, plural, other {未分配 # 个 PDF，因为它只读取文本}}",
-        "notGivenLong": "{count, plural, other {未分配 # 个超出它一次能读取长度的 PDF}}",
         "voted": "{decision, select, include {投了入选：{count, number}} maybe {投了待定：{count, number}} other {投了排除：{count, number}}}",
         "noOtherPerson": "没有其他人可比较",
         "aloneOnPapers": "没有其他人阅读其论文",
@@ -8996,7 +8994,6 @@
         "failed": "{count, plural, other {# 次读取失败}}",
         "arriving": "论文仍在到达",
         "allRead": "模型已没有要读的内容",
-        "leftIn": "{own, select, true {剩余 {credits}} other {{workspace} 剩余 {credits}}}",
         "takenOff": "已移出的模型用了 {credits}",
         "nothingToPay": "无需付费"
       },

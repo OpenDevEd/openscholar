@@ -561,6 +561,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const { reviewer, assigned, done, split, agrees, agreesHref, known, compared, missed, included, left, perDay, idle } = row;
   const t = useTranslations("screening.overview");
   const tp = useTranslations("screening.pieces");
+  // What a model isn't given is said as Settings says it: one sentence for one fact.
+  const form = useTranslations("screening.form");
   const words = useWords();
   // The people there are to compare a vote with: none, where it is the only person or a model with no people beside it.
   const peopleOn = readersOf(screening).people.length;
@@ -626,7 +628,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </PopoverContent>
           </Popover>
         ) : null}
-        {notGiven?.papers ? <p className="flex items-start gap-1 text-xs text-muted-foreground"><FileText className="mt-px size-3.5 shrink-0" />{notGiven.why === "text" ? t("row.notGivenText", { count: notGiven.papers }) : t("row.notGivenLong", { count: notGiven.papers })}</p> : null}
+        {notGiven?.papers ? <p className="flex items-start gap-1 text-xs text-muted-foreground"><FileText className="mt-px size-3.5 shrink-0" />{form("reviewers.pdfsMissed", { why: notGiven.why, count: notGiven.papers })}</p> : null}
       </div>
       {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
       {reviewer.tally?.kept ? (
@@ -863,6 +865,8 @@ function Facts({ open }: { open: Open }) {
   const { screening, counts } = open;
   const t = useTranslations("screening.overview");
   const tl = useTranslations("screening.list");
+  // The balance is said as the form and Settings say it.
+  const form = useTranslations("screening.form");
   const words = useWords();
   const workspace = screening.workspace;
   const models = modelsOf(screening);
@@ -936,7 +940,7 @@ function Facts({ open }: { open: Open }) {
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
-                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{t("credits.leftIn", { credits: words.credits(left), workspace: workspace.name, own: String(screening.workspace.kind === "personal" && open.canChange) })}</LinkChip>}
+                {/* Billing is its workspace's members' to open: anyone else reads the balance. */}{open.wallet === undefined ? null : <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{form("cost.inWorkspace", { credits: words.credits(left), workspace: workspace.name, own: String(screening.workspace.kind === "personal" && open.canChange) })}</LinkChip>}
                 {models.length ? <Chip>{words.count("models", models.length)}</Chip> : null}
                 {/* The total counts what a model spent before it was taken off: said, so it adds up with the rows above. */}
                 {offSpent >= 1 ? <Chip>{t("credits.takenOff", { credits: words.credits(offSpent) })}</Chip> : null}

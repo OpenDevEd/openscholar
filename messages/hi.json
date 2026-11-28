@@ -8916,8 +8916,6 @@
         "unreadLabel": "{count, plural, one {# लेख जिसे यह नहीं पढ़ सका} other {# लेख जिन्हें यह नहीं पढ़ सका}}",
         "unread": "{count, number} पढ़े नहीं जा सके",
         "unreadSays": "{count, plural, one {यह इस लेख को नहीं पढ़ सका, इसलिए इस पर इसका कोई फ़ैसला नहीं।} other {यह इन # लेखों को नहीं पढ़ सका, इसलिए इन पर इसका कोई फ़ैसला नहीं।}}",
-        "notGivenText": "{count, plural, one {PDF नहीं दी गई, क्योंकि यह केवल टेक्स्ट पढ़ता है} other {# PDF नहीं दी गईं, क्योंकि यह केवल टेक्स्ट पढ़ता है}}",
-        "notGivenLong": "{count, plural, one {एक बार में जितना यह पढ़ता है उससे लंबी # PDF नहीं दी गई} other {एक बार में जितना यह पढ़ता है उससे लंबी # PDF नहीं दी गईं}}",
         "voted": "{decision, select, include {{count, number} पर शामिल करें का वोट} maybe {{count, number} पर शायद का वोट} other {{count, number} पर बाहर करें का वोट}}",
         "noOtherPerson": "तुलना के लिए कोई दूसरा व्यक्ति नहीं",
         "aloneOnPapers": "उनके पेपर कोई और व्यक्ति नहीं पढ़ता",
@@ -8996,7 +8994,6 @@
         "failed": "{count, plural, one {# बार पढ़ना विफल} other {# बार पढ़ना विफल}}",
         "arriving": "लेख अभी आ रहे हैं",
         "allRead": "मॉडलों के पढ़ने के लिए कुछ नहीं बचा",
-        "leftIn": "{own, select, true {{credits} बचे} other {{workspace} में {credits} बचे}}",
         "takenOff": "हटाए गए मॉडलों के {credits}",
         "nothingToPay": "कोई भुगतान नहीं"
       },

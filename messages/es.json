@@ -8917,8 +8917,6 @@
         "unreadLabel": "{count, plural, one {# artículo que no pudo leer} other {# artículos que no pudo leer}}",
         "unread": "{count, number} no se pudieron leer",
         "unreadSays": "{count, plural, one {No pudo leer este artículo, así que no opina sobre él.} other {No pudo leer estos # artículos, así que no opina sobre ellos.}}",
-        "notGivenText": "{count, plural, one {No recibe el PDF, porque solo lee texto} other {No recibe los # PDF, porque solo lee texto}}",
-        "notGivenLong": "{count, plural, one {No recibe # PDF más largo de lo que lee de una vez} other {No recibe # PDF más largos de lo que lee de una vez}}",
         "voted": "{decision, select, include {{count, number} votados Incluir} maybe {{count, number} votados Quizá} other {{count, number} votados Excluir}}",
         "noOtherPerson": "No hay otra persona con quien comparar",
         "aloneOnPapers": "Ninguna otra persona lee sus artículos",
@@ -8997,7 +8995,6 @@
         "failed": "{count, plural, one {# lectura fallida} other {# lecturas fallidas}}",
         "arriving": "Los artículos aún están llegando",
         "allRead": "No queda nada por leer para los modelos",
-        "leftIn": "{own, select, true {Quedan {credits}} other {Quedan {credits} en {workspace}}}",
         "takenOff": "{credits} de modelos retirados",
         "nothingToPay": "Nada que pagar"
       },

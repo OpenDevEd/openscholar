@@ -8916,8 +8916,6 @@
         "unreadLabel": "{count, plural, other {読み取れなかった論文 # 件}}",
         "unread": "{count, number} 件を読み取れませんでした",
         "unreadSays": "{count, plural, other {この論文 # 件を読み取れなかったため、その結果には関わりません。}}",
-        "notGivenText": "{count, plural, other {テキストしか読めないため、PDF # 件は割り当てられていません}}",
-        "notGivenLong": "{count, plural, other {一度に読める長さを超える PDF # 件は割り当てられていません}}",
         "voted": "{decision, select, include {採用に投票 {count, number} 件} maybe {保留に投票 {count, number} 件} other {除外に投票 {count, number} 件}}",
         "noOtherPerson": "比べるほかの人がいません",
         "aloneOnPapers": "この人の論文を読む人はほかにいません",
@@ -8996,7 +8994,6 @@
         "failed": "{count, plural, other {読み取り失敗 # 回}}",
         "arriving": "論文はまだ届いています",
         "allRead": "モデルが読むものは残っていません",
-        "leftIn": "{own, select, true {残り {credits}} other {{workspace} に残り {credits}}}",
         "takenOff": "外されたモデルが {credits}",
         "nothingToPay": "支払いはありません"
       },
