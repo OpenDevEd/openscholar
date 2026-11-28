@@ -142,9 +142,10 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
   labels: { slider: string; from: string; to: string; of: string; first: string; last: string };
 }) {
   const top = Math.max(1, Math.min(total, most));
-  // The end the slider is dragging and the paper it is at: shown, and not yet the range. It is kept as a move of
-  // that end, not as a range, so a field that snapped in the same moment the slider was pressed is kept.
-  const [dragged, setDragged] = useState<{ end: 0 | 1; n: number } | null>(null);
+  // A drag under way: where the slider's ends were when it began (`from`) and where they are now (`at`). Shown, and
+  // not yet the range. An end the drag hasn't moved stays the range's, so a field that snapped in the same moment the
+  // slider was pressed is kept; and both ends are followed, so a thumb dragged past the other moves only what it passed.
+  const [dragged, setDragged] = useState<{ from: number[]; at: number[] } | null>(null);
   // The end being typed, as typed, so a half-typed number isn't rewritten under the cursor.
   const [typing, setTyping] = useState<{ end: 0 | 1; text: string } | null>(null);
   /** `range` with one end moved to `n`, kept between the papers the other end and the papers held let that end reach. */
@@ -152,9 +153,10 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
     [a, b] = [Math.min(a, top), Math.min(b, top)];
     return end === 0 ? [Math.min(b, held?.range[0] ?? b, Math.max(1, n)), b] : [a, Math.min(top, Math.max(a, held?.range[1] ?? a, n))];
   };
-  const [first, last] = dragged ? moved(value, dragged.end, dragged.n) : value;
-  /** The end the slider moved: the one whose paper differs from what it was drawn with. */
-  const endOf = (next: number[]): 0 | 1 => (next[0] !== first ? 0 : 1);
+  /** The range with each end the slider moved, from `from` to `at`, set where it now is. */
+  const slid = ({ from, at }: { from: number[]; at: number[] }) =>
+    ([0, 1] as const).reduce((range, end) => (at[end] !== from[end] ? moved(range, end, at[end]!) : range), value);
+  const [first, last] = dragged ? slid(dragged) : value;
   /** Sets the range to `range` where it differs. */
   const commit = (range: [number, number]) => (range[0] !== value[0] || range[1] !== value[1]) && onChange(range);
   // A key moves the slider a step and is let go of at once, so each step is the range. The slider tells it
@@ -192,16 +194,14 @@ export function RangeFields({ value, onChange, total, most = total, held, labels
         onKeyDown={() => (keyed.current = true)}
         onPointerDown={() => (keyed.current = false)}
         onValueChange={(next) => {
-          const [end, n] = [endOf(next), next[endOf(next)]!];
-          if (keyed.current) commit(moved(value, end, n));
-          else setDragged({ end, n });
+          if (keyed.current) commit(slid({ from: [first, last], at: next }));
+          else setDragged({ from: dragged?.from ?? [first, last], at: next });
         }}
         // Released after a drag.
         onValueCommit={(next) => {
           if (keyed.current) return;
-          const { end, n } = dragged ?? { end: endOf(next), n: next[endOf(next)]! };
           setDragged(null);
-          commit(moved(value, end, n));
+          commit(slid(dragged ?? { from: [first, last], at: next }));
         }}
         aria-label={labels.slider}
       />

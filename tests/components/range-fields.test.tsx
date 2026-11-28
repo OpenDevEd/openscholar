@@ -91,6 +91,26 @@ describe("a screening's range fields", () => {
     expect(screen.getByRole("spinbutton", { name: "Last paper" })).toHaveValue(302);
   });
 
+  it("move only what a thumb dragged past the other passes, and back", async () => {
+    const seen: [number, number][] = [];
+    const { container } = render(<Range start={[100, 300]} seen={seen} />);
+    const slider = container.querySelector<HTMLElement>("[data-slot=slider]")!;
+    // One pixel a paper, from paper 1.
+    slider.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 499, height: 20, right: 499, bottom: 20, toJSON() {} });
+    Object.assign(slider, { setPointerCapture() {}, hasPointerCapture: () => true, releasePointerCapture() {} });
+    const at = (paper: number) => ({ clientX: paper - 1, clientY: 5, pointerId: 1, button: 0 });
+
+    // From's thumb, pressed at 100, dragged up past To at 300, then back down below it.
+    fireEvent.pointerDown(slider, at(100));
+    fireEvent.pointerMove(slider, at(320));
+    expect(screen.getByRole("spinbutton", { name: "First paper" })).toHaveValue(300);
+    expect(screen.getByRole("spinbutton", { name: "Last paper" })).toHaveValue(320);
+    fireEvent.pointerMove(slider, at(250));
+    fireEvent.pointerUp(slider, at(250));
+
+    expect(seen).toEqual([[250, 300]]);
+  });
+
   it("snap an emptied To to the range's first paper when it's left", async () => {
     const seen: [number, number][] = [];
     render(<Range start={[10, 40]} seen={seen} />);
