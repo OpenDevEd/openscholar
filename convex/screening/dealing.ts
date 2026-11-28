@@ -24,6 +24,16 @@ export const votesOf = (ctx: Pick<QueryCtx, "db">, resultId: Id<"screeningResult
 /** A screening's sources in the order they were added, the ones taken out included. */
 export const sourcesOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) => ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_SOURCE_ROWS);
 
+/**
+ * Votes one transaction writes at most where it works through papers a step at a time: each paper has a row for
+ * every reviewer on it, each row written is read back twice for its trigger (./facets.ts), and settling may write a
+ * row twice (closed, then counted), against a transaction's 4,096 index ranges. Measured on settling papers of thirty
+ * reviewers each under "settled by the first vote" (convex/limits/maxSizeScreening.test.ts): 1,000 passed the limit,
+ * 800 didn't; 400 leaves room. A step takes as many papers as that leaves room for, at least one.
+ */
+export const VOTE_WRITES = 400;
+export const papersAStep = (reviewers: number, most: number) => Math.max(1, Math.min(most, Math.floor(VOTE_WRITES / Math.max(1, reviewers))));
+
 /** A screening's reviewers in the order they were added, whoever has left included. */
 export const reviewersOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) => ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_REVIEWERS);
 

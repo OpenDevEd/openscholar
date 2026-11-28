@@ -111,7 +111,7 @@ export async function countPaperFacets(ctx: QueueingCtx, change: Change<DataMode
 /** Keeps a vote's entries where how it stands, or when it was cast, changed. */
 export async function countVoteFacets(ctx: QueueingCtx, change: Change<DataModel, "screeningVotes">) {
   const [was, now] = [change.oldDoc, change.newDoc];
-  if (was && now && was.status === now.status && was.decision === now.decision && was.at === now.at) return;
+  if (was && now && was.reviewerId === now.reviewerId && was.status === now.status && was.decision === now.decision && was.at === now.at) return;
   const paper = await paperOf(ctx, (now ?? was)!.resultId);
   await move(ctx, voteEntries(was, paper), voteEntries(now, paper));
 }

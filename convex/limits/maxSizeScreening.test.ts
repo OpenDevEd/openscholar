@@ -101,4 +101,28 @@ describe("a step of papers that goes to many reviewers", { tags: ["size"] }, () 
       vi.useRealTimers();
     }
   }, 900_000);
+
+  it("settles papers with many reviewers each in batches their votes fit", async () => {
+    vi.useFakeTimers();
+    try {
+      const people = ["ann", ...Array.from({ length: 29 }, (_, i) => `p${i}`)];
+      const made = await team(people);
+      await saved(made, 50);
+      // Thirty people on every paper, Ann's vote on each, then "settled by the first vote": each paper settles on her vote
+      // and closes the places of the 29 others, 1,450 rows written by one settling, each read back for its counts.
+      const { jobId } = await started(made, people, 0, { rule: { each: "all", settle: "all", blind: "after" } });
+      await runAll(made.t, tick);
+      const { workspaceId } = made;
+      const papers = (await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "todo", ...page(50) })).page.map((one) => one.id);
+      expect(papers).toHaveLength(50);
+      await made.as.ann!.mutation(api.screening.voting.voteMany, { workspaceId, jobId, paperIds: papers, decision: "include" });
+      await runAll(made.t, tick);
+      await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { rule: { each: "all", settle: "one", blind: "after" } } });
+      await runAll(made.t, tick);
+      expect((await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId }))!.counts).toMatchObject({ include: 50, waiting: 0 });
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  }, 900_000);
 });
