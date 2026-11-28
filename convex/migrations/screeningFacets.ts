@@ -4,7 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { countEntries, paperEntries, screeningCounts, voteEntries } from "../screening/facets";
+import { countEntries, paperEntries, recountVote, screeningCounts, staleWaiting, voteEntries } from "../screening/facets";
 
 /**
  * Counts the papers and votes of every screening with reviewers that predate their counts (screening/facets.ts): each
@@ -14,6 +14,8 @@ import { countEntries, paperEntries, screeningCounts, voteEntries } from "../scr
  *   npx convex run migrations/screeningFacets:run '{"dryRun": true}'
  *   npx convex run migrations/screeningFacets:run
  *   npx convex run migrations/screeningFacets:verify
+ *
+ * `verify` finds counts missing. `readVotes` takes out the stale ones a model's reading left (#1617).
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -33,11 +35,20 @@ export const votes = migrations.define({
   },
 });
 
-export const run = migrations.runner([internal.migrations.screeningFacets.papers, internal.migrations.screeningFacets.votes]);
+/** Votes left counted as waiting by a model's reading that came back through the pool without the triggers (#1618), whatever they have done since: counted again as they stand. */
+export const readVotes = migrations.define({
+  table: "screeningVotes",
+  batchSize: 200,
+  migrateOne: async (ctx, vote) => {
+    await recountVote(ctx, vote, await ctx.db.get("screeningResults", vote.resultId));
+  },
+});
+
+export const run = migrations.runner([internal.migrations.screeningFacets.papers, internal.migrations.screeningFacets.votes, internal.migrations.screeningFacets.readVotes]);
 
 const tableValidator = v.union(v.literal("screeningResults"), v.literal("screeningVotes"));
 
-/** Entries one page of `table` should have that the counts don't. */
+/** Entries one page of `table` should have that the counts don't, and waiting entries its votes no longer waiting still have. */
 export const verifyPage = internalQuery({
   args: { table: tableValidator, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ missing: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
@@ -50,12 +61,15 @@ export const verifyPage = internalQuery({
       return { missing: await missing(page.page.flatMap(paperEntries)), isDone: page.isDone, continueCursor: page.continueCursor };
     }
     const page = await ctx.db.query("screeningVotes").paginate(opts);
-    const entries = (await Promise.all(page.page.map(async (vote) => voteEntries(vote, await ctx.db.get("screeningResults", vote.resultId))))).flat();
-    return { missing: await missing(entries), isDone: page.isDone, continueCursor: page.continueCursor };
+    const read = await Promise.all(page.page.map(async (vote) => ({ vote, paper: await ctx.db.get("screeningResults", vote.resultId) })));
+    const entries = read.flatMap(({ vote, paper }) => voteEntries(vote, paper));
+    const stale = read.flatMap(({ vote, paper }) => staleWaiting(vote, paper));
+    const left = (await screeningCounts.countBatch(ctx, stale.map(({ namespace, key, id }) => ({ namespace, bounds: { lower: { key, id, inclusive: true }, upper: { key, id, inclusive: true } } })) as never, { stale: true })).filter((count) => count > 0).length;
+    return { missing: (await missing(entries)) + left, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
-/** How many entries `verifyPage` finds missing across both tables; 0 when the backfill is done. */
+/** How many entries `verifyPage` finds missing or stale across both tables; 0 when the counts are right. */
 export const verify = internalAction({
   args: {},
   returns: v.number(),

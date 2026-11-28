@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { availableCredits } from "../billing/accounts";
-import { internalMutation, internalQuery } from "../lib/functions";
+import { internalMutation, internalQuery, withAppWrites } from "../lib/functions";
 import { screeningPool } from "../workpool";
 import { readsPdfs } from "../../lib/assistant/files";
 import { effortValidator, longPromptValidator } from "../aiModelConfig/validators";
@@ -80,7 +80,8 @@ const ERROR_SHOWN = 300;
  */
 export const done = screeningPool.defineOnComplete({
   context: v.object({}),
-  handler: async (ctx, { workId, result }) => {
+  // Its writes go through the app's triggers, as a mutation built by the app's builders would (../lib/functions.ts).
+  handler: (raw, { workId, result }) => withAppWrites(raw, async (ctx) => {
     // The pool's callback is typed without the app's tables.
     const vote = (await ctx.db.query("screeningVotes").withIndex("by_workId", (q) => q.eq("workId", workId)).unique()) as Doc<"screeningVotes"> | null;
     if (!vote) return;
@@ -115,7 +116,7 @@ export const done = screeningPool.defineOnComplete({
     }
     await ctx.db.patch("screeningResults", vote.resultId, { doneAt: ctx.db.vars.commitTs });
     await bookkeepLater(ctx);
-  },
+  }),
 });
 
 /** Rows one step of a sweep over a screening's readings handles. */

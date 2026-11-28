@@ -15,7 +15,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { internalMutation, internalQuery } from "../lib/functions";
+import { internalMutation, internalQuery, withAppWrites } from "../lib/functions";
 import { countOf, screeningFilesOf, type PdfStanding } from "../lib/listCounts";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { screeningPool } from "../workpool";
@@ -115,9 +115,10 @@ export const landed = internalMutation({
 /** The pool's callback for a first reading. The pool's own context has no triggers, so the row is written by `landed`, which keeps the drop's counts. */
 export const done = screeningPool.defineOnComplete({
   context: v.object({}),
-  handler: async (ctx, { workId, result }) => {
+  // Its writes go through the app's triggers, as a mutation built by the app's builders would (../lib/functions.ts).
+  handler: (raw, { workId, result }) => withAppWrites(raw, async (ctx) => {
     await ctx.runMutation(internal.screening.files.landed, { workId, read: result.kind === "success" ? (result.returnValue as typeof pdfReadValidator.type) : null });
-  },
+  }),
 });
 
 /** How many PDFs a drop holds. */
