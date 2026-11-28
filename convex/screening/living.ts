@@ -136,6 +136,9 @@ export const due = internalMutation({
 });
 
 /** What a check that has ended leaves behind: its note in the screening's activity, an email to the people the new papers went to, and a finished screening open again. */
+/** How long after a check its email waits: the papers it brought are counted by then (./facets.ts, a moment behind), so the email names them all. */
+const PAPERS_AFTER_MS = 60_000;
+
 export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check: Doc<"screeningChecks">) {
   // The look it started with says nothing: it is the screening starting. A later look from no papers (one that started empty) is a check like any other, and reopens it.
   if ((await firstCheck(ctx, job._id))?._id === check._id) return;
@@ -151,6 +154,6 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   if (!check.added) return;
   // Whoever asked for the check, or added the source it read, sees the papers arrive: the email is for the others.
   for (const reviewer of await reviewersOf(ctx, job._id)) {
-    if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined && reviewer.userId !== check.by) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });
+    if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined && reviewer.userId !== check.by) await ctx.scheduler.runAfter(PAPERS_AFTER_MS, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });
   }
 }

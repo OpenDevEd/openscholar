@@ -107,7 +107,7 @@ triggers.register("itemAccess", async (ctx, change) => {
   const grant = change.newDoc ?? change.oldDoc;
   if (grant.kind !== "screening" || (change.operation === "update" && change.oldDoc.role === change.newDoc.role)) return;
   // One given it to vote takes a reviewer's place now, or is refused: never "Can vote" with no queue.
-  if (change.newDoc?.role === "editor") await takeVotingSeat(ctx, grant.item, grant.userId);
+  if (change.newDoc?.role === "editor") await takeVotingSeat(ctx, grant.item);
   await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation", { item: string; userId: Id<"users"> }, null>("screening/reviewers:guestChanged"), { item: grant.item, userId: grant.userId });
 });
 // An invitation to vote on a screening that stops waiting: the papers that waited for its person are settled again (../screening/settings.ts `follow`). Accepted, its person is a reviewer by then (`guestChanged`, scheduled first) and is given the places; declined or cancelled, they are settled without them; and accepted by someone who had joined the workspace meanwhile, who isn't made a reviewer, likewise.

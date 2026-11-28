@@ -248,7 +248,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
   if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || plan.rescores) {
-    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck || plan.rescores ? ["waiting", "conflict", "include", "maybe", "exclude"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
+    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck || plan.rescores ? ["waiting", "conflict", "include", "maybe", "exclude"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: [...plan.stricter, ...(change.recheck ? plan.added.filter((criterion) => criterion.must).map((criterion) => criterion.key) : [])], reread: plan.added.length > 0 });
   }
   // The papers it has included go to a collection it is newly sent to.
   if (change.saveTo && change.saveTo.kind !== "none") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: null });
@@ -288,7 +288,8 @@ export const follow = internalMutation({
     let queued = 0;
     for (const paper of page.page) {
       // A settled paper checked again is asked again as an open one is: the models answer a new criterion on it, and a person's vote is asked for anew.
-      if ((open || recheck) && (stricter.length || reread)) {
+      // A finished screening asks nobody: its models read nothing until it is reopened, and a vote cleared now would never be cast again.
+      if ((open || recheck) && (stricter.length || reread) && job.finishedAt === undefined) {
         for (const vote of await votesOf(ctx, paper._id)) {
           const reviewer = reviewers.get(vote.reviewerId);
           if (vote.status !== "cast" || !reviewer) continue;

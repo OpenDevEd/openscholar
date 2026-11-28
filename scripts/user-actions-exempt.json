@@ -125,6 +125,7 @@
     "screening/living:checkNow": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/living:readSourceAgain": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/discussion:say": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
+    "screening/settings:checkChange": "A screening's own Settings page, asking whether a save would be taken before it sends invitations. The assistant changes nothing in screenings (plans/screening-reviewers).",
     "screening/settings:save": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",
     "screening/sampling:sample": "The screening form's preview of the first papers a source's range takes. The assistant starts no screening, and reads a source's papers with the tools for searches, collections and Zotero.",
     "screening/settings:saveToCommunity": "A screening's own pages. The assistant reads screenings and changes nothing in them (plans/screening-reviewers).",

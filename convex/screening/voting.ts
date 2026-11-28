@@ -38,7 +38,8 @@ const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults
 async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note, onlyWaiting, onlyAt, answered }: { paperId: Id<"screeningResults">; onlyWaiting?: boolean; onlyAt?: number; answered?: { key: string; answer: Answer | null }; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
   const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
-  requireReason(job, reason, onlyAt !== undefined);
+  // An answer joining a vote keeps its reason, even one whose criterion was taken off since: only a vote cast names one.
+  if (!answered) requireReason(job, reason, onlyAt !== undefined);
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
