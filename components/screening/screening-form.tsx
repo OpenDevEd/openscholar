@@ -389,6 +389,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The search is read while the form shows, so the store has it whether the person came from its results or from a link.
   useWatchedSearch(fromSearch ?? undefined);
   const picked = useSearchHistoryStore((state) => (fromSearch ? state.searchHistory.find((item) => item.id === fromSearch) : undefined));
+  // Its filters, named as the search's row in the form names them when it is added there: one search, said the same way however it came.
+  const pickedFilters = useFilterLabels(picked ?? {}).join("\n");
   const copiedRead = useOpenScreening(!id && from ? from : "");
   const copied = !id && from ? (copiedRead?.screening ?? undefined) : undefined;
   // Who is making it, what the workspace has to pay its models with, and a screening whose models would read before this one's.
@@ -403,7 +405,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!copied && picked) {
       const criteria = searchOffer(picked, tc("noQuery")).questions?.map((question) => criterionFrom(question)) ?? [];
       const asked = picked.latestQuestion?.trim() ?? "";
-      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom(searchOffer(picked, tc("noQuery")))], criteria, scoring: defaultScoring(criteria) };
+      return { ...start, name: (asked || picked.query).slice(0, 200), question: asked, sources: [sourceFrom({ ...searchOffer(picked, tc("noQuery")), ...(pickedFilters ? { filters: pickedFilters.split("\n") } : {}) })], criteria, scoring: defaultScoring(criteria) };
     }
     if (!copied && handed) {
       const criteria = screeningQuestionsOf(handed.fields).map((question) => criterionFrom(question));
@@ -417,7 +419,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     const mine = (one: Reviewer) => one.kind === "model" || (here && !one.guest);
     return { ...start, name: t("again", { name: copied.name }), question: copied.question, sources: copied.sources.filter((source) => source.set && here).map((source) => ({ ...source, id: `new:${source.id}`, read: undefined, updates: undefined, range: (source.scope === "range" ? [Math.min(source.range[0], Math.max(1, source.total)), Math.min(source.range[1], Math.max(1, source.total))] : [1, Math.max(1, source.total)]) as [number, number], duplicates: 0, addedAt: Date.now() })), criteria: copied.criteria, reviewers: [...(here ? [] : start.reviewers), ...activeReviewers(copied).filter(mine).map(({ row: _row, tally: _tally, ...one }) => ({ ...one, id: one.kind === "model" && one.model ? modelKey(one.model) : one.id }))], rule: here ? copied.rule : { ...copied.rule, resolver: start.rule.resolver }, scoring: copied.scoring, destination: here ? { ...copied.destination, name: "" } : start.destination };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
-  }, [setup?.me.id, copied?.id, picked?.id, handed ? rowKey(handed.row) : null]);
+  }, [setup?.me.id, copied?.id, picked?.id, pickedFilters, handed ? rowKey(handed.row) : null]);
   const origin = saved ?? made;
   // The guests who vote on the screening this one is copied from, by name: they are not on the copy, and the form says how they get on it.
   // A copy made in another workspace takes none of the people: it says nothing of whom it left behind, the person copying it among them.
