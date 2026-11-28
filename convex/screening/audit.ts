@@ -10,7 +10,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { isFinal, NAMED_REASONS, NO_REASON, settle, type Ballot, type Result } from "../../lib/screening/rules";
-import { excludedFor, tallyOfReviewer, tallyUnder, type Tally } from "./facets";
+import { excludedFor, tallyOfReviewer, tallyOfReviewerUnder, tallyUnder, tallyUnderBoth, type Tally } from "./facets";
 
 const DECISIONS = ["include", "maybe", "exclude"] as const;
 /** Rows of one kind an audit reads: a screening's papers, votes or cards, which a screening of 5,000 papers stays well within. */
@@ -124,6 +124,24 @@ export async function auditJob(ctx: QueryCtx, jobId: Id<"screeningJobs">) {
     });
     const counted = await tallyOfReviewer(ctx, reviewer._id, ["include", "maybe", "exclude", "cast", "waiting", "failed"]);
     if (JSON.stringify(counted) !== JSON.stringify(tally(on))) problems.push(`${names.get(reviewer._id)}: counted on ${JSON.stringify(counted)}, their papers ${JSON.stringify(tally(on))}`);
+  }
+
+  // And the counts of two narrowings at once: each reviewer under each source and each check, and each source under each check.
+  const sourceIds = [...new Set(liveCards.flatMap((card) => (card.sourceId ? [card.sourceId] : [])))];
+  const checkIds = [...new Set(liveCards.flatMap((card) => (card.checkId ? [card.checkId] : [])))];
+  const ways = ["include", "maybe", "exclude", "cast", "waiting", "failed"] as const;
+  for (const reviewer of reviewers) {
+    const theirs = votes.filter((vote) => vote.reviewerId === reviewer._id && (vote.status === "waiting" || vote.status === "cast" || vote.status === "failed")).flatMap((vote) => { const card = cardOf.get(vote.resultId); return card && !card.withdrawn ? [card] : []; });
+    for (const under of [...sourceIds.map((source) => ({ source })), ...checkIds.map((check) => ({ check }))]) {
+      const read = tally(theirs.filter((card) => ("source" in under ? card.sourceId === under.source : card.checkId === under.check)).map((card) => card.result));
+      const counted = await tallyOfReviewerUnder(ctx, reviewer._id, [...ways], under);
+      if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`${names.get(reviewer._id)} under ${JSON.stringify(under)}: counted ${JSON.stringify(counted)}, their papers ${JSON.stringify(read)}`);
+    }
+  }
+  for (const sourceId of sourceIds) for (const checkId of checkIds) {
+    const read = tally(liveCards.filter((card) => card.sourceId === sourceId && card.checkId === checkId).map((card) => card.result));
+    const counted = await tallyUnderBoth(ctx, jobId, sourceId, checkId);
+    if (JSON.stringify(counted) !== JSON.stringify(read)) problems.push(`source ${sourceId} under check ${checkId}: counted ${JSON.stringify(counted)}, its papers ${JSON.stringify(read)}`);
   }
 
   const cast = Object.fromEntries(reviewers.map((one) => [names.get(one._id)!, progress.reviewers?.[one._id]?.cast ?? 0]));

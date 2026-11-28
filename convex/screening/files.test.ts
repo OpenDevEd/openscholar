@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { readAgain } from "./dealing";
-import { give, paper, started, team, type Team } from "./reviewers.test-support";
+import { give, paper, papersOf, started, team, type Team } from "./reviewers.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -118,6 +118,20 @@ describe("what a source leaves out", () => {
     await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId, pass: 1, papers: [], read: 0, ended: true });
     expect(await sourceOf()).toMatchObject({ read: 6, taken: 3, duplicates: 3, left: 0 });
     expect(await merged()).toEqual([["Paper 2", "Paper 1", sourceId], ["Paper 3", "Paper 3", sourceId], ["Paper 4", "Paper 4", sourceId]]);
+  });
+
+  it("finds a paper merged on its title by the DOI and the key its merged record brought, whatever title they come with later", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0, { sources: [{ set: { kind: "saved" }, name: "One" }, { set: { kind: "saved" }, name: "Two" }, { set: { kind: "saved" }, name: "Three" }] });
+    const { checkId, sources } = await made.t.run(async (ctx) => ({ checkId: (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).first())!._id, sources: (await ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((one) => one._id) }));
+    const [first, second, third] = sources as [Id<"screeningSources">, Id<"screeningSources">, Id<"screeningSources">];
+    for (const sourceId of sources) await made.t.mutation(internal.screening.gathering.begin, { sourceId, pass: 0 });
+    // The first source has the paper with no DOI; the second has it with one, under another key, and is merged into it by its title and year.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: first, pass: 0, papers: [paper(1)], read: 1, ended: true });
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: second, pass: 0, papers: [paper(2, { title: "Paper 1", doi: "10.1/one" })], read: 1, ended: true });
+    // The third has it by that DOI under a title written another way, and by the second's key under another title.
+    await made.t.mutation(internal.screening.gathering.fill, { checkId, sourceId: third, pass: 0, papers: [paper(3, { title: "Paper one, revised", doi: "10.1/one" }), paper(2, { title: "Yet another title" })], read: 2, ended: true });
+    expect(await papersOf(made.t, jobId)).toHaveLength(1);
   });
 
   it("names a record another source already brought, and counts one it meets twice in a reading once", async () => {

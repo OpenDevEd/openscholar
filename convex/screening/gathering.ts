@@ -55,12 +55,12 @@ const FAILURE_SHOWN = 600;
 const FILL_TRIES = 5;
 
 
-type Reading = { gone?: true; full?: true; pass: number; places: number; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
+type Reading = { gone?: true; full?: true; pass: number; run: number; places: number; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
 /** The next of a check's sources that still has papers to read, with where its reading stands. Null once every source is read, or the check has ended. */
 export const next = internalQuery({
   args: { checkId: v.id("screeningChecks") },
-  returns: v.union(v.null(), v.object({ places: v.number(), sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces"), gone: v.optional(v.literal(true)), full: v.optional(v.literal(true)), pass: v.number() })),
+  returns: v.union(v.null(), v.object({ places: v.number(), sourceId: v.id("screeningSources"), part: v.number(), set: sourceSetValidator, first: v.number(), last: v.optional(v.number()), read: v.number(), resume: v.optional(v.string()), snapshot: v.optional(searchSnapshotValidator), state: v.union(v.literal("waiting"), v.literal("reading")), total: v.optional(v.number()), userId: v.id("users"), workspaceId: v.id("workspaces"), gone: v.optional(v.literal(true)), full: v.optional(v.literal(true)), pass: v.number(), run: v.number() })),
   handler: async (ctx, { checkId }): Promise<Reading | null> => {
     const check = await ctx.db.get("screeningChecks", checkId);
     const job = check?.state === "running" ? await ctx.db.get("screeningJobs", check.jobId) : null;
@@ -78,7 +78,7 @@ export const next = internalQuery({
     const places = readersFor(job.rule?.each ?? "all", reviewers.filter(dealable).length) + reviewers.filter(readingModel).length;
     // A screening that holds as many papers as its plan takes asks no source for more: the source stops at once, and says why.
     const full = job.totalPapers - ((await progressRow(ctx, job._id))?.withdrawn ?? 0) >= (await papersLimit(ctx, job.workspaceId));
-    return { ...(gone ? { gone: true as const } : {}), ...(full ? { full: true as const } : {}), pass: source.pass ?? 0, places, sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: source.workspaceId ?? job.workspaceId };
+    return { ...(gone ? { gone: true as const } : {}), ...(full ? { full: true as const } : {}), pass: source.pass ?? 0, run: check!.run ?? 0, places, sourceId: source._id, part, set: source.set, first: source.first ?? 1, ...(source.last === undefined ? {} : { last: source.last }), read: source.read, ...(source.resume ? { resume: source.resume } : {}), ...(source.snapshot ? { snapshot: source.snapshot } : {}), state: source.state as "waiting" | "reading", ...(source.total === undefined ? {} : { total: source.total }), userId: source.addedBy, workspaceId: source.workspaceId ?? job.workspaceId };
   },
 });
 
@@ -102,11 +102,12 @@ export const begin = internalMutation({
 
 /** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. The check counts it as one of its own it couldn't read. */
 export const fail = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), reason: v.optional(v.string()) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), run: v.optional(v.number()), reason: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { checkId, sourceId, pass, reason }) => {
-    // A reading of the source from before it was changed fails nothing: the source is being read again.
+  handler: async (ctx, { checkId, sourceId, pass, run, reason }) => {
+    // A reading of the source from before it was changed fails nothing: the source is being read again. Nor does a reader the check has moved past.
     if (((await ctx.db.get("screeningSources", sourceId))?.pass ?? 0) !== pass) return null;
+    if (run !== undefined && ((await ctx.db.get("screeningChecks", checkId))?.run ?? 0) !== run) return null;
     await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason?.slice(0, FAILURE_SHOWN) });
     const check = await ctx.db.get("screeningChecks", checkId);
     if (check && !check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
@@ -119,30 +120,33 @@ export const fail = internalMutation({
  * papers can't be read fails by itself, with why, and the others are still read.
  */
 export const gather = internalAction({
-  args: { checkId: v.id("screeningChecks") },
+  args: { checkId: v.id("screeningChecks"), /** The reading of the check this reader is: one the check has moved past stops. */ run: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx, { checkId }) => {
+  handler: async (ctx, { checkId, run: asked }) => {
     const started = Date.now();
+    let run = asked;
     for (;;) {
       // Typed here: the generated API's types depend on this module, so inference would loop.
       const source: Reading | null = await ctx.runQuery(internal.screening.gathering.next, { checkId });
+      run ??= source?.run;
+      if (source && source.run !== run) return;
       if (!source) return void (await ctx.runMutation(internal.screening.gathering.end, { checkId }));
-      if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId }));
+      if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId, run }));
       try {
         if (source.gone) throw createError("FORBIDDEN", "Whoever added this source is no longer in the workspace it is in. Add it again from this workspace.");
         if (source.full) {
           await ctx.runMutation(internal.screening.gathering.begin, { sourceId: source.sourceId, pass: source.pass });
-          await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId: source.sourceId, pass: source.pass, papers: [], read: 0, ended: false, full: true });
+          await ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, papers: [], read: 0, ended: false, full: true });
           continue;
         }
         // Its next PDFs are still being read for the first time: the check comes back for them, and is not taken for one gone quiet.
         if ((await step(ctx, checkId, source)) === "wait") {
           await ctx.runMutation(internal.screening.gathering.beat, { checkId });
-          return void (await ctx.scheduler.runAfter(PDFS_WAIT_MS, internal.screening.gathering.gather, { checkId }));
+          return void (await ctx.scheduler.runAfter(PDFS_WAIT_MS, internal.screening.gathering.gather, { checkId, run }));
         }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
-        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
+        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
       }
     }
   },
@@ -173,7 +177,7 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     for (let at = 0; at === 0 || at < ready.length; at += each) {
       const last = at + each >= ready.length;
       const goesOn = last ? resume : source.resume;
-      const args = { checkId, sourceId, pass: source.pass, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
+      const args = { checkId, sourceId, pass: source.pass, run: source.run, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
       // A fill writes the reviewers' counts that voting and settling write too: one that loses to them every time Convex tries it is tried again here, with the papers it already has.
       for (let tries = 1; ; tries++) {
         try { await ctx.runMutation(internal.screening.gathering.fill, args); break; }
@@ -331,6 +335,10 @@ const SAME_TITLE = 5;
 async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, paper: { paperKey: string; doiKey?: string; titleKey: string }) {
   const byKey = await ctx.db.query("screeningResults").withIndex("by_job_paperKey", (q) => q.eq("jobId", jobId).eq("paperKey", paper.paperKey)).first();
   if (byKey) return byKey;
+  // A record merged into a paper before is that paper, whatever title or DOI it comes with now.
+  const merged = await ctx.db.query("screeningMerged").withIndex("by_job_and_paperKey", (q) => q.eq("jobId", jobId).eq("paperKey", paper.paperKey)).first();
+  const into = merged ? await ctx.db.get("screeningResults", merged.into) : null;
+  if (into) return into;
   const doiKey = paper.doiKey;
   const byDoi = doiKey ? await ctx.db.query("screeningResults").withIndex("by_job_and_doiKey", (q) => q.eq("jobId", jobId).eq("doiKey", doiKey)).first() : null;
   if (byDoi) return byDoi;
@@ -348,12 +356,12 @@ async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, 
  * reviewers.
  */
 export const fill = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), /** The reading of the source this step belongs to: one from before the source was changed takes nothing in. */ pass: v.number(), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** The screening is full before this source gave anything: it stops as one that met the cap. */ full: v.optional(v.boolean()), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), /** The reading of the source this step belongs to: one from before the source was changed takes nothing in. */ pass: v.number(), /** The reading of the check: a reader it has moved past takes nothing in. */ run: v.optional(v.number()), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** The screening is full before this source gave anything: it stops as one that met the cap. */ full: v.optional(v.boolean()), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
   returns: v.null(),
-  handler: async (ctx, { checkId, sourceId, pass: reading, papers, read, resume, ended, full, leftOut }) => {
+  handler: async (ctx, { checkId, sourceId, pass: reading, run, papers, read, resume, ended, full, leftOut }) => {
     const [check, source] = await Promise.all([ctx.db.get("screeningChecks", checkId), ctx.db.get("screeningSources", sourceId)]);
     // A source taken out while its reading was out takes nothing in: its papers would arrive after it left. Nor does an earlier reading of one changed since.
-    const job = check?.state === "running" && source?.state === "reading" && source.removedAt === undefined && (source.pass ?? 0) === reading ? await ctx.db.get("screeningJobs", check.jobId) : null;
+    const job = check?.state === "running" && source?.state === "reading" && source.removedAt === undefined && (source.pass ?? 0) === reading && (run === undefined || (check.run ?? 0) === run) ? await ctx.db.get("screeningJobs", check.jobId) : null;
     if (!check || !source || !job) return null;
     const reviewers = await reviewersOf(ctx, job._id);
     const reads = await readsOf(ctx, reviewers);
@@ -420,6 +428,8 @@ export const fill = internalMutation({
         // A paper kept before its source named records is told by its paper alone.
         const own = twin.sourceId === sourceId && (paper.record === undefined || twin.record === undefined ? twin.paperKey === identity.paperKey : twin.record === paper.record);
         if (!own && (await merge(title, twin._id, named))) duplicates++;
+        // A paper merged on its title takes the DOI it lacked from the record merged into it: a later record with that DOI is the same paper.
+        if (!own && !twin.doiKey && keys.doiKey) await ctx.db.patch("screeningResults", twin._id, { doiKey: keys.doiKey, ...(twin.doi ? {} : { doi: paper.doi ?? paper.crossRefs?.doi }) });
         // A paper already excluded, met in a collection read since, leaves it too where the screening takes excluded papers out: it would otherwise stay there for good, as its result never changes again.
         if (!own && job.prune && twin.result === "exclude" && !twin.withdrawn) {
           const source = await ctx.db.get("screeningSources", sourceId);
@@ -495,7 +505,7 @@ export const end = internalMutation({
     const check = await ctx.db.get("screeningChecks", checkId);
     if (check?.state !== "running") return null;
     // A source added while the last one was read waits for this look: the look reads on rather than end without it.
-    if ((await sourcesOf(ctx, check.jobId)).some((source) => source.removedAt === undefined && (source.state === "waiting" || source.state === "reading"))) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId }));
+    if ((await sourcesOf(ctx, check.jobId)).some((source) => source.removedAt === undefined && (source.state === "waiting" || source.state === "reading"))) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId, run: check.run ?? 0 }));
     const job = await ctx.db.get("screeningJobs", check.jobId);
     // The sources it couldn't read were counted on it as each failed (`fail`), so nothing reads it as a check that found nothing new.
     await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
@@ -528,7 +538,8 @@ export const watch = internalMutation({
       await ctx.db.patch("screeningJobs", check.jobId, { reading: undefined, ...touched() });
       return null;
     }
-    await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });
+    // A reader gone quiet is read on by another of the same run: each step's source and pass checks keep two of them from taking one page twice.
+    await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId, run: check.run ?? 0 });
     await ctx.scheduler.runAfter(QUIET_MS, internal.screening.gathering.watch, { checkId, restarts: restarts + 1 });
     return null;
   },

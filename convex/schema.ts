@@ -1794,7 +1794,9 @@ export default defineSchema({
     .index("by_source_and_pass", ["sourceId", "pass"])
     .index("by_source_and_paperKey", ["sourceId", "paperKey"])
     .index("by_into_and_source", ["into", "sourceId"])
-    .index("by_job", ["jobId"]),
+    .index("by_job", ["jobId"])
+    // A record merged into a paper still finds it by its own key (./screening/gathering.ts `twinOf`).
+    .index("by_job_and_paperKey", ["jobId", "paperKey"]),
 
   // What a source held that the screening doesn't take, each with why.
   screeningLeftOut: defineTable({
@@ -1828,6 +1830,8 @@ export default defineSchema({
     added: v.number(),
     // Papers taken out with a source that it brought back: in the screening again, in the places they had.
     restored: v.optional(v.number()),
+    // Which reading of it is the live one: a check reopened reads anew, and a reader still out from before it ended writes nothing.
+    run: v.optional(v.number()),
     // Of what it found, the records left out (no abstract, nothing to read): neither added nor already in the screening.
     left: v.optional(v.number()),
     // The sources it couldn't read (each failed, with why, on its own row): a check that read none of them found nothing it can vouch for.
