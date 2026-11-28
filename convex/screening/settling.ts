@@ -34,11 +34,16 @@ const MERGED_SOURCES = 50;
 /** Excluded papers taken out of their collections in one step, once a screening is set to do so. */
 const PRUNE_STEP = 50;
 
-/** What a paper's sources read, for the collections it leaves: the one it was read from, and any it was met in again and merged from. */
+/**
+ * What a paper's sources read, for the collections it leaves, each with the record it holds there: the one it was read
+ * from, by the paper's own record, and any it was met in again and merged from, by the record that source holds.
+ */
 async function setsOf(ctx: MutationCtx, paper: Doc<"screeningResults">) {
   const met = await ctx.db.query("screeningMerged").withIndex("by_into_and_source", (q) => q.eq("into", paper._id)).take(MERGED_SOURCES);
-  const sources = await Promise.all([...new Set([...(paper.sourceId ? [paper.sourceId] : []), ...met.map((one) => one.sourceId)])].map((sourceId) => ctx.db.get("screeningSources", sourceId)));
-  return sources.flatMap((source) => (source && source.removedAt === undefined && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois" ? [source.set] : []));
+  const held = [...(paper.sourceId ? [{ sourceId: paper.sourceId, paperKey: paper.paperKey }] : []), ...met.flatMap((one) => (one.paperKey ? [{ sourceId: one.sourceId, paperKey: one.paperKey }] : []))];
+  const unique = [...new Map(held.map((one) => [`${one.sourceId}|${one.paperKey}`, one])).values()];
+  const sources = await Promise.all(unique.map((one) => ctx.db.get("screeningSources", one.sourceId)));
+  return sources.flatMap((source, at) => (source && source.removedAt === undefined && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois" ? [{ set: source.set, paperKey: unique[at]!.paperKey }] : []));
 }
 
 /** A screening just set to take its excluded papers out of their collections does so for the papers it excluded before, a page at a time. */

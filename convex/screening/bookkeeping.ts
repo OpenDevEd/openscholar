@@ -159,7 +159,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
  * left out (excluded, or failed) leaves that collection, and comes back if a changed answer
  * includes it after all; an unclear one stays.
  */
-export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, sets: Array<Doc<"screeningJobs">["set"] | Doc<"screeningSources">["set"]> = [job.set]) {
+export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, sets: Array<{ set: Doc<"screeningJobs">["set"] | Doc<"screeningSources">["set"]; /** The record of the paper that collection holds, where it isn't the paper's own. */ paperKey?: string }> = [{ set: job.set }]) {
   const moved = { saved: 0, removed: 0 };
   if (becameIncluded && !job.unsaved) {
     moved.saved = result.savedToLibrary ? 0 : 1;
@@ -169,10 +169,10 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   if (becameIncluded && job.libraryDestination) await queueLibraryWrite(ctx, job, result, "add", job.libraryDestination);
   if (job.libraryDestination) await forgetMissing(ctx, job, result);
   if (!job.prune || !(becameIncluded || left)) return moved;
-  // Every collection that held it is pruned, the one it was read from and any other it was met in again: each would otherwise keep a paper the screening excluded.
+  // Every collection that held it is pruned, the one it was read from and any other it was met in again, each by the record it holds: each would otherwise keep a paper the screening excluded, and one brought back gets its own record again.
   let removed = false;
   let back = false;
-  for (const set of sets) {
+  for (const { set, paperKey } of sets) {
     if (set?.kind === "evidenceLibrary") {
       await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved, set);
       continue;
@@ -182,7 +182,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
     // A screening moved to another workspace (#654) leaves the collection it read alone.
     const collection = await ctx.db.get("collections", collectionId);
     if (collection?.workspaceId !== job.workspaceId) continue;
-    const item = await findItem(ctx, job.workspaceId, result.paperKey);
+    const item = await findItem(ctx, job.workspaceId, paperKey ?? result.paperKey);
     if (!item) continue;
     const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
     if (left && membership) {

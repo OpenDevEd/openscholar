@@ -300,23 +300,12 @@ export const guestChanged = internalMutation({
 
 /** Closes the questions put to someone on one screening, a step at a time, once they can no longer answer them there. What was written stays on each paper. */
 export const closeQuestions = internalMutation({
-  args: {
-    jobId: v.id("screeningJobs"),
-    userId: v.id("users"),
-    /** Whoever settles its conflicts now, where the person stopped settling them: the questions go on to them, still open. */
-    to: v.optional(v.id("users")),
-    /** Only the questions put to them as its settler, about papers in conflict: the others stay theirs. */
-    settling: v.optional(v.boolean()),
-    cursor: v.optional(v.union(v.string(), v.null())),
-  },
+  args: { jobId: v.id("screeningJobs"), userId: v.id("users"), /** Whoever settles its conflicts now, where the person stopped settling them: the questions go on to them, still open. */ to: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { jobId, userId, to, settling, cursor }) => {
-    const page = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).paginate({ cursor: cursor ?? null, numItems: STEP });
-    for (const message of page.page) {
-      if (settling && (await ctx.db.get("screeningResults", message.resultId))?.result !== "conflict") continue;
-      await ctx.db.patch("screeningMessages", message._id, to && to !== userId ? { to } : { open: undefined });
-    }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId, ...(to ? { to } : {}), ...(settling ? { settling } : {}), cursor: page.continueCursor });
+  handler: async (ctx, { jobId, userId, to }) => {
+    const open = await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId).eq("to", userId).eq("open", true)).take(STEP);
+    for (const message of open) await ctx.db.patch("screeningMessages", message._id, to && to !== userId ? { to } : { open: undefined });
+    if (open.length === STEP) await ctx.scheduler.runAfter(0, internal.screening.reviewers.closeQuestions, { jobId, userId, ...(to ? { to } : {}) });
     return null;
   },
 });
@@ -467,7 +456,7 @@ export const remind = workspaceMutation({
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (reviewer?.jobId !== jobId || !dealable(reviewer)) throw createError("NOT_FOUND", "They aren't on this screening.");
     if (reviewer.reminded && Date.now() - reviewer.reminded < 86_400_000) throw createError("CONFLICT", "They were reminded less than a day ago.");
-    // A reminder that would never be sent isn't said to be: a finished screening sends none, and nor does one they turned the emails of off.
+    // A reminder that would never be sent isn't said to be: a finished screening sends none, and nor does one whose emails they turned off.
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to remind them.");
     if ((await noticeOf(ctx, jobId, reviewer.userId!))?.off) throw createError("CONFLICT", "They turned off emails from this screening.");
     await ctx.db.patch("screeningReviewers", reviewerId, { reminded: Date.now() });
