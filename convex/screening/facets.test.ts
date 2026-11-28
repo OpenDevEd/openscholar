@@ -90,3 +90,25 @@ it("takes out the waiting count a reading left when it came back without the tri
   await agree(t, [vote.reviewerId]);
   expect((await wrong()).missing).toBe(0);
 });
+
+it("takes out the waiting count a reading left on a vote that has waited again since, under where its paper stands now", async () => {
+  const made = await team(["ann"]);
+  const { t } = made;
+  const { jobId, papers } = await started(made, ["ann"], 1, { rule: { each: 1, settle: "all", blind: "after" } });
+  const paperId = papers[0]!._id;
+  const vote = await t.run(async (ctx) => {
+    const reviewerId = await ctx.db.insert("screeningReviewers", { jobId, kind: "model", addedAt: 1, addedBy: made.ids.ann!, dealt: 1 });
+    return { reviewerId, id: await ctx.db.insert("screeningVotes", { jobId, resultId: paperId, reviewerId, place: 0, status: "waiting", workId: "reading" }) };
+  });
+  await runAll(t, vi.runAllTimers);
+  // Cast without the triggers, as the pool wrote it; its paper then goes into conflict, and a new criterion asks the model to read it again.
+  await runUntriggered(t, (ctx) => ctx.db.patch("screeningVotes", vote.id, { status: "cast", at: 5 }));
+  await t.run((ctx) => ctx.db.patch("screeningResults", paperId, { result: "conflict" }));
+  await t.run((ctx) => ctx.db.patch("screeningVotes", vote.id, { status: "waiting", at: undefined }));
+  await runAll(t, vi.runAllTimers);
+  const wrong = async () => (await t.query(internal.migrations.screeningFacets.verifyPage, { table: "screeningVotes", cursor: null })).missing;
+  expect(await wrong()).toBeGreaterThan(0);
+  await t.run(async (ctx) => recountVote(ctx, (await ctx.db.get("screeningVotes", vote.id))!, await ctx.db.get("screeningResults", paperId)));
+  await agree(t, [vote.reviewerId]);
+  expect(await wrong()).toBe(0);
+});

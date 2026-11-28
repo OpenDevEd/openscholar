@@ -123,13 +123,18 @@ export async function countVoteFacets(ctx: QueueingCtx, change: Change<DataModel
 export const countEntries = (ctx: QueueingCtx, entries: Entry[]) => move(ctx, [], entries);
 
 /**
- * Takes out what a vote no longer waiting may still be counted as waiting under, and counts it as it stands. A model's
- * reading that came back through the pool before its completion ran with the triggers (../lib/functions.ts
- * `withAppWrites`) left its vote counted as waiting.
+ * The waiting entries a vote has that it shouldn't: a model's reading that came back through the pool before its
+ * completion ran with the triggers (../lib/functions.ts `withAppWrites`) left its vote counted as waiting, under where
+ * its paper stood then, whatever the vote has done since, waited again included.
  */
+export const staleWaiting = (vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null): Entry[] => {
+  const kept = voteEntries(vote, paper).find((entry) => entry.namespace === reviewerOf(vote.reviewerId))?.key;
+  return RESULTS.map((result) => `waiting|${result}`).filter((key) => key !== kept).map((key) => ({ namespace: reviewerOf(vote.reviewerId), key, id: vote._id }));
+};
+
+/** Takes out a vote's stale waiting entries, and counts it as it stands. */
 export async function recountVote(ctx: QueueingCtx, vote: Vote, paper: Pick<Paper, "place" | "withdrawn" | "result"> | null) {
-  if (vote.status === "waiting") return;
-  await queueCounts(ctx, screeningCounts, RESULTS.map((result) => ({ type: "deleteIfExists" as const, namespace: reviewerOf(vote.reviewerId), key: `waiting|${result}`, id: vote._id })));
+  await queueCounts(ctx, screeningCounts, staleWaiting(vote, paper).map((entry) => ({ type: "deleteIfExists" as const, ...entry })));
   await countEntries(ctx, voteEntries(vote, paper));
 }
 

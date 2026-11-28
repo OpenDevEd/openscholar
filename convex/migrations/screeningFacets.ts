@@ -4,7 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { countEntries, paperEntries, recountVote, screeningCounts, voteEntries } from "../screening/facets";
+import { countEntries, paperEntries, recountVote, screeningCounts, staleWaiting, voteEntries } from "../screening/facets";
 
 /**
  * Counts the papers and votes of every screening with reviewers that predate their counts (screening/facets.ts): each
@@ -35,12 +35,12 @@ export const votes = migrations.define({
   },
 });
 
-/** Votes counted as waiting after a model's reading came back through the pool without the triggers (#1617): counted again as they stand. */
+/** Votes left counted as waiting by a model's reading that came back through the pool without the triggers (#1618), whatever they have done since: counted again as they stand. */
 export const readVotes = migrations.define({
   table: "screeningVotes",
   batchSize: 200,
   migrateOne: async (ctx, vote) => {
-    if (vote.status !== "waiting") await recountVote(ctx, vote, await ctx.db.get("screeningResults", vote.resultId));
+    await recountVote(ctx, vote, await ctx.db.get("screeningResults", vote.resultId));
   },
 });
 
@@ -61,8 +61,9 @@ export const verifyPage = internalQuery({
       return { missing: await missing(page.page.flatMap(paperEntries)), isDone: page.isDone, continueCursor: page.continueCursor };
     }
     const page = await ctx.db.query("screeningVotes").paginate(opts);
-    const entries = (await Promise.all(page.page.map(async (vote) => voteEntries(vote, await ctx.db.get("screeningResults", vote.resultId))))).flat();
-    const stale = page.page.filter((vote) => vote.status !== "waiting").flatMap((vote) => ["include", "maybe", "exclude", "conflict", "waiting"].map((result) => ({ namespace: `${vote.reviewerId}`, key: `waiting|${result}`, id: vote._id })));
+    const read = await Promise.all(page.page.map(async (vote) => ({ vote, paper: await ctx.db.get("screeningResults", vote.resultId) })));
+    const entries = read.flatMap(({ vote, paper }) => voteEntries(vote, paper));
+    const stale = read.flatMap(({ vote, paper }) => staleWaiting(vote, paper));
     const left = (await screeningCounts.countBatch(ctx, stale.map(({ namespace, key, id }) => ({ namespace, bounds: { lower: { key, id, inclusive: true }, upper: { key, id, inclusive: true } } })) as never, { stale: true })).filter((count) => count > 0).length;
     return { missing: (await missing(entries)) + left, isDone: page.isDone, continueCursor: page.continueCursor };
   },
