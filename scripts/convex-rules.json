@@ -123,7 +123,6 @@
       "PAIRS_MAX": "the pairs of reviewers a screening's overview draws agreement for; a screening with more reviewers than that many pairs shows the first",
       "CHECKS_COUNTED": "a screening's checks for new papers counted for its methods paragraph: the first of them",
       "CHANGES_COUNTED": "a screening's latest activity, looked through for how often its settings were changed",
-      "NEW_COUNTED": "the new papers of a screening's last check still waiting for one reviewer, counted for their banner and their email; past it they say so many and more",
       "CONFLICTS_COUNTED": "a screening's papers in conflict, counted for whoever settles them on the rail and the lists; past it the count says so many",
       "AUDIT_ROWS": "one screening's papers, votes and cards, read whole by its audit (screening/audit.ts), run by hand and by the rules test; a screening holds 5,000 papers at most",
       "READING_LOOKED": "The rail looks at a workspace's newest open screenings for one whose models are reading: the first few, since the ring shows one."

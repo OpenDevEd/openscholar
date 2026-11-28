@@ -13,7 +13,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
-import { laterChecks, nameOf, NEW_COUNTED, newFor, waitsOn } from "./dealing";
+import { laterChecks, nameOf, newFor, waitsOn } from "./dealing";
 import { screeningPath } from "../../lib/screening/links";
 
 export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"), v.literal("joined"));
@@ -50,7 +50,7 @@ export const conflictsUnsent = internalMutation({
 /** What one email says, read when it is sent: null where the person turned the screening's emails off, has it no more, or nothing waits for them. */
 export const context = internalQuery({
   args: { jobId: v.id("screeningJobs"), userId: v.id("users"), about: aboutValidator, by: v.optional(v.id("users")) },
-  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), more: v.optional(v.boolean()), finished: v.optional(v.boolean()), living: v.optional(v.boolean()), by: v.optional(v.string()) })),
+  returns: v.union(v.null(), v.object({ email: v.string(), name: v.string(), path: v.string(), count: v.number(), finished: v.optional(v.boolean()), living: v.optional(v.boolean()), by: v.optional(v.string()) })),
   handler: async (ctx, { jobId, userId, about, by }) => {
     const [job, user, row] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("users", userId), noticeOf(ctx, jobId, userId)]);
     // A finished screening sends nothing, except to someone just given it to vote on: they are told it is theirs once reopened.
@@ -75,7 +75,7 @@ export const context = internalQuery({
     // On a finished one, only someone who votes once it is reopened: a guest given it to vote on, never one made a viewer since.
     if (!count && !(about === "joined" && (on || (finished && grant?.role === "editor")))) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
-    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(about === "papers" && count >= NEW_COUNTED ? { more: true } : {}), ...(finished ? { finished: true } : {}), ...(job.living ? { living: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
+    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}${screeningPath(jobId)}`, count, ...(finished ? { finished: true } : {}), ...(job.living ? { living: true } : {}), ...(sender ? { by: nameOf(sender) } : {}) };
   },
 });
 

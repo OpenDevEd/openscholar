@@ -811,7 +811,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                 return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} settled={Boolean(state.final)} hidden={theirs.hidden} who={r.id === open.me ? words.t("you") : r.name} className="align-middle" /> : null}</TableCell>;
                               })
                             : criteria.map((criterion) => {
-                                const given = [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))];
+                                // Narrowed to reviewers, the answers are theirs alone: never another's under their name.
+                                const given = [...new Set(cast.flatMap((entry) => (everyone.length && !everyone.includes(entry.reviewer.id) ? [] : (entry.vote?.answers[criterion.key] ?? []))))];
                                 return (
                                   <TableCell key={criterion.key} className="px-1 text-center">
                                     {given.length === 1 ? <span className="inline-flex align-middle"><AnswerMark answer={given[0]!} label={criterion.short} /></span> : given.length > 1 ? <DifferMark label={t("table.differOn", { name: criterion.short })} /> : null}
