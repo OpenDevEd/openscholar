@@ -260,19 +260,23 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   // Its place in a list still being read is not known: no position is said and no step is offered until the rows come.
   const at = paper && !listed.isStale ? shown.findIndex((one) => one.id === paper.id) : -1;
   const inView = at >= 0;
+  // Where the open paper stood on its page. One that leaves the list as it is shown (settled out of the filter) steps on from there: Next is the paper that took its place.
+  const [stood, setStood] = useState<{ id: string; at: number; page: number } | null>(null);
+  if (paper && at >= 0 && (stood?.id !== paper.id || stood.at !== at || stood.page !== listed.page)) setStood({ id: paper.id, at, page: listed.page });
+  const left = paper && at < 0 && !listed.isStale && stood?.id === paper.id && stood.page === listed.page ? stood.at : null;
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
 
   // The step to the paper before or after the open one. Past the page's last paper is the next page's first, and before its first the last of the page before.
   // A paper reached by its place on a page is named in its step of the history before the next step, so Back returns to that paper whatever the page then holds.
   const step = async (by: 1 | -1) => {
-    const next = at >= 0 ? shown[at + by] : undefined;
-    if (!next && (at < 0 || !(by === 1 ? listed.canNext : listed.canPrevious))) return;
+    const next = at >= 0 ? shown[at + by] : left !== null ? shown[by === 1 ? left : left - 1] : undefined;
+    if (!next && ((at < 0 && left === null) || !(by === 1 ? listed.canNext : listed.canPrevious))) return;
     if ((opened === "first" || opened === "last") && paper) await setPlace({ paper: paper.id }, { history: "replace" });
     if (next) return void setPlace({ paper: next.id });
     void setPlace({ paper: by === 1 ? "first" : "last" });
     (by === 1 ? listed.next : listed.previous)();
   };
-  const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious), next: at >= 0 && (at < shown.length - 1 || listed.canNext) };
+  const canStep = { previous: at > 0 || (at === 0 && listed.canPrevious) || (left !== null && (left > 0 || listed.canPrevious)), next: (at >= 0 && (at < shown.length - 1 || listed.canNext)) || (left !== null && (left < shown.length || listed.canNext)) };
 
   // The open paper's row is brought to the middle of the window where it is off the screen: after a link that opened it, or a step onto another page. A row already in view stays where it is. The window's scroll is the outside system.
   useEffect(() => {
