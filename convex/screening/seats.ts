@@ -9,7 +9,6 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { MAX_ACCOUNTS_PER_EMAIL } from "../lib/queryBounds";
 import { MAX_REVIEWERS } from "./validators";
 
 export async function takeVotingSeat(ctx: MutationCtx, item: string, /** The address an invitation went to: someone who reviewed it before comes back to their own place. */ email?: string) {
@@ -19,10 +18,12 @@ export async function takeVotingSeat(ctx: MutationCtx, item: string, /** The add
   const reviewers = await ctx.db.query("screeningReviewers").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_REVIEWERS);
   const on = new Set(reviewers.flatMap((one) => (one.userId ? [one.userId] : [])));
   const now = Date.now();
-  const returning = email ? (await ctx.db.query("users").withIndex("by_email", (q) => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL)).some((one) => on.has(one._id)) : false;
+  // The addresses of those who reviewed it: an invitation to one of them brings them back to their own place, and takes no other.
+  const theirs = new Set((await Promise.all([...on].map((userId) => ctx.db.get("users", userId)))).flatMap((one) => (one?.email ? [one.email.toLowerCase()] : [])));
+  const returning = email !== undefined && theirs.has(email.toLowerCase());
   // The places to come: invitations to vote still waiting, and guests let vote whose place the reviewers' worker hasn't made yet. An invitation just
   // answered is no longer waiting, and its guest is counted once, by their grant. Read in the transaction that takes the place, so two never take the last.
-  const waiting = (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item).eq("state", "pending")).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && one.expiresAt > now);
+  const waiting = (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item).eq("state", "pending")).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && one.expiresAt > now && !theirs.has(one.email.toLowerCase()));
   const given = (await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", item)).take(MAX_REVIEWERS)).filter((one) => one.role === "editor" && !on.has(one.userId as Id<"users">));
   if (!returning && reviewers.length + waiting.length + given.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers, people and models who left it included. Invite them to look at it instead.`);
   await ctx.db.patch("screeningJobs", job._id, { heldAt: now });
