@@ -259,8 +259,9 @@ function Screen({ open }: { open: Open }) {
     else next();
   };
   // The paper a vote moved on from. Voted on, it leaves To do, so the step back from the paper it moved to is to it, as Back is: never to the one before it.
-  const [cameFrom, setCameFrom] = useState<{ to: string; from: Paper } | null>(null);
-  const back = cameFrom && cameFrom.to === paper?.id && !items.some((one) => one.id === cameFrom.from.id) ? cameFrom.from : null;
+  const [cameFrom, setCameFrom] = useState<{ to: string | null; page?: number; from: Paper } | null>(null);
+  const arrivedFrom = cameFrom && (cameFrom.to === null ? at === 0 && listed.page === cameFrom.page : cameFrom.to === paper?.id);
+  const back = cameFrom && arrivedFrom && !items.some((one) => one.id === cameFrom.from.id) ? cameFrom.from : null;
   const go = (index: number) => {
     if (back && index === at - 1) return openIt(back);
     if (index >= items.length && listed.canNext) return turn(listed.next);
@@ -405,6 +406,8 @@ function Screen({ open }: { open: Open }) {
     // The next paper is on the queue's next page: the page turns to it, as stepping past the last paper does.
     else if (nextPage) {
       advanced.current = { paper: paper.id, at: Date.now(), pageTurned: true };
+      // The paper it moves to isn't known until the page comes: the step back is from that page's first.
+      setCameFrom({ to: null, page: listed.page + 1, from: paper });
       go(items.length);
     }
     // Staying on the paper: the address names it from now on, so it keeps its place in the list with the vote on it.
@@ -426,7 +429,11 @@ function Screen({ open }: { open: Open }) {
       // And one that had no reason takes the must-have its answers now fail, as an exclusion cast with them would.
       const rested = mine.decision === "exclude" && ((mine.reason === criterion && given[criterion] !== "no") || (mine.reason === NO_REASON && given[criterion] === "no"));
       const ballot = { ...ballotOf(mine), answers: given, ...(rested ? { reason: givenReason(criteria, given, mine.note ?? "") ?? NO_REASON } : {}) };
-      const saving = open.vote(paper.id, ballot).then((at) => { if (at !== null && cast) cast.saved = at; }, failed);
+      // Saved, the answers are the vote's own: in hand they would stand over a change made since on another page. Any given while it saved stay.
+      const saving = open.vote(paper.id, ballot).then((at) => {
+        if (at !== null && cast) cast.saved = at;
+        setAnswers(({ [paper.id]: was, ...rest }) => (was === given || was === undefined ? rest : { ...rest, [paper.id]: was }));
+      }, failed);
       if (cast) cast.pending = Promise.all([cast.pending, saving]);
     }
   };

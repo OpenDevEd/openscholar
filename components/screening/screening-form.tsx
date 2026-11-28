@@ -80,6 +80,8 @@ type Kind = "search" | "upload" | "collection" | "screening" | "evidenceLibrary"
 /** This part's messages, and the shared words, for a function that is handed them. */
 type T = ReturnType<typeof useTranslations<"screening.form">>;
 type Say = { words: Words; t: T; effects: EffectsSay };
+/** The source tabs that hold something while it is being added: a file, pasted DOIs, picked collections. */
+const PANELS: readonly string[] = ["upload", "dois", "zotero", "evidenceLibrary"];
 const KINDS: Array<{ id: Kind; icon: AppIcon }> = [
   { id: "search", icon: SOURCE_ICON.search },
   // A file follows a search: the two ways most people bring papers. On a phone the row shows its first three or four, and someone who came with a file looks for it there.
@@ -502,6 +504,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Where papers are added from is a tab in the address: each one picked is a step, so Back returns to the tab before.
   const [kindInAddress, setKind] = useQueryState("addFrom", parseAsStringLiteral(KINDS.map((one) => one.id)).withOptions({ history: "push", scroll: false }));
   const kind: Kind = kindInAddress ?? (fromHandoff && !id ? "evidenceLibrary" : "search");
+  // The tabs that hold what is being added, kept drawn from the first time each is opened.
+  const [panelsOpened, setPanelsOpened] = useState<Kind[]>([]);
+  if (PANELS.includes(kind) && !panelsOpened.includes(kind)) setPanelsOpened([...panelsOpened, kind]);
   // The search in the Search and Screening tabs is in the address: starting and clearing it are steps, as in every list.
   const [find, setFindIn] = useQueryState("addFind", parseAsString.withDefault("").withOptions({ scroll: false }));
   const setFind = (next: string) => void setFindIn(next || null, searchHistory(find, next));
@@ -1163,7 +1168,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       ) : (
                                         <span className="text-sm font-semibold text-primary">{t("papers.gives", { count: keptOf(source) })}</span>
                                       )}
-                                      {halted ? <Chip key="halted" icon={Clock} className="h-5 self-center">{halted}</Chip> : null}
+                                      {/* A sentence, on a line of its own, so it wraps rather than being cut on a narrow screen. */}{halted ? <span key="halted" className="flex basis-full items-start gap-1.5 text-xs text-muted-foreground"><Clock aria-hidden className="mt-0.5 size-3.5 shrink-0" />{halted}</span> : null}
                                       {range}
                                     </div>
                                     {/* What its reads brought, in proportion: the papers it gives, what was merged into another source's, and what was left out. The counts beside it are its key, and each opens its list. */}
@@ -1299,11 +1304,12 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <TabsContent value={kind}>
                     {/* The tabs are different heights: the frame slides from one to the next, and what is under it moves with it. */}
                     <AutoHeight>
-                    {kind === "upload" ? <UploadTab sources={draft.sources} onAdd={pick} {...(lookCredits === undefined ? {} : { lookCredits })} />
-                    : kind === "dois" ? <DoiTab sources={draft.sources} onAdd={pick} />
-                    : kind === "zotero" ? <ZoteroTab sources={draft.sources} onAdd={pick} />
-                    : kind === "evidenceLibrary" ? <CommunityTab sources={draft.sources} onAdd={pick} />
-                    : (
+                    {/* A tab that holds what is being added (a file and its columns, pasted DOIs, picked collections) stays drawn once opened, hidden while another is: going to another tab and back loses none of it. */}
+                    {panelsOpened.includes("upload") ? <div hidden={kind !== "upload"}><UploadTab sources={draft.sources} onAdd={pick} {...(lookCredits === undefined ? {} : { lookCredits })} /></div> : null}
+                    {panelsOpened.includes("dois") ? <div hidden={kind !== "dois"}><DoiTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {panelsOpened.includes("zotero") ? <div hidden={kind !== "zotero"}><ZoteroTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {panelsOpened.includes("evidenceLibrary") ? <div hidden={kind !== "evidenceLibrary"}><CommunityTab sources={draft.sources} onAdd={pick} /></div> : null}
+                    {PANELS.includes(kind) ? null : (
                     <div className="space-y-2">
                       {/* A search is found by its words and a screening by its name. The library's collections are few enough to page through. */}
                       {kind !== "collection" ? (

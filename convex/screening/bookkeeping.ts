@@ -159,7 +159,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
  * left out (excluded, or failed) leaves that collection, and comes back if a changed answer
  * includes it after all; an unclear one stays.
  */
-export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, sets: Array<{ set: Doc<"screeningJobs">["set"] | Doc<"screeningSources">["set"]; /** The record of the paper that collection holds, where it isn't the paper's own. */ paperKey?: string }> = [{ set: job.set }]) {
+export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, sets: Array<{ set: Doc<"screeningJobs">["set"] | Doc<"screeningSources">["set"]; /** The record of the paper that collection holds, where it isn't the paper's own. */ paperKey?: string }> = [{ set: job.set }], { met = false }: { /** The paper was just met in these sources, already excluded: it leaves them though it left others before. */ met?: boolean } = {}) {
   const moved = { saved: 0, removed: 0 };
   if (becameIncluded && !job.unsaved) {
     moved.saved = result.savedToLibrary ? 0 : 1;
@@ -172,9 +172,11 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   // Every collection that held it is pruned, the one it was read from and any other it was met in again, each by the record it holds: each would otherwise keep a paper the screening excluded, and one brought back gets its own record again.
   let removed = false;
   let back = false;
+  const wasPruned = Boolean(result.pruned);
   for (const { set, paperKey } of sets) {
     if (set?.kind === "evidenceLibrary") {
-      await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved, set);
+      // Each community collection is written to on its own: one taken out of before never keeps another from being.
+      await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved, set, met || !wasPruned);
       continue;
     }
     if (set?.kind !== "collection") continue;
@@ -209,10 +211,10 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
  * `shelve` for a job that prunes the reader's library collection it read: a paper that comes to be left out leaves it,
  * and comes back if a changed answer includes it. The job counts it removed once the library confirms it (`written`).
  */
-async function pruneLibraryCollection(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, moved: { saved: number; removed: number }, set: Doc<"screeningJobs">["set"]) {
+async function pruneLibraryCollection(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, moved: { saved: number; removed: number }, set: Doc<"screeningJobs">["set"], leaves: boolean) {
   if (set?.kind !== "evidenceLibrary" || !("readerCollection" in set.source) || !set.source.readerCollection || "search" in set.source) return moved;
   const from = { libraryId: set.libraryId, collection: set.source.readerCollection };
-  if (left && !result.pruned) {
+  if (left && leaves) {
     await queueLibraryWrite(ctx, job, result, "remove", from, { prune: true });
     await ctx.db.patch("screeningResults", result._id, { pruned: true });
   }

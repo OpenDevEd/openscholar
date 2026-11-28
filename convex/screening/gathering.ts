@@ -418,7 +418,7 @@ export const fill = internalMutation({
         if (!own && job.prune && twin.result === "exclude" && !twin.withdrawn) {
           const source = await ctx.db.get("screeningSources", sourceId);
           if (source && source.set.kind !== "upload" && source.set.kind !== "pdf" && source.set.kind !== "dois") {
-            const moved = await shelve(ctx, job, twin, { becameIncluded: false, left: true }, [{ set: source.set, paperKey: paper.paper }]);
+            const moved = await shelve(ctx, job, twin, { becameIncluded: false, left: true }, [{ set: source.set, paperKey: paper.paper }], { met: true });
             const progress = moved.removed ? await progressRow(ctx, job._id) : null;
             if (progress) await ctx.db.patch("screeningJobProgress", progress._id, withMoved(progress, moved));
           }
