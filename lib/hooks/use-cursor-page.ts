@@ -155,7 +155,8 @@ function usePages<Query extends PageQuery>(place: Place | null, query: Query, ar
   // A deploy that reads the list through another index refuses every cursor from before it,
   // the end a first page's subscription keeps included, so the list starts over from its first
   // page under a new query id, as Convex's usePaginatedQuery does. Any other error is thrown.
-  if ([...read, results.after].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...from(NO_STARTS, NO_STARTS, 0), id: id + 1 });
+  // The read past a full page that may be the last is only a look ahead: a cursor refused there offers next, and the page's own reads find the change.
+  if ([...read, ...(ended !== undefined ? [results.after] : [])].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...from(NO_STARTS, NO_STARTS, 0), id: id + 1 });
   else if (error) throw error;
 
   const [shown, setShown] = useState<Shown<Query> | undefined>(undefined);
