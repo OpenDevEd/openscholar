@@ -292,7 +292,14 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
   // A paper's vote and its settlement each have their own note: the draft of one never stands in for the other.
   const noteKey = (id: string) => (resolving ? `settle:${id}` : id);
   // `saved`: when the server stamped the vote or settlement, once it has: Undo puts back what stood before only while that one still stands.
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number; pending?: Promise<unknown> }>>([]);
+  // `unmoved`: the counts it moved were moved back already, by an Undo or a refusal, so neither moves them back twice.
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; settledBefore: Settled | null; mayUndo: boolean; queue: Queue; at: number; saved?: number; pending?: Promise<unknown>; unmoved?: boolean }>>([]);
+  /** Moves back the counts a vote or settlement made here moved, once. */
+  const unmove = (made: { unmoved?: boolean } & Parameters<typeof movesOf>[0]) => {
+    if (made.unmoved) return;
+    made.unmoved = true;
+    for (const [kind, by] of movesOf(made)) moved(kind, by === 1 ? -1 : 1);
+  };
   // The frame's counts take in the votes made here before the server's do (./store.tsx `useUnheardMoves`): To do, Done, the bar and the tabs above read one number.
   const { toDo, conflicts } = open;
   // The votes and settlings made here since the counts last moved: a queue they emptied is said empty from them.
@@ -369,7 +376,7 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
     for (const [kind, by] of moves) moved(kind, by);
     // A vote the server refuses was never cast: it leaves "your last vote", and its paper is the open one again.
     const refused = (error: unknown) => {
-      for (const [kind, by] of moves) moved(kind, by === 1 ? -1 : 1);
+      unmove(cast);
       setHistory((all) => all.filter((one) => one !== cast));
       openIt(paper, { inPlace: true });
       failed(error);
@@ -459,12 +466,15 @@ function Screen({ open, castByMe, moved }: { open: Open; /** The person's votes,
       if (last.saved === undefined) return;
       if (last.resolved) return open.resolve(last.paper.id, last.settledBefore ? (last.settledBefore.final ?? null) : null, last.settledBefore?.note, last.settledBefore?.reason, last.saved).then(restamp, failed);
       // Changed since in another tab, the vote stands: the counts it moved here stand with it.
-      return open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then((at) => { if (at === null) for (const [kind, by] of movesOf(last)) moved(kind, by); restamp(last.before ? at : null); }, failed);
+      return open.vote(last.paper.id, last.before ? ballotOf(last.before) : null, { onlyAt: last.saved }).then((at) => {
+        if (at === null && last.unmoved) { last.unmoved = false; for (const [kind, by] of movesOf(last)) moved(kind, by); }
+        restamp(last.before ? at : null);
+      }, failed);
     });
     // Undo pressed again at once waits for this one, so it names the moment this one stamps.
     if (earlier) earlier.pending = Promise.all([earlier.pending, undoing]);
     openIt(last.paper);
-    for (const [kind, by] of movesOf(last)) moved(kind, by === 1 ? -1 : 1);
+    unmove(last);
     setHistory((all) => all.filter((one) => one !== last));
   };
 

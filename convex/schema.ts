@@ -1621,6 +1621,8 @@ export default defineSchema({
     note: v.optional(v.string()),
     // When it was cast.
     at: v.optional(v.number()),
+    // When the vote was last changed, where answers joined it after it was cast: `at` stays when it was cast, which "first vote decides" reads, and an Undo names this.
+    edited: v.optional(v.number()),
     // A person's vote cast before a criterion became a must-have: it stands, and asks for a new one.
     flagged: v.optional(v.literal(true)),
     // On a place a person has yet to vote from: how many of the paper's models would include it, as a negative number, so the papers the models lean to come first in the order of an index.

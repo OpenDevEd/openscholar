@@ -49,7 +49,7 @@ function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | unde
   const answers = (vote.answers ?? {}) as Record<string, Answer>;
   const read = vote.decision ? { decision: vote.decision, reason: vote.reason } : ballotOf(placeOf(vote, reviewer), job.criteria ?? []);
   if (!read.decision) return undefined;
-  return { decision: read.decision, answers, ...(read.reason ? { reason: read.reason } : {}), ...(vote.note ? { note: vote.note } : {}), at: vote.at ?? vote._creationTime, ...(vote.flagged ? { flagged: true } : {}), ...(vote.confidences ? { confidences: vote.confidences } : {}), ...(vote.passages ? { passages: vote.passages } : {}) };
+  return { decision: read.decision, answers, ...(read.reason ? { reason: read.reason } : {}), ...(vote.note ? { note: vote.note } : {}), at: vote.edited ?? vote.at ?? vote._creationTime, ...(vote.flagged ? { flagged: true } : {}), ...(vote.confidences ? { confidences: vote.confidences } : {}), ...(vote.passages ? { passages: vote.passages } : {}) };
 }
 
 /**

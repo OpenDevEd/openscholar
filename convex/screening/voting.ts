@@ -42,11 +42,11 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   if ((note?.length ?? 0) > SCREENING_TEXT.voteNote) throw createError("VALIDATION_ERROR", "That note is too long.");
   const mine = (await votesOf(ctx, paperId)).find((vote) => vote.reviewerId === reviewer._id);
   if (onlyWaiting && mine?.status !== "waiting") return false;
-  if (onlyAt !== undefined && (mine?.status !== "cast" || mine.at !== onlyAt)) return false;
+  if (onlyAt !== undefined && (mine?.status !== "cast" || (mine.edited ?? mine.at) !== onlyAt)) return false;
   if (decision === null) {
     // Taken back: the place is theirs again to vote from. One with no vote to take back changes nothing.
     if (mine?.status !== "cast") return false;
-    await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined });
+    await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, edited: undefined, flagged: undefined });
     return void (await stamp(ctx, paperId));
   }
   // Undo puts back the answers as they were, to criteria taken off since too.
@@ -55,7 +55,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
   const given = { ...Object.fromEntries(Object.entries(answers ?? {}).filter(([key]) => known.has(key))), ...(decision === "exclude" && reason && known.has(reason) ? { [reason]: "no" as const } : {}) };
   // Answers joining a vote already cast leave it the vote it was: cast when it was, which "first vote decides" reads, and asked for again if it was.
   const kept = answersOnly && mine?.status === "cast" ? mine : undefined;
-  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: kept?.at ?? Date.now(), flagged: kept?.flagged };
+  const vote = { status: "cast" as const, decision, answers: given, reason: decision === "exclude" ? reason : undefined, note: note?.trim() || undefined, at: kept?.at ?? Date.now(), edited: kept ? Date.now() : undefined, flagged: kept?.flagged };
   if (mine) await ctx.db.patch("screeningVotes", mine._id, vote);
   else {
     // A reviewer who votes on a paper that wasn't given to them is on it from then on.
@@ -63,7 +63,7 @@ async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJo
     await countDealt(ctx, new Map([[reviewer._id, 1]]));
   }
   await stamp(ctx, paperId);
-  return vote.at;
+  return vote.edited ?? vote.at;
 }
 
 /**
