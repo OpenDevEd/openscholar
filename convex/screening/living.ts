@@ -136,12 +136,13 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   if ((await firstCheck(ctx, job._id))?._id === check._id) return;
   const now = Date.now();
   // Only a check asked for once it was finished reopens it: one already under way when it was marked finished doesn't undo that.
-  if (check.added && job.finishedAt !== undefined && check.at >= job.finishedAt) {
+  const reopens = Boolean(check.added) && job.finishedAt !== undefined && check.at >= job.finishedAt;
+  if (reopens) {
     await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now) });
     await placeGuests(ctx, job._id);
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId: job._id, cursor: null });
   }
-  await logChange(ctx, { userId: check.by ?? job.createdBy }, job, check.by ? "checked" : "scheduledCheck", { count: check.found, more: [...(check.found - check.added - (check.left ?? 0) > 0 ? [{ code: "known", count: check.found - check.added - (check.left ?? 0) }] : []), ...(check.left ? [{ code: "leftOut", count: check.left }] : []), ...(check.unread?.length ? [{ code: "unread", count: check.unread.length }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(check.added && job.finishedAt !== undefined ? [{ code: "reopened" }] : [])] });
+  await logChange(ctx, { userId: check.by ?? job.createdBy }, job, check.by ? "checked" : "scheduledCheck", { count: check.found, more: [...(check.found - check.added - (check.left ?? 0) > 0 ? [{ code: "known", count: check.found - check.added - (check.left ?? 0) }] : []), ...(check.left ? [{ code: "leftOut", count: check.left }] : []), ...(check.unread?.length ? [{ code: "unread", count: check.unread.length }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(reopens ? [{ code: "reopened" }] : [])] });
   if (!check.added) return;
   for (const reviewer of await reviewersOf(ctx, job._id)) {
     if (reviewer.kind === "person" && reviewer.userId && reviewer.left === undefined) await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId: job._id, userId: reviewer.userId, about: "papers" });

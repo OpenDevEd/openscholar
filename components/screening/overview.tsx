@@ -758,9 +758,9 @@ function Agreement({ open, figures }: { open: Open; figures: Figures | undefined
   const words = useWords();
   const format = useFormatter();
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  // The pairs that can share a paper: under one person on each paper, two people never do, and nothing is said of them.
-  const apart = (a: Reviewer, b: Reviewer) => screening.rule.each === "1" && a.kind === "person" && b.kind === "person";
-  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).flatMap((b) => (apart(a, b) ? [] : [{ a, b, pair: pairOf(figures, a.id, b.id) }])));
+  // The pairs that can share a paper: under one person on each paper, two people never do, and nothing is said of them, unless they voted on the same papers under an earlier rule.
+  const apart = (a: Reviewer, b: Reviewer, pair: ReturnType<typeof pairOf>) => screening.rule.each === "1" && a.kind === "person" && b.kind === "person" && !pair;
+  const pairs = reviewers.flatMap((a, row) => reviewers.slice(0, row).flatMap((b) => { const pair = pairOf(figures, a.id, b.id); return apart(a, b, pair) ? [] : [{ a, b, pair }]; }));
   // Every pair, where the list has more than it shows: a step in the address, as every list's "all" is here. Before any early return: a hook below one breaks the page.
   const [{ pairs: every }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const allPairs = every === "all";
