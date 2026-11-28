@@ -20,6 +20,11 @@ const saved = (made: Team, items: number) =>
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1, abstract: text(2_000, i),
   })), 500);
 
+// Time moves a second a turn while scheduled work runs, as it does: jumped to every timer at once, the watch on a
+// reading (../screening/gathering.ts `watch`) wakes over and over while the counts beside its papers are still being written,
+// and takes the reading for one gone quiet.
+const tick = () => vi.advanceTimersByTime(1_000);
+
 describe("a screening with reviewers at the largest sizes the product allows", { tags: ["size"] }, () => {
   let made: Team;
   let jobId: Id<"screeningJobs">;
@@ -30,7 +35,7 @@ describe("a screening with reviewers at the largest sizes the product allows", {
     await saved(made, PAPERS);
     // Ten people, each on every paper: its sources are read by the screening's own reading, a step at a time, and every paper dealt as it arrives.
     ({ jobId } = await started(made, PEOPLE, 0, { rule: { each: "all", settle: "all", blind: "after" } }));
-    await runAll(made.t, vi.runAllTimers);
+    await runAll(made.t, tick);
   }, 900_000);
   afterAll(() => {
     vi.clearAllTimers();
@@ -65,7 +70,7 @@ describe("a screening with reviewers at the largest sizes the product allows", {
     const { workspaceId } = made;
     const first = (await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "todo", ...page(100) })).page.map((one) => one.id);
     for (const name of PEOPLE) await made.as[name]!.mutation(api.screening.voting.voteMany, { workspaceId, jobId, paperIds: first, decision: "include" });
-    await runAll(made.t, vi.runAllTimers);
+    await runAll(made.t, tick);
     expect((await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId }))!.counts).toMatchObject({ include: 100, waiting: PAPERS - 100 });
     // What a change would do is counted over all 5,000, a step at a time: here, that one vote settles a paper.
     const preview = await made.as.ann!.action(api.screening.effects.preview, { workspaceId, jobId, change: { rule: { each: "all", settle: "one", blind: "after" } } });
@@ -87,10 +92,34 @@ describe("a step of papers that goes to many reviewers", { tags: ["size"] }, () 
           await ctx.db.insert("screeningReviewers", { jobId, kind: "person", userId, addedAt: 2 + i, addedBy: made.ids.ann!, dealt: 0 });
         }
       });
-      await runAll(made.t, vi.runAllTimers);
+      await runAll(made.t, tick);
       const view = (await made.as.ann!.query(api.screening.view.get, { workspaceId: made.workspaceId, jobId }))!;
       expect(view).toMatchObject({ total: 400, forYou: 400 });
       expect(view.reviewers.map((one) => one.dealt)).toEqual(Array(121).fill(400));
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  }, 900_000);
+
+  it("settles papers with many reviewers each in batches their votes fit", async () => {
+    vi.useFakeTimers();
+    try {
+      const people = ["ann", ...Array.from({ length: 29 }, (_, i) => `p${i}`)];
+      const made = await team(people);
+      await saved(made, 50);
+      // Thirty people on every paper, Ann's vote on each, then "settled by the first vote": each paper settles on her vote
+      // and closes the places of the 29 others, 1,450 rows written by one settling, each read back for its counts.
+      const { jobId } = await started(made, people, 0, { rule: { each: "all", settle: "all", blind: "after" } });
+      await runAll(made.t, tick);
+      const { workspaceId } = made;
+      const papers = (await made.as.ann!.query(api.screening.paperViews.queue, { workspaceId, jobId, queue: "todo", ...page(50) })).page.map((one) => one.id);
+      expect(papers).toHaveLength(50);
+      await made.as.ann!.mutation(api.screening.voting.voteMany, { workspaceId, jobId, paperIds: papers, decision: "include" });
+      await runAll(made.t, tick);
+      await made.as.ann!.mutation(api.screening.settings.save, { workspaceId, jobId, change: { rule: { each: "all", settle: "one", blind: "after" } } });
+      await runAll(made.t, tick);
+      expect((await made.as.ann!.query(api.screening.view.get, { workspaceId, jobId }))!.counts).toMatchObject({ include: 50, waiting: 0 });
     } finally {
       vi.clearAllTimers();
       vi.useRealTimers();

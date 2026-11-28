@@ -18,7 +18,7 @@ import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { pdfBand } from "../../lib/pricing/estimate";
 import { bookkeepLater, progressRow, saveQualified } from "./bookkeeping";
-import { keepVersion, keeperOf, readAgain, dealable, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
+import { keepVersion, keeperOf, readAgain, dealable, papersAStep, settlerFor, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./checks";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -258,7 +258,7 @@ export const follow = internalMutation({
     if (!job || !result) return null;
     const open = result === "waiting" || result === "conflict";
     const reviewers = new Map((await reviewersOf(ctx, jobId)).map((one) => [one._id, one]));
-    const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: FOLLOW });
+    const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: papersAStep(reviewers.size, FOLLOW) });
     let queued = 0;
     for (const paper of page.page) {
       if (open && (stricter.length || reread)) {

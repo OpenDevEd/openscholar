@@ -21,7 +21,7 @@ import { upsertLibraryItem } from "../library/mutations";
 import { findItem } from "../library/find";
 
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
-import { votesOf } from "./dealing";
+import { reviewersOf, VOTE_WRITES, votesOf } from "./dealing";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
 import { readStartFacts, startWaitingPapers, startWaitingVotes } from "./slots";
@@ -62,10 +62,14 @@ export const nextFinished = internalQuery({
   args: vQueryArgs,
   returns: vQueryReturns,
   handler: async (ctx, { cursor }) => {
-    const rows = await ctx.db
+    const read = await ctx.db
       .query("screeningResults")
       .withIndex("by_doneAt", (q) => q.gte("doneAt", cursor ?? 0n))
       .take(BATCH);
+    // As many as their votes leave room for (./dealing.ts `papersAStep`): a paper of a screening with many reviewers counts for each. The rest come in the next batch.
+    const reviewers = new Map(await Promise.all([...new Set(read.map((row) => row.jobId))].map(async (jobId) => [jobId, (await reviewersOf(ctx, jobId)).length] as const)));
+    let room = VOTE_WRITES;
+    const rows = read.filter((row, at) => (room -= reviewers.get(row.jobId) || 1) >= 0 || at === 0);
     const last = rows.length ? doneAtOf(rows.at(-1)!) : undefined;
     if (last === undefined) return { kind: "idle" as const };
     const jobs = await Promise.all([...new Set(rows.map((row) => row.jobId))].map((jobId) => ctx.db.get("screeningJobs", jobId)));

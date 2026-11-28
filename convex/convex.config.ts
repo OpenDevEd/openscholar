@@ -27,6 +27,8 @@ app.use(aggregate, { name: "listCounts" });
 app.use(aggregate, { name: "libraryFacetCounts" });
 // extractionFacetCounts: each extraction job's papers by confidence, status tags and answers (convex/extraction/facets.ts).
 app.use(aggregate, { name: "extractionFacetCounts" });
+// screeningFacetCounts: a screening's papers by source, check and reason, and each reviewer's papers by how they stand on them (convex/screening/facets.ts).
+app.use(aggregate, { name: "screeningFacetCounts" });
 // Queues whose one worker each does shared bookkeeping in batches, so parallel work only
 // writes its own rows: Screen all's results (convex/screening/bookkeeping.ts) and the
 // usage ledger (convex/billing/ledger.ts).

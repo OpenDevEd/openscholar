@@ -79,9 +79,12 @@ export async function settleAll(t: T) {
 }
 
 /** Runs everything a change sets off, sweeps and worker alike, until nothing is left to run. `runTimers` is the test's `vi.runAllTimers`. */
+// Room for the counts a screening keeps beside its papers (../screening/facets.ts), applied a batch at a time: ten people on 5,000 papers is fifty batches.
+const SCHEDULED_TURNS = 1_000;
+
 export async function runAll(t: T, runTimers: () => void) {
   for (let pass = 0; pass < 20; pass++) {
-    await t.finishAllScheduledFunctions(runTimers);
+    await t.finishAllScheduledFunctions(runTimers, SCHEDULED_TURNS);
     await settleAll(t);
   }
 }
