@@ -977,7 +977,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
   // A paper excluded by hand gives the reason the settler gave, beside the votes they settled and what they wrote.
   if (state.resolvedBy && reasonKey) {
     const link = narrow({ result: "exclude", reason: reasonKey }, ["reason"]);
-    return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" /><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>{settledNote}</span>;
+    return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" /><TooltipHint label={words.failed(reasonKey, reasonCriteria(open.screening))} onlyWhenClipped><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("min-w-0 truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink></TooltipHint>{settledNote}</span>;
   }
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
@@ -985,7 +985,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     // Another reason is what its voter wrote: it stands beside the reason, as a settled paper's note does.
     const written = reasonKey === OTHER_REASON ? cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note : undefined;
-    if (written) return <span className="flex min-w-0 items-center gap-2"><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
+    if (written) return <span className="flex min-w-0 items-center gap-2"><TooltipHint label={words.failed(reasonKey, reasonCriteria(open.screening))} onlyWhenClipped><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("min-w-0 truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink></TooltipHint><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
         {/* An excluded paper's reason narrows the table to it. A Maybe's unclear criterion names why and opens nothing: the list narrows by exclusion reasons only, and a link to it would open empty. */}
