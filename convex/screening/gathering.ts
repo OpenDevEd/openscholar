@@ -167,8 +167,6 @@ export const beat = internalMutation({
 async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading): Promise<"wait" | void> {
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
-  // Where the source stands as this step hands its papers in: a step that hands them in parts (a Zotero library's) moves it on with each.
-  let handedTo = source.read;
   const give = async (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => {
     // A paper that came with no abstract takes the one OpenAlex holds, and failing that the one registered under its DOI, whichever source brought it. A PDF's was asked for when the file was first read (./heldPdfs.ts): it comes with what that found.
     const bare = set.kind !== "pdf" && papers.some((paper) => !paper.abstract?.trim());
@@ -179,14 +177,13 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     for (let at = 0; at === 0 || at < ready.length; at += each) {
       const last = at + each >= ready.length;
       const goesOn = last ? resume : source.resume;
-      const args = { checkId, sourceId, pass: source.pass, run: source.run, from: handedTo, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
+      const args = { checkId, sourceId, pass: source.pass, run: source.run, from: source.read, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
       // A fill writes the reviewers' counts that voting and settling write too: one that loses to them every time Convex tries it is tried again here, with the papers it already has.
       for (let tries = 1; ; tries++) {
         try { await ctx.runMutation(internal.screening.gathering.fill, args); break; }
         catch (error) { if (readConvexErrorData(error) || tries >= FILL_TRIES) throw error; await new Promise((wait) => setTimeout(wait, 500 * 2 ** tries)); }
       }
     }
-    handedTo += read;
   };
   const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;
   if (source.state === "waiting") {
@@ -249,14 +246,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       const files: Array<{ key: string; file: Id<"_storage">; pages: number; shape?: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: [...new Set(bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key))] }) : [];
       return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages, ...(own.shape ? { shape: own.shape } : {}) } : paper; });
     };
-    // A step's papers go to `fill` a step of an index's at a time, the reading's end with the last of them.
-    // Where the reading goes on is kept with the last of them only: one cut short before that reads these collections again, and the papers it gave already are passed over.
-    const hand = async (papers: SearchPaper[], ended: boolean, resume?: string) => {
-      for (let at = 0; at === 0 || at < papers.length; at += READ_STEP) {
-        const lastOne = at + READ_STEP >= papers.length;
-        await give(papers.slice(at, at + READ_STEP), Math.min(READ_STEP, papers.length - at), ended && lastOne, lastOne ? resume : source.resume);
-      }
-    };
+    // A step's papers go to `fill` together: how far the reading got and where it goes on in the tree move with the last of them only, so one cut short
+    // before that reads these collections again from where the source stands, and the papers it gave already are passed over.
+    const hand = (papers: SearchPaper[], ended: boolean, resume?: string) => give(papers, papers.length, ended, resume);
     const room = last - from + 1;
     /** How many of these papers one step takes: as far as the room left, and no more with no abstract than one call fetches the PDFs of. */
     const within = (papers: Array<{ key: string; abstract?: string }>) => {
