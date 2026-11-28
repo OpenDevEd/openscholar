@@ -144,7 +144,7 @@ export const leave = internalMutation({
 
 /** Takes someone off: they stop being dealt papers at once, and their places follow. Conflicts always have someone to settle them. */
 /** `by`: whoever took them off by hand, whom the rule's new version names. A guest whose access changed is taken off by nobody. */
-export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, reviewer: Reviewer, discard: boolean, by?: Id<"users">) {
+export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, reviewer: Reviewer, discard: boolean, by?: Id<"users">, /** Who settles its conflicts now, where the caller already moved them off this person (a Settings save): the questions put to them go there. */ settlerNow?: Id<"users">) {
   if (reviewer.left !== undefined) return;
   const now = Date.now();
   // A guest who votes becomes one who looks, however they are taken off (the People dialog, Settings): nothing that reopens it puts them back on (./dealing.ts `placeGuests`).
@@ -152,7 +152,7 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
   const rule = job.rule;
-  let settler: Id<"users"> | undefined;
+  let settler: Id<"users"> | undefined = settlerNow;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
     const people = (await reviewersOf(ctx, job._id)).filter((one) => dealable(one) && one._id !== reviewer._id);
     settler = await settlerFor(ctx, job, people.flatMap((one) => one.userId ?? []), reviewer.userId);

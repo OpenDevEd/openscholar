@@ -1692,8 +1692,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <AutoHeight>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? t("changes.willDo") : t("changes.did")}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
-                      {dirty && countFailed ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{effectsSay.t("countAgain")}</Button> : null}
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} none={known ? undefined : holdUp ? holdUp.text : countFailed ? t("changes.countFailed") : t("changes.counting")} screening={saved?.id} jump done={!dirty} />
+                      {dirty && countFailed && !holdUp ? <Button variant="outline" size="sm" onClick={() => void counted.mutate()}><RefreshCw />{effectsSay.t("countAgain")}</Button> : null}
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
@@ -1826,7 +1826,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             {tried && holdUp ? <Blocker block={{ ...holdUp, text: t("bar.toFix", { count: lacking.length, saving: "true" }) }} /> : null}
             <div className="ms-auto flex items-center gap-2">
               <Button variant="ghost" onClick={() => { setDiscarding(edits); setAsksDiscard("edits"); }}>{t("bar.discard")}</Button>
-              <Button disabled={counting || countFailed} onClick={() => (holdUp ? showProblems(holdUp) : void save())}><Check />{t("bar.save")}</Button>
+              {/* What stops the save is said whatever the count is doing: the server refuses to count a change it would refuse to save. */}
+              <Button disabled={!holdUp && (counting || countFailed)} onClick={() => (holdUp ? showProblems(holdUp) : void save())}><Check />{t("bar.save")}</Button>
             </div>
           </div>
         </ActionBar>
