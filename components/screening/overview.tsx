@@ -1001,7 +1001,7 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
           <p>{t("checks.means")}</p>
         </Help>
       }
-      aside={open.canChange ? (() => { // While papers arrive it waits, and says why where it is pointed at.
+      aside={open.canChange && !screening.finishedAt ? (() => { // While papers arrive it waits, and says why where it is pointed at. A finished screening offers its check once, in the bar over the page.
         const button = <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking || open.gathering)} onClick={() => void open.check()}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />{t(screening.finishedAt ? "checks.checkReopens" : "checks.checkNow")}</Button>; return open.gathering && !screening.checking ? <TooltipHint label={t("credits.arriving")}><span tabIndex={0} className="rounded-md">{button}</span></TooltipHint> : button; })() : null}
     >
       <Panel className="space-y-1 p-0">
