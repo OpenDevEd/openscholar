@@ -8824,7 +8824,7 @@
         "onItsWay": "PDF आ रही है",
         "cantShow": "यह PDF यहाँ नहीं दिखाई जा सकती। इसे नए टैब में खोलें।"
       },
-      "perPaper": "प्रति लेख {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}",
+      "perPaper": "प्रति लेख लगभग {credits, plural, one {# क्रेडिट} other {# क्रेडिट}}",
       "pickerCost": "प्रति लेख क्रेडिट"
     },
     "overview": {

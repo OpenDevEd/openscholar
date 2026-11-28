@@ -478,7 +478,8 @@ export function methodsOf(out: Taken) {
     changed ? `The settings or the reviewers were changed ${changed === 1 ? "once" : `${changed} times`} after screening began${changedParts.length ? ` (${listed(changedParts)})` : ""}. The screening's exported record lists each change and what it did.` : "",
     pair ? `Agreement between ${pairOn![0].name} and ${pairOn![1].name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (${pair.kappa === null ? "Cohen's kappa could not be estimated, as both gave the same decision every time" : `Cohen's kappa ${pair.kappa.toFixed(2)}`}).` : "",
     kappas.length > 1 ? `Across the ${kappas.length} pairs of reviewers with a value${modelPairs ? `, ${modelPairs} among them` : ""}, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}${alike ? `; ${alike === 1 ? "one other pair" : `${alike} other pairs`} gave the same decision on every record they shared, so kappa has no value for ${alike === 1 ? "it" : "them"}` : ""}.` : "",
-    `${plural(counts.include, "record was", "records were")} included${counts.maybe ? `, and ${plural(counts.maybe, "was", "were")} left at Maybe` : ""}.`,
+    // Where the records stand: included, and the excluded and Maybe ones where there are any.
+    `${listed([`${plural(counts.include, "record was", "records were")} included`, ...(counts.exclude ? [`${num(counts.exclude)} excluded`] : []), ...(counts.maybe ? [`${num(counts.maybe)} left at Maybe`] : [])])}.`,
   ].filter(Boolean).join(" ");
 }
 

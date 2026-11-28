@@ -8825,7 +8825,7 @@
         "onItsWay": "ملف PDF في الطريق",
         "cantShow": "لا يمكن عرض ملف PDF هذا هنا. افتحه في علامة تبويب جديدة."
       },
-      "perPaper": "{credits, plural, zero {# رصيد} one {رصيد واحد} two {رصيدان} few {# أرصدة} many {# رصيدًا} other {# رصيد}} لكل ورقة",
+      "perPaper": "نحو {credits, plural, zero {# رصيد} one {رصيد واحد} two {رصيدين} few {# أرصدة} many {# رصيدًا} other {# رصيد}} لكل ورقة",
       "pickerCost": "الرصيد لكل ورقة"
     },
     "overview": {

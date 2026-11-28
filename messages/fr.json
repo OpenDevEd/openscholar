@@ -8824,7 +8824,7 @@
         "onItsWay": "Le PDF arrive",
         "cantShow": "Ce PDF ne peut pas s'afficher ici. Ouvrez-le dans un nouvel onglet."
       },
-      "perPaper": "{credits, plural, one {# crédit} other {# crédits}} par article",
+      "perPaper": "Environ {credits, plural, one {# crédit} other {# crédits}} par article",
       "pickerCost": "Crédits par article"
     },
     "overview": {

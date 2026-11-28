@@ -8824,7 +8824,7 @@
         "onItsWay": "PDF 正在路上",
         "cantShow": "此 PDF 无法在这里显示。请在新标签页中打开。"
       },
-      "perPaper": "每篇论文 {credits, plural, other {# 积分}}",
+      "perPaper": "每篇论文约 {credits, plural, other {# 积分}}",
       "pickerCost": "每篇论文积分"
     },
     "overview": {

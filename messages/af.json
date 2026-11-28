@@ -8825,7 +8825,7 @@
         "onItsWay": "Die PDF is op pad",
         "cantShow": "Hierdie PDF kan nie hier gewys word nie. Maak dit in ’n nuwe oortjie oop."
       },
-      "perPaper": "{credits, plural, one {# krediet} other {# krediete}} per artikel",
+      "perPaper": "Omtrent {credits, plural, one {# krediet} other {# krediete}} per artikel",
       "pickerCost": "Krediete per artikel"
     },
     "overview": {

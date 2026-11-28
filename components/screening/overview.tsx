@@ -303,10 +303,11 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
   // Moving someone's papers opens over the page as the screening's other dialogs do: a step in the history, with whose papers they are.
   const [moving, setMoving] = useOpenInAddress("moveFrom", null);
   const reviewers = inOrder(activeReviewers(screening), open.me);
-  const isPerson = new Set(screening.reviewers.filter((one) => one.kind === "person").map((one) => one.id));
+  // The people listed here: agreement is of the reviewers on the screening, as the figure over them and the Agreement section say it.
+  const isPerson = new Set(reviewers.filter((one) => one.kind === "person").map((one) => one.id));
   const rows: ReviewerRowData[] = reviewers.map((reviewer) => {
     const tally = reviewer.tally;
-    // A vote is compared with each person's on the same paper, and never with a model's: every pair of votes on a paper both voted on, and how many of them are the same.
+    // A vote is compared with each listed person's on the same paper, and never with a model's: every pair of votes on a paper both voted on, and how many of them are the same.
     const withPeople = (figures?.pairs ?? []).filter((pair) => (pair.a === reviewer.id && isPerson.has(pair.b)) || (pair.b === reviewer.id && isPerson.has(pair.a)));
     const compared = withPeople.reduce((sum, pair) => sum + pair.matrix.reduce((all, n) => all + n, 0), 0);
     // Where the share rests on one other person it opens the papers the two voted on; on more, the comparison pair by pair.

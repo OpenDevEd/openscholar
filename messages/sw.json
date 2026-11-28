@@ -8825,7 +8825,7 @@
         "onItsWay": "PDF iko njiani",
         "cantShow": "PDF hii haiwezi kuonyeshwa hapa. Ifungue kwenye kichupo kipya."
       },
-      "perPaper": "{credits, plural, one {krediti #} other {krediti #}} kwa kila makala",
+      "perPaper": "Takriban {credits, plural, one {krediti #} other {krediti #}} kwa kila makala",
       "pickerCost": "Krediti kwa kila makala"
     },
     "overview": {

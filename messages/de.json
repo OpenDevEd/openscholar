@@ -8825,7 +8825,7 @@
         "onItsWay": "Das PDF ist unterwegs",
         "cantShow": "Dieses PDF kann hier nicht angezeigt werden. Öffnen Sie es in einem neuen Tab."
       },
-      "perPaper": "{credits, plural, one {# Credit} other {# Credits}} pro Artikel",
+      "perPaper": "Etwa {credits, plural, one {# Credit} other {# Credits}} pro Artikel",
       "pickerCost": "Credits pro Artikel"
     },
     "overview": {

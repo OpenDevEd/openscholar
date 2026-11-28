@@ -8824,7 +8824,7 @@
         "onItsWay": "PDF を取得中です",
         "cantShow": "この PDF はここに表示できません。新しいタブで開いてください。"
       },
-      "perPaper": "論文 1 件あたり {credits, plural, other {# クレジット}}",
+      "perPaper": "論文 1 件あたり約 {credits, plural, other {# クレジット}}",
       "pickerCost": "論文 1 件あたりのクレジット"
     },
     "overview": {

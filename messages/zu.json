@@ -8824,7 +8824,7 @@
         "onItsWay": "I-PDF isendleleni",
         "cantShow": "Le PDF ayikwazi ukuboniswa lapha. Yivule kuthebhu entsha."
       },
-      "perPaper": "{credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha",
+      "perPaper": "Cishe {credits, plural, one {# ikhredithi} other {# amakhredithi}} ngephepha",
       "pickerCost": "Amakhredithi ngephepha"
     },
     "overview": {

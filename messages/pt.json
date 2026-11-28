@@ -8825,7 +8825,7 @@
         "onItsWay": "O PDF está a caminho",
         "cantShow": "Não é possível mostrar este PDF aqui. Abra-o num novo separador."
       },
-      "perPaper": "{credits, plural, one {# crédito} other {# créditos}} por artigo",
+      "perPaper": "Cerca de {credits, plural, one {# crédito} other {# créditos}} por artigo",
       "pickerCost": "Créditos por artigo"
     },
     "overview": {
