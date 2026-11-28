@@ -274,12 +274,15 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
         const face = <ReviewerMark reviewer={reviewer} you={reviewer.id === me} className={mark} />;
         const link = links[i];
         // A face with nothing to open still says whose it is, as the faces beside it do.
-        if (!link) return linkOf ? <TooltipHint key={reviewer.id} label={reviewer.id === me ? words.t("you") : reviewer.name}><span tabIndex={0} aria-label={reviewer.id === me ? words.t("you") : reviewer.name} className={cn(shape, "outline-none focus-visible:ring-ring/60")}>{face}</span></TooltipHint> : <span key={reviewer.id} className={shape}>{face}</span>;
+        const name = reviewer.id === me ? words.t("you") : reviewer.name;
+        if (!linkOf) return <span key={reviewer.id} className={shape}>{face}</span>;
+        // One element whether or not the face opens anything, with the link laid over it: a face whose link comes or goes on another page stays as it is, never drawn anew, which flashes its picture.
         return (
-          <TooltipHint key={reviewer.id} label={link.says}>
-            <NextLink href={link.href} aria-label={link.says} aria-current={link.on ? "true" : undefined} className={cn("relative outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none", shape, narrowed && (link.on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"))}>
+          <TooltipHint key={reviewer.id} label={link ? link.says : name}>
+            <span tabIndex={link ? undefined : 0} aria-label={link ? undefined : name} className={cn("relative outline-none transition-[transform,opacity] focus-visible:ring-ring/60 has-[:focus-visible]:z-10 has-[:focus-visible]:ring-ring/60 motion-reduce:transition-none", shape, link && "hover:z-10 hover:-translate-y-0.5", link && narrowed && (link.on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 has-[:focus-visible]:opacity-100"))}>
               {face}
-            </NextLink>
+              {link ? <NextLink href={link.href} aria-label={link.says} aria-current={link.on ? "true" : undefined} className="absolute inset-0 rounded-[inherit] outline-none" /> : null}
+            </span>
           </TooltipHint>
         );
       })}

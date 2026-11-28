@@ -175,8 +175,9 @@ export function Segmented<T extends string>({
           </>
         );
         if (o.href) {
+          // Each tab's page is read ahead in full, dynamic as it is: a press opens it at once, with no wait on the server first.
           return (
-            <Link key={o.id} ref={(el) => { buttons.current[o.id] = el; }} href={o.href} aria-current={on ? "page" : undefined} className={cn(look, "outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}>
+            <Link key={o.id} ref={(el) => { buttons.current[o.id] = el; }} href={o.href} prefetch aria-current={on ? "page" : undefined} className={cn(look, "outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}>
               {content}
             </Link>
           );
