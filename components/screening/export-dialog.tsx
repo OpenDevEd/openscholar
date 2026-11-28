@@ -310,7 +310,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                           </td>
                           <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-28 truncate">{row.vote.note ?? t("votes.none")}</span></td>
                           <td className="px-3"><ResultChip result={row.result} /></td>
-                          <td className="whitespace-nowrap px-3 text-xs text-muted-foreground">{words.ago(row.vote.at)}</td>
+                          <td className="whitespace-nowrap px-3 text-xs text-muted-foreground">{words.ago(row.vote.castAt ?? row.vote.at)}</td>
                         </tr>
                       ))}
                     </tbody>

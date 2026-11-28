@@ -9,7 +9,7 @@ export const itemKindValidator = v.union(...itemKinds.map((kind) => v.literal(ki
 export type ItemKind = Infer<typeof itemKindValidator>;
 
 /** What happened to it. */
-export const activityKinds = ["created", "renamed", "edited", "added", "removed", "rated", "answered", "screened", "extracted", "paused", "resumed", "retried", "stopped", "moved", "shared"] as const;
+export const activityKinds = ["created", "renamed", "edited", "added", "removed", "rated", "answered", "screened", "extracted", "paused", "resumed", "retried", "stopped", "moved", "shared", "unshared"] as const;
 export const activityKindValidator = v.union(...activityKinds.map((kind) => v.literal(kind)));
 
 /**

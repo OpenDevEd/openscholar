@@ -811,7 +811,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                 return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} settled={Boolean(state.final)} hidden={theirs.hidden} who={r.id === open.me ? words.t("you") : r.name} className="align-middle" /> : null}</TableCell>;
                               })
                             : criteria.map((criterion) => {
-                                const given = [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))];
+                                // Narrowed to reviewers, the answers are theirs alone: never another's under their name.
+                                const given = [...new Set(cast.flatMap((entry) => (everyone.length && !everyone.includes(entry.reviewer.id) ? [] : (entry.vote?.answers[criterion.key] ?? []))))];
                                 return (
                                   <TableCell key={criterion.key} className="px-1 text-center">
                                     {given.length === 1 ? <span className="inline-flex align-middle"><AnswerMark answer={given[0]!} label={criterion.short} /></span> : given.length > 1 ? <DifferMark label={t("table.differOn", { name: criterion.short })} /> : null}
@@ -970,13 +971,14 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     );
   }
   // What whoever settled it wrote down, beside the votes they settled: the reason a settled paper has.
-  const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(state.note)}</span></TooltipHint> : null;
+  // It gives way before the reason beside it: the note is cut first, the reason only where it can't fit alone.
+  const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 shrink-[9] truncate text-xs text-muted-foreground">{words.quoted(state.note)}</span></TooltipHint> : null;
   if (!visible) return settledNote;
   if (state.result === "conflict" || (state.resolvedBy && !(state.result === "exclude" && reasonKey))) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   // A paper excluded by hand gives the reason the settler gave, beside the votes they settled and what they wrote.
   if (state.resolvedBy && reasonKey) {
     const link = narrow({ result: "exclude", reason: reasonKey }, ["reason"]);
-    return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" /><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink>{settledNote}</span>;
+    return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" /><TooltipHint label={words.failed(reasonKey, reasonCriteria(open.screening))} onlyWhenClipped><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("min-w-0 shrink-[0.01] truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink></TooltipHint>{settledNote}</span>;
   }
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? words.failed(reasonKey, reasonCriteria(open.screening)) : words.unclear(reasonKey, reasonCriteria(open.screening));
@@ -984,7 +986,7 @@ function Why({ paper, open, reasonKey }: { paper: Paper; open: Open; reasonKey?:
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     // Another reason is what its voter wrote: it stands beside the reason, as a settled paper's note does.
     const written = reasonKey === OTHER_REASON ? cast.find((vote) => vote.reason === OTHER_REASON && vote.note)?.note : undefined;
-    if (written) return <span className="flex min-w-0 items-center gap-2"><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("shrink-0 text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
+    if (written) return <span className="flex min-w-0 items-center gap-2"><TooltipHint label={words.failed(reasonKey, reasonCriteria(open.screening))} onlyWhenClipped><NextLink href={link.href} aria-current={link["aria-current"]} className={cn("min-w-0 shrink-[0.01] truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", REASON_LINK)}><Reason reason={reasonKey} criteria={reasonCriteria(open.screening)} /></NextLink></TooltipHint><TooltipHint label={written} onlyWhenClipped><span className="min-w-0 shrink-[9] truncate text-xs text-muted-foreground">{words.quoted(written)}</span></TooltipHint></span>;
     return (
       <QuestionHint question={questionOf(reasonKey, reasonCriteria(open.screening), "label")} label={label}>
         {/* An excluded paper's reason narrows the table to it. A Maybe's unclear criterion names why and opens nothing: the list narrows by exclusion reasons only, and a link to it would open empty. */}

@@ -9,7 +9,7 @@ import { GuestChips, type From } from "./shared";
 import { MoveDialog, type Movable } from "./move-dialog";
 import { usePaginatedQuery, type UsePaginatedQueryReturnType } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AiIcon, ArrowRight, FileSearch, FolderPlus, History, ListChecks, Move, Pause, PenLine, Play, Plus, RotateCcw, Share2, Square, Star, Trash2, type AppIcon } from "@/components/icons";
+import { AiIcon, ArrowRight, FileSearch, FolderPlus, History, ListChecks, Move, Pause, PenLine, Play, Plus, RotateCcw, Share2, Square, Star, Trash2, Unlink, type AppIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { PersonTag, YouTag } from "@/components/ui/identity";
@@ -42,6 +42,7 @@ const LOOK: Record<Happened, { icon: AppIcon; tint: string; counted: boolean }> 
   stopped: { icon: Square, tint: "#f87171", counted: false },
   moved: { icon: ArrowRight, tint: "#fb923c", counted: false },
   shared: { icon: Share2, tint: "#60a5fa", counted: false },
+  unshared: { icon: Unlink, tint: "#94a3b8", counted: false },
 };
 
 /** Changes one page of Activity shows, and each page more. */
@@ -182,7 +183,7 @@ function ActivityRow({ row, now }: { row: Row; now: Date }) {
   const look = LOOK[row.happened];
   const Icon = look.icon;
   // A renamed item shows the name it had beside the verb, a moved one the workspace it came from, a shared one who it went to; other details sit in a chip under it.
-  const inline = (row.happened === "renamed" || row.happened === "moved" || row.happened === "shared") && row.detail;
+  const inline = (row.happened === "renamed" || row.happened === "moved" || row.happened === "shared" || row.happened === "unshared") && row.detail;
   return (
     <div className="flex gap-3 rounded-xl px-2 py-2.5">
       <span className="relative mt-0.5 shrink-0 self-start">

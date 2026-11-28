@@ -878,6 +878,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id || !change || busy || counting || countFailed) return;
     setBusy(true);
     try {
+      // The save is checked before anything goes out: an invitation, a guest's place or a community's collection is never given for a save that is then refused.
+      if (workspaceId) await convex.query(api.screening.settings.checkChange, { workspaceId, jobId: saved.id as Id<"screeningJobs">, change });
       // People from outside the workspace join by sharing: a reviewer as a guest who votes.
       // Someone with an invitation already waiting (an earlier try of this save, before a reload too) isn't invited again: the server's list of waiting invitations says who.
       const waiting = new Set((open?.invited ?? []).filter((one) => !one.undelivered).flatMap((one) => one.email?.toLowerCase() ?? []));
@@ -1587,7 +1589,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             {reviewer.model ? (
                               <>
                                 {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{pieces("modelsSay.paused.row")}</StateChip> : null}
-                                <Chip icon={Coins}>{perPaper({ words, t: list }, reviewer.model)}</Chip>
+                                <Chip icon={Coins}>{perPaper({ words, t: list }, reviewer.model, reviewer.tally)}</Chip>
                                 {/* A model that takes no files is given no paper that is only its PDF: said where it is picked, before it is paid for. */}
                                 {pdfsMissed(reviewer.model, pdfs).papers ? <StateChip tone="warning" icon={FileText} className={SENTENCE_CHIP}>{t("reviewers.pdfsMissed", { why: pdfsMissed(reviewer.model, pdfs).why === "text" ? "text" : "long", count: pdfsMissed(reviewer.model, pdfs).papers })}</StateChip> : null}
                                 {due(reviewer) ? (

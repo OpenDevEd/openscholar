@@ -146,7 +146,7 @@ export function AddPerson({ exclude, screening, freeing = 0, onPick, children }:
  * server has it (convex/screening/reviewers.ts): the same model at another effort can be added beside it, and the
  * same one at the same effort can't be added twice.
  */
-export function AddModel({ taken, pdfs, onPick, children }: { /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; /** Its papers that are only a PDF: a pick that can't read them says so before it is made. */ pdfs: Pdfs; onPick: (model: MapModel) => void; children: ReactNode }) {
+export function AddModel({ taken, pdfs, onPick, align = "start", width, children }: { /** Which edge of its button the list lines up with: the end, where the button ends its row. */ align?: "start" | "end"; /** How wide the list opens, inside a dialog as wide as the dialog (../models/model-picker.tsx). */ width?: string; /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; /** Its papers that are only a PDF: a pick that can't read them says so before it is made. */ pdfs: Pdfs; onPick: (model: MapModel) => void; children: ReactNode }) {
   const t = useTranslations("screening.list");
   const tf = useTranslations("screening.form");
   const words = useWords();
@@ -157,7 +157,7 @@ export function AddModel({ taken, pdfs, onPick, children }: { /** The models on 
   const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !taken.includes(modelKey(model)) ? [{ id, model }] : []; }) : undefined;
   const presets = picks?.filter((one, at) => picks.findIndex((other) => modelKey(other.model) === modelKey(one.model)) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => pick(model), ...(missed(model) ? { note: missed(model) } : {}) }));
   return (
-    <ModelPicker current={undefined} efforts tasks={["screenAll"]} presets={presets} price={{ heading: t("pickerCost"), of: (model) => words.credits(paperCredits(model)) }} align="start" trigger={children} onChange={(model, effort) => pick({ ...model, ...(effort ? { effort } : {}) })} />
+    <ModelPicker current={undefined} efforts tasks={["screenAll"]} presets={presets} price={{ heading: t("pickerCost"), of: (model) => words.credits(paperCredits(model)) }} align={align} {...(width ? { width } : {})} trigger={children} onChange={(model, effort) => pick({ ...model, ...(effort ? { effort } : {}) })} />
   );
 }
 

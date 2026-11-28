@@ -87,11 +87,10 @@ export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progres
 /** The papers that still wait for a reviewer: the ones they were given, less the ones they voted on, a model couldn't read, and the ones settled without them. */
 export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, theirsOf({ dealt: reviewer.dealt, closed: tally?.closed }) - gotThrough(tally));
 
-/** New papers of a check counted for one reviewer, past which a banner or an email says so many and more. */
-export const NEW_COUNTED = 500;
-/** How many of the papers a check brought still wait for one reviewer's vote, counted up to `NEW_COUNTED`. */
-export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "from" | "added">) {
-  return (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewerId).eq("status", "waiting").gte("place", check.from).lt("place", check.from + check.added)).take(NEW_COUNTED)).length;
+/** How many of the papers a check brought still wait for one reviewer's vote: kept counts (./facets.ts), however many it brought. */
+export async function newFor(ctx: QueryCtx, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "_id">) {
+  const tally = await tallyOfReviewer(ctx, reviewerId, ["waiting"], { check: check._id });
+  return tally.include + tally.maybe + tally.exclude + tally.conflict + tally.waiting;
 }
 
 /** Checks of its sources looked through for the last that brought papers. */

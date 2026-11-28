@@ -169,8 +169,12 @@ export function crossRefsOf(ref: PaperRef, given: { openalexId?: string | null; 
   return { ...(openalexId ? { openalexId } : {}), ...(doi ? { doi } : {}) };
 }
 
-/** A title as two sources of one paper would both give it: its letters and digits, in lower case. */
-export const plainTitle = (title: string) => title.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "");
+/**
+ * A title as two sources of one paper would both give it: its letters and digits, in lower case, without the accents
+ * Latin, Greek and Cyrillic letters take ("é" is "e"). The marks of other scripts are letters' own: a Devanagari vowel
+ * sign or a Japanese voicing mark makes another word ("कल" and "काल", "カ" and "ガ"), so they stay.
+ */
+export const plainTitle = (title: string) => title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]+/gu, "");
 /** Whether two titles name one paper: one holds the other, a subtitle or not, and neither is too short to tell. */
 export function sameTitle(one: string, other: string) {
   const [a, b] = [plainTitle(one), plainTitle(other)];

@@ -12,7 +12,7 @@ import { queueLibraryWrite } from "../evidenceLibraries/writes";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { screeningDestination } from "../library/collections";
-import { workspaceAction, workspaceMutation } from "../lib/userActions";
+import { workspaceAction, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
@@ -157,10 +157,14 @@ export const saveSent = internalMutation({
   handler: (ctx, { userId, workspaceId, jobId, change, libraryDestination }) => apply(ctx, { userId, workspaceId }, jobId, change, libraryDestination),
 });
 
-async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces">; author?: "user" | "assistant" }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator>): Promise<null> {
+/**
+ * Everything a save checks before it changes anything, read only: the form asks it first (`check`), so nothing it sends
+ * or gives (an invitation, a guest's place, a community's collection) goes out for a save that would then be refused.
+ * `libraryDestination` "unasked": the community's collection isn't checked or made yet.
+ */
+async function validate(ctx: QueryCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator> | "unasked") {
   const job = await requireMember(ctx, actor, jobId);
   const plan = await planned(ctx, job, change);
-  const now = Date.now();
   const name = change.name?.trim();
   if (change.name !== undefined && (!name || name.length > SCREENING_TEXT.name)) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
   if ((change.question?.length ?? 0) > SCREENING_TEXT.question) throw createError("VALIDATION_ERROR", "That research question is too long.");
@@ -171,11 +175,27 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
   const writer = { userId: actor.userId, workspaceId: job.workspaceId };
   const later = change.saveTo?.kind === "new" ? change.saveTo.name.trim() : undefined;
   // A community's collection is checked, or made, before the save (`saveToCommunity`).
-  if (toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
+  if (libraryDestination !== "unasked" && toCommunity(change.saveTo) !== Boolean(libraryDestination)) throw createError("VALIDATION_ERROR", "Pick the collection its included papers go to again.");
   const prune = change.prune ?? job.prune === true;
   // Checked against the sources as the save leaves them: those it takes out don't count, and those it adds do.
   const canTake = (set: (typeof sources)[number]["set"]) => prunable(set.kind === "upload" || set.kind === "pdf" || set.kind === "dois" ? undefined : set);
   if (prune && !sources.some((source) => source.removedAt === undefined && !change.removeSources?.includes(source._id) && canTake(source.set)) && !(change.addSources ?? []).some((source) => canTake(source.set as (typeof sources)[number]["set"]))) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it.");
+  return { job, plan, name, sources, writer, later };
+}
+
+/** Whether a save would be taken as it is, without making it: refused with the save's own reason where it wouldn't. */
+export const checkChange = workspaceQuery({
+  args: { jobId: v.id("screeningJobs"), change: changeValidator },
+  returns: v.null(),
+  handler: async (ctx, actor, { jobId, change }) => {
+    await validate(ctx, actor, jobId, change, "unasked");
+    return null;
+  },
+});
+
+async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces">; author?: "user" | "assistant" }, jobId: Id<"screeningJobs">, change: Change, libraryDestination?: Infer<typeof libraryDestinationValidator>): Promise<null> {
+  const { job, plan, name, sources, writer, later } = await validate(ctx, actor, jobId, change, libraryDestination);
+  const now = Date.now();
 
   // Settled papers keep their result from here on, unless this save checks them again: said before any paper is stamped, so the worker holds them.
   await ctx.db.patch("screeningJobs", jobId, {
@@ -186,7 +206,8 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
     ...(change.living !== undefined ? { living: change.living ? { every: change.living, next: now + EVERY_MS[change.living] } : undefined } : {}),
     ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, libraryDestination, libraryWriteProblem: undefined, libraryPruneProblem: undefined, ...(later ? { newCollection: later } : await screeningDestination(ctx, writer, change.saveTo)) } : {}),
     ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
-    ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
+    // Settled papers keep their results through any save that doesn't check them again: one that only re-scores them, or takes out a source another still holds, moves none back for votes.
+    ...(!change.recheck ? { heldAt: now } : {}),
     ...touched(now),
   });
   const saved = (await ctx.db.get("screeningJobs", jobId))!;
@@ -227,7 +248,7 @@ async function apply(ctx: MutationCtx, actor: { userId: Id<"users">; workspaceId
 
   // What follows on its papers, a step at a time: the open ones are settled again under the new settings, with people's votes marked where a criterion became a must-have and the models reading again where one was added.
   if (plan.decides || change.recheck || plan.added.length || plan.stricter.length || plan.rescores) {
-    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck || plan.rescores ? ["waiting", "conflict", "include", "maybe", "exclude"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: plan.stricter, reread: plan.added.length > 0 });
+    await ctx.scheduler.runAfter(0, internal.screening.settings.follow, { jobId, cursor: null, results: change.recheck || plan.rescores ? ["waiting", "conflict", "include", "maybe", "exclude"] : ["waiting", "conflict"], recheck: change.recheck === true, stricter: [...plan.stricter, ...(change.recheck ? plan.added.filter((criterion) => criterion.must).map((criterion) => criterion.key) : [])], reread: plan.added.length > 0 });
   }
   // The papers it has included go to a collection it is newly sent to.
   if (change.saveTo && change.saveTo.kind !== "none") await ctx.scheduler.runAfter(0, internal.screening.settings.shelveIncluded, { jobId, cursor: null });
@@ -250,9 +271,9 @@ const resultValidator = v.union(v.literal("waiting"), v.literal("conflict"), v.l
 /**
  * What a save does to a screening's papers, a step at a time: each paper of the results it names is stamped for the
  * bookkeeping worker, which settles it under the settings as they are now. With `recheck`, a settled paper lets go of
- * its result first. Where a criterion became a must-have, the votes people cast on the papers still open are marked
- * for a new one, unless they exclude already. Where a criterion was added, the models that read an open paper read it
- * again, to answer it.
+ * its result first. Where a criterion became a must-have, the votes people cast on the papers still open, and on those
+ * checked again, are marked for a new one, unless they exclude already or answered it Yes. Where a criterion was added,
+ * the models that read those papers read them again, to answer it.
  */
 export const follow = internalMutation({
   args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()), results: v.array(resultValidator), recheck: v.boolean(), stricter: v.array(v.string()), reread: v.boolean() },
@@ -266,11 +287,15 @@ export const follow = internalMutation({
     const page = await ctx.db.query("screeningResults").withIndex("by_job_and_result", (q) => q.eq("jobId", jobId).eq("result", result)).paginate({ cursor, numItems: papersAStep(reviewers.size, FOLLOW) });
     let queued = 0;
     for (const paper of page.page) {
-      if (open && (stricter.length || reread)) {
+      // A settled paper checked again is asked again as an open one is: the models answer a new criterion on it, and a person's vote is asked for anew.
+      // A finished screening asks nobody: its models read nothing until it is reopened, and a vote cleared now would never be cast again.
+      if ((open || recheck) && (stricter.length || reread) && job.finishedAt === undefined) {
         for (const vote of await votesOf(ctx, paper._id)) {
           const reviewer = reviewers.get(vote.reviewerId);
           if (vote.status !== "cast" || !reviewer) continue;
-          if (reviewer.kind === "person" && stricter.length && vote.decision !== "exclude" && !vote.flagged) await ctx.db.patch("screeningVotes", vote._id, { flagged: true });
+          // A vote whose answers already meet each new must-have stands as it is: nobody is asked what they answered Yes to.
+          const meets = stricter.every((key) => (vote.answers as Record<string, string> | undefined)?.[key] === "yes");
+          if (reviewer.kind === "person" && stricter.length && vote.decision !== "exclude" && !vote.flagged && !meets) await ctx.db.patch("screeningVotes", vote._id, { flagged: true });
           if (reviewer.kind === "model" && reread && readingModel(reviewer)) {
             await ctx.db.patch("screeningVotes", vote._id, { ...modelRow(job, paper, reviewer), decision: undefined, answers: undefined, confidences: undefined, passages: undefined, reason: undefined, at: undefined });
             queued++;

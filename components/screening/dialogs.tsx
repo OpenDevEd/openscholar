@@ -240,7 +240,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               </>
             )}
             {finished ? null : (
-              <AddModel taken={models.map((model) => modelKey(model.model!))} pdfs={pdfsOf(screening.sources)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
+              <AddModel align="end" width="w-lg" taken={models.map((model) => modelKey(model.model!))} pdfs={pdfsOf(screening.sources)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
                 <Button variant="outline" size="sm" className="ms-auto h-8"><AiIcon />{t("peopleDialog.addModel")}</Button>
               </AddModel>
             )}
@@ -285,7 +285,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               key: one.id,
               avatar: <ReviewerMark reviewer={one} className="size-9" />,
               name: one.name,
-              detail: t("peopleDialog.modelRead", { failed: String(Boolean(one.tally?.failed)), price: perPaper({ words, t: list }, one.model!), done: gotThrough(one.tally), of: theirsOf(one.tally) }),
+              detail: t("peopleDialog.modelRead", { failed: String(Boolean(one.tally?.failed)), price: perPaper({ words, t: list }, one.model!, one.tally), done: gotThrough(one.tally), of: theirsOf(one.tally) }),
               role: { kind: "edit" as const, label: t("peopleDialog.model") },
               ...(may ? { onRemove: () => onRemove(one) } : {}),
             })),

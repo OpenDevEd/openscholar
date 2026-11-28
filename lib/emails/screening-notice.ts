@@ -5,13 +5,13 @@ import { emailButton, emailStyles, renderLibraryEmail } from "./library-template
 export type NoticeAbout = "papers" | "conflicts" | "reminder" | "joined";
 
 const num = (n: number) => n.toLocaleString("en-GB");
-const papers = (n: number, more = false) => `${num(n)} ${more ? "or more papers" : n === 1 ? "paper" : "papers"}`;
+const papers = (n: number) => `${num(n)} ${n === 1 ? "paper" : "papers"}`;
 
 /**
  * The email a screening sends one person (convex/screening/noticeMail.ts): what waits for them, a link to it, and
  * the link that turns this screening's emails off for them alone.
  */
-export function screeningNoticeMessage({ origin, path, name, about, count, more = false, finished = false, living = false, by }: {
+export function screeningNoticeMessage({ origin, path, name, about, count, finished = false, living = false, by }: {
   origin: string;
   /** The screening's own page, with its workspace's prefix where it has one. */
   path: string;
@@ -19,8 +19,6 @@ export function screeningNoticeMessage({ origin, path, name, about, count, more 
   about: NoticeAbout;
   /** How many papers wait for them: to vote on, or to settle. */
   count: number;
-  /** The count is where counting stopped: there are at least that many. */
-  more?: boolean;
   /** Someone given a finished screening to vote on: they vote once it is reopened. */
   finished?: boolean;
   /** It looks for new papers on a schedule: more come to its reviewers as they arrive. */
@@ -39,7 +37,7 @@ export function screeningNoticeMessage({ origin, path, name, about, count, more 
         ? [`You review "${name}"`, `${by ?? "A colleague"} ${finished ? "gave you a place to vote on" : "added you as a reviewer of"} "${name}". ${finished ? "The screening is marked finished. You can vote once it is reopened." : count ? `${papers(count)} ${count === 1 ? "waits" : "wait"} for your vote.` : living ? "No paper waits for your vote yet. New ones come to you as they arrive." : "No paper waits for your vote."}`, count === 1 ? "Screen it" : count ? "Screen them" : "Open it"]
       : about === "reminder"
         ? [`${papers(count)} ${count === 1 ? "waits" : "wait"} for your vote in "${name}"`, `${by ?? "A colleague"} reminds you that ${papers(count)} of "${name}" ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"]
-        : [`${papers(count, more)} to screen in "${name}"`, `${count === 1 ? "A new paper" : more ? `${num(count)} or more new papers` : `${num(count)} new papers`} arrived in "${name}" and ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"];
+        : [`${papers(count)} to screen in "${name}"`, `${count === 1 ? "A new paper" : `${num(count)} new papers`} arrived in "${name}" and ${count === 1 ? "waits" : "wait"} for your vote.`, count === 1 ? "Screen it" : "Screen them"];
   return {
     subject,
     text: `${line}\n\n${open}\n\nStop receiving emails from this screening\n${off}`,

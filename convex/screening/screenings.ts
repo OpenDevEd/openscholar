@@ -123,9 +123,15 @@ const sameSource = (row: Doc<"screeningSources">, sent: Infer<typeof sourceInput
 };
 
 /** A screening that isn't started yet, if it is this person's to go on with. */
+/** Lets go of a draft: marked so no form takes it up again in the same step, then deleted a step at a time (`erase`). */
+async function letGo(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
+  await ctx.db.patch("screeningJobs", jobId, { erasing: true });
+  await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId });
+}
+
 async function draftOf(ctx: Pick<QueryCtx, "db">, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, jobId: Id<"screeningJobs"> | undefined) {
   const job = jobId ? await ctx.db.get("screeningJobs", jobId) : null;
-  return job?.status === "draft" && job.createdBy === actor.userId && job.workspaceId === actor.workspaceId ? job : null;
+  return job?.status === "draft" && !job.erasing && job.createdBy === actor.userId && job.workspaceId === actor.workspaceId ? job : null;
 }
 
 /**
@@ -155,7 +161,7 @@ export const sync = workspaceMutation({
       }
       return { jobId: was._id, sources: [...rows.map((row) => row._id), ...added] };
     }
-    if (was) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: was._id });
+    if (was) await letGo(ctx, was._id);
     if (!sources.length) return null;
     const stars = starsFrom(undefined, 0);
     const jobId = await ctx.db.insert("screeningJobs", {
@@ -217,7 +223,7 @@ export const sweepDrafts = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const old = await ctx.db.query("screeningJobs").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "draft").lt("updatedAt", Date.now() - DRAFT_KEPT_MS)).take(DRAFTS_A_SWEEP);
-    for (const job of old) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: job._id });
+    for (const job of old) if (!job.erasing) await letGo(ctx, job._id);
     return null;
   },
 });
@@ -280,7 +286,7 @@ export const open = internalMutation({
     const read = await draftOf(ctx, writer, draft);
     const rows = read ? await sourcesOf(ctx, read._id) : [];
     const adopted = read && rows.length === sources.length && rows.every((row, at) => sameSource(row, sources[at]!)) ? read : null;
-    if (read && !adopted) await ctx.scheduler.runAfter(0, internal.screening.screenings.erase, { jobId: read._id });
+    if (read && !adopted) await letGo(ctx, read._id);
     const jobId = adopted?._id ?? (await ctx.db.insert("screeningJobs", { workspaceId, createdBy: user._id, totalPapers: 0, reading: true, shape: 2, screeningId: await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: now }), ...settings }));
     if (adopted) await ctx.db.patch("screeningJobs", jobId, settings);
     else {

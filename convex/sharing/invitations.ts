@@ -17,7 +17,7 @@ import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "
 import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
-import { holds, invitationTo, listedBy, noteShared, requireRoom } from "./access";
+import { holds, invitationTo, listedBy, noteShared, noteUnshared, requireRoom } from "./access";
 import { findShared, grantOf, kindWord, open, requireRole, sharedIn, shares } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
@@ -36,7 +36,10 @@ export const prepare = internalMutation({
     if (replacing.length > MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many invitations to take back at once.");
     for (const address of replacing) {
       const old = await invitationTo(ctx, shared.id, address.trim().toLowerCase());
-      if (old?.state === "pending") await ctx.db.patch("itemInvitations", old._id, { state: "cancelled" });
+      if (old?.state === "pending") {
+        await ctx.db.patch("itemInvitations", old._id, { state: "cancelled" });
+        await noteUnshared(ctx, shared, actor, old.email);
+      }
     }
     await rateLimit(ctx, { name: "item-invitation", key: String(userId), throws: true });
     const email = args.email.trim().toLowerCase();
@@ -107,11 +110,12 @@ export const unreplace = internalMutation({
   handler: async (ctx, { invitationId, emails, attempt }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
     if (invitation?.state !== "pending" || invitation.expiresAt !== attempt) return null;
+    // Taken back first: the place it holds goes back to the invitations it replaced.
+    await ctx.db.patch("itemInvitations", invitationId, { state: "cancelled" });
     for (const email of emails.slice(0, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)) {
       const old = await invitationTo(ctx, invitation.item, email.trim().toLowerCase());
       if (old?.state === "cancelled" && old.expiresAt > Date.now()) await ctx.db.patch("itemInvitations", old._id, { state: "pending" });
     }
-    await ctx.db.patch("itemInvitations", invitationId, { state: "cancelled" });
     return null;
   },
 });
@@ -151,11 +155,11 @@ export const respondVerified = internalMutation({
     if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await holds(ctx, shared, person)))) return { kind: shared.kind, id: shared.id };
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
-    // Its place becomes theirs. Someone who joined its workspace since has it without one.
+    // Answered first, then its place becomes theirs, so the place is counted once (../screening/seats.ts). Someone who joined its workspace since has it without one.
+    await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });
     if (accept && !(await holds(ctx, shared, person)) && !(await grantOf(ctx, shared.id, userId))) {
       await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now(), ...listedBy(shared) });
     }
-    await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });
     return accept ? { kind: shared.kind, id: shared.id } : null;
   },
 });

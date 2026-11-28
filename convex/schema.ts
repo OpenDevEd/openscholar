@@ -1364,6 +1364,8 @@ export default defineSchema({
     paused: v.optional(v.literal(true)),
     // When its settings last changed without its settled papers being checked again: a paper settled by then keeps its result (convex/screening/settling.ts).
     heldAt: v.optional(v.number()),
+    // A draft let go of (replaced, discarded or left a week), its rows being deleted: no form takes it up again, whatever reaches it before the last of them goes.
+    erasing: v.optional(v.literal(true)),
     // When something last happened in it, to within a minute: what its list orders by.
     activeAt: v.optional(v.number()),
     createdAt: v.number(),

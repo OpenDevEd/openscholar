@@ -49,6 +49,12 @@ const JOINED_AFTER_MS = 2 * 60_000;
 /** How soon after a screening is made the form's own shares arrive (components/screening/screening-form.tsx `outside`). */
 const FROM_THE_START = 60_000;
 
+/**
+ * Holds the papers settled so far at their results: a change of who reviews (a person or a model added or taken
+ * off, wherever it is made) never sends a paper back for votes it was settled without (./settling.ts `held`).
+ */
+export const holdSettled = (ctx: MutationCtx, jobId: Id<"screeningJobs">) => ctx.db.patch("screeningJobs", jobId, { heldAt: Date.now() });
+
 export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, userId: Id<"users">, by: Id<"users">, { tell = false }: { /** A colleague put them on it: an email says so, with the papers that wait for them once their share is given out. */ tell?: boolean } = {}) {
   const reviewers = await reviewersOf(ctx, job._id);
   const before = reviewers.filter(dealable).length;
@@ -59,6 +65,7 @@ export async function addPerson(ctx: MutationCtx, job: Doc<"screeningJobs">, use
   const addedAt = Date.now() - job.createdAt < FROM_THE_START ? job.createdAt : Date.now();
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "person", userId, addedAt, addedBy: by, dealt: 0 }));
   if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
+  await holdSettled(ctx, job._id);
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.join, { jobId: job._id, reviewerId, before, cursor: null, result: "waiting" });
   if (tell && by !== userId) await ctx.scheduler.runAfter(JOINED_AFTER_MS, internal.screening.noticeMail.send, { jobId: job._id, userId, about: "joined", by });
   return reviewerId;
@@ -152,6 +159,7 @@ export async function takeOff(ctx: MutationCtx, job: Doc<"screeningJobs">, revie
   const grant = reviewer.userId ? await grantOf(ctx, job._id, reviewer.userId) : null;
   if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
   await ctx.db.patch("screeningReviewers", reviewer._id, { left: now, discarded: discard ? now : undefined });
+  await holdSettled(ctx, job._id);
   const rule = job.rule;
   let settler: Id<"users"> | undefined = settlerNow;
   if (rule && reviewer.kind === "person" && rule.resolver === reviewer.userId) {
@@ -181,6 +189,7 @@ export async function addModel(ctx: MutationCtx, job: Doc<"screeningJobs">, mode
   if (!old && reviewers.length >= MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
   const reviewerId = old?._id ?? (await ctx.db.insert("screeningReviewers", { jobId: job._id, kind: "model", modelId: picked._id, ...(model.effort ? { effort: model.effort } : {}), addedAt: Date.now(), addedBy: by, dealt: 0 }));
   if (old) await ctx.db.patch("screeningReviewers", old._id, { left: undefined, discarded: undefined });
+  await holdSettled(ctx, job._id);
   await ctx.scheduler.runAfter(0, internal.screening.reviewers.enlist, { jobId: job._id, reviewerId, cursor: null, result: "waiting" });
   return picked;
 }

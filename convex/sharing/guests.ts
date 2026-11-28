@@ -14,7 +14,7 @@ import { MAX_ACCOUNTS_PER_EMAIL } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
-import { give, holds, invitationTo, roomFor } from "./access";
+import { give, holds, invitationTo, noteUnshared, roomFor } from "./access";
 import { grantOf, itemGuestsOf, requireRole, sharedIn, shares } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
@@ -103,11 +103,18 @@ export const removeAction = defineUserMutation({
     const shared = await sharedIn(ctx, actor, kind, id);
     if ("userId" in guest) {
       const grant = await grantOf(ctx, shared.id, guest.userId);
-      if (grant) await ctx.db.delete("itemAccess", grant._id);
+      if (grant) {
+        await ctx.db.delete("itemAccess", grant._id);
+        const person = await ctx.db.get("users", guest.userId);
+        await noteUnshared(ctx, shared, actor, person ? personName(person) || person.email : "");
+      }
       return null;
     }
     const invitation = await invitationTo(ctx, shared.id, guest.email.trim().toLowerCase());
-    if (invitation?.state === "pending") await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
+    if (invitation?.state === "pending") {
+      await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
+      await noteUnshared(ctx, shared, actor, invitation.email);
+    }
     return null;
   },
 });

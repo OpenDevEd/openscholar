@@ -102,15 +102,16 @@ export const begin = internalMutation({
 
 /** A source that couldn't be read is left as failed, with why in words for the person where it is something they can act on, and the check goes on to the next. The check counts it as one of its own it couldn't read. */
 export const fail = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), run: v.optional(v.number()), reason: v.optional(v.string()) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), pass: v.number(), run: v.optional(v.number()), /** How far into the source the failed step began. */ from: v.optional(v.number()), reason: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { checkId, sourceId, pass, run, reason }) => {
-    // A reading of the source from before it was changed fails nothing: the source is being read again. Nor does a reader the check has moved past.
-    if (((await ctx.db.get("screeningSources", sourceId))?.pass ?? 0) !== pass) return null;
-    if (run !== undefined && ((await ctx.db.get("screeningChecks", checkId))?.run ?? 0) !== run) return null;
+  handler: async (ctx, { checkId, sourceId, pass, run, from, reason }) => {
+    // Only the reading going on now fails the source: never one from before it was changed (it is being read again), a reader the check has moved past, one
+    // of a check that has ended, or a second reader of a step the first has taken in since.
+    const [source, check] = await Promise.all([ctx.db.get("screeningSources", sourceId), ctx.db.get("screeningChecks", checkId)]);
+    if (!source || !check || check.state !== "running" || (source.pass ?? 0) !== pass || (source.state !== "waiting" && source.state !== "reading")) return null;
+    if ((run !== undefined && (check.run ?? 0) !== run) || (from !== undefined && source.read !== from)) return null;
     await ctx.db.patch("screeningSources", sourceId, { state: "failed", failure: reason?.slice(0, FAILURE_SHOWN) });
-    const check = await ctx.db.get("screeningChecks", checkId);
-    if (check && !check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
+    if (!check.unread?.includes(sourceId)) await ctx.db.patch("screeningChecks", checkId, { unread: [...(check.unread ?? []), sourceId].slice(-MAX_SOURCE_ROWS) });
     return null;
   },
 });
@@ -146,7 +147,7 @@ export const gather = internalAction({
         }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
-        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
+        await ctx.runMutation(internal.screening.gathering.fail, { checkId, sourceId: source.sourceId, pass: source.pass, run: source.run, from: source.read, ...(readConvexErrorData(error)?.message ? { reason: readConvexErrorData(error)!.message } : {}) });
       }
     }
   },
@@ -167,8 +168,6 @@ export const beat = internalMutation({
 async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading): Promise<"wait" | void> {
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
-  // Where the source stands as this step hands its papers in: a step that hands them in parts (a Zotero library's) moves it on with each.
-  let handedTo = source.read;
   const give = async (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => {
     // A paper that came with no abstract takes the one OpenAlex holds, and failing that the one registered under its DOI, whichever source brought it. A PDF's was asked for when the file was first read (./heldPdfs.ts): it comes with what that found.
     const bare = set.kind !== "pdf" && papers.some((paper) => !paper.abstract?.trim());
@@ -179,14 +178,13 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
     for (let at = 0; at === 0 || at < ready.length; at += each) {
       const last = at + each >= ready.length;
       const goesOn = last ? resume : source.resume;
-      const args = { checkId, sourceId, pass: source.pass, run: source.run, from: handedTo, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
+      const args = { checkId, sourceId, pass: source.pass, run: source.run, from: source.read, papers: ready.slice(at, at + each), read: last ? read : 0, ended: ended && last, ...(goesOn ? { resume: goesOn } : {}), ...(at === 0 && leftOut?.length ? { leftOut } : {}) };
       // A fill writes the reviewers' counts that voting and settling write too: one that loses to them every time Convex tries it is tried again here, with the papers it already has.
       for (let tries = 1; ; tries++) {
         try { await ctx.runMutation(internal.screening.gathering.fill, args); break; }
         catch (error) { if (readConvexErrorData(error) || tries >= FILL_TRIES) throw error; await new Promise((wait) => setTimeout(wait, 500 * 2 ** tries)); }
       }
     }
-    handedTo += read;
   };
   const held = set.kind === "upload" || set.kind === "dois" || set.kind === "pdf" ? { ...source, set } : null;
   if (source.state === "waiting") {
@@ -249,14 +247,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
       const files: Array<{ key: string; file: Id<"_storage">; pages: number; shape?: number }> = fresh.length ? await ctx.runAction(internal.zotero.actions.pdfsOf, { userId: source.userId, ...(set.groupId ? { groupId: set.groupId } : {}), itemKeys: [...new Set(bare.filter((one) => fresh.includes(one.paper)).map((one) => one.key))] }) : [];
       return read.map(({ key, ...paper }) => { const own = files.find((one) => one.key === key); return own ? { ...paper, file: own.file, pages: own.pages, ...(own.shape ? { shape: own.shape } : {}) } : paper; });
     };
-    // A step's papers go to `fill` a step of an index's at a time, the reading's end with the last of them.
-    // Where the reading goes on is kept with the last of them only: one cut short before that reads these collections again, and the papers it gave already are passed over.
-    const hand = async (papers: SearchPaper[], ended: boolean, resume?: string) => {
-      for (let at = 0; at === 0 || at < papers.length; at += READ_STEP) {
-        const lastOne = at + READ_STEP >= papers.length;
-        await give(papers.slice(at, at + READ_STEP), Math.min(READ_STEP, papers.length - at), ended && lastOne, lastOne ? resume : source.resume);
-      }
-    };
+    // A step's papers go to `fill` together: how far the reading got and where it goes on in the tree move with the last of them only, so one cut short
+    // before that reads these collections again from where the source stands, and the papers it gave already are passed over.
+    const hand = (papers: SearchPaper[], ended: boolean, resume?: string) => give(papers, papers.length, ended, resume);
     const room = last - from + 1;
     /** How many of these papers one step takes: as far as the room left, and no more with no abstract than one call fetches the PDFs of. */
     const within = (papers: Array<{ key: string; abstract?: string }>) => {

@@ -372,6 +372,7 @@ import type * as migrations_screeningOutcomes from "../migrations/screeningOutco
 import type * as migrations_screeningPeopleFirst from "../migrations/screeningPeopleFirst.js";
 import type * as migrations_screeningReviewers from "../migrations/screeningReviewers.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
+import type * as migrations_screeningTitleKeys from "../migrations/screeningTitleKeys.js";
 import type * as migrations_searchSuggestions from "../migrations/searchSuggestions.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
@@ -484,6 +485,7 @@ import type * as screening_reviewers from "../screening/reviewers.js";
 import type * as screening_sampling from "../screening/sampling.js";
 import type * as screening_scoring from "../screening/scoring.js";
 import type * as screening_screenings from "../screening/screenings.js";
+import type * as screening_seats from "../screening/seats.js";
 import type * as screening_sending from "../screening/sending.js";
 import type * as screening_settings from "../screening/settings.js";
 import type * as screening_settling from "../screening/settling.js";
@@ -932,6 +934,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/screeningPeopleFirst": typeof migrations_screeningPeopleFirst;
   "migrations/screeningReviewers": typeof migrations_screeningReviewers;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
+  "migrations/screeningTitleKeys": typeof migrations_screeningTitleKeys;
   "migrations/searchSuggestions": typeof migrations_searchSuggestions;
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
@@ -1044,6 +1047,7 @@ declare const fullApi: ApiFromModules<{
   "screening/sampling": typeof screening_sampling;
   "screening/scoring": typeof screening_scoring;
   "screening/screenings": typeof screening_screenings;
+  "screening/seats": typeof screening_seats;
   "screening/sending": typeof screening_sending;
   "screening/settings": typeof screening_settings;
   "screening/settling": typeof screening_settling;
