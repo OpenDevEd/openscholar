@@ -57,7 +57,7 @@
     },
     "refused": {
       "MAX_ROLLOUT_COMMUNITIES": "reads one past it and refuses to list or update communities, naming why",
-      "COUNTED": "reads one past it and gives no count: a screening's papers by where they stand, more than any plan gives one screening, so the Papers page's tabs then carry no number",
+      "VOTES_COUNTED": "reads one past it and gives no count: a reviewer's votes read whole for a count narrowed three ways, as many as fit one query's read, so that one count then carries no number",
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
       "MAX_ACTIVE_OPERATIONS_READ": "reads one past it and refuses the change until operations finish",
       "MAX_ORGANIZATIONS_PER_PERSON": "reads one past it and refuses: Clerk's webhooks write memberships, so no write here can",

@@ -224,15 +224,17 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       const sets = await setsOf(ctx, paper);
       // The collection its included papers go to is made with the first of them.
       // A workspace with no room for another collection still has its papers settled: they are kept in the screening, and the page says why they aren't saved.
+      // With no room for it, the paper is saved once there is (`withCollection`): it still goes back to a collection it was taken out of.
+      let saving = job;
       if (now === "include" && job.newCollection && !job.targetCollectionId) {
         const made = await withCollection(ctx, job);
-        if (!made) {
+        if (made) job = saving = made;
+        else {
           job = { ...job, libraryWriteProblem: "full" };
-          continue;
+          saving = { ...job, unsaved: true };
         }
-        job = made;
       }
-      const to = await shelve(ctx, job, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
+      const to = await shelve(ctx, saving, { ...paper, ...patch }, { becameIncluded: now === "include" && was !== "include", left: now === "exclude" && was !== "exclude" }, sets);
       moved.saved += to.saved;
       moved.removed += to.removed;
     }
