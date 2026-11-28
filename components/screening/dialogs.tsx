@@ -240,7 +240,7 @@ export function PeopleDialog({ open, onClose, state, onAdd, onRemove, onDemote }
               </>
             )}
             {finished ? null : (
-              <AddModel align="end" taken={models.map((model) => modelKey(model.model!))} pdfs={pdfsOf(screening.sources)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
+              <AddModel align="end" width="w-lg" taken={models.map((model) => modelKey(model.model!))} pdfs={pdfsOf(screening.sources)} onPick={(model) => onAdd(modelReviewer(model, Date.now()))}>
                 <Button variant="outline" size="sm" className="ms-auto h-8"><AiIcon />{t("peopleDialog.addModel")}</Button>
               </AddModel>
             )}

@@ -243,6 +243,7 @@ export function ModelPicker({
   tasks = [],
   exclude,
   price,
+  width = "w-[38rem]",
 }: {
   current: Current | undefined;
   /** The picked model, and its effort when the picker asked for one. */
@@ -259,6 +260,8 @@ export function ModelPicker({
   tasks?: AiTask[];
   /** Slugs to leave out, such as models already added. */
   exclude?: string[];
+  /** How wide the list opens: narrower inside a dialog than its own width, so it never runs past the dialog's edge. */
+  width?: string;
   /** The cost column in the place's own unit, where it charges in one. */
   price?: PickerPrice;
 }) {
@@ -362,7 +365,7 @@ export function ModelPicker({
         <PopoverContent
           align={align}
           side={side}
-          className="@container/picker relative flex w-[38rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl p-0"
+          className={cn("@container/picker relative flex max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl p-0", width)}
           data-model-picker
           ref={panel}
           // Escape in the effort step goes back to the list instead of closing.
